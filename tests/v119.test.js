@@ -11,15 +11,15 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\
 const dashes = (s) => (code(s).match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []).length;
 const count = (s, sub) => s.split(sub).length - 1;
 const LOOK = rd("ui/home-look.jsx");
-const V119 = LOOK.slice(LOOK.indexOf("/* ── v119"), LOOK.lastIndexOf("`;"));
+const V119 = LOOK.slice(LOOK.indexOf("/* ── v119"), LOOK.indexOf("/* ── v121") > 0 ? LOOK.indexOf("/* ── v121") : LOOK.lastIndexOf("`;"));   // v121: дальше — свой раздел
 const rules = code(V119).split("}").map((r) => r.trim()).filter(Boolean);
 const sels = rules.map((r) => r.split("{")[0].trim()).flatMap((s) => s.split(",").map((x) => x.trim()));
 const lineOf = (src, label) => src.split("\n").find((l) => l.includes(label)) || "";
 
 describe("v119: правила линзы (ui/home-look.jsx, раздел v119)", () => {
-  it("раздел v119 — последний, после v117; каждое правило — только под html.sa-lens", () => {
+  it("раздел v119 — после v117 (дальше — только v121); каждое правило — только под html.sa-lens", () => {
     expect(LOOK.indexOf("/* ── v119")).toBeGreaterThan(LOOK.indexOf("/* ── v117"));
-    expect(LOOK.indexOf("/* ── v", LOOK.indexOf("/* ── v119") + 5)).toBe(-1);
+    expect(LOOK.indexOf("/* ── v", LOOK.indexOf("/* ── v119") + 5)).toBe(LOOK.indexOf("/* ── v121"));
     expect(sels.length).toBeGreaterThan(12);
     for (const s of sels) expect(s, s).toMatch(/^html\.sa-lens(\.sa-light)?[ [.]/);
   });

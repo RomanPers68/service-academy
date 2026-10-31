@@ -380,6 +380,29 @@ if (!newPhone) {
   if (who === "ksenia") once("greet-olga", 12000, () => { const n = srv.S.nb["e-ksenia"]; if (n && n.hello) srv.rpc("chat_greet", { p_token: tokOf("e-olga"), p_msg: n.hello }); });
 }
 
+// ── v121: AI-интервью в демо без нейросети — пять тем по одному вопросу (план, как у ai-hr v2), в конце — демо-оценка.
+// Владелец смотрит ряд ответа: поле, микрофон и волну «Отвечать голосом» (Доп. 434)
+const HR_TOPICS = ["Сервис и гость", "Конфликты и сложные ситуации", "Приоритеты и организация", "Честность и деньги", "Команда"];
+const HR_Q = [
+  "Здравствуйте! Давайте просто пообщаемся: я расскажу пару рабочих ситуаций, а вы поделитесь, как бы поступили. Заготовленных правильных ответов не нужно. Представьте: гость долго сидит над меню и говорит: «Даже не знаю, всё какое-то непонятное». Что вы сделаете?",
+  "Гость недоволен: горячее остыло, он повышает голос на весь зал. Как поступите?",
+  "Пришли новые гости, на раздаче остывает горячее, третий стол просит счёт. В каком порядке?",
+  "В счёт не попало одно блюдо, а гость уже ушёл. Ваши действия?",
+  "У коллеги «горит» зона, у вас спокойно. Что сделаете?",
+];
+function demoHr(b) {
+  if (b.mode === "assess") return { ok: true, v: 2, model: "demo", category: "Рекомендован",
+    scores: Object.fromEntries(HR_TOPICS.map((t, i) => [t, [82, 74, 70, 88, 76][i]])),
+    verdict: "Это демо: в приложении оценку пишет ИИ по ответам кандидата, решение всегда за менеджером.",
+    strengths: ["Думает о госте"], growth: ["Приоритеты в запаре"], risks: [], ask: ["Как поступите, если коллега отказывается от помощи?"], uncertain: [] };
+  const plan = Array.isArray(b.plan) ? b.plan : [];
+  const R = (reply, topic, done) => ({ ok: true, v: 2, model: "demo", reply, topic, followup: false, done, topics: HR_TOPICS, total: HR_TOPICS.length });
+  const last = plan[plan.length - 1];
+  if (!last) return R(HR_Q[0], 0, false);
+  if (last.topic < 0 || last.topic >= HR_TOPICS.length - 1) return R("Спасибо за разговор! Это демо: в приложении интервью ведёт ИИ, оценку менеджер видит сразу после «Завершить».", -1, true);
+  return R(HR_Q[last.topic + 1], last.topic + 1, false);
+}
+
 // ── сервер вместо Supabase: те же адреса, ответы из памяти ──
 const AI_REPLY = "Это демо: Наставник здесь не подключён к ИИ. В приложении он отвечает по меню, стандартам и урокам вашего заведения.";
 const json = (x, status = 200) => new Response(JSON.stringify(x === undefined ? null : x), { status, headers: { "Content-Type": "application/json" } });
@@ -397,6 +420,7 @@ window.fetch = function (input, init) {
     return wait(m[1] === "tg_login" ? 1400 : 120 + Math.round(Math.random() * 160)).then(() => json(res, res && res.code === "PGRST202" ? 404 : 200));
   }
   if (/\/functions\/v1\/ai-chat/.test(url)) return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
+  if (/\/functions\/v1\/ai-hr/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "assess" ? 1400 : 900).then(() => json(demoHr(b))); }   // v121
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));

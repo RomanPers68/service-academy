@@ -480,6 +480,37 @@ html.sa-lens .sa-card.sa-glass[data-lens-card]>[data-lens="disc"]>svg{transform:
 html.sa-lens .tbm-cellar{background:var(--lk-glass);border-color:transparent;box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)}
 html.sa-lens.sa-light .sa-card[data-lens-edge] [data-lens-btn="main"],html.sa-lens.sa-light .sa-hintglow [data-lens-btn="main"],html.sa-lens.sa-light [data-next-card] [data-lens-btn="main"]{color:#6B4E1A!important}
 
+/* ── v121: роли. Владелец (31.10, два снимка): «И может ещё роли в эффект линзы?». Панель выбранного трека под «Треками
+   обучения» (ui/tracks-row.jsx): карточка линзы (кромка, блик и свечение; внешней тени нет, как и было: обёртка, что
+   раскрывает панель по высоте, срезала бы её), язычок и черта под ним золотом, как кольцо выбранного кружка (свет роли
+   внутри панели прежний); «твой» стеклом; «Открыть ›» плашкой с кольцом (строка той же высоты; нить прогресса на узком
+   экране может стать короче, до 12 px, чтобы плашка влезла и на 320 px); «свернуть» линзой 32 px,
+   первые две строки уступают ей место. Список треков (ui/screens-roleselect.jsx): карточки ролей и профессий — карточки
+   линзы, значки — линзы с оттенком роли снизу (как кружки ряда и сертификатов; значок прежнего размера), ступени
+   профессии — кромка и блик, номера на нити — линзы (под стеклом плотный тон: нить сквозь номер не видна), пройденная
+   ступень — прежняя, зелёная; «На подходе»: карточки линзы, значки линзами, «скоро» стеклом. В «Для чтения» мелкие
+   подписи на плашке и стекле («Открыть ›», «твой») — тёмным золотом. Владелец (31.10, снимок AI-интервью): «В AI HR увидел
+   неровность. Ответ голосом съехал вниз»: ряд ответа (ui/candidate.jsx) выровнен в обоих видах, а в «Линзе» промежуток в
+   ряду шире и справа поле, чтобы кольца микрофона и волны не сходились и не вылезали за край ленты ── */
+html.sa-lens [data-track-panel]{box-shadow:inset 0 0 0 1px var(--lk-edge),inset 0 1.5px 0 var(--lk-hl),inset 0 0 22px var(--lk-cglow)!important}
+html.sa-lens [data-track-notch]{border-bottom-color:rgba(232,201,131,0.72)!important}
+html.sa-lens.sa-light [data-track-notch]{border-bottom-color:rgba(139,106,48,0.6)!important}
+html.sa-lens [data-track-line]{background:linear-gradient(90deg,transparent,var(--lk-hi),transparent)!important;opacity:0.9!important}
+html.sa-lens [data-track-head]{padding-right:44px!important}
+html.sa-lens [data-track-desc]{padding-right:40px!important}
+html.sa-lens [data-track-close]{top:6px!important;right:6px!important}
+html.sa-lens [data-track-mine],html.sa-lens [data-soon-tag]{border-color:transparent!important}
+html.sa-lens [data-track-go][data-lens-btn="main"]{padding:3px 11px!important;margin:-3px 0!important}
+html.sa-lens [data-track-bar]{min-width:12px!important}
+html.sa-lens.sa-light [data-track-panel] [data-lens-btn="main"],html.sa-lens.sa-light [data-track-mine]{color:#6B4E1A!important}
+html.sa-lens .sa-card.sa-glass[data-lens-card][data-role-card]>[data-lens="disc"]>svg,html.sa-lens .sa-card.sa-glass[data-lens-card][data-group-card]>[data-lens="disc"]>svg{transform:none}
+html.sa-lens .sa-step:not(.done) .sa-stepnum{border-color:transparent;background:radial-gradient(circle at 50% 30%,rgba(232,201,131,0.22),rgba(200,169,110,0.10) 70%),#1C160C;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl),0 2px 6px rgba(0,0,0,0.45)}
+html.sa-lens.sa-light .sa-step:not(.done) .sa-stepnum{background:radial-gradient(circle at 50% 30%,rgba(255,255,255,0.95),rgba(176,138,70,0.16) 72%),#F4EAD3;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl),0 2px 5px rgba(120,90,30,0.18)}
+html.sa-lens .sa-step:not(.done) .sa-stepnum::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
+html.sa-lens [data-hr-inrow]{gap:12px!important;padding-right:4px!important}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

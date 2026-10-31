@@ -524,12 +524,16 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const [aiMsgs, setAiMsgs] = React.useState([]);
   const [aiInput, setAiInput] = React.useState("");
   const aiInputRef = React.useRef(null);
-  // Дополнение 126: поле ответа растёт и при вставке голосом
-  React.useEffect(() => {
-    const el = aiInputRef.current; if (!el) return;
+  // Дополнение 126: поле ответа растёт и при вставке голосом.
+  // v121 (Доп. 434): высота — с рамкой (у поля box-sizing: border-box, а scrollHeight рамку не считает): раньше с первой
+  // буквой поле становилось на 2 px ниже, чем пустое, и волна с микрофоном расходились с его серединой
+  const fitAiInput = (el) => {
+    if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 110) + "px";
-  }, [aiInput]);
+    let bw = 0; try { const cs = getComputedStyle(el); bw = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0); } catch (e) {}
+    el.style.height = Math.min(el.scrollHeight + bw, 110) + "px";
+  };
+  React.useEffect(() => { fitAiInput(aiInputRef.current); }, [aiInput]);
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiErr, setAiErr] = React.useState(null);
   const [aiVerdict, setAiVerdict] = React.useState(null);
@@ -1137,7 +1141,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   ask={talkTurn} onState={setTalkState} onClose={() => setTalk(false)} />
               </div>
             ) : (
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            // v121 (Доп. 434), владелец (31.10, снимок): «В AI HR увидел неровность. Ответ голосом съехал вниз». Было: микрофон
+            // 44 px прижат к верху ряда, волна 46 px к низу, поле 48 px с отступом 2 снизу, и центры расходились на 5 px. Теперь
+            // ряд прижимает всё к низу (поле растёт вверх, кнопки остаются у последней строки), микрофон тоже 46 px, у кнопок
+            // отступ 3 снизу: их центры на одной линии с центром поля в одну строку. В «Линзе» (data-hr-inrow) промежуток шире и
+            // справа поле 4 px: кольца микрофона и волны не сходятся и не вылезают за край ленты (ui/home-look.jsx, раздел v121)
+            <div data-hr-inrow="" style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
               <textarea
                 ref={aiInputRef}
                 data-lens-field=""
@@ -1146,26 +1155,27 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 rows={1}
                 onChange={e => {
                   setAiInput(e.target.value);
-                  e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 110) + "px";
+                  fitAiInput(e.target);
                 }}
                 placeholder="Ответ кандидата…"
                 maxLength={800}
                 style={{ ...inputStyle, flex: 1, minWidth: 0, marginBottom: 2,
                   lineHeight: 1.45, resize: "none", maxHeight: 110, overflowY: "auto" }}
               />
-              <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+              <div style={{ display: "flex", flexShrink: 0, marginBottom: 3 }}>
+              <MicButton a11y={a11y} size={46} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
                 headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
                 onText={t => setAiInput(v => (v ? v.trimEnd() + " " : "") + t)} onBusy={setMicBusy}
                 onError={m => { try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />
+              </div>
               {/* v65: поле пустое — на месте «Отправить» кнопка-волна «Отвечать голосом» */}
               {!aiInput.trim() && talkOk ? (
-                <div style={{ alignSelf: "flex-end", display: "flex" }}>
+                <div style={{ alignSelf: "flex-end", display: "flex", marginBottom: 3 }}>
                   <TalkButton size={46} disabled={aiBusy || micBusy} onClick={openTalk} label="Отвечать голосом" />
                 </div>
               ) : (
               <button className="sa-btn" onClick={aiSend} disabled={aiBusy || !aiInput.trim()}
-                style={{ width: 46, height: 46, alignSelf: "flex-end", borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
+                style={{ width: 46, height: 46, alignSelf: "flex-end", marginBottom: 3, borderRadius: RADIUS.md, border: "none", cursor: "pointer", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   background: aiInput.trim() && !aiBusy ? "linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)" : "rgba(160,120,60,0.25)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>

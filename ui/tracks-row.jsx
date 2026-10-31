@@ -21,6 +21,10 @@
 //   • Страница у нижнего края едет вместе с панелью кадр в кадр (followPanel): при раскрытии поднимается, при
 //     сворачивании опускается — без «доезда» после и без рывка на отступе.
 //   • Кнопка AI переехала в нижнее меню (ui/tabbar.jsx), поэтому ряду больше не нужно уступать ей место (v62: «ушко»).
+// v121 (Доп. 434), владелец (31.10, снимок панели «Хостес»): «И может ещё роли в эффект линзы?». В виде «Линза» панель
+// выбранного трека: карточка линзы, язычок и черта под ним золотом (как кольцо выбранного кружка), «твой» стеклом,
+// «Открыть ›» плашкой с кольцом, «свернуть» линзой 32 px. Метки data-lens-* и data-track-head, -desc, -line, -bar; стили в
+// ui/home-look.jsx (раздел v121). Вид «как сейчас» прежний.
 import React from "react";
 import { ROLES } from "../data/roles";
 import { ROLE_SVG } from "./icons";
@@ -227,21 +231,21 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
     const label = { ...labelStyle(a11y ? 13.5 : 13), whiteSpace: "nowrap" };
     const mono = { fontFamily: "monospace", fontSize: a11y ? 11 : 10.5, letterSpacing: 0.6, whiteSpace: "nowrap" };
     return (<>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0, paddingRight: 28 }}>
+      <div data-track-head="" style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0, paddingRight: 28 }}>
         <span style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 17, lineHeight: 1.2, color: x.open ? inkOf(x.r.color, a11y) : T.modSub.color, whiteSpace: "nowrap", flexShrink: 0 }}>{x.r.label}</span>
         <span style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 12, color: T.modSub.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {x.r.sublabel}</span>
         {/* капсула «твой»: шрифт крупнее прежнего — межстрочный меньше, чтобы капсула не выросла по высоте */}
-        {x.cur ? <span data-track-mine="" style={{ ...label, color: gold, border: `1px solid ${gold}66`, borderRadius: 999, padding: "0 6px", lineHeight: 1.35, marginLeft: "auto", flexShrink: 0, alignSelf: "center" }}>твой</span> : null}
+        {x.cur ? <span data-track-mine="" data-lens-tag="" style={{ ...label, color: gold, border: `1px solid ${gold}66`, borderRadius: 999, padding: "0 6px", lineHeight: 1.35, marginLeft: "auto", flexShrink: 0, alignSelf: "center" }}>твой</span> : null}
       </div>
-      <div style={{ marginTop: 3, fontFamily: "Georgia, serif", fontSize: 12.5, lineHeight: 1.4, color: text, opacity: x.open ? 0.88 : 0.65, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", paddingRight: 4 }}>{x.r.desc}</div>
+      <div data-track-desc="" style={{ marginTop: 3, fontFamily: "Georgia, serif", fontSize: 12.5, lineHeight: 1.4, color: text, opacity: x.open ? 0.88 : 0.65, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", paddingRight: 4 }}>{x.r.desc}</div>
       <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
         <span style={{ ...label, color: x.open ? c : T.modSub.color, opacity: 0.95 }}>{trackEyebrow(x.r.id)}</span>
         {x.open ? (<>
-          <div aria-hidden style={{ flex: 1, minWidth: 24, height: 3, borderRadius: 3, background: a11y ? "rgba(120,90,40,0.16)" : "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+          <div aria-hidden data-track-bar="" style={{ flex: 1, minWidth: 24, height: 3, borderRadius: 3, background: a11y ? "rgba(120,90,40,0.16)" : "rgba(255,255,255,0.08)", overflow: "hidden" }}>
             <div style={{ width: `${Math.max(pct, pct ? 3 : 0)}%`, height: "100%", borderRadius: 3, background: `linear-gradient(90deg, ${c}99, ${c})`, boxShadow: pct ? `0 0 6px ${c}88` : "none" }} />
           </div>
           <span style={{ ...(pct ? mono : label), color: T.modSub.color }}>{pct ? `${pct}%` : "не начат"}</span>
-          <span data-track-go="" style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13, color: inkOf(x.r.color, a11y), whiteSpace: "nowrap" }}>Открыть ›</span>
+          <span data-track-go="" data-lens-btn="main" style={{ fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 13, color: inkOf(x.r.color, a11y), whiteSpace: "nowrap" }}>Открыть ›</span>
         </>) : (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 12, color: T.modSub.color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ display: "inline-flex", flexShrink: 0 }}>{lockIcon(T.modSub.color, 13)}</span>{lockedHint(x.r.id)}
@@ -273,7 +277,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
             // скруглённых углов проступали тёмные прямоугольники; плоское стекло — как у кружков и кнопки AI
             boxShadow: `inset 0 0 0 1px ${c}${ex.open ? "59" : "33"}, inset 0 0 22px ${a11y ? "rgba(255,255,255,0.45)" : "rgba(255,230,170,0.06)"}` }}>
           {/* светлая черта на кромке под язычком */}
-          <span aria-hidden style={{ position: "absolute", top: 0, left: notchX - 22, width: 44, height: 2, borderRadius: 2, background: `linear-gradient(90deg, transparent, ${c}, transparent)`, opacity: ex.open ? 0.9 : 0.5, transition: `left .35s ${EASE}` }} />
+          <span aria-hidden data-track-line="" style={{ position: "absolute", top: 0, left: notchX - 22, width: 44, height: 2, borderRadius: 2, background: `linear-gradient(90deg, transparent, ${c}, transparent)`, opacity: ex.open ? 0.9 : 0.5, transition: `left .35s ${EASE}` }} />
           {/* водяной знак */}
           <span aria-hidden style={{ position: "absolute", right: -8, top: -10, opacity: a11y ? 0.09 : 0.07, transform: "rotate(-10deg)", pointerEvents: "none" }}>{roleIcon(ex.r, c, 84)}</span>
           {outgoing && outgoing !== ex.r.id ? (
@@ -284,7 +288,7 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
           <div key={ex.r.id} className="sa-panel-in" style={{ position: "relative" }}>
             {panelBody(ex)}
           </div>
-          <button type="button" data-track-close="" aria-label="Свернуть" onClick={(e) => { e.stopPropagation(); vibrate("light"); close(); }}
+          <button type="button" data-track-close="" data-lens="disc" data-lens-x="" aria-label="Свернуть" onClick={(e) => { e.stopPropagation(); vibrate("light"); close(); }}
             style={{ ...btn, position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center",
               color: T.modSub.color, fontSize: 13, lineHeight: 1, background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.06)" }}>×</button>
         </div>

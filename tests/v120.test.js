@@ -212,6 +212,6 @@ describe("v120: тексты", () => {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     }
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v120</span>");
+    expect(Number((rd("ui/menu-trainer.jsx").match(/· сборка v(\d+)<\/span>/) || [])[1])).toBeGreaterThanOrEqual(120);   // v121: метка дальше
   });
 });

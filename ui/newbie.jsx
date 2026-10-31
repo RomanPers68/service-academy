@@ -67,6 +67,10 @@ function useStyles(T, a11y) {
   const c = P(a11y);
   const card = { ...T.modCard, display: "block", padding: "12px 14px", marginBottom: 12, cursor: "default" };
   const sub = T.modSub.color, text = T.modTitle.color;
+  // v121 (Доп. 434), владелец (31.10, снимок): «В вкладке новички, текст на тёмной теме чёрный». Карточки, где только
+  // текст («Сейчас новичков нет…», «Сейчас ты никого не ведёшь…», «Первая неделя открыта новичкам…», сервер не обновлён),
+  // цвета не задавали и брали чёрный по умолчанию; теперь — цвет и размер строк экрана, как у line()
+  const textCard = { ...card, fontSize: 14, lineHeight: 1.45, color: text };
   const ghost = { flex: "0 0 auto", alignSelf: "center", padding: "6px 12px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, color: text,
     fontSize: 12.5, fontFamily: "Georgia, serif", cursor: "pointer", whiteSpace: "nowrap" };
   const main = { display: "block", width: "100%", marginTop: 10, padding: 11, borderRadius: 999, border: 0, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 14.5,
@@ -81,7 +85,7 @@ function useStyles(T, a11y) {
       <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.45, color: text }}>{label ? <span style={{ color: sub }}>{label} </span> : null}{value}</div>
       {extra}
     </div>);
-  return { c, card, sub, text, ghost, main, h, line };
+  return { c, card, textCard, sub, text, ghost, main, h, line };
 }
 
 /** v110: раздел плана, с которого начать сейчас: до первой смены — темы с собеседования (или «День 1»), в первую смену — «День 1»,
@@ -100,7 +104,7 @@ export function nowSection(nb, plan) {
 /** onOpenModule(id) — открыть тему трека; onDm({ id, name }) — личная переписка; onChat(msg) — «Вся команда» (у сообщения msg); onLegacy() — прежний
  *  экран (этапа 41 нет или сервер не считает новичком). */
 export function NewbieScreen({ T, a11y, profile, track = "", modules = [], completed = {}, quizDone = {}, onBack, onOpenModule = () => {}, onDm = null, onChat = null, onLegacy = null }) {
-  const S = useStyles(T, a11y), { c, card, sub, text, ghost, h, line } = S;
+  const S = useStyles(T, a11y), { c, card, textCard, sub, text, ghost, h, line } = S;
   const [st, setSt] = React.useState({ phase: "load" });
   const [busy, setBusy] = React.useState("");
   const legacy = React.useRef(onLegacy);
@@ -149,8 +153,8 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю твою неделю…</div> : null}
-        {st.phase === "missing" ? <div style={card} data-lens-card="" data-nb-missing="">{serverMissing({ what: "«Первая неделя»", admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
-        {st.phase === "notnew" ? <div style={card} data-lens-card="" data-nb-notnew="">«Первая неделя» открыта новичкам. Если ты только пришёл в команду, скажи руководителю: он добавит тебя в «Новички».</div> : null}
+        {st.phase === "missing" ? <div style={textCard} data-lens-card="" data-nb-missing="">{serverMissing({ what: "«Первая неделя»", admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
+        {st.phase === "notnew" ? <div style={textCard} data-lens-card="" data-nb-notnew="">«Первая неделя» открыта новичкам. Если ты только пришёл в команду, скажи руководителю: он добавит тебя в «Новички».</div> : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
           <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" && nb ? (<>
@@ -311,7 +315,7 @@ function PickSheet({ a11y, title, mark, rows: all, onPick, onClose, note = "" })
 
 /** onChat() — «Вся команда» (там карточки «Знакомьтесь»); onDm({ id, name }). */
 export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = null, onLegacy = null }) {
-  const S = useStyles(T, a11y), { c, card, sub, text, ghost, main, h, line } = S;
+  const S = useStyles(T, a11y), { c, card, textCard, sub, text, ghost, main, h, line } = S;
   const [st, setSt] = React.useState({ phase: "load" });
   const [open, setOpen] = React.useState(null);        // раскрытый новичок
   const [sheet, setSheet] = React.useState(null);      // memo | { buddy: emp } | { cand: emp } | add
@@ -435,14 +439,14 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Загружаю…</div> : null}
-        {st.phase === "missing" ? <div style={card} data-lens-card="" data-nbl-missing="">{serverMissing({ what: "«Новички»", many: true, admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
+        {st.phase === "missing" ? <div style={textCard} data-lens-card="" data-nbl-missing="">{serverMissing({ what: "«Новички»", many: true, admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
           <div><button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" onClick={() => { vibrate("light"); load(); }}>Ещё раз</button></div></div> : null}
         {st.phase === "ready" ? (<>
           {/* v110 (Доп. 423): сначала новички (раньше их закрывала памятка), под ними «Добавить», выведенные и памятка */}
           {h(lead ? "Новички" : "Ты наставник", list.length || null, "list")}
           {list.length ? list.map(item) : (
-            <div style={card} data-lens-card="" data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
+            <div style={textCard} data-lens-card="" data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
           {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-lens-btn="main" data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
           {st.led.length ? (<>
             {h("Ты " + (isFemaleName(profile && profile.name, profile && profile.surname) ? "вывела" : "вывел") + " на самостоятельную смену", st.led.length, "led")}

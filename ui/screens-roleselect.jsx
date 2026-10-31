@@ -741,6 +741,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
       <div style={T.roleList} className="sa-stagger" data-tracks-list="">
         {(() => {
           // Профессия = одна плитка. Ступени раскрываются на месте, без нового экрана.
+          // v121 (Доп. 434): в виде «Линза» карточки ролей и профессий — карточки линзы (data-lens-card), значки — линзы с
+          // оттенком роли снизу (--tint, как у кружков ряда и сертификатов), ступени — кромка (data-lens-edge), номера на нити —
+          // линзы (ui/home-look.jsx, раздел v121). Вид «как сейчас» прежний.
           const listGap = (T.roleList && T.roleList.gap) || 8;
           const groupOf = {};
           TRACK_GROUPS.forEach(g => g.members.forEach(m => { groupOf[m] = g; }));
@@ -761,7 +764,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             const cls = "sa-step" + (isUnlocked ? "" : " locked") + (pct === 100 ? " done" : "");
             const go = () => isUnlocked && onSelect(r.id);
             return (
-              <div key={r.id} className={cls} onClick={go} {...onActivate(go)}>
+              <div key={r.id} className={cls} data-lens-edge="" data-step-card={r.id} onClick={go} {...onActivate(go)}>
                 <span className="sa-stepnum">{pct === 100 ? "✓" : nth}</span>
                 <span className="sa-steptext">
                   <b style={{ color: isUnlocked ? inkOf(r.color, a11y) : T.modSub.color }}>{r.label}</b>
@@ -780,7 +783,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             const prevRole = ROLE_ORDER[idx - 1];
             const isNextUp = !isUnlocked && (idx === 0 || effectiveUnlocked.has(prevRole));
             return (
-              <div key={r.id}
+              <div key={r.id} data-lens-card="" data-role-card={r.id}
                 className={isUnlocked ? "sa-card sa-glass" : "sa-card"}
                 style={{
                   ...T.roleCard,
@@ -794,7 +797,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 onClick={() => isUnlocked && onSelect(r.id)} {...onActivate(() => isUnlocked && onSelect(r.id))}
               >
                 {/* v73 (Доп. 386): без цветной полоски слева — цвет трека и так на значке и в названии */}
-                <div style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)" }}>
+                <div data-lens="disc" style={{ ...T.roleIcon, background: isUnlocked ? r.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: isUnlocked ? `0 2px 8px ${r.color}44` : "none", filter: isUnlocked ? "none" : "grayscale(1)", "--tint": isUnlocked ? r.color + "55" : "transparent" }}>
                   {isUnlocked ? (ROLE_SVG[r.id] ? ROLE_SVG[r.id](r.color, 30) : r.icon) : ROLE_SVG.lock("#8A8070", 25)}
                 </div>
                 <div style={T.roleInfo}>
@@ -823,7 +826,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             const anyUnlocked = members.some(r => effectiveUnlocked.has(r.id));
             const ico = (UI_SVG[g.icon] || ROLE_SVG.manager);
             return (
-              <div key={g.id}
+              <div key={g.id} data-lens-card="" data-group-card={g.id}
                 className={anyUnlocked ? "sa-card sa-glass" : "sa-card"}
                 style={{
                   ...T.roleCard,
@@ -834,7 +837,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                 }}
                 onClick={() => setOpenGroup(open ? null : g.id)} {...onActivate(() => setOpenGroup(open ? null : g.id))}
               >
-                <div style={{ ...T.roleIcon, background: anyUnlocked ? g.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: anyUnlocked ? `0 2px 8px ${g.color}44` : "none", filter: anyUnlocked ? "none" : "grayscale(1)" }}>
+                <div data-lens="disc" style={{ ...T.roleIcon, background: anyUnlocked ? g.color+"28" : "rgba(255,255,255,0.05)", borderRadius:"50%", boxShadow: anyUnlocked ? `0 2px 8px ${g.color}44` : "none", filter: anyUnlocked ? "none" : "grayscale(1)", "--tint": anyUnlocked ? g.color + "55" : "transparent" }}>
                   {ico(anyUnlocked ? g.color : "#8A8070", 30)}
                 </div>
                 <div style={T.roleInfo}>
@@ -873,7 +876,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         })()}
       </div>
 
-      {/* ═══ На подходе — анонсы новых треков и функций, стиль заблокированных ролей ═══ */}
+      {/* ═══ На подходе — анонсы новых треков и функций, стиль заблокированных ролей ═══
+          v121: в «Линзе» карточки — линзы, значки — линзы, «скоро» — стекло */}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px 8px" }}>
         <div style={{ ...T.roleSubtitle }}>На подходе</div>
         <div style={{ flex:1, height:"1px", background:"linear-gradient(to right, #D2A85A33, transparent)" }} />
@@ -892,7 +896,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           // НОВОЕ, как в своё время запускался «Бар». Сейчас все анонсы — «СКОРО».
           const active = false;
           return (
-          <div key={s.key}
+          <div key={s.key} data-lens-card="" data-soon-card={s.key}
             onClick={active ? () => onSelect(s.key) : undefined}
             {...(active ? onActivate(() => onSelect(s.key)) : {})}
             style={{
@@ -901,7 +905,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             cursor: active ? "pointer" : "default",
             background: T.roleCard?.background, border: active ? "1px solid rgba(212,168,90,0.35)" : "1px solid rgba(255,255,255,0.06)",
           }}>
-            <div style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
+            <div data-lens="disc" style={{ width:38, height:38, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: a11y ? "rgba(120,90,30,0.08)" : "rgba(255,255,255,0.05)", filter: active ? "none" : "grayscale(0.6)" }}>
               {s.icon(active ? (a11y ? "#7A5D2A" : "#D2A85A") : (a11y ? "#7A5D2A" : "#8A8070"))}
             </div>
             <div style={{ flex:1, minWidth:0 }}>
@@ -909,9 +913,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               <div style={{ color: T.modSub.color, fontSize:11, fontStyle:"italic", marginTop:2, opacity:0.85 }}>{s.sub}</div>
             </div>
             {active ? (
-              <div style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"2px 9px" }}>новое</div>
+              <div data-lens-tag="" data-soon-tag="" style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : "#D2A85A", border:`1px solid ${a11y ? "rgba(139,106,48,0.5)" : "rgba(212,168,90,0.55)"}`, borderRadius:9, padding:"2px 9px" }}>новое</div>
             ) : (
-              <div style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"2px 9px", transform:"rotate(-4deg)" }}>скоро</div>
+              <div data-lens-tag="" data-soon-tag="" style={{ flexShrink:0, ...labelStyle(13), color: a11y ? "#7A5D2A" : GOLD_SOFT, border:`1px solid ${a11y ? "rgba(139,106,48,0.4)" : "rgba(212,168,90,0.4)"}`, borderRadius:9, padding:"2px 9px", transform:"rotate(-4deg)" }}>скоро</div>
             )}
           </div>
           );

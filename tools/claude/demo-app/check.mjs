@@ -12,6 +12,7 @@
 // v110 (Доп. 423): вкладки одним видом — все группы строками в одной карточке; Мария — значки в «Утре», «Новички» (сначала
 // новички, поиск в листе «Наставник»), итог с главным одной строкой; Ксения — «Первая неделя» карточкой с прогрессом.
 // v111 (Доп. 424): «Утро» у Марии в виде «Линза» — кружки строк и «Собрать брифинг» с кольцом линзы.
+// v121 (Доп. 434): Мария — AI-интервью в демо (вопросы без нейросети), поле, микрофон и волна по одной линии.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -271,6 +272,23 @@ if (!ONLY || ONLY.includes("maria")) {
     return { lens: document.documentElement.classList.contains("sa-lens"), g: ring(g), b: b ? ring(b) : "нет" }; });
   ok("«Утро» в виде «Линза»: кружки строк и «Собрать брифинг» — с кольцом линзы", lz.lens && lz.g === '""' && lz.b !== "none", JSON.stringify(lz));
   await shot("m9-morning-glyphs");
+  // v121 (Доп. 434): AI-интервью в демо — вопросы без нейросети (boot.js, demoHr); поле, микрофон и волна по одной линии
+  // (владелец: «В AI HR увидел неровность. Ответ голосом съехал вниз»)
+  await page.evaluate(() => window.__saNav && window.__saNav("candidate")); await page.waitForTimeout(1500);
+  const bt = (t) => page.locator("button", { hasText: t }).first();
+  await bt("Начать собеседование").click().catch(() => {}); await page.waitForTimeout(450);
+  await page.locator('input[placeholder="Имя кандидата"]').fill("Сергей").catch(() => {}); await page.waitForTimeout(120);
+  await bt("Дальше: анкета опыта").click().catch(() => {}); await page.waitForTimeout(450);
+  await page.locator(".sa-btn", { hasText: "До года" }).first().click().catch(() => {}); await page.waitForTimeout(150);
+  await bt(/^Дальше$/).click().catch(() => {}); await page.waitForTimeout(450);
+  await bt(/^AI-интервью/).click().catch(() => {});
+  await page.waitForFunction(() => /Здравствуйте!/.test(document.body.innerText), null, { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(400);
+  const hr = await page.evaluate(() => { const row = document.querySelector("[data-hr-inrow]"); if (!row) return null;
+    const cy = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return Math.round(((r.top + r.bottom) / 2) * 10) / 10; };
+    return { ta: cy(row.querySelector("textarea")), mic: cy(row.querySelector('button[aria-label="Сказать голосом"]')), talk: cy(row.querySelector("[data-talk-open]")), step: (document.querySelector("[data-hr-step]") || {}).textContent || "" }; });
+  ok("AI-интервью в демо: первый вопрос, «Тема 1 из 5»; поле, микрофон и волна по одной линии", !!hr && /1 из 5/.test(hr.step) && hr.talk != null && Math.abs(hr.mic - hr.ta) <= 0.6 && Math.abs(hr.talk - hr.ta) <= 0.6, JSON.stringify(hr));
+  await shot("m10-ai-interview");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

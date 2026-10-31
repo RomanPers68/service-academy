@@ -166,7 +166,10 @@ function bottlePic(w) {
   } catch (e) { return ""; }
 }
 const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико", "Москато д’Асти", "Рислинг Кабинетт"];
-DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic(w) : "" }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
+// v123 (Доп. 436): два вина добавлены три дня назад — в тренировке «Новые вина»; остальные — давно (без addedAt, как до v123)
+const NEW_IN_DEMO = ["Совиньон Блан", "Москато д’Асти"];
+DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic(w) : "",
+  addedAt: NEW_IN_DEMO.includes(w.name) ? Date.now() - 3 * 864e5 : 0 }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
 // AI винной карты в демо — без нейросети: по словам названия угадываем стиль, честно помеченный «AI» (в приложении — api/wine-import.js)
 const WINE_GUESS = [[/просекко|prosecco|шампан|champagne|кава|cava|брют|brut|игрист|франчакорт/i, "sparkling", ["шардоне"], ["яблоко", "бриошь", "цитрус"]],
   [/шабли|chablis|шардоне|chardonnay|мерсо/i, "white", ["шардоне"], ["яблоко", "мел", "лимон"]], [/альбариньо|albariño|albarino/i, "white", ["альбариньо"], ["персик", "морская соль", "цитрус"]],

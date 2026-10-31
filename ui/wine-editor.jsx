@@ -10,6 +10,9 @@
 // «Заполнить по этикетке» — AI читает этикетку (снимок до 1800 px), у нового вина без названия — сразу после снимка.
 // «Импорт» → «Фото бутылок»: пачка снимков, с каждого — вино с фото; что уже есть в карте без фото, получает фото и пустые
 // поля с этикетки (lib/wine.js: bottlePlan, applyBottles).
+// v123 (Доп. 436): «Проверка подряд» — не проверенные вина по одному на экран, что дописал AI, подсвечено; «Верно»,
+// «Исправить» (форма), «Пропустить». Вход — из редактора и из тренировки («@review»): в тренировку идут только проверенные.
+// У нового вина — addedAt (для «Новых вин» в тренировке).
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -17,7 +20,7 @@ import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { useTeamMenu, winesWord, BottleGlyph, WineThumb } from "./wine-list";
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,
-  touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName } from "../lib/wine";
+  touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName, uncheckedQueue, reviewRows } from "../lib/wine";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const BATCH = 15;   // названий за один запрос AI
@@ -100,16 +103,23 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
   const photoRef = React.useRef(null), pdfRef = React.useRef(null), started = React.useRef(false);
   const picRef = React.useRef(null), bottleRef = React.useRef(null);
   const [pic, setPic] = React.useState(null);           // фото в форме: { file, data, state: up | ok | err, err }
+  const [rev, setRev] = React.useState(null);           // v123: «Проверка подряд» — { ids, i, ok, fix, skip }
   const wines = React.useMemo(() => wineRecords(shared), [shared]);
   const formKey = form ? form.id || form._nid : "";
   React.useEffect(() => { setPic(null); }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
   const live = wines.filter((w) => !w.archived);
   const dishes = React.useMemo(() => { try { return (dishesOf(restaurant) || []).filter((d) => d && d.id && d.name); } catch (e) { return []; } }, [restaurant, shared]);
-  React.useEffect(() => {   // «Править» из карточки вина — сразу форма
+  React.useEffect(() => {   // «Править» из карточки вина — сразу форма; «@review» из тренировки — сразу «Проверка подряд»
     if (started.current || !startEditId) return;
+    if (startEditId === "@review") { if (wines.length) { started.current = true; startReview(); } return; }
     const r = wines.find((x) => x.id === startEditId);
     if (r) { started.current = true; setForm({ ...blank(), ...r }); }
-  }, [wines, startEditId]);
+  }, [wines, startEditId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const startReview = () => { setRev({ ids: uncheckedQueue(wines), i: 0, ok: 0, fix: 0, skip: 0 }); setMsg(""); vibrate("light"); };
+  const revCur = rev ? wines.find((x) => x.id === rev.ids[rev.i]) : null;
+  React.useEffect(() => {   // вино из очереди удалили или убрали в архив (в форме) — дальше
+    if (rev && !form && rev.i < rev.ids.length && (!revCur || revCur.archived)) setRev((r) => (r ? { ...r, i: r.i + 1 } : r));
+  }, [rev, form, revCur]);
 
   const persist = (next, okText, after) => {
     setBusy(true); setMsg("");
@@ -123,8 +133,11 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
   // ── стили (метки линзы — как у редактора коктейлей) ──
   const inputSt = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: `1px solid ${gold}44`, background: a11y ? "rgba(255,255,255,0.6)" : "rgba(255,248,230,0.05)", color: text, fontSize: 14, fontFamily: SERIF, outline: "none" };
   const pill = (on, extra) => ({ padding: "6px 11px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub, whiteSpace: "nowrap", ...extra });
-  const mainBtn = { ...T.doneBtn, margin: 0, background: gold, color: "#1A1008", border: "none" };
-  const softBtn = { ...T.doneBtn, margin: 0, background: "transparent", color: text, border: `1px solid ${gold}77` };
+  // v123, владелец (снимок): «Кнопки слиплись». У T.doneBtn свой marginTop, и в стиле он стоит раньше margin: 0 — отступ
+  // сверху у кнопки (marginTop: 10) вставал на его место и затирался margin: 0. База кнопок — без него.
+  const { marginTop: _doneTop, ...doneBase } = T.doneBtn;
+  const mainBtn = { ...doneBase, margin: 0, background: gold, color: "#1A1008", border: "none" };
+  const softBtn = { ...doneBase, margin: 0, background: "transparent", color: text, border: `1px solid ${gold}77` };
   const card = { ...T.modCard, display: "block", cursor: "default", padding: "12px 14px" };
   const Head = (title, back) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -176,7 +189,9 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
     const save = (confirm) => {
       const rec = normWine(confirm ? confirmWine(form, who) : form, { id: form.id || form._nid });
       if (!rec.name) { setMsg("Нужно название"); vibrate("error"); return; }
-      persist(withWine(shared, rec), "«" + rec.name + "» в карте у всех", () => { setForm(null); setSure(false); });
+      if (!form.id && !rec.addedAt) rec.addedAt = Date.now();   // v123: новое вино — в «Новые вина» на 30 дней
+      // из «Проверки подряд»: сохранил исправленное — дальше по очереди
+      persist(withWine(shared, rec), "«" + rec.name + "» в карте у всех", () => { setForm(null); setSure(false); if (rev) setRev((r) => (r ? { ...r, i: r.i + 1, fix: r.fix + 1 } : r)); });
     };
     const isNew = !form.id;
     const pairs = new Set(form.pair || []);
@@ -356,7 +371,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
     persist(applyBottles(shared, entries), "Сохранено: " + winesWord(keep.length) + (upFail ? ". Фото не загрузились у " + winesWord(upFail) + ": " + why : ""), () => setImp(null));
   };
   const impPanel = imp ? (
-    <div data-lens-card="" data-wine-import={imp.stage} style={{ ...card, margin: "10px 0 6px" }}>
+    <div data-lens-card="" data-wine-import={imp.stage} style={{ ...card, margin: "14px 0 6px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ ...labelStyle(13.5), color: gold, flex: 1 }}>Импорт</span>
         {imp.stage !== "work" ? <button type="button" className="sa-btn" data-lens="disc" data-lens-x="" aria-label="Закрыть импорт" onClick={() => setImp(null)} style={{ border: 0, background: "none", color: sub, fontSize: 20, cursor: "pointer", width: 32, height: 32, lineHeight: 1 }}>×</button> : null}
@@ -411,7 +426,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
               </label>))}
           </div>
           <button type="button" className="sa-btn" data-lens-btn="main" data-wine-add="" disabled={!keepN || busy} onClick={() => saveBottles(imp.found)}
-            style={{ ...mainBtn, width: "100%", marginTop: 10, padding: "12px", opacity: !keepN || busy ? 0.55 : 1 }}>{busy ? (imp.saving ? "Загружаю фото " + imp.saving + " из " + keepN : "Сохраняю…") : keepN ? "Сохранить " + winesWord(keepN) : "Ничего не отмечено"}</button>
+            style={{ ...mainBtn, width: "100%", marginTop: 14, padding: "12px", opacity: !keepN || busy ? 0.55 : 1 }}>{busy ? (imp.saving ? "Загружаю фото " + imp.saving + " из " + keepN : "Сохраняю…") : keepN ? "Сохранить " + winesWord(keepN) : "Ничего не отмечено"}</button>
         </>;
       })() : null}
       {imp.stage === "review" && !imp.bottles ? (() => {
@@ -435,15 +450,64 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
           </div>
           {!imp.enriched && imp.found.some((x) => x.keep && !x.w.short && !(x.w.notes || []).length) ? (
             <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-enrich="" disabled={busy} onClick={enrich}
-              style={{ ...softBtn, width: "100%", marginTop: 10, padding: "11px", fontSize: 13.5, color: gold }}>Дополнить ноты и подачу через AI</button>) : null}
-          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-add="" disabled={!keepN || busy} onClick={() => persist(withWines(shared, imp.found.filter((x) => x.keep).map((x) => x.w)), "Добавлено: " + winesWord(keepN), () => setImp(null))}
-            style={{ ...mainBtn, width: "100%", marginTop: 10, padding: "12px", opacity: !keepN || busy ? 0.55 : 1 }}>{busy ? "Сохраняю…" : keepN ? "Добавить " + winesWord(keepN) : "Ничего не отмечено"}</button>
+              style={{ ...softBtn, width: "100%", marginTop: 12, padding: "11px", fontSize: 13.5, color: gold }}>Дополнить ноты и подачу через AI</button>) : null}
+          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-add="" disabled={!keepN || busy} onClick={() => persist(withWines(shared, imp.found.filter((x) => x.keep).map((x) => ({ ...x.w, addedAt: x.w.addedAt || Date.now() }))), "Добавлено: " + winesWord(keepN), () => setImp(null))}
+            style={{ ...mainBtn, width: "100%", marginTop: 14, padding: "12px", opacity: !keepN || busy ? 0.55 : 1 }}>{busy ? "Сохраняю…" : keepN ? "Добавить " + winesWord(keepN) : "Ничего не отмечено"}</button>
         </>;
       })() : null}
       <input ref={photoRef} type="file" accept="image/*" multiple onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ""; if (fs.length) runSheets(fs, "photo"); }} style={{ display: "none" }} />
       <input ref={bottleRef} type="file" accept="image/*" multiple data-wine-bottles-input="" onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ""; if (fs.length) runBottles(fs); }} style={{ display: "none" }} />
       <input ref={pdfRef} type="file" accept="application/pdf" onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) runSheets([f], "pdf"); }} style={{ display: "none" }} />
     </div>) : null;
+
+  // ─────────────────────────────── ПРОВЕРКА ПОДРЯД (v123)
+  // Владелец: вин 140+, AI дописал многое. По одному вину на экран: что дописал AI, подсвечено; «Верно» — подтвердить всё
+  // и дальше, «Исправить» — форма (сохранил — дальше), «Пропустить» — останется в «Не проверено».
+  if (rev) {
+    const n = rev.ids.length, cur = rev.i < n ? revCur : null;
+    const next = (patch) => setRev((r) => (r ? { ...r, i: r.i + 1, ...patch(r) } : r));
+    const ok = () => { if (!cur || busy) return; persist(withWine(shared, normWine(confirmWine(cur, who))), "«" + cur.name + "» проверено", () => next((r) => ({ ok: r.ok + 1 }))); };
+    return (
+      <div style={T.screen} className="sa-screen" data-wine-review-screen={rev.i + "/" + n}>
+        {Head("Проверка подряд", () => { setRev(null); setMsg(""); })}
+        <div style={{ padding: "4px 16px 150px" }}>
+          {cur ? <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 2px 10px" }}>
+              <div style={{ flex: 1, height: 4, borderRadius: 3, background: gold + "26", overflow: "hidden" }}><div style={{ width: Math.round((rev.i / Math.max(1, n)) * 100) + "%", height: "100%", background: gold, transition: "width .3s" }} /></div>
+              <span data-wine-review-pos="" style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap" }}>{rev.i + 1} из {n}</span>
+            </div>
+            <div data-lens-card="" data-wine-review={cur.id} style={{ ...card, padding: "14px 16px" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                {cur.img ? <img src={cur.img} alt="" style={{ width: 58, height: 78, objectFit: "cover", borderRadius: 9, border: `1px solid ${gold}44`, flexShrink: 0, display: "block" }} /> : null}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.25 }}>{wineTitle(cur)}</div>
+                  {unchecked(cur) ? <div data-wine-review-ai="" style={{ fontSize: 12.5, color: amber, marginTop: 4, lineHeight: 1.45 }}>AI дописал: {cur.ai.map((f) => FIELD_RU[f] || f).join(", ")}</div>
+                    : <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>Уже проверено</div>}
+                </div>
+              </div>
+              {reviewRows(cur).map((r) => (
+                <div key={r.key} data-wine-rrow={r.key} data-wine-rrow-ai={r.ai ? "1" : ""} style={{ marginTop: 11, paddingLeft: 10, borderLeft: `2px solid ${r.ai ? amber : gold + "33"}` }}>
+                  <div style={{ ...labelStyle(12.5), color: r.ai ? amber : gold }}>{r.label}{r.ai ? aiTag : null}</div>
+                  <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginTop: 2 }}>{r.value}</div>
+                </div>))}
+            </div>
+            <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "10px 2px 0" }}>Где не так, «Исправить»: откроется форма, сохранишь и пойдём дальше. «Пропустить» оставит вино в «Не проверено».</div>
+          </> : (
+            <div data-lens-card="" data-wine-review-done={rev.ok + "/" + rev.fix + "/" + rev.skip} style={{ ...card, textAlign: "center", padding: "22px 16px", marginTop: 8 }}>
+              <div style={{ fontFamily: SERIF, fontSize: 19, color: text }}>{n ? "Проверка закончена" : "Не проверенных вин нет"}</div>
+              <div style={{ fontSize: 14, color: sub, marginTop: 8, lineHeight: 1.5 }}>{n ? "Проверено: " + rev.ok + " · исправлено: " + rev.fix + " · пропущено: " + rev.skip + (rev.skip ? ". Пропущенные остались в «Не проверено»." : ".") : "Всё, что дописал AI, уже подтверждено."}</div>
+              <button type="button" className="sa-btn" data-lens-btn="main" data-wine-review-end="" onClick={() => { setRev(null); setMsg(""); }} style={{ ...mainBtn, width: "100%", marginTop: 16, padding: "12px" }}>К списку</button>
+            </div>)}
+          {note}
+        </div>
+        {cur ? (
+          <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "12px 16px calc(14px + env(safe-area-inset-bottom, 0px))", display: "flex", gap: 8, background: a11y ? "rgba(245,238,222,0.96)" : "rgba(21,17,11,0.94)", borderTop: `1px solid ${gold}33` }}>
+            <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-review-skip="" disabled={busy} onClick={() => { next((r) => ({ skip: r.skip + 1 })); setMsg(""); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px 6px", fontSize: 14 }}>Пропустить</button>
+            <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-review-fix="" disabled={busy} onClick={() => { setForm({ ...blank(), ...cur }); setAiErr(""); setMsg(""); setSure(false); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px 6px", fontSize: 14 }}>Исправить</button>
+            <button type="button" className="sa-btn" data-lens-btn="main" data-wine-review-ok="" disabled={busy} onClick={ok} style={{ ...mainBtn, flex: 1.3, padding: "12px 6px", fontSize: 14, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Верно"}</button>
+          </div>) : null}
+      </div>);
+  }
 
   // ─────────────────────────────── СПИСОК
   const pool = only === "archive" ? wines.filter((w) => w.archived) : live;
@@ -463,10 +527,13 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
           <button type="button" className="sa-btn" data-lens-btn="main" data-wine-new="" onClick={() => { setForm(blank()); setAiErr(""); setMsg(""); vibrate("light"); }} style={{ ...mainBtn, flex: 1.3, padding: "12px", fontSize: 14.5 }}>＋ Новое вино</button>
           <button type="button" className="sa-btn" data-lens-btn={imp ? "tab" : "soft"} data-wine-import-open="" onClick={() => { setImp(imp ? null : { stage: "pick" }); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px", fontSize: 14.5 }}>Импорт</button>
         </div>
+        {uncheckedN && !imp ? (
+          <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-review-start={uncheckedN} onClick={startReview}
+            style={{ ...softBtn, width: "100%", marginTop: 14, padding: "11px", fontSize: 14, color: gold }}>Проверка подряд · {uncheckedN}</button>) : null}
         {impPanel}
         {note}
         {wines.length ? <>
-          <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти вино" aria-label="Найти вино" style={{ ...inputSt, marginTop: 12 }} />
+          <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти вино" aria-label="Найти вино" style={{ ...inputSt, marginTop: 14 }} />
           <div className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
             {[["all", "Все"], ...(uncheckedN ? [["unchecked", "Не проверено · " + uncheckedN]] : []), ["glass", "Бокалом"], ["stop", "Сегодня нет"], ...(archN ? [["archive", "Архив"]] : [])].map(([k, t]) => (
               <button key={k} type="button" aria-pressed={only === k} data-wine-filter={k} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink="" onClick={() => { setOnly(k); vibrate("light"); }} style={pill(only === k, { flexShrink: 0 })}>{t}</button>))}

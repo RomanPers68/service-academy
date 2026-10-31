@@ -4,6 +4,8 @@
 // карточка вина (стиль, ноты, подача, фраза гостю, к каким блюдам). Что дописал AI и ещё не подтвердили — с пометкой
 // «не проверено». Руководитель (manager, senior, владелец) правит в «Редакторе вин» (ui/wine-editor.jsx).
 // v122 (Доп. 435): фото бутылки — миниатюра в строке, крупно в карточке (официант узнаёт бутылку на полке).
+// v123 (Доп. 436), владелец: «их учить очень сложно, особенно для новичка. Может, сделаем как в меню, с тренировками,
+// викторинами» — сверху карты «Учить вина»: тренировка (ui/wine-train.jsx) только по проверенным винам.
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -11,6 +13,9 @@ import { rpc } from "../api/supabase";
 import { cachedShared } from "../lib/deck-extras";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { wineRecords, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked, COLOR_GROUP, COLOR_RU, FIELD_RU } from "../lib/wine";
+import { trainable, newWines, allLearned, glassPath, srKey } from "../lib/wine-train";
+import { WineDeck, WineQuiz, WineTrainHub, useLearned } from "./wine-train";
+import { BUILD_SVG } from "./icons";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -48,15 +53,21 @@ export function useTeamMenu(restaurant) {
   return [shared, setShared, loaded];
 }
 
+// startId: id вина — сразу его карточка; "@train" — сразу тренировка (вход из тренажёра меню)
 export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
-  const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A";
+  const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A", green = a11y ? "#2E7D52" : "#5DBB8A";
   const restaurant = (profile && profile.restaurant) || "";
+  const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const edit = canEditWines(profile) && onEdit;
   const [shared] = useTeamMenu(restaurant);
   const [q, setQ] = React.useState("");
   const [only, setOnly] = React.useState("all");   // all | glass | цвет
-  const [openId, setOpenId] = React.useState(startId || null);
+  const train0 = startId === "@train";
+  const [openId, setOpenId] = React.useState(train0 ? null : startId || null);
+  const [view, setView] = React.useState(train0 ? "train" : "list");   // list | train | deck | quiz
+  const [deck, setDeck] = React.useState(null);      // колода: { key, title, mode, only, focus }
+  const [learnedIds, learn] = useLearned(restaurant);
   const all = React.useMemo(() => wineRecords(shared).filter((w) => !w.archived), [shared]);
   const colors = React.useMemo(() => groupByColor(all).map(([k]) => k).filter((k) => k !== "other"), [all]);
   const shown = React.useMemo(() => findWines(all, q).filter((w) => (only === "all" ? true : only === "glass" ? w.byGlass : w.color === only)), [all, q, only]);
@@ -65,7 +76,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const withPics = all.some((w) => w.img);
   const dishes = React.useMemo(() => { try { return dishesOf(restaurant) || []; } catch (e) { return []; } }, [restaurant, shared]);
   const dishName = (id) => (dishes.find((d) => d && d.id === id) || {}).name || "";
-  const head = (title, back, kicker) => (
+  const head = (title, back, kicker, withEdit = true) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
       <button className="sa-btn" data-lens="back" onClick={back} {...onActivate(back)} aria-label="Назад"
         style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
@@ -73,7 +84,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
         <div style={{ ...labelStyle(13.5), color: gold }}>{kicker}</div>
         <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
       </div>
-      {edit ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-edit="" onClick={() => { vibrate("light"); onEdit(openId); }}
+      {edit && withEdit ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-edit="" onClick={() => { vibrate("light"); onEdit(openId); }}
         style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: text, fontFamily: SERIF, fontSize: 13, cursor: "pointer" }}>
         {openId ? "Править" : "Редактор"}</button> : null}
     </div>
@@ -81,6 +92,28 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const chip = (on) => ({ flexShrink: 0, padding: "6px 12px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", whiteSpace: "nowrap",
     border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub });
   const badge = (t, c) => <span style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${c}88`, color: c, whiteSpace: "nowrap" }}>{t}</span>;
+
+  // ── v123: тренировка ──
+  const fresh = React.useMemo(() => newWines(all), [all]);
+  const trainN = React.useMemo(() => trainable(all).length, [all]);
+  const trainHead = (title, back) => head(title, back, "Винная карта", false);
+  const toDeck = (d) => { setDeck({ focus: [], ...d }); setView("deck"); vibrate("light"); };
+  const openTrain = (key) => {
+    if (key === "quiz") { setView("quiz"); return; }
+    toDeck(key === "new" ? { key, title: "Новые вина", mode: "quiz", only: "new" } : key === "glass" ? { key, title: "Вина бокалом", mode: "quiz", only: "glass" } : { key: "deck", title: "Колода вин", mode: "deck", only: "all" });
+  };
+  if (view === "train") return (
+    <div style={T.screen} className="sa-screen" data-wine-train-hub="">
+      {trainHead("Тренировка", () => (train0 ? onBack() : setView("list")))}
+      <WineTrainHub T={T} a11y={a11y} gold={gold} green={green} wines={all} restaurant={restaurant} edit={!!edit} onOpen={openTrain} onReview={() => onEdit("@review")} />
+    </div>);
+  if (view === "deck" && deck) return (
+    <WineDeck key={deck.key + ":" + deck.focus.join(",")} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk}
+      Head={(t) => trainHead(t, () => setView("train"))} title={deck.title} initialMode={deck.mode} initialOnly={deck.only} newIds={fresh.map((x) => x.id)} focusIds={deck.focus}
+      onLearned={deck.key === "new" && !allLearned(fresh, learnedIds) ? () => { learn(fresh); vibrate("success"); setView("train"); } : null} />);
+  if (view === "quiz") return (
+    <WineQuiz T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))}
+      onRepeat={(ids) => toDeck({ key: "focus", title: "Повторить ошибки", mode: "quiz", only: "focus", focus: ids })} />);
 
   // ── карточка вина ──
   const w = openId ? all.find((x) => x.id === openId) : null;
@@ -131,6 +164,23 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
         </div>
         {!all.length && edit ? <button type="button" className="sa-btn" data-lens-btn="main" onClick={() => onEdit(null)}
           style={{ ...T.doneBtn, width: "100%", margin: "4px 0 0", background: gold, color: "#1A1008" }}>Добавить вина</button> : null}
+        {trainN >= 2 || (edit && all.length) ? (() => {
+          // v123: вход в тренировку — над картой; новые вина, которые ещё не выучены, подсвечены
+          const hi = fresh.length > 0 && !allLearned(fresh, learnedIds), gp = glassPath(all, (() => { try { return JSON.parse(localStorage.getItem(srKey(restaurant)) || "{}"); } catch (e) { return {}; } })());
+          const go = () => { vibrate("light"); setView("train"); };
+          return (
+            <div className="sa-card" role="button" tabIndex={0} data-wine-train-open={hi ? "new" : ""} data-lens-card={hi ? "hi" : ""} onClick={go} {...onActivate(go)}
+              style={{ ...T.modCard, margin: "0 0 12px", ...(hi ? { border: `1px solid ${gold}AA` } : {}) }}>
+              <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 }}>{BUILD_SVG.wineglass(gold, 20)}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>Учить вина{hi ? <span style={{ ...labelStyle(13), color: "#1A1008", background: gold, borderRadius: 6, padding: "1px 6px" }}>новое</span> : null}</div>
+                <div style={{ ...T.modSub, whiteSpace: "normal" }}>{trainN < 2 ? "Проверь вина, чтобы команда могла их учить"
+                  : hi ? "Новые вина: " + fresh.length + ". Колода, викторина, путь новичка"
+                  : gp.total ? "Колода, викторина, путь новичка · бокалом выучено " + gp.known + " из " + gp.total : "Колода, викторина и «Наоборот»: вино по описанию гостя"}</div>
+              </div>
+              <div style={T.modArrow}>›</div>
+            </div>);
+        })() : null}
         {all.length ? <>
           <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Название, регион, сорт, нота…" aria-label="Поиск по винной карте"
             style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none" }} />

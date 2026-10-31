@@ -13,6 +13,8 @@ import { mergeStops } from "../lib/menu-dishes";   // v93: стоп из чат�
 import { CAT_ORDER, normCat, groupByCat, dishMatches, suggestAllergens } from "../lib/menu-sections";
 import { buildMenuQuiz } from "../lib/menu-quiz";
 import { MenuDeck, AllergenSprint } from "./menu-deck";
+import { wineRecords } from "../lib/wine";                     // v123: вход в тренировку винной карты
+import { trainable as trainableWines } from "../lib/wine-train";
 import { MenuPrint } from "./menu-print";
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
@@ -21,7 +23,7 @@ import { RESTAURANTS } from "../data/roles";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
-import { GAME_SVG, UI_SVG } from "./icons";
+import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи
 import { TimerBar, LiquidSegment } from "./widgets";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): тренировки меню — плитками в две колонки на широком экране
@@ -87,7 +89,7 @@ const DishPhoto = ({ src, h = 170 }) => src ? (
 // Сжатие фото с телефона перед сохранением (localStorage не резиновый)
 // readPhoto — общий, в lib/utils (Доп. 242)
 
-export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role, accent, onShareChat = null }) {
+export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, startMode, onOpenCocktail, role, accent, onShareChat = null, onWines = null }) {
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   // Цвет приходит от кнопки, которой сюда вошли, — как у SOS. Без него
   // остаётся прежний золотой, чтобы прочие входы не поменяли вид.
@@ -273,7 +275,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v122</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v123</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -326,6 +328,21 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={T.modArrow}>›</div>
           </div>
         ); })}
+        {/* v123 (Доп. 436): вина учат там же, где меню, — вход в тренировку винной карты своего ресторана */}
+        {(() => {
+          const wn = onWines && restaurant === profile?.restaurant ? trainableWines(wineRecords(shared)).length : 0;
+          if (wn < 2) return null;
+          const go = () => { vibrate("light"); onWines(); };
+          return (
+            <div className="sa-card" data-menu-wines={wn} data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }} onClick={go} {...onActivate(go)}>
+              <div style={iconBox}>{BUILD_SVG.wineglass(gold, 20)}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={T.modTitle}>Винная карта</div>
+                <div style={{ ...T.modSub, whiteSpace: "normal" }}>Учить вина: колода, викторина, путь новичка · {wn} {wn % 10 === 1 && wn % 100 !== 11 ? "вино" : wn % 10 >= 2 && wn % 10 <= 4 && (wn % 100 < 10 || wn % 100 >= 20) ? "вина" : "вин"}</div>
+              </div>
+              <div style={T.modArrow}>›</div>
+            </div>);
+        })()}
         {/* Доп. 261: меню на лист — учить с бумаги, раздать распечатки */}
         {dishes.length > 0 && (
           <div className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "10px 0" }}

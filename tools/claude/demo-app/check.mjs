@@ -311,6 +311,31 @@ if (!ONLY || ONLY.includes("maria")) {
   const after = await page.evaluate(() => [...document.querySelectorAll("[data-wine-erow] [data-wine-thumb]")].map((t) => t.getAttribute("data-wine-thumb")));
   ok("После «Сохранить 2 вина»: девять вин, у семи — фото", after.length === 9 && after.filter((x) => x === "photo").length === 7, JSON.stringify(after));
   await shot("m13-bottles-saved");
+  // v123 (Доп. 436): тренировка по винам (владелец: «их учить очень сложно, особенно для новичка»): «Учить вина» над
+  // картой, новые вина, путь новичка, колода, викторина; не проверенное — «Проверка подряд»
+  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1800);
+  const en = await page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"); return e ? { hi: e.getAttribute("data-wine-train-open"), t: e.innerText.replace(/\s+/g, " ") } : null; });
+  ok("Винная карта: «Учить вина» над картой, два новых вина подсвечены", !!en && en.hi === "new" && /Новые вина: 2/.test(en.t), JSON.stringify(en));
+  await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
+  const hubRows = await page.evaluate(() => [...document.querySelectorAll("[data-wine-train]")].map((e) => e.getAttribute("data-wine-train")).join(","));
+  ok("Тренировка: новые вина, «С чего начать: вина бокалом», колода, викторина; «Проверить подряд»", hubRows === "new,glass,deck,quiz" && (await page.locator("[data-wine-review-open]").count()) === 1, hubRows);
+  await shot("m14-wine-train");
+  await page.locator('[data-wine-train="deck"]').click().catch(() => {}); await page.waitForTimeout(900);
+  await page.locator("[data-wine-deck-card]").click().catch(() => {}); await page.waitForTimeout(1200);
+  const flip = await page.evaluate(() => (document.querySelector("[data-wine-flip]") || { getAttribute: () => "" }).getAttribute("data-wine-flip"));
+  ok("Колода вин: карточка переворачивается", flip === "back", flip);
+  await shot("m15-wine-deck");
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator('[data-wine-train="quiz"]').click().catch(() => {}); await page.waitForTimeout(900);
+  await page.locator('[data-wine-opt="0"]').click().catch(() => {}); await page.waitForTimeout(400);
+  const qz = await page.evaluate(() => ({ ok: document.querySelectorAll('[data-lens-opt="ok"]').length, why: !!document.querySelector("[data-wine-why]") }));
+  ok("Викторина по винам: после ответа — верный вариант и пояснение", qz.ok === 1 && qz.why, JSON.stringify(qz));
+  await shot("m16-wine-quiz");
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator("[data-wine-review-open]").click().catch(() => {}); await page.waitForTimeout(1800);
+  const rv = await page.evaluate(() => ({ at: (document.querySelector("[data-wine-review-screen]") || { getAttribute: () => "" }).getAttribute("data-wine-review-screen"), ai: document.querySelectorAll('[data-wine-rrow-ai="1"]').length }));
+  ok("«Проверить подряд»: вино на экран, что дописал AI, подсвечено", /^0\/\d+$/.test(rv.at) && rv.ai > 0, JSON.stringify(rv));
+  await shot("m17-wine-review");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

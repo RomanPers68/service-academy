@@ -318,7 +318,7 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("Винная карта: «Учить вина» над картой, два новых вина подсвечены", !!en && en.hi === "new" && /Новые вина: 2/.test(en.t), JSON.stringify(en));
   await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
   const hubRows = await page.evaluate(() => [...document.querySelectorAll("[data-wine-train]")].map((e) => e.getAttribute("data-wine-train")).join(","));
-  ok("Тренировка: новые вина, «С чего начать: вина бокалом», колода, викторина; «Проверить подряд»", hubRows === "new,glass,deck,quiz" && (await page.locator("[data-wine-review-open]").count()) === 1, hubRows);
+  ok("Тренировка: новые вина, «С чего начать: вина бокалом», колода, викторина, «Вино к блюду», «Опиши за 60 секунд», «Как произносить»; «Проверить подряд»", hubRows === "new,glass,deck,quiz,pair,say60,pron" && (await page.locator("[data-wine-review-open]").count()) === 1, hubRows);
   await shot("m14-wine-train");
   await page.locator('[data-wine-train="deck"]').click().catch(() => {}); await page.waitForTimeout(900);
   await page.locator("[data-wine-deck-card]").click().catch(() => {}); await page.waitForTimeout(1200);
@@ -336,6 +336,31 @@ if (!ONLY || ONLY.includes("maria")) {
   const rv = await page.evaluate(() => ({ at: (document.querySelector("[data-wine-review-screen]") || { getAttribute: () => "" }).getAttribute("data-wine-review-screen"), ai: document.querySelectorAll('[data-wine-rrow-ai="1"]').length }));
   ok("«Проверить подряд»: вино на экран, что дописал AI, подсвечено", /^0\/\d+$/.test(rv.at) && rv.ai > 0, JSON.stringify(rv));
   await shot("m17-wine-review");
+  // v124 (Доп. 437), владелец: «как мы сам редактор можем сделать более удобнее и красивее?» — сводка и «Что дописать»,
+  // форма по разделам с подсказками; в тренировке «Вино к блюду» и «Опиши за 60 секунд»
+  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1500);
+  await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
+  const sm = await page.evaluate(() => ({ line: (document.querySelector("[data-wine-sum-line]") || {}).textContent || "", gaps: [...document.querySelectorAll("[data-wine-gap]")].map((e) => e.getAttribute("data-wine-gap")).join(",") }));
+  ok("Редактор вин: сводка сверху и «Что дописать» (без фото, без блюд…)", /^\d+ вин/.test(sm.line) && /nophoto/.test(sm.gaps), JSON.stringify(sm));
+  await shot("m18-wine-editor-summary");
+  await page.locator("[data-wine-new]").click().catch(() => {}); await page.waitForTimeout(600);
+  const parts = await page.evaluate(() => [...document.querySelectorAll("[data-wine-part]")].map((e) => e.getAttribute("data-wine-part")).join(","));
+  ok("Новое вино: форма по разделам, подсказки страны из карты", parts === "origin,serve,guest,pair" && (await page.locator('[data-wine-hints="country"] [data-wine-hint]').count()) >= 4, parts);
+  await shot("m19-wine-form-parts");
+  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1500);
+  await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator('[data-wine-train="pair"]').click().catch(() => {}); await page.waitForTimeout(900);
+  await page.locator('[data-wine-popt="0"]').click().catch(() => {}); await page.waitForTimeout(300);
+  const pq = await page.evaluate(() => ({ ok: document.querySelectorAll('[data-lens-opt="ok"]').length, why: ((document.querySelector("[data-wine-pwhy]") || {}).textContent || "").slice(0, 60) }));
+  ok("«Вино к блюду»: после ответа — верное вино и «К нему в карте…»", pq.ok === 1 && /^К нему в карте: /.test(pq.why), JSON.stringify(pq));
+  await shot("m20-wine-pair");
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator('[data-wine-train="say60"]').click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator("[data-wine-say60-go]").click().catch(() => {}); await page.waitForTimeout(400);
+  await page.locator("[data-wine-say60-stop]").click().catch(() => {}); await page.waitForTimeout(400);
+  const sp = await page.evaluate(() => Number((document.querySelector("[data-wine-say60-points]") || { getAttribute: () => "0" }).getAttribute("data-wine-say60-points")));
+  ok("«Опиши за 60 секунд»: после минуты — сверка с карточкой", sp >= 3, String(sp));
+  await shot("m21-wine-say60");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

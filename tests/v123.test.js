@@ -212,13 +212,14 @@ describe("v123: экраны", () => {
     expect(keys.indexOf("marginTop")).toBeLessThan(keys.indexOf("margin"));
     const { marginTop: _m, ...base } = T.doneBtn, fixed = { ...{ ...base, margin: 0 }, marginTop: 10 }, k2 = Object.keys(fixed);
     expect(k2.indexOf("marginTop")).toBeGreaterThan(k2.indexOf("margin"));
-    expect(E).toContain('style={{ ...softBtn, width: "100%", marginTop: 14, padding: "11px", fontSize: 14, color: gold }}>Проверка подряд · {uncheckedN}');
+    // v124: «Проверка подряд» — внутри сводки (отступ 12 после строки «проверено N из M»)
+    expect(E).toMatch(/data-wine-review-start=\{uncheckedN\}[^\n]*\n[^\n]*style=\{\{ \.\.\.softBtn, width: "100%", marginTop: 1[24],/);
   });
   it("без тире-ритма и эмодзи в новом коде; метка — v123", () => {
     for (const f of ["ui/wine-train.jsx", "lib/wine-train.js", "ui/wine-list.jsx", "ui/wine-editor.jsx", "lib/wine.js"]) {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     }
-    expect(M).toContain("· сборка v123</span>");
+    expect(Number((M.match(/· сборка v(\d+)<\/span>/) || [])[1])).toBeGreaterThanOrEqual(123);   // v124: метка дальше
   });
 });

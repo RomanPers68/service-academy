@@ -359,7 +359,7 @@ await run("HUB", async () => {
     check: (document.querySelector("[data-wine-hub-check]") || { getAttribute: () => null }).getAttribute("data-wine-hub-check"), btn: !!document.querySelector("[data-wine-review-open]"),
     sum: (document.querySelector("[data-wine-hub-sum]") || {}).textContent || "", edit: !!document.querySelector("[data-wine-edit]"), title: document.querySelector("[data-wine-train-hub]") ? document.querySelector("[data-wine-train-hub]").innerText.slice(0, 40) : "" }));
   ok("HUB: тренировка — «Новые вина» (2, «новое»), «С чего начать: вина бокалом» (0 из 3), колода, викторина; в тренировке 4 проверенных вина",
-    hub.n === "4" && hub.rows.map((r) => r.split(":")[0]).join(",") === "new,glass,deck,quiz" && /^new:Новые вина\s*новое/.test(hub.rows[0]) && /2 вина за последний месяц/.test(hub.rows[0])
+    hub.n === "4" && hub.rows.map((r) => r.split(":")[0]).slice(0, 4).join(",") === "new,glass,deck,quiz" && /^new:Новые вина\s*новое/.test(hub.rows[0]) && /2 вина за последний месяц/.test(hub.rows[0])
       && /Выучено 0 из 3/.test(hub.rows[1]) && /^В тренировке 4 вина$/.test(hub.sum.trim()) && !hub.edit, JSON.stringify(hub));
   ok("HUB: руководителю — «Не проверено: 2 вина…» и «Проверить подряд»", hub.check === "2" && hub.btn, JSON.stringify({ check: hub.check, btn: hub.btn }));
   await shot(o.page, "hub");
@@ -376,7 +376,7 @@ await run("STAFF", async () => {
   await toHub(o.page);
   const s = await o.page.evaluate(() => ({ wait: (document.querySelector("[data-wine-hub-wait]") || { getAttribute: () => null }).getAttribute("data-wine-hub-wait"), t: (document.querySelector("[data-wine-hub-wait]") || {}).textContent || "",
     btn: !!document.querySelector("[data-wine-review-open]"), check: !!document.querySelector("[data-wine-hub-check]"), rows: document.querySelectorAll("[data-wine-train]").length }));
-  ok("STAFF: официанту — сколько вин ждут проверки руководителем, без «Проверить подряд»", s.wait === "2" && /Ещё 2 вина ждут проверки руководителем/.test(s.t) && !s.btn && !s.check && s.rows === 4, JSON.stringify(s));
+  ok("STAFF: официанту — сколько вин ждут проверки руководителем, без «Проверить подряд»", s.wait === "2" && /Ещё 2 вина ждут проверки руководителем/.test(s.t) && !s.btn && !s.check && s.rows >= 4, JSON.stringify(s));   // v124: пунктов тренировки больше
   const [e1, e2] = noErr(o); ok("STAFF: без ошибок", e1, e2);
   await o.ctx.close();
 });
@@ -622,9 +622,10 @@ await run("GAPS", async () => {
     const o = await open({ who: MARIA, srv, menu: MENU_T, light });
     await hideToasts(o.page);
     await toEditor(o.page);
-    const g1 = await gapsOf(o.page, [["[data-wine-new]", "[data-wine-review-start]"], ["[data-wine-review-start]", 'input[type="search"]']]);
+    // v124: «Проверка подряд» — в сводке над кнопками; между сводкой, кнопками и поиском — по-прежнему воздух
+    const g1 = await gapsOf(o.page, [["[data-wine-sum-card]", "[data-wine-new]"], ["[data-wine-new]", 'input[type="search"]']]);
     const mt = await o.page.evaluate(() => getComputedStyle(document.querySelector("[data-wine-review-start]")).marginTop);
-    ok(`${tag}: «Проверка подряд» не прилипает к «Новое вино» и «Импорт», поле поиска — ниже с отступом`, g1.every((x) => x.gap >= 12) && mt === "14px", JSON.stringify({ g1, mt }));
+    ok(`${tag}: «Проверка подряд» не прилипает к «Новое вино» и «Импорт», поле поиска — ниже с отступом`, g1.every((x) => x.gap >= 12) && mt === "12px", JSON.stringify({ g1, mt }));
     if (!light) await shot(o.page, "gaps-editor");
     await o.page.locator("[data-wine-import-open]").click(); await sleep(300);
     const g2 = await gapsOf(o.page, [["[data-wine-new]", "[data-wine-import]"]]);

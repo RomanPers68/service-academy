@@ -336,7 +336,8 @@ await run("EDIT", async () => {
   await hideToasts(a.page);
   await toList(a.page); await sleep(1400);
   await a.page.locator("[data-wine-edit]").click(); await sleep(1500);
-  ok("EDIT: «Редактор вин» — 5 вин, не проверено 1, в архиве 1", /^5 вин · бокалом 3 · не проверено 1 · в архиве 1$/.test(await txt(a.page.locator("[data-wine-editor] > div:nth-of-type(2) > div").first())), await txt(a.page.locator("[data-wine-editor]")));
+  // v124: сводка — строка «5 вин · бокалом 3 · в архиве 1» и «проверено 4 из 5»
+  ok("EDIT: «Редактор вин» — 5 вин, не проверено 1, в архиве 1", /^5 вин · бокалом 3 · в архиве 1$/.test(await txt(a.page.locator("[data-wine-sum-line]"))) && (await a.page.locator("[data-wine-checked]").getAttribute("data-wine-checked")) === "4/5", await txt(a.page.locator("[data-wine-editor]")));
   await a.page.locator("[data-wine-new]").click(); await sleep(400);
   const f = (k, v) => a.page.locator(`[data-wine-field="${k}"]`).fill(v);
   await f("name", "Гави ди Гави"); await f("producer", "La Scolca"); await f("country", "Италия"); await f("region", "Пьемонт"); await f("grapes", "кортезе"); await f("vintage", "2022");

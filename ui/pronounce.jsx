@@ -137,7 +137,8 @@ function Repeat({ e, gold, text, sub, a11y, red }) {
 }
 
 /** Экран «Как произносить»: словарь + свои названия меню. */
-export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
+// v124: тот же словарь для винной карты — свой раздел «Наша карта» (ownLabel), у слова — «в карте: «…»» (ownWhere, d.label)
+export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass, ownLabel = "Наше меню", ownWhere = "в блюде" }) {
   const text = T.modTitle.color, sub = T.modSub.color, red = "#D9776A";
   React.useEffect(() => { probeLive(); return () => stopVoice(); }, []);
   // свои названия: ударение от менеджера или словарные слова в названии блюда
@@ -148,7 +149,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
       for (const e of sayFor(d)) {
         const k = plainText(e.w).toLowerCase();
         if (seen.has(k)) continue; seen.add(k);
-        out.push({ ...e, dish: d.name });
+        out.push({ ...e, dish: d.label || d.name });
       }
     }
     return out;
@@ -164,7 +165,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
     : cat === "menu" ? own : searchPronounce("", cat);
   const chip = (on) => ({ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", font: "inherit", fontFamily: "Georgia, serif",
     border: `1px solid ${on ? gold : gold + "55"}`, background: on ? `linear-gradient(180deg,#E4C88C,${gold})` : "transparent", color: on ? "#1A1008" : sub });
-  const cats = [...(own.length ? [{ id: "menu", label: "Наше меню" }] : []), ...PRON_CATS];
+  const cats = [...(own.length ? [{ id: "menu", label: ownLabel }] : []), ...PRON_CATS];
   return (
     <div style={T.screen} className="sa-screen">
       {Head("Как произносить")}
@@ -192,7 +193,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass }) {
                 {syllables(e.w) ? <div data-pron-syll="" aria-label={"По слогам: " + syllables(e.w)} style={{ fontSize: 13, color: gold, letterSpacing: 0.6, marginTop: 2 }}>{syllables(e.w)}</div> : null}
                 <div style={{ fontSize: 12, color: sub, marginTop: 2 }}>
                   {e.o ? <><i>{e.o}</i>{e.lang ? " · " + e.lang : ""}</> : null}
-                  {e.dish && cat === "menu" ? <>{e.o ? " · " : ""}в блюде «{e.dish}»</> : null}
+                  {e.dish && cat === "menu" ? <>{e.o ? " · " : ""}{ownWhere} «{e.dish}»</> : null}
                 </div>
               </div>
               <SayButton w={e.w} gold={gold} sub={sub} a11y={a11y} size={34} />

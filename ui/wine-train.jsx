@@ -5,13 +5,18 @@
 // «Знаю?» с повтором через 1, 3, 7, 30 дней и «Наоборот»: вино по описанию гостя), «Викторина по винам» (вопросы по своей
 // карте, lib/wine-train.js), «Новые вина» (добавленные за 30 дней) и путь новичка: сначала вина бокалом. В тренировку
 // идут только проверенные вина: новичок не должен учить то, что AI мог перепутать. Прогресс — на телефоне, по ресторану.
+// v124 (Доп. 437): «Вино к блюду» (гость заказал блюдо — что предложить), «Опиши за 60 секунд» (вслух и сверка с
+// карточкой), «Как произносить» — на обороте карточки (слова словаря в названии, сорте, регионе) и словарь в тренировке.
 import React from "react";
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { bumpDaily } from "../lib/deck-extras";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { COLOR_GROUP, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked } from "../lib/wine";
-import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKnown, glassPath, reverseClues, reversible, makeQuiz, quizScore } from "../lib/wine-train";
+import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKnown, glassPath, reverseClues, reversible, makeQuiz, quizScore,
+  dishPairs, pairQuiz, describePoints, describePick } from "../lib/wine-train";
+import { findPronounce, stressText } from "../lib/pronounce";   // v124: «Как произносить» на обороте карточки
+import { SayButton } from "./pronounce";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
@@ -20,7 +25,7 @@ const load = (k, dflt) => { try { const v = JSON.parse(localStorage.getItem(k) |
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
 // «стеклянная» плашка карточек — те же токены, что у Колоды меню (обе темы)
-const glass = (T) => ({
+export const glass = (T) => ({
   background: (T.lessGlass && T.lessGlass.bg) || "rgba(255,250,238,0.05)",
   border: (T.lessGlass && T.lessGlass.border) || "1px solid rgba(150,112,42,0.38)",
   borderTop: (T.lessGlass && T.lessGlass.borderTop) || "1px solid rgba(215,170,68,0.46)",
@@ -43,6 +48,30 @@ export const WineArt = ({ color, gold, h = 150 }) => {
       {color === "sparkling" ? [[28, 30], [32, 22], [29, 13]].map(([x, y]) => <circle key={y} cx={x} cy={y} r="1.6" fill="none" stroke={gold} strokeWidth="1" />) : null}
     </svg>);
 };
+
+/** v124: «Как произносить» — слова словаря (data/pronounce) в названии, сорте и регионе вина: ударение, послушать,
+ *  оригинал. Касание строки не переворачивает карточку. */
+export function WineSay({ w, gold, text, sub, a11y }) {
+  // сначала слова из названия, потом сорт, потом регион; не больше трёх
+  const items = React.useMemo(() => {
+    if (!w) return [];
+    const out = [];
+    for (const [t, n] of [[w.name, 2], [(w.grapes || []).join(" "), 2], [w.region, 1]]) for (const e of t ? findPronounce(t, n) : []) if (!out.some((x) => x.w === e.w)) out.push(e);
+    return out.slice(0, 3);
+  }, [w]);
+  if (!items.length) return null;
+  return (
+    <div data-wine-say={items.length} onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
+      <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Как произносить</div>
+      {items.map((e) => (
+        <div key={e.w} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <span style={{ fontFamily: SERIF, fontSize: 16, color: text }}>{stressText(e.w)}</span>
+          <SayButton w={e.w} gold={gold} sub={sub} a11y={a11y} size={28} />
+          {e.o ? <span style={{ fontSize: 12, color: sub, fontStyle: "italic" }}>{e.o}</span> : null}
+          {e.o ? <SayButton w={e.w} o={e.o} lang={e.lang} orig gold={gold} sub={sub} a11y={a11y} size={28} label="ориг." /> : null}
+        </div>))}
+    </div>);
+}
 
 /** «Знаю?»: прогресс колоды на телефоне, по ресторану. */
 export function useWineSR(restaurant) {
@@ -213,6 +242,7 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
                   {w.producer ? <div style={{ fontSize: 13, color: sub, marginTop: 2 }}>{w.producer}</div> : null}
                   {wineLine(w) ? <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginTop: 8 }}>{wineLine(w)}</div> : null}
                   {winePrice(w) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{winePrice(w)}</div> : null}
+                  {flip ? <WineSay w={w} gold={gold} text={text} sub={sub} a11y={a11y} /> : null}
                   {w.short ? <>{sec("Одной фразой гостю")}<div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 15, lineHeight: 1.5, color: text }}>«{w.short}»</div></> : null}
                   {(w.notes || []).length ? <>{sec("Ноты")}<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{w.notes.map(tag)}</div></> : null}
                   {w.temp || w.glass ? <>{sec("Подача")}<div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>{[w.temp, w.glass ? "бокал «" + w.glass + "»" : ""].filter(Boolean).join(" · ")}</div></> : null}
@@ -323,11 +353,137 @@ export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restau
     </div>);
 }
 
+// ─────────────────────────────── v124: ВИНО К БЛЮДУ
+// Блюдо меню (с фото) → какое вино предложить. Пары — из поля «к блюдам» у вин (lib/wine-train.js: pairQuiz).
+export function WinePairQuiz({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head }) {
+  const sub = T.modSub.color;
+  const [questions, setQuestions] = React.useState(() => pairQuiz(wines, dishes, { n: 8 }));
+  const [step, setStep] = React.useState(0);
+  const [picks, setPicks] = React.useState([]);
+  const done = questions.length > 0 && step >= questions.length;
+  const right = questions.filter((q, i) => picks[i] === q.answer).length;
+  const doneRef = React.useRef(false);
+  React.useEffect(() => { if (done && !doneRef.current) { doneRef.current = true; bumpDaily(uk); } }, [done]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const again = () => { doneRef.current = false; setQuestions(pairQuiz(wines, dishes, { n: 8 })); setStep(0); setPicks([]); vibrate("light"); };
+  if (!questions.length) return (
+    <div style={T.screen} className="sa-screen" data-wine-pairq="none">{Head("Вино к блюду")}
+      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>Нужны хотя бы два блюда, к которым в карте отмечены вина. Отмечают в «Редакторе вин», раздел «К блюдам».</div>
+    </div>);
+  if (done) {
+    const pct = Math.round((right / questions.length) * 100), c = pct >= 80 ? gold : pct >= 50 ? green : red;
+    return (
+      <div style={T.screen} className="sa-screen" data-wine-pairq="done" data-wine-pairq-score={right + "/" + questions.length}>
+        {Head("Вино к блюду")}
+        <div style={{ textAlign: "center", padding: "44px 24px 100px" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+            <div style={{ width: 76, height: 76, borderRadius: "50%", background: c + "1F", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {pct >= 80 ? UI_SVG.trophy(gold, 38) : pct >= 50 ? UI_SVG.target(green, 36) : UI_SVG.book(red, 36)}</div>
+          </div>
+          <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{right} из {questions.length}</div>
+          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>{pct >= 80 ? "Пары из карты знаешь." : "Повтори пары: на обороте карточки вина есть «К блюдам»."}</div>
+          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-pairq-again="" style={{ ...T.doneBtn, width: "100%", margin: 0, background: gold }} onClick={again}>Ещё раз</button>
+        </div>
+      </div>);
+  }
+  const qq = questions[step], pick = picks[step];
+  const answer = (i) => { if (pick != null) return; setPicks((p) => { const n = p.slice(); n[step] = i; return n; }); vibrate(i === qq.answer ? "light" : "error"); };
+  return (
+    <div style={T.screen} className="sa-screen" data-wine-pairq={step}>
+      {Head("Вино к блюду")}
+      <div key={step} className="sa-cardpage-r" style={T.quizWrap}>
+        <div style={{ ...T.quizProgress, ...labelStyle(T.a11y ? 16 : 13) }}>Блюдо {step + 1} из {questions.length} · {restaurant}</div>
+        {qq.img ? <img src={qq.img} alt="" data-wine-pairq-photo="" style={{ display: "block", width: "100%", height: 150, objectFit: "cover", borderRadius: 14, marginBottom: 12 }} /> : null}
+        <div style={T.quizQ}>{qq.q}</div>
+        {qq.options.map((opt, i) => {
+          let st = { ...T.quizOpt, cursor: pick == null ? "pointer" : "default" };
+          if (pick != null) {
+            if (i === qq.answer) st = { ...st, background: "rgba(93,187,138,0.15)", border: `1px solid ${green}`, borderTop: `1px solid ${green}` };
+            else if (i === pick) st = { ...st, background: "rgba(224,120,120,0.15)", border: `1px solid ${red}`, borderTop: `1px solid ${red}` };
+            else st = { ...st, opacity: 0.5 };
+          }
+          return <div key={i} role="button" tabIndex={0} className="sa-opt" data-wine-popt={i} data-lens-opt={pick == null ? "" : i === qq.answer ? "ok" : i === pick ? "bad" : ""} style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
+        })}
+        {pick != null ? <div data-wine-pwhy="" style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{qq.why}</div> : null}
+        {pick != null ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-pairq-next="" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={() => setStep((x) => x + 1)}>{step + 1 >= questions.length ? "Итог →" : "Дальше →"}</button> : null}
+      </div>
+    </div>);
+}
+
+// ─────────────────────────────── v124: ОПИШИ ЗА 60 СЕКУНД
+// Как у меню: вино на экране, минута рассказать вслух, потом сверка с карточкой — что назвал, отмечаешь сам.
+function Countdown({ sec, gold, red, sub, onEnd }) {
+  const [left, setLeft] = React.useState(sec);
+  React.useEffect(() => { if (left <= 0) { onEnd(); return undefined; } const t = setTimeout(() => setLeft((x) => x - 1), 1000); return () => clearTimeout(t); }, [left]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const c = left <= 10 ? red : gold;
+  return (
+    <div data-wine-timer={left} style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{ ...labelStyle(13.5), color: c }}>Говори вслух, как в зале</span>
+        <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 17, color: c }}>{left} с</span>
+      </div>
+      <div style={{ height: 4, borderRadius: 3, background: gold + "26", overflow: "hidden" }}><div style={{ width: (left / sec) * 100 + "%", height: "100%", background: c, transition: "width 1s linear" }} /></div>
+    </div>);
+}
+export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head }) {
+  const text = T.modTitle.color, sub = T.modSub.color;
+  const [w, setW] = React.useState(() => describePick(wines, dishes));
+  const [phase, setPhase] = React.useState("ready");   // ready | speak | compare
+  const [said, setSaid] = React.useState([]);
+  React.useEffect(() => { if (phase === "compare") bumpDaily(uk); }, [phase]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const next = () => { setW((cur) => describePick(wines, dishes, cur ? cur.id : "") || cur); setPhase("ready"); setSaid([]); vibrate("light"); };
+  if (!w) return (
+    <div style={T.screen} className="sa-screen" data-wine-say60="none">{Head("Опиши за 60 секунд")}
+      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>Нужны проверенные вина, где в карточке есть хотя бы регион, сорт и стиль.</div>
+    </div>);
+  const points = describePoints(w, dishes);
+  const toggle = (k) => { setSaid((s0) => (s0.includes(k) ? s0.filter((x) => x !== k) : [...s0, k])); vibrate("light"); };
+  return (
+    <div style={T.screen} className="sa-screen" data-wine-say60={phase} data-wine-say60-wine={w.id}>
+      {Head("Опиши за 60 секунд")}
+      <div style={{ padding: "6px 16px 100px" }}>
+        <div key={w.id} className="sa-cardpage-r" data-lens-card="" style={{ ...glass(T), padding: "18px 18px 16px" }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            {w.img ? <img src={w.img} alt="" style={{ width: 62, height: 84, objectFit: "cover", borderRadius: 10, flexShrink: 0, border: `1px solid ${gold}44` }} /> : <WineArt color={w.color} gold={gold} h={84} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ ...labelStyle(13.5), color: gold }}>{COLOR_GROUP[w.color] || COLOR_GROUP.other}{w.byGlass ? " · бокалом" : ""}</div>
+              <div style={{ fontFamily: SERIF, fontSize: 20, color: text, lineHeight: 1.2, marginTop: 2 }}>{wineTitle(w)}</div>
+            </div>
+          </div>
+          {phase === "ready" ? <div style={{ color: (T.para && T.para.color) || text, fontSize: 14, lineHeight: 1.6, marginTop: 14 }}>
+            Гость спрашивает: «а что это за вино?». У тебя минута. Расскажи вслух, как в зале: откуда оно, из какого винограда, какое на вкус, к чему подать. И закончи фразой, после которой хочется заказать.</div> : null}
+          {phase === "speak" ? <div style={{ marginTop: 14 }}><Countdown sec={60} gold={gold} red={red} sub={sub} onEnd={() => setPhase("compare")} /></div> : null}
+          {phase === "compare" ? (
+            <div style={{ marginTop: 14 }} data-wine-say60-points={points.length}>
+              <div style={{ ...labelStyle(13), color: green, marginBottom: 8 }}>Сверься с карточкой: что назвал, отметь</div>
+              {points.map((p) => { const on = said.includes(p.key); return (
+                <div key={p.key} role="button" tabIndex={0} data-wine-point={p.key} aria-pressed={on} onClick={() => toggle(p.key)} {...onActivate(() => toggle(p.key))}
+                  style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: `1px solid ${gold}22`, cursor: "pointer" }}>
+                  <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1, border: `1px solid ${on ? green : gold + "77"}`, background: on ? green : "transparent", display: "grid", placeItems: "center" }}>
+                    {on ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg> : null}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", ...labelStyle(12.5), color: gold }}>{p.label}</span>
+                    <span style={{ display: "block", fontSize: 14, color: text, lineHeight: 1.45 }}>{p.value}</span>
+                  </span>
+                </div>); })}
+              <div data-wine-say60-said={said.length + "/" + points.length} style={{ fontSize: 13, color: sub, marginTop: 8, lineHeight: 1.5 }}>
+                {said.length >= points.length ? "Назвал всё из карточки." : "Назвал " + said.length + " из " + points.length + ". Чего не хватило, то и запомни."}</div>
+            </div>) : null}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          {phase === "ready" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-go="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={() => { setPhase("speak"); vibrate("medium"); }}>Старт ›</button> : null}
+          {phase === "speak" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-stop="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={() => setPhase("compare")}>Я закончил(а)</button> : null}
+          {phase === "compare" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-next="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={next}>Следующее вино →</button> : null}
+        </div>
+      </div>
+    </div>);
+}
+
 // ─────────────────────────────── ТРЕНИРОВКА: ГЛАВНАЯ
 // Как главная тренажёра меню: «Новые вина» (если есть), путь новичка «С чего начать: вина бокалом», колода, викторина.
 // Не проверенные вина — не в тренировке: руководителю — «Проверить подряд», остальным — сколько ждут проверки.
-export function WineTrainHub({ T, a11y, gold, green, wines, restaurant, edit, onOpen, onReview }) {
+export function WineTrainHub({ T, a11y, gold, green, wines, dishes = [], restaurant, edit, onOpen, onReview }) {
   const text = T.modTitle.color, sub = T.modSub.color;
+  const pairsN = dishPairs(wines, dishes).length;   // v124: «Вино к блюду» — от двух блюд с отмеченными винами
   const [sr] = useWineSR(restaurant);
   const [learnedIds] = useLearned(restaurant);
   const train = trainable(wines), fresh = newWines(wines), learned = allLearned(fresh, learnedIds);
@@ -361,6 +517,11 @@ export function WineTrainHub({ T, a11y, gold, green, wines, restaurant, edit, on
           glassDone ? "Бокалом выучены все " + gp.total + ". Дальше: вся карта в колоде" : "Их спрашивают чаще всего. Выучено " + gp.known + " из " + gp.total, bar(gp.known, gp.total, glassDone ? green : gold)) : null}
         {row("deck", GAME_SVG.cards(gold, 20), "Колода вин", "Карточки с поиском и фильтрами, режимы «Знаю?» и «Наоборот»: вино по описанию гостя")}
         {row("quiz", UI_SVG.quiz(gold, 20), "Викторина по винам", "10 вопросов по своей карте: откуда, сорт, стиль, бокалом или нет, к какому блюду")}
+        {pairsN >= 2 ? row("pair", UI_SVG.cloche(gold, 20), "Вино к блюду", "Гость заказал блюдо: что предложить? По парам из своей карты") : null}
+        {row("say60", GAME_SVG.clock(gold, 20), "Опиши за 60 секунд", "Расскажи о вине вслух за минуту и сверься с карточкой")}
+        {row("pron", <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /></svg>,
+          "Как произносить", "Вина, сорта и регионы: ударение, по слогам, послушать в оригинале")}
+        {pairsN < 2 && edit ? <div data-wine-hub-pairs={pairsN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "0 2px 10px" }}>«Вино к блюду» появится, когда хотя бы у двух блюд будут отмечены вина: «Редактор вин», раздел «К блюдам».</div> : null}
       </> : <div data-lens-card="" style={{ ...T.modCard, display: "block", cursor: "default", padding: "14px 16px", fontSize: 14, color: text, lineHeight: 1.5 }}>
         Для тренировки нужно хотя бы два проверенных вина.{edit ? " Проверь, что дописал AI, и вина появятся здесь." : " Руководитель добавит и проверит карту."}</div>}
       {uncheckedN ? (edit ? (

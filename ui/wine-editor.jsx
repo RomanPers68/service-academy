@@ -13,14 +13,19 @@
 // v123 (Доп. 436): «Проверка подряд» — не проверенные вина по одному на экран, что дописал AI, подсвечено; «Верно»,
 // «Исправить» (форма), «Пропустить». Вход — из редактора и из тренировки («@review»): в тренировку идут только проверенные.
 // У нового вина — addedAt (для «Новых вин» в тренировке).
+// v124 (Доп. 437), владелец: «как мы сам редактор можем сделать более удобнее и красивее?» — сводка сверху (сколько вин,
+// проверено N из M, «Проверка подряд», «Что дописать»: без фото, цены, фразы гостю, блюд — касание фильтрует список);
+// форма по разделам с «заполнено N из M»; подсказки страны, региона и сорта (из своей карты и частые); «Сохранить и
+// дальше» — следующее вино того же списка.
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
-import { useTeamMenu, winesWord, BottleGlyph, WineThumb } from "./wine-list";
+import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./wine-list";
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,
-  touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName, uncheckedQueue, reviewRows } from "../lib/wine";
+  touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName, uncheckedQueue, reviewRows,
+  GAPS, gapTest, gapCounts, FORM_PARTS, partFill, fieldHints } from "../lib/wine";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const BATCH = 15;   // названий за один запрос AI
@@ -85,7 +90,7 @@ const MAX_ROUNDS = 8;   // v122: заходов на одну длинную к�
 
 export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
-  const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A";
+  const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A", green = a11y ? "#2E7D52" : "#5DBB8A";
   const restaurant = (profile && profile.restaurant) || "";
   const who = profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : "";
   const [shared, setShared] = useTeamMenu(restaurant);
@@ -104,6 +109,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
   const picRef = React.useRef(null), bottleRef = React.useRef(null);
   const [pic, setPic] = React.useState(null);           // фото в форме: { file, data, state: up | ok | err, err }
   const [rev, setRev] = React.useState(null);           // v123: «Проверка подряд» — { ids, i, ok, fix, skip }
+  const [seq, setSeq] = React.useState(null);           // v124: форма открыта из списка — { ids, at } для «Сохранить и дальше»
+  const remember = useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : "list");   // форма — сверху, список — где был
   const wines = React.useMemo(() => wineRecords(shared), [shared]);
   const formKey = form ? form.id || form._nid : "";
   React.useEffect(() => { setPic(null); }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
@@ -115,7 +122,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
     const r = wines.find((x) => x.id === startEditId);
     if (r) { started.current = true; setForm({ ...blank(), ...r }); }
   }, [wines, startEditId]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const startReview = () => { setRev({ ids: uncheckedQueue(wines), i: 0, ok: 0, fix: 0, skip: 0 }); setMsg(""); vibrate("light"); };
+  const startReview = () => { remember(); setRev({ ids: uncheckedQueue(wines), i: 0, ok: 0, fix: 0, skip: 0 }); setMsg(""); vibrate("light"); };
   const revCur = rev ? wines.find((x) => x.id === rev.ids[rev.i]) : null;
   React.useEffect(() => {   // вино из очереди удалили или убрали в архив (в форме) — дальше
     if (rev && !form && rev.i < rev.ids.length && (!revCur || revCur.archived)) setRev((r) => (r ? { ...r, i: r.i + 1 } : r));
@@ -186,19 +193,51 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
     const picSrc = pic && pic.data ? pic.data : form.img;
     const picNote = pic && pic.state === "up" ? "Загружаю фото…" : pic && pic.state === "err" ? "Фото не загрузилось: " + pic.err + ". Вино сохранится без него."
       : pic && pic.state === "ok" ? "Фото загружено, сохранится вместе с вином" : form.img ? "Фото в карте" : "Сними бутылку этикеткой к камере: фото будет в карте, а AI прочитает название, регион, год и сорт";
-    const save = (confirm) => {
+    // v124: «Сохранить и дальше» — следующее вино того же списка (как он стоял на экране, когда открыли форму)
+    const nextAt = seq && form.id ? seq.ids.findIndex((id, i) => i > seq.at && wines.some((x) => x.id === id && !x.archived)) : -1;
+    const nextRec = nextAt >= 0 ? wines.find((x) => x.id === seq.ids[nextAt]) : null;
+    const save = (confirm, goNext = false) => {
       const rec = normWine(confirm ? confirmWine(form, who) : form, { id: form.id || form._nid });
       if (!rec.name) { setMsg("Нужно название"); vibrate("error"); return; }
       if (!form.id && !rec.addedAt) rec.addedAt = Date.now();   // v123: новое вино — в «Новые вина» на 30 дней
       // из «Проверки подряд»: сохранил исправленное — дальше по очереди
-      persist(withWine(shared, rec), "«" + rec.name + "» в карте у всех", () => { setForm(null); setSure(false); if (rev) setRev((r) => (r ? { ...r, i: r.i + 1, fix: r.fix + 1 } : r)); });
+      persist(withWine(shared, rec), "«" + rec.name + "» в карте у всех", () => {
+        setSure(false);
+        if (goNext && nextRec) { setForm({ ...blank(), ...nextRec }); setSeq((q0) => (q0 ? { ...q0, at: nextAt } : q0)); setAiErr(""); return; }
+        setForm(null); setSeq(null);
+        if (rev) setRev((r) => (r ? { ...r, i: r.i + 1, fix: r.fix + 1 } : r));
+      });
+    };
+    // раздел формы: карточка с заголовком и «заполнено N из M»
+    const part = (k, body) => {
+      const p0 = FORM_PARTS.find((x) => x[0] === k), f = partFill(form, k), full = f.n >= f.of, pn = (form.pair || []).length;
+      // у «К блюдам» — сколько блюд отмечено (одно поле, «заполнено 0 из 1» читалось бы странно)
+      const fillText = k === "pair" ? (pn ? "блюд: " + pn : "не отмечено") : full ? "заполнено ✓" : "заполнено " + f.n + " из " + f.of;
+      return (
+        <div data-lens-card="" data-wine-part={k} style={{ ...card, padding: "2px 14px 14px", marginTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "12px 0 2px" }}>
+            <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 17, color: text }}>{p0[1]}</span>
+            <span data-wine-part-fill={f.n + "/" + f.of} style={{ fontSize: 12, color: full ? green : sub, whiteSpace: "nowrap" }}>{fillText}</span>
+          </div>
+          {body}
+        </div>);
+    };
+    // подсказки: пустое поле — чипы из своей карты и частые; касание вписывает (сорт — добавляет через запятую)
+    const hintRow = (f) => {
+      const hs = fieldHints(wines, f, form);
+      if (!hs.length) return null;
+      const pickH = (h) => { vibrate("light"); if (f === "grapes") { const cur = shown(form.grapes).replace(/[,\s]+$/, ""); set("grapes", cur ? cur + ", " + h : h); } else set(f, h); };
+      return (
+        <div className="sa-hscroll" data-wine-hints={f} style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px", WebkitOverflowScrolling: "touch" }}>
+          {hs.map((h) => <button type="button" key={h} data-wine-hint={h} data-lens-btn="soft" data-lens-ink="" onClick={() => pickH(h)} style={pill(false, { flexShrink: 0, fontSize: 12.5, padding: "4px 10px" })}>{h}</button>)}
+        </div>);
     };
     const isNew = !form.id;
     const pairs = new Set(form.pair || []);
     const dishOrder = [...dishes.filter((d) => pairs.has(d.id)), ...dishes.filter((d) => !pairs.has(d.id))];
     return (
       <div style={T.screen} className="sa-screen" data-wine-form={form.id || "new"}>
-        {Head(isNew ? "Новое вино" : "Правка вина", () => { setForm(null); setSure(false); setAiErr(""); })}
+        {Head(isNew ? "Новое вино" : "Правка вина", () => { setForm(null); setSeq(null); setSure(false); setAiErr(""); })}
         <div style={{ padding: "4px 16px 220px" }}>
           {label("Фото бутылки")}
           <div data-lens-card="" data-wine-photo={pic ? pic.state : form.img ? "on" : "none"} style={{ ...card, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px" }}>
@@ -228,38 +267,49 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
               <div style={{ fontSize: 13.5, color: text, lineHeight: 1.5 }}>AI дописал: {form.ai.map((f) => FIELD_RU[f] || f).join(", ")}. Проверь: где не так, исправь руками, остальное подтверди.</div>
               <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-confirm="" onClick={() => { setForm((x) => confirmWine(x, who)); vibrate("light"); }} style={{ ...pill(false), marginTop: 8, color: text }}>Всё верно</button>
             </div>) : null}
-          {label("Производитель", "producer")}{field("producer", "Хозяйство или дом")}
-          {label("Страна и регион", ["country", "region"])}
-          <div style={{ display: "flex", gap: 8 }}>{field("country", "Страна", { flex: 1 })}{field("region", "Регион", { flex: 1.4 })}</div>
-          {label("Сорт винограда", "grapes")}{field("grapes", "Через запятую: шардоне, пино нуар")}
-          {label("Цвет", "color")}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{WINE_COLORS.map(([k, t]) => <button type="button" key={k} data-wine-color={k} aria-pressed={form.color === k} data-lens-btn={form.color === k ? "tab" : "soft"} data-lens-ink="" onClick={() => set("color", form.color === k ? "" : k)} style={pill(form.color === k)}>{t}</button>)}</div>
-          {label("Сладость", "sweet")}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{sweetsOf(form.color).map((t) => <button type="button" key={t} aria-pressed={form.sweet === t} data-lens-btn={form.sweet === t ? "tab" : "soft"} data-lens-ink="" onClick={() => set("sweet", form.sweet === t ? "" : t)} style={pill(form.sweet === t)}>{t}</button>)}</div>
-          {label("Год и крепость", ["vintage", "abv"])}
-          <div style={{ display: "flex", gap: 8 }}>{field("vintage", "Год урожая", { flex: 1 })}{field("abv", "Крепость, %", { flex: 1 })}</div>
-          {label("Подача и цена", ["byGlass", "priceGlass", "priceBottle", "volume"])}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-            <button type="button" data-wine-glass="" aria-pressed={!!form.byGlass} data-lens-btn={form.byGlass ? "tab" : "soft"} data-lens-ink="" onClick={() => set("byGlass", !form.byGlass)} style={pill(!!form.byGlass)}>Бокалом</button>
-            <button type="button" data-wine-stop="" aria-pressed={!!form.stop} data-lens-btn={form.stop ? "danger" : "soft"} onClick={() => setForm((x) => ({ ...x, stop: x.stop ? null : { since: Date.now(), by: who } }))}
-              style={pill(!!form.stop, form.stop ? { color: red, borderColor: red } : {})}>Сегодня нет</button>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {form.byGlass ? field("priceGlass", "Бокал, ₽", { flex: 1 }) : null}{field("priceBottle", "Бутылка, ₽", { flex: 1 })}{field("volume", "Объём", { flex: 0.8 })}
-          </div>
-          {label("Температура и бокал", ["temp", "glass"])}
-          {field("temp", "Например: " + (TEMP_HINT[form.color] || "8–10 °C"))}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{GLASS_TYPES.map((g) => <button type="button" key={g} aria-pressed={form.glass === g} data-lens-btn={form.glass === g ? "tab" : "soft"} data-lens-ink="" onClick={() => set("glass", form.glass === g ? "" : g)} style={pill(form.glass === g)}>{g}</button>)}</div>
-          {label("Ноты вкуса и аромата", "notes")}{field("notes", "Через запятую: зелёное яблоко, мел, цитрус")}
-          {label("Одной фразой гостю", "short")}{field("short", "Как официант скажет за столом")}
-          {label("О вине", "story")}
-          <textarea data-lens-field="" data-wine-field="story" rows={3} style={{ ...inputSt, minHeight: 82, resize: "vertical" }} placeholder="Стиль, чем интересно, как рассказать гостю" value={shown(form.story)} onChange={(e) => set("story", e.target.value)} />
-          {label("К блюдам")}
-          {dishes.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{dishOrder.slice(0, 40).map((d) => {
-            const on = pairs.has(d.id);
-            return <button type="button" key={d.id} aria-pressed={on} data-lens-btn={on ? "tab" : "soft"} data-lens-ink="" onClick={() => setForm((x) => ({ ...x, pair: on ? (x.pair || []).filter((i) => i !== d.id) : [...(x.pair || []), d.id] }))} style={pill(on)}>{d.name}</button>; })}</div>
-            : <div style={{ fontSize: 13, color: sub }}>Блюда появятся, когда в меню команды будут свои блюда.</div>}
-          <input data-lens-field="" style={{ ...inputSt, marginTop: 8 }} placeholder="Пояснение: почему к ним, что ещё предложить" value={shown(form.pairNote)} onChange={(e) => set("pairNote", e.target.value)} />
+          {/* v124: форма по разделам (владелец: «более удобнее и красивее»); цвет — перед сортом: от него подсказки сортов */}
+          {part("origin", <>
+            {label("Производитель", "producer")}{field("producer", "Хозяйство или дом")}
+            {label("Страна и регион", ["country", "region"])}
+            <div style={{ display: "flex", gap: 8 }}>{field("country", "Страна", { flex: 1 })}{field("region", "Регион", { flex: 1.4 })}</div>
+            {!shown(form.country).trim() ? hintRow("country") : !shown(form.region).trim() ? hintRow("region") : null}
+            {label("Цвет", "color")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{WINE_COLORS.map(([k, t]) => <button type="button" key={k} data-wine-color={k} aria-pressed={form.color === k} data-lens-btn={form.color === k ? "tab" : "soft"} data-lens-ink="" onClick={() => set("color", form.color === k ? "" : k)} style={pill(form.color === k)}>{t}</button>)}</div>
+            {label("Сладость", "sweet")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{sweetsOf(form.color).map((t) => <button type="button" key={t} aria-pressed={form.sweet === t} data-lens-btn={form.sweet === t ? "tab" : "soft"} data-lens-ink="" onClick={() => set("sweet", form.sweet === t ? "" : t)} style={pill(form.sweet === t)}>{t}</button>)}</div>
+            {label("Сорт винограда", "grapes")}{field("grapes", "Через запятую: шардоне, пино нуар")}
+            {!shown(form.grapes).trim() ? hintRow("grapes") : null}
+            {label("Год и крепость", ["vintage", "abv"])}
+            <div style={{ display: "flex", gap: 8 }}>{field("vintage", "Год урожая", { flex: 1 })}{field("abv", "Крепость, %", { flex: 1 })}</div>
+          </>)}
+          {part("serve", <>
+            {label("Бокалом, цена и объём", ["byGlass", "priceGlass", "priceBottle", "volume"])}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              <button type="button" data-wine-glass="" aria-pressed={!!form.byGlass} data-lens-btn={form.byGlass ? "tab" : "soft"} data-lens-ink="" onClick={() => set("byGlass", !form.byGlass)} style={pill(!!form.byGlass)}>Бокалом</button>
+              <button type="button" data-wine-stop="" aria-pressed={!!form.stop} data-lens-btn={form.stop ? "danger" : "soft"} onClick={() => setForm((x) => ({ ...x, stop: x.stop ? null : { since: Date.now(), by: who } }))}
+                style={pill(!!form.stop, form.stop ? { color: red, borderColor: red } : {})}>Сегодня нет</button>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {form.byGlass ? field("priceGlass", "Бокал, ₽", { flex: 1 }) : null}{field("priceBottle", "Бутылка, ₽", { flex: 1 })}{field("volume", "Объём", { flex: 0.8 })}
+            </div>
+            {label("Температура и бокал", ["temp", "glass"])}
+            {field("temp", "Например: " + (TEMP_HINT[form.color] || "8–10 °C"))}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>{GLASS_TYPES.map((g) => <button type="button" key={g} aria-pressed={form.glass === g} data-lens-btn={form.glass === g ? "tab" : "soft"} data-lens-ink="" onClick={() => set("glass", form.glass === g ? "" : g)} style={pill(form.glass === g)}>{g}</button>)}</div>
+          </>)}
+          {part("guest", <>
+            {label("Ноты вкуса и аромата", "notes")}{field("notes", "Через запятую: зелёное яблоко, мел, цитрус")}
+            {label("Одной фразой гостю", "short")}{field("short", "Как официант скажет за столом")}
+            {label("О вине", "story")}
+            <textarea data-lens-field="" data-wine-field="story" rows={3} style={{ ...inputSt, minHeight: 82, resize: "vertical" }} placeholder="Стиль, чем интересно, как рассказать гостю" value={shown(form.story)} onChange={(e) => set("story", e.target.value)} />
+          </>)}
+          {part("pair", <>
+            <div style={{ height: 10 }} />
+            {dishes.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{dishOrder.slice(0, 40).map((d) => {
+              const on = pairs.has(d.id);
+              return <button type="button" key={d.id} aria-pressed={on} data-lens-btn={on ? "tab" : "soft"} data-lens-ink="" onClick={() => setForm((x) => ({ ...x, pair: on ? (x.pair || []).filter((i) => i !== d.id) : [...(x.pair || []), d.id] }))} style={pill(on)}>{d.name}</button>; })}</div>
+              : <div style={{ fontSize: 13, color: sub }}>Блюда появятся, когда в меню команды будут свои блюда.</div>}
+            <input data-lens-field="" style={{ ...inputSt, marginTop: 8 }} placeholder="Пояснение: почему к ним, что ещё предложить" value={shown(form.pairNote)} onChange={(e) => set("pairNote", e.target.value)} />
+          </>)}
           {!isNew ? (
             <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
               <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => persist(withWine(shared, normWine({ ...form, archived: !form.archived })), form.archived ? "Вернули в карту" : "Убрали в архив", () => setForm(null))} style={pill(false, { color: text })}>{form.archived ? "Вернуть в карту" : "В архив"}</button>
@@ -269,8 +319,12 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
           {note}
         </div>
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "12px 16px calc(14px + env(safe-area-inset-bottom, 0px))", display: "flex", gap: 10, background: a11y ? "rgba(245,238,222,0.96)" : "rgba(21,17,11,0.94)", borderTop: `1px solid ${gold}33` }}>
-          <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => { setForm(null); setSure(false); }} style={{ ...softBtn, flex: 1 }}>Отмена</button>
-          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-save="" onClick={() => save(false)} disabled={busy || (pic && pic.state === "up")} style={{ ...mainBtn, flex: 1.6, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>{busy ? "Сохраняю…" : pic && pic.state === "up" ? "Загружаю фото…" : "Сохранить"}</button>
+          {/* v124: открыли из списка и в нём есть следующее — «Сохранить» и «Сохранить и дальше ›» (отмена — стрелкой «назад»
+              в шапке); иначе — «Отмена» и «Сохранить» */}
+          {nextRec ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-save="" onClick={() => save(false)} disabled={busy || (pic && pic.state === "up")} style={{ ...softBtn, flex: 1, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>Сохранить</button>
+            : <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => { setForm(null); setSeq(null); setSure(false); }} style={{ ...softBtn, flex: 1 }}>Отмена</button>}
+          {nextRec ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-save-next={nextRec.id} onClick={() => save(false, true)} disabled={busy || (pic && pic.state === "up")} style={{ ...mainBtn, flex: 1.6, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>{busy ? "Сохраняю…" : pic && pic.state === "up" ? "Загружаю фото…" : "Сохранить и дальше ›"}</button>
+            : <button type="button" className="sa-btn" data-lens-btn="main" data-wine-save="" onClick={() => save(false)} disabled={busy || (pic && pic.state === "up")} style={{ ...mainBtn, flex: 1.6, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>{busy ? "Сохраняю…" : pic && pic.state === "up" ? "Загружаю фото…" : "Сохранить"}</button>}
         </div>
       </div>
     );
@@ -503,7 +557,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
         {cur ? (
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "12px 16px calc(14px + env(safe-area-inset-bottom, 0px))", display: "flex", gap: 8, background: a11y ? "rgba(245,238,222,0.96)" : "rgba(21,17,11,0.94)", borderTop: `1px solid ${gold}33` }}>
             <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-review-skip="" disabled={busy} onClick={() => { next((r) => ({ skip: r.skip + 1 })); setMsg(""); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px 6px", fontSize: 14 }}>Пропустить</button>
-            <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-review-fix="" disabled={busy} onClick={() => { setForm({ ...blank(), ...cur }); setAiErr(""); setMsg(""); setSure(false); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px 6px", fontSize: 14 }}>Исправить</button>
+            <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-review-fix="" disabled={busy} onClick={() => { setForm({ ...blank(), ...cur }); setSeq(null); setAiErr(""); setMsg(""); setSure(false); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px 6px", fontSize: 14 }}>Исправить</button>
             <button type="button" className="sa-btn" data-lens-btn="main" data-wine-review-ok="" disabled={busy} onClick={ok} style={{ ...mainBtn, flex: 1.3, padding: "12px 6px", fontSize: 14, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Верно"}</button>
           </div>) : null}
       </div>);
@@ -511,31 +565,49 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
 
   // ─────────────────────────────── СПИСОК
   const pool = only === "archive" ? wines.filter((w) => w.archived) : live;
-  const list = findWines(pool, q).filter((w) => (only === "unchecked" ? unchecked(w) : only === "glass" ? w.byGlass : only === "stop" ? !!w.stop : true));
-  const uncheckedN = live.filter(unchecked).length, archN = wines.length - live.length;
+  const gapF = gapTest(only);
+  const list = findWines(pool, q).filter((w) => (only === "unchecked" ? unchecked(w) : only === "glass" ? w.byGlass : only === "stop" ? !!w.stop : gapF ? gapF(w) : true));
+  const uncheckedN = live.filter(unchecked).length, archN = wines.length - live.length, glassN = live.filter((w) => w.byGlass).length;
   const withPics = wines.some((w) => w.img);
   const quick = (w, patch, okText) => persist(withWine(shared, normWine({ ...w, ...patch })), okText);
+  const gaps = gapCounts(wines);
+  const order = groupByColor(list).flatMap(([, ws]) => ws.map((w) => w.id));   // для «Сохранить и дальше»: порядок, как на экране
   return (
     <div style={T.screen} className="sa-screen" data-wine-editor={live.length}>
       {Head("Редактор вин", onBack)}
       <div style={{ padding: "0 16px 140px" }}>
-        <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }}>
-          {live.length ? winesWord(live.length) + (live.some((w) => w.byGlass) ? " · бокалом " + live.filter((w) => w.byGlass).length : "") + (uncheckedN ? " · не проверено " + uncheckedN : "") + (archN ? " · в архиве " + archN : "")
-            : "Пока пусто. Добавляй по одному или импортом: фото страниц карты, списком названий, PDF."}
-        </div>
+        {/* v124: сводка — сколько вин, сколько проверено (и «Проверка подряд»), что дописать; чип пробела фильтрует список */}
+        {live.length ? (
+          <div data-lens-card="" data-wine-sum-card="" style={{ ...card, padding: "12px 14px", margin: "2px 0 14px" }}>
+            <div data-wine-sum-line="" style={{ fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.35 }}>{winesWord(live.length) + (glassN ? " · бокалом " + glassN : "") + (archN ? " · в архиве " + archN : "")}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <div style={{ flex: 1, height: 4, borderRadius: 3, background: gold + "26", overflow: "hidden" }}><div style={{ width: Math.round(((live.length - uncheckedN) / live.length) * 100) + "%", height: "100%", background: uncheckedN ? gold : green }} /></div>
+              <span data-wine-checked={live.length - uncheckedN + "/" + live.length} style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap" }}>{uncheckedN ? "проверено " + (live.length - uncheckedN) + " из " + live.length : "всё проверено ✓"}</span>
+            </div>
+            {uncheckedN && !imp ? (
+              <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-review-start={uncheckedN} onClick={startReview}
+                style={{ ...softBtn, width: "100%", marginTop: 12, padding: "10px", fontSize: 14, color: gold }}>Проверка подряд · {uncheckedN}</button>) : null}
+            {GAPS.some(([k]) => gaps[k]) ? <>
+              <div style={{ ...labelStyle(12.5), color: gold, margin: "12px 0 6px" }}>Что дописать</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {GAPS.filter(([k]) => gaps[k]).map(([k, t]) => (
+                  <button key={k} type="button" aria-pressed={only === k} data-wine-gap={k} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink="" onClick={() => { setOnly(only === k ? "all" : k); vibrate("light"); }}
+                    style={pill(only === k, { fontSize: 12.5, padding: "5px 10px" })}>{t} · {gaps[k]}</button>))}
+              </div>
+            </> : null}
+          </div>
+        ) : <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }}>Пока пусто. Добавляй по одному или импортом: фото страниц карты, списком названий, PDF.</div>}
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-new="" onClick={() => { setForm(blank()); setAiErr(""); setMsg(""); vibrate("light"); }} style={{ ...mainBtn, flex: 1.3, padding: "12px", fontSize: 14.5 }}>＋ Новое вино</button>
+          <button type="button" className="sa-btn" data-lens-btn="main" data-wine-new="" onClick={() => { remember(); setForm(blank()); setSeq(null); setAiErr(""); setMsg(""); vibrate("light"); }} style={{ ...mainBtn, flex: 1.3, padding: "12px", fontSize: 14.5 }}>＋ Новое вино</button>
           <button type="button" className="sa-btn" data-lens-btn={imp ? "tab" : "soft"} data-wine-import-open="" onClick={() => { setImp(imp ? null : { stage: "pick" }); vibrate("light"); }} style={{ ...softBtn, flex: 1, padding: "12px", fontSize: 14.5 }}>Импорт</button>
         </div>
-        {uncheckedN && !imp ? (
-          <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-review-start={uncheckedN} onClick={startReview}
-            style={{ ...softBtn, width: "100%", marginTop: 14, padding: "11px", fontSize: 14, color: gold }}>Проверка подряд · {uncheckedN}</button>) : null}
         {impPanel}
         {note}
         {wines.length ? <>
           <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти вино" aria-label="Найти вино" style={{ ...inputSt, marginTop: 14 }} />
           <div className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
-            {[["all", "Все"], ...(uncheckedN ? [["unchecked", "Не проверено · " + uncheckedN]] : []), ["glass", "Бокалом"], ["stop", "Сегодня нет"], ...(archN ? [["archive", "Архив"]] : [])].map(([k, t]) => (
+            {[["all", "Все"], ...(uncheckedN ? [["unchecked", "Не проверено · " + uncheckedN]] : []), ["glass", "Бокалом"], ["stop", "Сегодня нет"], ...(archN ? [["archive", "Архив"]] : []),
+              ...GAPS.filter(([k]) => k === only).map(([k, t]) => [k, t + " · " + gaps[k]])].map(([k, t]) => (
               <button key={k} type="button" aria-pressed={only === k} data-wine-filter={k} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink="" onClick={() => { setOnly(k); vibrate("light"); }} style={pill(only === k, { flexShrink: 0 })}>{t}</button>))}
           </div>
           {!list.length ? <div style={{ fontSize: 14, color: sub, padding: "16px 2px" }}>Здесь пусто.</div> : null}
@@ -551,7 +623,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId }) {
             <div key={k}>
               <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 2px 6px" }}>{COLOR_GROUP[k]} · {ws.length}</div>
               {ws.map((w) => {
-                const open = () => { setForm({ ...blank(), ...w }); setAiErr(""); setMsg(""); setSure(false); vibrate("light"); };
+                const open = () => { remember(); setForm({ ...blank(), ...w }); setSeq({ ids: order, at: order.indexOf(w.id) }); setAiErr(""); setMsg(""); setSure(false); vibrate("light"); };
                 return (
                   <div key={w.id} data-lens-card="" data-wine-erow={w.id} style={{ ...card, marginBottom: 8, padding: "10px 12px", display: "flex", gap: 10, alignItems: "center" }}>
                     {withPics ? <WineThumb w={w} gold={gold} a11y={a11y} onClick={open} /> : null}

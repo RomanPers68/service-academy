@@ -13,6 +13,7 @@
 // новички, поиск в листе «Наставник»), итог с главным одной строкой; Ксения — «Первая неделя» карточкой с прогрессом.
 // v111 (Доп. 424): «Утро» у Марии в виде «Линза» — кружки строк и «Собрать брифинг» с кольцом линзы.
 // v121 (Доп. 434): Мария — AI-интервью в демо (вопросы без нейросети), поле, микрофон и волна по одной линии.
+// v122 (Доп. 435): Мария — винная карта с фото бутылок, «Импорт» → «Фото бутылок» (этикетки и фото без сервера).
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -20,6 +21,7 @@ import { readFileSync, statSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("/home/claude/.npm-global/lib/node_modules/playwright");
+const sharp = require("/home/claude/.npm-global/lib/node_modules/sharp");   // v122: снимки «бутылок» для импорта
 const ROOT = process.argv[2], OUT = process.argv[3], PORT = 5432, ONLY = process.argv[4] || "";
 mkdirSync(OUT, { recursive: true });
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".mp3": "audio/mpeg", ".ico": "image/x-icon" };
@@ -289,6 +291,26 @@ if (!ONLY || ONLY.includes("maria")) {
     return { ta: cy(row.querySelector("textarea")), mic: cy(row.querySelector('button[aria-label="Сказать голосом"]')), talk: cy(row.querySelector("[data-talk-open]")), step: (document.querySelector("[data-hr-step]") || {}).textContent || "" }; });
   ok("AI-интервью в демо: первый вопрос, «Тема 1 из 5»; поле, микрофон и волна по одной линии", !!hr && /1 из 5/.test(hr.step) && hr.talk != null && Math.abs(hr.mic - hr.ta) <= 0.6 && Math.abs(hr.talk - hr.ta) <= 0.6, JSON.stringify(hr));
   await shot("m10-ai-interview");
+  // v122 (Доп. 435): винная карта с фото бутылок; «Импорт» → «Фото бутылок» — этикетки «читаются» без нейросети, фото
+  // остаётся в записи (хранилища в демо нет): Гави — новым вином, у «Шабли» появляется фото
+  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1800);
+  const th = await page.evaluate(() => [...document.querySelectorAll("[data-wine-row] [data-wine-thumb]")].map((t) => t.getAttribute("data-wine-thumb")));
+  ok("Винная карта в демо: у всех строк миниатюры, у пяти вин — фото бутылки", th.length === 8 && th.filter((x) => x === "photo").length === 5, JSON.stringify(th));
+  await shot("m11-wines-photos");
+  await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
+  await page.locator("[data-wine-import-open]").click().catch(() => {}); await page.waitForTimeout(400);
+  const shotJpg = await sharp({ create: { width: 480, height: 640, channels: 3, background: { r: 60, g: 44, b: 24 } } }).jpeg().toBuffer();
+  await page.setInputFiles("[data-wine-bottles-input]", [{ name: "b1.jpg", mimeType: "image/jpeg", buffer: shotJpg }, { name: "b2.jpg", mimeType: "image/jpeg", buffer: shotJpg }]).catch(() => {});
+  await page.waitForSelector('[data-wine-import="review"]', { timeout: 12000 }).catch(() => {});
+  const plans = await page.evaluate(() => [...document.querySelectorAll("[data-wine-bottle-row]")].map((r) => r.getAttribute("data-wine-plan")).join(","));
+  ok("«Фото бутылок» в демо: Гави — новое вино, «Шабли» — фото к вину из карты", plans === "new,attach", plans);
+  await shot("m12-bottles-review");
+  await page.locator("[data-wine-add]").click().catch(() => {});
+  await page.waitForFunction(() => !document.querySelector("[data-wine-import]"), null, { timeout: 12000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const after = await page.evaluate(() => [...document.querySelectorAll("[data-wine-erow] [data-wine-thumb]")].map((t) => t.getAttribute("data-wine-thumb")));
+  ok("После «Сохранить 2 вина»: девять вин, у семи — фото", after.length === 9 && after.filter((x) => x === "photo").length === 7, JSON.stringify(after));
+  await shot("m13-bottles-saved");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

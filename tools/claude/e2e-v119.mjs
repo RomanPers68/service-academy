@@ -325,7 +325,8 @@ await run("BANNER", async () => {
   ok("BANNER: карточка линзы со стеклом и размытием, парит", lensCard(bn) && /blur\(14px\)/.test(bm.bf) && /36px/.test(bn.sh), JSON.stringify([bn, bm]));
   ok("BANNER: значок книги — линза с кольцом", !!ic && ic.bg === "rgba(214, 178, 102, 0.1)" && ic.ring === "rgba(214, 178, 102, 0.42)" && ic.bc === "rgba(0, 0, 0, 0)", JSON.stringify(ic));
   ok("BANNER: «Читать ›» — плашка с кольцом", isMain(rd), JSON.stringify(rd));
-  ok("BANNER: «скрыть» — линза 32 px, крестик прежнего размера (13 px)", isDisc(x) && x.w === 32 && !!xm && xm.fs === "13px", JSON.stringify([x, xm]));
+  // v122 (Доп. 435): крестик в линзе рисует маска по центру кружка, буква — размером 0 (владелец: «крестик не оцентрован»)
+  ok("BANNER: «скрыть» — линза 32 px, крестик прежнего размера (13 px; с v122 — крест маской, буква 0)", isDisc(x) && x.w === 32 && !!xm && (xm.fs === "13px" || xm.fs === "0px"), JSON.stringify([x, xm]));
   ok("BANNER: «Работа над ошибками» над баннером — карточка линзы", lensCard(mi), JSON.stringify(mi));
   ok("BANNER: у пройденной темы «Погреб тем ›» — стекло", isSoft(cel), JSON.stringify(cel));
   const top = await onTop(a.page, '.sa-bookbanner [data-lens-btn="main"]');

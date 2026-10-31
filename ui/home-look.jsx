@@ -511,6 +511,17 @@ html.sa-lens.sa-light .sa-step:not(.done) .sa-stepnum{background:radial-gradient
 html.sa-lens .sa-step:not(.done) .sa-stepnum::after{content:"";position:absolute;inset:-3.5px;border-radius:50%;border:1px solid var(--lk-ring);pointer-events:none}
 html.sa-lens [data-hr-inrow]{gap:12px!important;padding-right:4px!important}
 
+/* ── v122: крестик «закрыть» в линзе. Владелец (31.10, снимок панели трека): «Мне кажется или крестик не оцентрован, да и
+   круги тоже». Кружок и кольцо — одного центра, а буква «×» в строке сидит ниже середины (на iPhone, в Georgia, на 2–3 px),
+   и линза из-за неё кажется сдвинутой. Теперь буква не видна (размер 0, для чтения с экрана остаётся «Закрыть»), а крест
+   рисует маска ровно по центру кружка, цветом надписи (у тоста значка вместо буквы был свой значок, он в линзе тоже скрыт —
+   крест у всех один). Так у всех «закрыть»-линз: панель трека, тост значка, баннер книги, брифинг, календарь, импорт вин и
+   листы «Новичков» ── */
+html.sa-lens [data-lens-x],html.sa-lens .sa-bookbanner [data-lens-x],html.sa-lens [data-nb-x]{font-size:0!important}
+html.sa-lens [data-lens-x]>svg{display:none}
+html.sa-lens [data-lens-x]::before,html.sa-lens [data-nb-x]::before{content:"";position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;
+  background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.2 1.2l7.6 7.6M8.8 1.2l-7.6 7.6' stroke='black' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/10px 10px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.2 1.2l7.6 7.6M8.8 1.2l-7.6 7.6' stroke='black' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/10px 10px no-repeat;pointer-events:none}
+
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;

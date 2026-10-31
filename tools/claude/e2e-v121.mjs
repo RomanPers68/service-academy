@@ -317,7 +317,7 @@ const panelChecks = async (tag, light) => {
   ok(`${tag}: «Хостес» — панель раскрылась, три строки, каждая в одну строку`, !!a && /Хостес/.test(a.text) && /Открыть ›/.test(a.text) && a.lines.length === 3 && a.lines.every((h) => h <= 24), JSON.stringify(a && { t: a.text.slice(0, 90), l: a.lines }));
   ok(`${tag}: панель — карточка линзы: кромка, блик и свечение внутрь, внешней тени нет`, !!a && a.p.sh.includes(`${T.EDGE} 0px 0px 0px 1px inset`) && a.p.sh.includes(T.HL) && allInset(a.p.sh), a && a.p.sh);
   ok(`${tag}: язычок и черта под ним — золотом (как кольцо выбранного кружка)`, !!a && a.notch === (light ? "rgba(139, 106, 48, 0.6)" : "rgba(232, 201, 131, 0.72)") && /linear-gradient/.test(a.line) && a.line.includes(light ? "rgb(138, 101, 36)" : "rgb(232, 201, 131)"), JSON.stringify(a && [a.notch, a.line]));
-  ok(`${tag}: «свернуть» — линза 32 px со стеклом и кольцом, в 6 px от угла`, !!a && discOk(a.x, T) && a.x.w === 32 && a.x.h === 32 && a.x.fs === "22px" && Math.abs(a.x.t - a.pt - 6) <= 0.6 && Math.abs(a.pr - a.x.r - 6) <= 0.6, JSON.stringify(a && a.x));
+  ok(`${tag}: «свернуть» — линза 32 px со стеклом и кольцом, в 6 px от угла`, !!a && discOk(a.x, T) && a.x.w === 32 && a.x.h === 32 && (a.x.fs === "22px" || a.x.fs === "0px") && Math.abs(a.x.t - a.pt - 6) <= 0.6 && Math.abs(a.pr - a.x.r - 6) <= 0.6, JSON.stringify(a && a.x));
   // строки уступают место: описание кончается до кольца «свернуть», заголовок — тоже
   const ringL = a ? a.x.l - 3.5 : 0;
   ok(`${tag}: первые две строки уступают место «свернуть» (текст кончается до кольца)`, !!a && a.head.pad === "44px" && a.desc.pad === "40px" && a.desc.r - 40 <= ringL && a.head.r - 44 <= ringL, JSON.stringify(a && { head: a.head, desc: a.desc, ringL }));

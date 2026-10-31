@@ -116,8 +116,9 @@ describe("v120: api/wine-import.js", () => {
   const A = rd("api/wine-import.js");
   it("четыре входа, сессия и лимит — до обращения к нейросети; названий — до 15 за раз", () => {
     for (const m of ['b.mode === "fill"', 'b.mode === "names"', 'b.mode === "photo"', 'b.mode === "pdf"']) expect(A).toContain(m);
-    expect(A.indexOf("verifySession(b.token)")).toBeLessThan(A.indexOf("viaOpenRouter(orKey, parts)"));
-    expect(A).toContain('rateLimit("wine:" + b.token, 60, 3600_000)');
+    expect(A.indexOf("verifySession(b.token)")).toBeLessThan(A.indexOf("viaOpenRouter(orKey, parts"));   // v122: + предел длины ответа
+    // v122: этикетки по одной бутылке за запрос — лимит 200 в час (был 60)
+    expect(Number((A.match(/rateLimit\("wine:" \+ b\.token, (\d+), 3600_000\)/) || [])[1])).toBeGreaterThanOrEqual(60);
     expect(A).toContain(".slice(0, 15)");
     expect(A).toContain('{ type: "image_url", image_url: { url: "data:" + p.mime + ";base64," + p.image } }');
     expect(A).toContain('{ type: "image", source: { type: "base64", media_type: p.mime, data: p.image } }');

@@ -3,6 +3,7 @@
 // Вина — записи kind:"wine" в меню команды (lib/wine.js). Здесь их видят все: группы по цвету, поиск, «Бокалом»,
 // карточка вина (стиль, ноты, подача, фраза гостю, к каким блюдам). Что дописал AI и ещё не подтвердили — с пометкой
 // «не проверено». Руководитель (manager, senior, владелец) правит в «Редакторе вин» (ui/wine-editor.jsx).
+// v122 (Доп. 435): фото бутылки — миниатюра в строке, крупно в карточке (официант узнаёт бутылку на полке).
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -15,6 +16,20 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
 export const winesWord = (n) => n + " " + plural(n, "вино", "вина", "вин");
+
+// v122 (Доп. 435): фото бутылки. Силуэт — вместо фото, когда его нет (своя простая форма), чтобы строки с фото и без
+// стояли ровно; миниатюра — в строках карты и редактора, крупно — в карточке вина.
+export const BottleGlyph = ({ color, w = 22 }) => (
+  <svg width={w} height={Math.round(w * 2.2)} viewBox="0 0 20 44" aria-hidden="true" fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round">
+    <path d="M8 2h4v9c0 2 4 4 4 9v20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V20c0-5 4-7 4-9z" /><path d="M4.6 25h10.8M4.6 34h10.8" opacity="0.6" />
+  </svg>);
+export const WineThumb = ({ w, gold, a11y, onClick = null }) => (
+  <div data-wine-thumb={w.img ? "photo" : "none"} aria-hidden="true" onClick={onClick || undefined}
+    style={{ width: 38, height: 52, flexShrink: 0, borderRadius: 8, overflow: "hidden", display: "grid", placeItems: "center", cursor: onClick ? "pointer" : undefined,
+      border: `1px ${w.img ? "solid" : "dashed"} ${gold}${w.img ? "55" : "40"}`, background: a11y ? "rgba(139,106,48,0.06)" : "rgba(255,248,230,0.04)" }}>
+    {w.img ? <img src={w.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      : <BottleGlyph color={gold + "80"} w={14} />}
+  </div>);
 
 /** Меню команды: сначала кэш телефона, потом сервер (как у коктейлей). */
 export function useTeamMenu(restaurant) {
@@ -47,6 +62,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const shown = React.useMemo(() => findWines(all, q).filter((w) => (only === "all" ? true : only === "glass" ? w.byGlass : w.color === only)), [all, q, only]);
   const groups = groupByColor(shown);
   const glassN = all.filter((w) => w.byGlass).length, uncheckedN = all.filter(unchecked).length;
+  const withPics = all.some((w) => w.img);
   const dishes = React.useMemo(() => { try { return dishesOf(restaurant) || []; } catch (e) { return []; } }, [restaurant, shared]);
   const dishName = (id) => (dishes.find((d) => d && d.id === id) || {}).name || "";
   const head = (title, back, kicker) => (
@@ -76,6 +92,11 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
       <div style={T.screen} className="sa-screen" data-wine-card={w.id}>
         {head(wineTitle(w), () => setOpenId(null), "Винная карта")}
         <div style={{ padding: "4px 16px 140px" }}>
+          {w.img ? (
+            <div data-wine-photo-big="" style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>
+              <img src={w.img} alt={"Бутылка: " + wineTitle(w)} decoding="async" style={{ display: "block", maxWidth: "100%", maxHeight: 300, borderRadius: 14, objectFit: "contain",
+                border: `1px solid ${gold}44`, boxShadow: a11y ? "0 6px 18px rgba(120,85,25,0.18)" : "0 10px 28px rgba(0,0,0,0.45)" }} />
+            </div>) : null}
           <div data-lens-card="" style={{ ...T.modCard, display: "block", padding: "14px 16px", cursor: "default" }}>
             {w.producer ? <div style={{ fontSize: 13.5, color: sub }}>{w.producer}</div> : null}
             <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.45, marginTop: 4 }}>{wineLine(w) || (w.color ? COLOR_RU[w.color] : "Описание пока не заполнено")}</div>
@@ -125,7 +146,9 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
                 const open = () => { vibrate("light"); setOpenId(x.id); };
                 return (
                   <div key={x.id} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
-                    style={{ ...T.modCard, display: "block", padding: "11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                    style={{ ...T.modCard, display: withPics ? "flex" : "block", gap: 12, alignItems: "center", padding: "11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                    {withPics ? <WineThumb w={x} gold={gold} a11y={a11y} /> : null}
+                    <div style={withPics ? { flex: 1, minWidth: 0 } : undefined}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                       <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{wineTitle(x)}</span>
                       {x.byGlass ? badge("бокалом", gold) : null}
@@ -136,6 +159,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
                       {winePrice(x) ? <span style={{ fontSize: 12.5, color: text }}>{winePrice(x)}</span> : null}
                       {unchecked(x) ? <span style={{ fontSize: 11.5, color: amber }}>не проверено</span> : null}
                     </div> : null}
+                    </div>
                   </div>
                 );
               })}

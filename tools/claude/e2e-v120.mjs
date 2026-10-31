@@ -404,7 +404,8 @@ await run("IMPORT", async () => {
   ok("IMPORT: добавлено 19 вин, у каждого поля от AI помечены (сорт, регион…), название — как в списке", added.length === 19 && added.every((w) => w.ai.includes("grapes") && w.ai.includes("region") && !w.ai.includes("name")) && added[0].name === "Вино номер 1 2021", JSON.stringify(added[0]));
   // фото страницы и PDF
   await a.page.locator("[data-wine-import-open]").click(); await sleep(300);
-  await a.page.locator('input[type="file"][accept="image/*"]').setInputFiles(OUT + "/in/page.jpg");
+  // v122: рядом — ввод «Фото бутылок» (тоже image/*); здесь — снимок страницы карты
+  await a.page.locator('input[type="file"][accept="image/*"]:not([data-wine-bottles-input])').setInputFiles(OUT + "/in/page.jpg");
   await until(() => shown(a.page, '[data-wine-import="review"]'), 8000);
   const ph = calls.filter((c) => c.mode === "photo");
   ok("IMPORT: фото страницы — снимок JPEG в запросе, на проверку — 3 вина", ph.length === 1 && ph[0].mime === "image/jpeg" && ph[0].imageBase64.length > 100 && (await a.page.locator("[data-wine-found-row]").count()) === 3, JSON.stringify(ph.map((c) => c.mime)));

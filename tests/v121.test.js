@@ -9,7 +9,7 @@ const rd = (f) => readFileSync(f, "utf8");
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");
 const dashes = (s) => (code(s).match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []).length;
 const LOOK = rd("ui/home-look.jsx");
-const V121 = LOOK.slice(LOOK.indexOf("/* ── v121"), LOOK.lastIndexOf("`;"));
+const V121 = LOOK.slice(LOOK.indexOf("/* ── v121"), LOOK.indexOf("/* ── v122") > 0 ? LOOK.indexOf("/* ── v122") : LOOK.lastIndexOf("`;"));   // v122: дальше — свой раздел
 const rules = code(V121).split("}").map((r) => r.trim()).filter(Boolean);
 const sels = rules.map((r) => r.split("{")[0].trim()).flatMap((s) => s.split(",").map((x) => x.trim()));
 const ROW = rd("ui/tracks-row.jsx");
@@ -23,9 +23,9 @@ const spec = (s) => {
 const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
 
 describe("v121: правила линзы (ui/home-look.jsx, раздел v121)", () => {
-  it("раздел v121 — последний, после v119; каждое правило — только под html.sa-lens", () => {
+  it("раздел v121 — после v119 (дальше — только v122); каждое правило — только под html.sa-lens", () => {
     expect(LOOK.indexOf("/* ── v121")).toBeGreaterThan(LOOK.indexOf("/* ── v119"));
-    expect(LOOK.indexOf("/* ── v", LOOK.indexOf("/* ── v121") + 5)).toBe(-1);
+    expect(LOOK.indexOf("/* ── v", LOOK.indexOf("/* ── v121") + 5)).toBe(LOOK.indexOf("/* ── v122"));
     expect(sels.length).toBeGreaterThan(14);
     for (const s of sels) expect(s, s).toMatch(/^html\.sa-lens(\.sa-light)?[ [.]/);
   });
@@ -180,6 +180,6 @@ describe("v121: список треков (ui/screens-roleselect.jsx)", () => {
   it("без тире-ритма и эмодзи в разметке; метка сборки — v121", () => {
     for (const f of ["ui/tracks-row.jsx", "ui/screens-roleselect.jsx", "ui/home-look.jsx"]) expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     expect(dashes(ROW)).toBe(0);
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v121</span>");
+    expect(Number((rd("ui/menu-trainer.jsx").match(/· сборка v(\d+)<\/span>/) || [])[1])).toBeGreaterThanOrEqual(121);   // v122: метка дальше
   });
 });

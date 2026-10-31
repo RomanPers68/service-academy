@@ -138,7 +138,35 @@ const DEMO_WINES = [
   { name: "Москато д’Асти", producer: "Saracco", country: "Италия", region: "Пьемонт", grapes: ["москато"], color: "dessert", sweet: "сладкое", vintage: "2023", byGlass: true, priceGlass: 590, priceBottle: 3300, temp: "6–8 °C", glass: "флюте",
     notes: ["абрикос", "апельсиновый цвет", "мускат"], short: "Сладкое и чуть игристое: к десерту, особенно к конфетам.", pair: [dish("Ассорти конфет")] },
 ];
-DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean) }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
+// v122 (Доп. 435): у части вин — «фото бутылки». Хранилища в демо нет, снимков бутылок тоже: рисуем бутылку с этикеткой
+// на холсте (своя простая картинка) и кладём JPEG прямо в запись. У «Шабли» фото нет — в «Импорт» → «Фото бутылок» снимок
+// добавится к нему.
+const GLASS_OF = { sparkling: ["#4F5E2E", "#7C8C49"], white: ["#5B6A33", "#8A9A57"], rose: ["#E6B2A1", "#F5D2C4"], red: ["#1E2A1B", "#3A4A32"], dessert: ["#9A6420", "#C98F3E"] };
+function bottlePic(w) {
+  try {
+    const c = document.createElement("canvas"); c.width = 300; c.height = 400;
+    const g = c.getContext("2d");
+    const bg = g.createRadialGradient(150, 150, 30, 150, 220, 320); bg.addColorStop(0, "#4A3620"); bg.addColorStop(1, "#140D06");
+    g.fillStyle = bg; g.fillRect(0, 0, 300, 400);
+    const [dark, light] = GLASS_OF[w.color] || GLASS_OF.red;
+    const body = g.createLinearGradient(95, 0, 205, 0); body.addColorStop(0, dark); body.addColorStop(0.45, light); body.addColorStop(1, dark);
+    g.fillStyle = body;
+    g.beginPath(); g.moveTo(134, 30); g.lineTo(166, 30); g.lineTo(166, 120); g.bezierCurveTo(166, 150, 205, 160, 205, 200); g.lineTo(205, 380);
+    g.quadraticCurveTo(205, 392, 193, 392); g.lineTo(107, 392); g.quadraticCurveTo(95, 392, 95, 380); g.lineTo(95, 200); g.bezierCurveTo(95, 160, 134, 150, 134, 120); g.closePath(); g.fill();
+    g.fillStyle = w.color === "sparkling" ? "#D9B25E" : "#5A1E1E"; g.fillRect(132, 24, 36, 34);   // фольга или капсула
+    g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(112, 200, 8, 170);                       // блик на стекле
+    g.fillStyle = "#F3EAD6"; g.fillRect(104, 238, 92, 104);                                     // этикетка
+    g.strokeStyle = "#B08A47"; g.lineWidth = 2; g.strokeRect(109, 243, 82, 94);
+    g.fillStyle = "#3A2A14"; g.textAlign = "center";
+    const words = String(w.name).split(" "), lines = [];
+    for (const x of words) { const last = lines[lines.length - 1]; if (last && (last + " " + x).length <= 11) lines[lines.length - 1] = last + " " + x; else lines.push(x); }
+    g.font = "bold 15px Georgia, serif"; lines.slice(0, 3).forEach((t, i) => g.fillText(t, 150, 274 + i * 18));
+    g.font = "italic 11px Georgia, serif"; g.fillText(w.vintage ? String(w.vintage) : "", 150, 326);   // только название и год: не копия настоящей этикетки
+    return c.toDataURL("image/jpeg", 0.8);
+  } catch (e) { return ""; }
+}
+const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико", "Москато д’Асти", "Рислинг Кабинетт"];
+DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic(w) : "" }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
 // AI винной карты в демо — без нейросети: по словам названия угадываем стиль, честно помеченный «AI» (в приложении — api/wine-import.js)
 const WINE_GUESS = [[/просекко|prosecco|шампан|champagne|кава|cava|брют|brut|игрист|франчакорт/i, "sparkling", ["шардоне"], ["яблоко", "бриошь", "цитрус"]],
   [/шабли|chablis|шардоне|chardonnay|мерсо/i, "white", ["шардоне"], ["яблоко", "мел", "лимон"]], [/альбариньо|albariño|albarino/i, "white", ["альбариньо"], ["персик", "морская соль", "цитрус"]],
@@ -156,8 +184,15 @@ const guessWine = (name) => { const g = WINE_GUESS.find(([re]) => re.test(name))
 const SHEET = [["Шампанское Brut Réserve", "Charles Heidsieck", "Франция", "Шампань", 0, 14500], ["Гави ди Гави", "La Scolca", "Италия", "Пьемонт", 820, 4600],
   ["Альбариньо", "Pazo Señorans", "Испания", "Риас-Байшас", 0, 5400], ["Риоха Резерва", "Muga", "Испания", "Риоха", 980, 5900], ["Бароло", "Pio Cesare", "Италия", "Пьемонт", 0, 12800],
   ["Мальбек", "Catena Zapata", "Аргентина", "Мендоса", 850, 4800]];
+// v122: этикетка в демо — нейросети нет, бутылки «читаются» по очереди из этого списка. «Шабли» уже в карте без фото — фото
+// добавится к нему; «Пино Нуар» уже с фото — не отмечено, отметишь — фото заменится
+const LABELS = [["Гави ди Гави", "La Scolca", "Италия", "Пьемонт", "2022"], ["Шабли", "Domaine Laroche", "Франция", "Бургундия, Шабли", "2022"],
+  ["Бароло", "Pio Cesare", "Италия", "Пьемонт", "2018"], ["Пино Нуар", "Louis Jadot", "Франция", "Бургундия", "2020"], ["Альбариньо", "Pazo Señorans", "Испания", "Риас-Байшас", "2022"],
+  ["Риоха Резерва", "Muga", "Испания", "Риоха", "2018"]];
+let labelN = 0;
 const demoWineAi = (b) => {
   if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
+  if (b.mode === "label") { const [name, producer, country, region, vintage] = LABELS[labelN++ % LABELS.length]; return { wines: [{ ...guessWine(name), producer, country, region, vintage }] }; }
   if (b.mode === "names") return { wines: (b.names || []).slice(0, 15).map((n) => guessWine(String(n))) };
   // фото страницы или PDF: в демо — одна и та же «страница» из шести вин
   return { wines: SHEET.map(([name, producer, country, region, g, bt]) => ({ ...guessWine(name), producer, country, region, byGlass: !!g, priceGlass: g || "", priceBottle: bt })) };
@@ -420,6 +455,8 @@ window.fetch = function (input, init) {
     return wait(m[1] === "tg_login" ? 1400 : 120 + Math.round(Math.random() * 160)).then(() => json(res, res && res.code === "PGRST202" ? 404 : 200));
   }
   if (/\/functions\/v1\/ai-chat/.test(url)) return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
+  // v122: фото бутылки — в демо хранилища нет, снимок остаётся в записи (в приложении — ссылка хранилища, photo-upload)
+  if (/\/functions\/v1\/photo-upload/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(600).then(() => json(/^data:image\/(jpeg|png|webp);base64,/.test(String(b.image || "")) ? { ok: true, url: b.image } : { ok: false, error: "bad_request" })); }
   if (/\/functions\/v1\/ai-hr/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "assess" ? 1400 : 900).then(() => json(demoHr(b))); }   // v121
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120

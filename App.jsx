@@ -43,6 +43,7 @@ import { recapMonth, monthRecap, MONTH } from "./lib/month-recap";
 import { Flame } from "./ui/day-emblems";   // v70 (Доп. 383): пламя в строке напарника (была свеча из ./ui/table-bits)
 import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from "./ui/day-cards";
 import { syncMySchedule } from "./lib/schedule-sync";
+import { wineCatchUp } from "./lib/wine-sync";   // v126 (Доп. 439): выученное до v125 — на сервер
 import { practiceQuestionTexts, mistakeFromSituation } from "./lib/practice-mistake";
 import { LiquidTabBar, NavRail } from "./ui/tabbar";
 import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   // v50 (Доп. 363): горизонталь и компьютер
@@ -1078,6 +1079,13 @@ function ServiceAcademy() {
     syncMySchedule(rpc, saToken(), profile).then((changed) => { if (alive && changed) setSchedTick((x) => x + 1); }).catch(() => {});
     return () => { alive = false; };
   }, [profile, storageLoaded]);
+  // v126 (Доп. 439): «Выучил новые вина» и «Знаю?» до v125 жили только на телефоне — дослать на сервер (этап 44), чтобы
+  // руководитель видел их в «Кто выучил новые вина». Через 8 с после старта, чтобы не мешать главной (lib/wine-sync.js)
+  React.useEffect(() => {
+    if (!profile || !storageLoaded || !profile.restaurant) return undefined;
+    const t = setTimeout(() => { wineCatchUp({ restaurant: profile.restaurant, uk: ukP }); }, 8000);
+    return () => clearTimeout(t);
+  }, [profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   // смена сегодня: своя копия графика, потом сводка sa_today_shift (её пишет экран графика)
   const shiftToday = useMemo(() => {
     if (!profile) return null;

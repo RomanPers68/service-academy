@@ -597,7 +597,8 @@ if (want("M")) {
   const { ctx, page, errors } = await open({ storage });
   await page.evaluate(() => window.__saNav("me")); await sleep(1000);
   let t = await text(page);
-  ok(tag + ": в «Я» — «Итоги месяца» с днями в деле", /Итоги месяца/.test(t) && /дн(ей|я|ь) в деле/.test(t));
+  // v126: 1-го числа в деле один день — «1 день в деле» (регулярка ждала «дня»/«дней» и 1 ноября падала)
+  ok(tag + ": в «Я» — «Итоги месяца» с днями в деле", /Итоги месяца/.test(t) && /(день|дн(ей|я)) в деле/.test(t), (t.match(/.{0,40}в деле.{0,20}/) || [""])[0]);
   await page.locator('.sa-card[aria-label="Итоги месяца"]').first().click(); await sleep(900);
   t = await page.evaluate(() => (document.querySelector(".mr") || {}).innerText || "");
   ok(tag + ": обложка месяца", /в академии/.test(t) && /Анна Смирнова/.test(t), t.slice(0, 160));

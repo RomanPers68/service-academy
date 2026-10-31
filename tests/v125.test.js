@@ -209,6 +209,6 @@ describe("v125: экран и отчёты", () => {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     }
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v125</span>");
+    expect(Number((rd("ui/menu-trainer.jsx").match(/· сборка v(\d+)<\/span>/) || [])[1])).toBeGreaterThanOrEqual(125);   // v126: метка дальше
   });
 });

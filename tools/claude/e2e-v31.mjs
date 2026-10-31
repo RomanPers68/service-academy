@@ -401,11 +401,14 @@ if (want("LGP")) {
 if (want("MO")) {
   const tag = "MO";
   const act = {};
-  const now = new Date();
-  for (let n = 0; n < now.getDate(); n++) { const d = new Date(); d.setDate(d.getDate() - n); act[ymdL(d)] = { st: 3, l: 2, w: 1 }; }
+  // v126: в первые три дня месяца «Итоги месяца» показывают прошлый, уже полный месяц (lib/month-recap.js, recapMonth) —
+  // проверка ждала текущий и 1 ноября падала; в эти дни часы телефона — на 4-е число этого месяца
+  const early = new Date().getDate() <= 3;
+  const now = early ? new Date(new Date().getFullYear(), new Date().getMonth(), 4, 12, 0, 0) : new Date();
+  for (let n = 0; n < now.getDate(); n++) { const d = new Date(now); d.setDate(d.getDate() - n); act[ymdL(d)] = { st: 3, l: 2, w: 1 }; }
   const pm = new Date(now.getFullYear(), now.getMonth() - 1, 2); act[ymdL(pm)] = { st: 1, l: 1 };
   const storage = { "sa_activity{uk}": act };
-  const { ctx, page, errors } = await open({ storage });
+  const { ctx, page, errors } = await open({ storage, ...(early ? { fixedTime: now } : {}) });
   await page.evaluate(() => window.__saNav("me")); await sleep(900);
   await page.locator('.sa-card[aria-label="Итоги месяца"]').first().click(); await sleep(900);
   ok(tag + ": на обложке — рисунок", (await page.locator(".mr-body .mr-art svg").count()) === 1);

@@ -112,11 +112,13 @@ export const flushQueue = () => {
   return _flushing;
 };
 
-// Запись с гарантией доставки: пробуем сразу, при сбое — в очередь.
+// Запись с гарантией доставки: пробуем сразу, при сбое — в очередь. v126: отвечает, чем кончилось: "ok", "retry" (нет
+// сети — запись в очереди, уйдёт позже) или "drop" (сервер отверг: нет функции, отказ).
 export const rpcSync = (fn, params) =>
   _sendRpc({ fn, params }).then((res) => {
     if (res === "retry") { const q = _loadQueue(); q.push({ fn, params, ts: Date.now() }); _saveQueue(q); }
     else if (res === "ok") { flushQueue(); }
+    return res;
   });
 
 export const supabase = {

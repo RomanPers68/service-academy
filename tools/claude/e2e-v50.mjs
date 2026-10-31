@@ -516,8 +516,16 @@ if (want("LAND")) {
     await shot(s.page, "land-sched-boss");
     // правка → «Сохранить» плашкой внизу
     await s.page.evaluate(() => { const w = document.querySelector(".sa-schedwrap"), g = document.querySelector(".sa-schedgrid"); if (g) w.scrollTop = g.getBoundingClientRect().top + w.scrollTop - 120; }); await sleep(300);
-    const td = s.page.locator(".sa-schedgrid tr:nth-child(3) td:nth-child(3)"); await td.click().catch(() => {}); await sleep(900);
+    // v126: клетка — последний день недели на экране (1 ноября — воскресенье: в неделе месяца один день, третьей клетки нет);
+    // клетка уже выходная — «Выходной» её не меняет, тогда ставим смену из листа
+    const td = s.page.locator(".sa-schedgrid tr:nth-child(3) td:last-child"); await td.click().catch(() => {}); await sleep(900);
     const pickBtn = s.page.locator("button", { hasText: "Выходной" }); if (await pickBtn.count()) { await pickBtn.first().click(); await sleep(900); }
+    if (!(await s.page.locator("[data-savebar]").count())) {
+      await td.click().catch(() => {}); await sleep(900);
+      await s.page.evaluate(() => { const box = (document.querySelector("[data-pick-ctx]") || {}).parentElement;
+        const b = box && [...box.querySelectorAll("button")].find((x) => x.querySelector("[data-pick-status]") && !/Выходной/.test(x.textContent)); if (b) b.click(); });
+      await sleep(900);
+    }
     const sb = await s.page.evaluate(() => { const el = document.querySelector("[data-savebar]"); if (!el) return null; const b = el.getBoundingClientRect(); return { pos: getComputedStyle(el).position, b: Math.round(b.bottom), l: Math.round(b.left), r: Math.round(b.right), ih: innerHeight, iw: innerWidth }; });
     ok("LAND график: «Сохранить» — плашкой внизу по центру экрана (в две колонки)", sb && sb.pos === "fixed" && sb.b <= sb.ih && sb.b >= sb.ih - 40 && Math.abs((sb.l + sb.r) / 2 - sb.iw / 2) <= 2, JSON.stringify(sb));
     ok("LAND график: без ошибок", !s.errors.length, s.errors.join(" | "));

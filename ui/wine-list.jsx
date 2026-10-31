@@ -16,6 +16,7 @@ import { wineRecords, groupByColor, findWines, wineTitle, wineLine, winePrice, u
 import { trainable, newWines, allLearned, glassPath, srKey } from "../lib/wine-train";
 import { WineDeck, WineQuiz, WineTrainHub, WinePairQuiz, WineDescribe60, WineTeam, useLearned, wineReport, glass as wineGlass } from "./wine-train";
 import { PronounceScreen } from "./pronounce";   // v124: словарь «Как произносить» с разделом «Наша карта»
+import { wineCatchUp } from "../lib/wine-sync";   // v126: выученное до v125 — на сервер
 import { BUILD_SVG } from "./icons";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -72,7 +73,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const restaurant = (profile && profile.restaurant) || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
   const edit = canEditWines(profile) && onEdit;
-  const [shared] = useTeamMenu(restaurant);
+  const [shared, , menuLoaded] = useTeamMenu(restaurant);
   const [q, setQ] = React.useState("");
   const [only, setOnly] = React.useState("all");   // all | glass | цвет
   const train0 = startId === "@train";
@@ -82,6 +83,8 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const [learnedIds, learn] = useLearned(restaurant);
   const remember = useInnerTop(openId ? "card:" + openId : view === "deck" ? "deck:" + (deck ? deck.key : "") : view);
   const all = React.useMemo(() => wineRecords(shared).filter((w) => !w.archived), [shared]);
+  // v126 (Доп. 439): выученное до v125 — на сервер, когда карта пришла с сервера (lib/wine-sync.js; что ушло — не повторит)
+  React.useEffect(() => { if (menuLoaded) wineCatchUp({ restaurant, uk, wines: all }); }, [menuLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   const colors = React.useMemo(() => groupByColor(all).map(([k]) => k).filter((k) => k !== "other"), [all]);
   const shown = React.useMemo(() => findWines(all, q).filter((w) => (only === "all" ? true : only === "glass" ? w.byGlass : w.color === only)), [all, q, only]);
   const groups = groupByColor(shown);

@@ -9,6 +9,7 @@
 // карточкой), «Как произносить» — на обороте карточки (слова словаря в названии, сорте, регионе) и словарь в тренировке.
 // v125 (Доп. 438), владелец: «Да, давай сделаем» — «Кто выучил новые вина». Телефон присылает тренировку на сервер (этап 44,
 // wine_progress_set): открыл и выучил новые вина, счёт «Знаю?», викторину; руководителю — команда (wine_progress_team).
+// v126 (Доп. 439): выученное до v125 телефон досылает сам (lib/wine-sync.js); что ушло, помнит.
 import React from "react";
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -20,6 +21,7 @@ import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKn
 import { findPronounce, stressText } from "../lib/pronounce";   // v124: «Как произносить» на обороте карточки
 import { SayButton } from "./pronounce";
 import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";   // v125: тренировка — на сервер (этап 44)
+import { markSent } from "../lib/wine-sync";   // v126: выученное до v125 — досылка помнит, что ушло
 import { positionLabel } from "../data/positions";
 import { SkelCards } from "./skeleton";
 
@@ -89,7 +91,8 @@ export function wineReport(kind, data, wines, restaurant, sr = null) {
     const k = JSON.stringify([kind, restaurant, p_data]), t = Date.now();
     if (k === lastReport.k && t - lastReport.t < 3000) return;
     lastReport = { k, t };
-    rpcSync("wine_progress_set", { p_token: saToken(), p_kind: kind, p_data });
+    const undo = markSent(restaurant, kind, data && data.ids);   // v126: что ушло, досылка не повторит; сервер отверг — дошлётся потом
+    rpcSync("wine_progress_set", { p_token: saToken(), p_kind: kind, p_data }).then((res) => { if (res === "drop") undo(); }).catch(() => {});
   } catch (e) {}
 }
 

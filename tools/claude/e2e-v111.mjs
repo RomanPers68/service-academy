@@ -282,9 +282,11 @@ await run("GAIN", async () => {
   const gl = await st(m.page, '[data-gain-sec="learn"]'), gh = await st(m.page, '[data-gain-sec="hall"]'), gp = await st(m.page, '[data-gain-sec="grew"] [data-lens="person"], [data-gain-sec="idle"] [data-lens="person"]');
   ok("GAIN: карточки — стекло со светом; инициалы — линзы", lensCard(gl) && lensCard(gh) && isPerson(gp), JSON.stringify([gl, gh, gp]));
   ok("GAIN: «Напомнить» и «Прислать этот итог в Telegram» — стекло", isSoft(await st(m.page, "[data-gain-nudge]")) && isSoft(await st(m.page, "[data-gain-send]")));
+  // v126: 1-го числа сразу открыт прошлый месяц (итог закончившегося) — плашка на втором; ждём переезд на другой, какой бы ни был
+  const before = await m.page.evaluate(() => [...document.querySelectorAll("[data-gain-month]")].map((b) => b.getAttribute("aria-pressed")).join(","));
   await m.page.locator('[data-gain-month][aria-pressed="false"]').click(); await sleep(1200);
   const sel2 = await m.page.evaluate(() => [...document.querySelectorAll("[data-gain-month]")].map((b) => b.getAttribute("aria-pressed") + ":" + b.getAttribute("data-lens-btn")).join(","));
-  ok("GAIN: другой месяц — плашка переезжает на него", sel2 === "false:soft,true:main", sel2);
+  ok("GAIN: другой месяц — плашка переезжает на него", sel2 === (before === "false,true" ? "true:main,false:soft" : "false:soft,true:main"), before + " → " + sel2);
   await shot(m.page, "gain");
   const [e1, e2] = noErr(m); ok("GAIN: без ошибок", e1, e2);
   await m.ctx.close();

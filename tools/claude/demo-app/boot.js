@@ -268,6 +268,14 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   activity: ACTIVITY, quiz: QUIZ,   // v109: журнал занятий и ответы в тестах за два месяца («Что дало обучение»)
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
   tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
+  // v125 (Доп. 438): тренировка по винам у команды (этап 44): Анна выучила новые вина («Совиньон Блан» и «Москато»), Вера
+  // их учит, Илья выучил одно, Пётр учит карту, новые не открывал; остальные пока не занимались (смещения дней от сейчас)
+  wineProg: {
+    "e-anna": { passed: ["wn-demo-3", "wn-demo-8"], passedAt: -1, opened: ["wn-demo-3", "wn-demo-8"], openedAt: -2, known: 6, total: 7, glassKnown: 5, glassTotal: 5, statsAt: -1, quizRight: 9, quizOf: 10, quizAt: -1 },
+    "e-vera": { opened: ["wn-demo-3", "wn-demo-8"], openedAt: 0, known: 2, total: 7, glassKnown: 2, glassTotal: 5, statsAt: 0 },
+    "e-ilya": { passed: ["wn-demo-3"], passedAt: -2, opened: ["wn-demo-3"], openedAt: -2, known: 3, total: 7, glassKnown: 3, glassTotal: 5, statsAt: -2, quizRight: 6, quizOf: 10, quizAt: -3 },
+    "e-petr": { known: 1, total: 7, glassKnown: 1, glassTotal: 5, statsAt: -3 },
+  },
   // v107: новички (смещения дней от сегодня), памятка заведения, собеседования «Берём»
   newbies: [
     { emp: "e-ksenia", started: -1, buddy: "e-anna", buddyBy: "u-maria", checked: ["d1c"], hello: { at: -1, time: "18:40", by: "u-maria", greet: ["e-petr", "e-vera", "e-ilya"] } },

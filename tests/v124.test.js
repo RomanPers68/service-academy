@@ -143,6 +143,6 @@ describe("v124: экраны", () => {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     }
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v124</span>");
+    expect(Number((rd("ui/menu-trainer.jsx").match(/· сборка v(\d+)<\/span>/) || [])[1])).toBeGreaterThanOrEqual(124);   // v125: метка дальше
   });
 });

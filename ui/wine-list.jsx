@@ -14,7 +14,7 @@ import { cachedShared } from "../lib/deck-extras";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { wineRecords, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked, COLOR_GROUP, COLOR_RU, FIELD_RU } from "../lib/wine";
 import { trainable, newWines, allLearned, glassPath, srKey } from "../lib/wine-train";
-import { WineDeck, WineQuiz, WineTrainHub, WinePairQuiz, WineDescribe60, useLearned, glass as wineGlass } from "./wine-train";
+import { WineDeck, WineQuiz, WineTrainHub, WinePairQuiz, WineDescribe60, WineTeam, useLearned, wineReport, glass as wineGlass } from "./wine-train";
 import { PronounceScreen } from "./pronounce";   // v124: словарь «Как произносить» с разделом «Наша карта»
 import { BUILD_SVG } from "./icons";
 
@@ -77,7 +77,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const [only, setOnly] = React.useState("all");   // all | glass | цвет
   const train0 = startId === "@train";
   const [openId, setOpenId] = React.useState(train0 ? null : startId || null);
-  const [view, setView] = React.useState(train0 ? "train" : "list");   // list | train | deck | quiz | pair | say60 | pron
+  const [view, setView] = React.useState(train0 ? "train" : "list");   // list | train | deck | quiz | pair | say60 | pron | team
   const [deck, setDeck] = React.useState(null);      // колода: { key, title, mode, only, focus }
   const [learnedIds, learn] = useLearned(restaurant);
   const remember = useInnerTop(openId ? "card:" + openId : view === "deck" ? "deck:" + (deck ? deck.key : "") : view);
@@ -112,7 +112,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   const trainHead = (title, back) => head(title, back, "Винная карта", false);
   const toDeck = (d) => { setDeck({ focus: [], ...d }); setView("deck"); vibrate("light"); };
   const openTrain = (key) => {
-    if (["quiz", "pair", "say60", "pron"].includes(key)) { setView(key); return; }
+    if (["quiz", "pair", "say60", "pron", "team"].includes(key)) { setView(key); return; }
     toDeck(key === "new" ? { key, title: "Новые вина", mode: "quiz", only: "new" } : key === "glass" ? { key, title: "Вина бокалом", mode: "quiz", only: "glass" } : { key: "deck", title: "Колода вин", mode: "deck", only: "all" });
   };
   if (view === "train") return (
@@ -123,12 +123,13 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId }) {
   if (view === "deck" && deck) return (
     <WineDeck key={deck.key + ":" + deck.focus.join(",")} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk}
       Head={(t) => trainHead(t, () => setView("train"))} title={deck.title} initialMode={deck.mode} initialOnly={deck.only} newIds={fresh.map((x) => x.id)} focusIds={deck.focus}
-      onLearned={deck.key === "new" && !allLearned(fresh, learnedIds) ? () => { learn(fresh); vibrate("success"); setView("train"); } : null} />);
+      onLearned={deck.key === "new" && !allLearned(fresh, learnedIds) ? () => { learn(fresh); wineReport("passed", { ids: fresh.map((x) => x.id) }, all, restaurant); vibrate("success"); setView("train"); } : null} />);
   if (view === "quiz") return (
     <WineQuiz T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))}
       onRepeat={(ids) => toDeck({ key: "focus", title: "Повторить ошибки", mode: "quiz", only: "focus", focus: ids })} />);
   if (view === "pair") return <WinePairQuiz T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))} />;
   if (view === "say60") return <WineDescribe60 T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))} />;
+  if (view === "team") return <WineTeam T={T} a11y={a11y} gold={gold} green={green} wines={all} restaurant={restaurant} Head={(t) => trainHead(t, () => setView("train"))} />;   // v125
   if (view === "pron") return (
     <PronounceScreen T={T} a11y={a11y} gold={gold} Head={(t) => trainHead(t, () => setView("train"))} glass={wineGlass} ownLabel="Наша карта" ownWhere="в карте:"
       dishes={trainable(all).map((x) => ({ id: x.id, name: [x.name, (x.grapes || []).join(" "), x.region].filter(Boolean).join(" "), label: wineTitle(x) }))} />);

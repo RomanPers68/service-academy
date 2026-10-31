@@ -318,7 +318,7 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("Винная карта: «Учить вина» над картой, два новых вина подсвечены", !!en && en.hi === "new" && /Новые вина: 2/.test(en.t), JSON.stringify(en));
   await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
   const hubRows = await page.evaluate(() => [...document.querySelectorAll("[data-wine-train]")].map((e) => e.getAttribute("data-wine-train")).join(","));
-  ok("Тренировка: новые вина, «С чего начать: вина бокалом», колода, викторина, «Вино к блюду», «Опиши за 60 секунд», «Как произносить»; «Проверить подряд»", hubRows === "new,glass,deck,quiz,pair,say60,pron" && (await page.locator("[data-wine-review-open]").count()) === 1, hubRows);
+  ok("Тренировка: новые вина, «С чего начать: вина бокалом», колода, викторина, «Вино к блюду», «Опиши за 60 секунд», «Как произносить», «Кто выучил новые вина»; «Проверить подряд»", hubRows === "new,glass,deck,quiz,pair,say60,pron,team" && (await page.locator("[data-wine-review-open]").count()) === 1, hubRows);
   await shot("m14-wine-train");
   await page.locator('[data-wine-train="deck"]').click().catch(() => {}); await page.waitForTimeout(900);
   await page.locator("[data-wine-deck-card]").click().catch(() => {}); await page.waitForTimeout(1200);
@@ -361,6 +361,13 @@ if (!ONLY || ONLY.includes("maria")) {
   const sp = await page.evaluate(() => Number((document.querySelector("[data-wine-say60-points]") || { getAttribute: () => "0" }).getAttribute("data-wine-say60-points")));
   ok("«Опиши за 60 секунд»: после минуты — сверка с карточкой", sp >= 3, String(sp));
   await shot("m21-wine-say60");
+  // v125 (Доп. 438): «Кто выучил новые вина» — команда по этапу 44 (в демо — сервер в памяти)
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator('[data-wine-train="team"]').click().catch(() => {}); await page.waitForTimeout(1200);
+  const tm = await page.evaluate(() => ({ n: document.querySelectorAll("[data-wine-team-row]").length, states: [...document.querySelectorAll("[data-wine-team-row]")].map((e) => e.getAttribute("data-wine-team-row") + ":" + e.getAttribute("data-wine-team-state")).join(","),
+    line: (document.querySelector("[data-wine-team-line]") || {}).textContent || "" }));
+  ok("«Кто выучил новые вина»: Анна выучила, Вера и Илья учат, Пётр не открывал, остальные не занимались", /^e-anna:passed,/.test(tm.states) && /e-vera:opened/.test(tm.states) && /e-ilya:opened/.test(tm.states) && /e-petr:notnew/.test(tm.states) && /выучили 1 из \d+ · учат 2 · не открывали 1 · не занимались \d+/.test(tm.line), JSON.stringify(tm));
+  await shot("m22-wine-team");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

@@ -7,6 +7,8 @@
 // идут только проверенные вина: новичок не должен учить то, что AI мог перепутать. Прогресс — на телефоне, по ресторану.
 // v124 (Доп. 437): «Вино к блюду» (гость заказал блюдо — что предложить), «Опиши за 60 секунд» (вслух и сверка с
 // карточкой), «Как произносить» — на обороте карточки (слова словаря в названии, сорте, регионе) и словарь в тренировке.
+// v125 (Доп. 438), владелец: «Да, давай сделаем» — «Кто выучил новые вина». Телефон присылает тренировку на сервер (этап 44,
+// wine_progress_set): открыл и выучил новые вина, счёт «Знаю?», викторину; руководителю — команда (wine_progress_team).
 import React from "react";
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -14,9 +16,12 @@ import { bumpDaily } from "../lib/deck-extras";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { COLOR_GROUP, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked } from "../lib/wine";
 import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKnown, glassPath, reverseClues, reversible, makeQuiz, quizScore,
-  dishPairs, pairQuiz, describePoints, describePick } from "../lib/wine-train";
+  dishPairs, pairQuiz, describePoints, describePick, wineStats, teamRows, teamSummary } from "../lib/wine-train";
 import { findPronounce, stressText } from "../lib/pronounce";   // v124: «Как произносить» на обороте карточки
 import { SayButton } from "./pronounce";
+import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";   // v125: тренировка — на сервер (этап 44)
+import { positionLabel } from "../data/positions";
+import { SkelCards } from "./skeleton";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
@@ -73,6 +78,21 @@ export function WineSay({ w, gold, text, sub, a11y }) {
     </div>);
 }
 
+/** v125: тренировка — на сервер (этап 44). С каждым сообщением — счёт «Знаю?» (sr — свой, если только что поменялся). Нет
+ *  этапа (функция не найдена) — запрос просто отбрасывается; нет сети — уйдёт, когда появится (rpcSync). То же сообщение
+ *  второй раз за 3 секунды не уходит: двойной монтаж эффекта (StrictMode при разработке), двойное касание. */
+let lastReport = { k: "", t: 0 };
+export function wineReport(kind, data, wines, restaurant, sr = null) {
+  try {
+    if (!saToken()) return;
+    const p_data = { ...(data || {}), stats: wineStats(wines, sr || load(srKey(restaurant), {})) };
+    const k = JSON.stringify([kind, restaurant, p_data]), t = Date.now();
+    if (k === lastReport.k && t - lastReport.t < 3000) return;
+    lastReport = { k, t };
+    rpcSync("wine_progress_set", { p_token: saToken(), p_kind: kind, p_data });
+  } catch (e) {}
+}
+
 /** «Знаю?»: прогресс колоды на телефоне, по ресторану. */
 export function useWineSR(restaurant) {
   const [sr, setSr] = React.useState(() => load(srKey(restaurant), {}));
@@ -93,6 +113,13 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
   newIds = [], focusIds = [], onLearned = null }) {
   const text = T.modTitle.color, sub = T.modSub.color;
   const [sr, markSr] = useWineSR(restaurant);
+  // v125: «Новые вина» открыты — на сервер; отмечал карточки — при выходе из колоды счёт «Знаю?» туда же
+  const marked = React.useRef(false), winesRef = React.useRef(wines);
+  winesRef.current = wines;
+  React.useEffect(() => {
+    if (initialOnly === "new" && newIds.length) wineReport("opened", { ids: newIds }, wines, restaurant);
+    return () => { if (marked.current) wineReport("stats", {}, winesRef.current, restaurant); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const [mode, setMode] = React.useState(initialMode);   // deck | quiz («Знаю?»)
   const [only, setOnly] = React.useState(initialOnly);
   const [reverse, setReverse] = React.useState(false);
@@ -158,7 +185,7 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
   // «Знал» — вино уходит из повтора (вернётся через день, три, неделю, месяц); «Повторить» — дальше, оно вернётся в этом круге
   const mark = (ok) => {
     if (!w) return;
-    markSr(w.id, ok); bumpDaily(uk); vibrate(ok ? "success" : "error"); setFlip(false);
+    markSr(w.id, ok); bumpDaily(uk); marked.current = true; vibrate(ok ? "success" : "error"); setFlip(false);
     setIdx((i) => (ok ? Math.min(i, Math.max(0, total - 2)) : total > 1 ? (i + 1) % total : 0));
   };
 
@@ -290,6 +317,10 @@ export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restau
     doneRef.current = true;
     res.wrong.forEach((id) => markSr(id, false));   // вино с ошибкой — снова к повтору
     bumpDaily(uk);
+    // v125: итог — на сервер; счёт «Знаю?» уже с ошибками (их карточки снова к повтору)
+    let sr0 = load(srKey(restaurant), {});
+    res.wrong.forEach((id) => { sr0 = srMark(sr0, id, false); });
+    wineReport("quiz", { quiz: { right: res.right, of: res.total } }, wines, restaurant, sr0);
   }, [done]);   // eslint-disable-line react-hooks/exhaustive-deps
   const again = () => { doneRef.current = false; setQuestions(makeQuiz(wines, dishes, { n: 10 })); setStep(0); setPicks([]); vibrate("light"); };
   const nameOf = (id) => wineTitle(trainable(wines).find((x) => x.id === id));
@@ -478,6 +509,63 @@ export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], 
     </div>);
 }
 
+// ─────────────────────────────── v125: КТО ВЫУЧИЛ НОВЫЕ ВИНА
+// Руководителю: вся команда заведения (этап 44, wine_progress_team) — выучены ли ТЕКУЩИЕ новые вина (сравнение со списком
+// новых вин карты: добавили вино — снова «учит»), счёт «Знаю?», вина бокалом, викторина. Нет этапа — что выполнить.
+export function WineTeam({ T, a11y, gold, green, wines, restaurant, Head }) {
+  const text = T.modTitle.color, sub = T.modSub.color;
+  const okText = a11y ? "#2F6B45" : green;   // «выучены» на светлом — темнее зелёный (контраст мелкой подписи)
+  const [res, setRes] = React.useState(null);   // null — грузим; { rows } | { err: missing | forbidden | error }
+  React.useEffect(() => {
+    let alive = true;
+    rpc("wine_progress_team", { p_token: saToken(), p_restaurant: restaurant }).then((r) => {
+      if (!alive) return;
+      if (r && r.ok && Array.isArray(r.rows)) setRes({ rows: r.rows });
+      else if (rpcMissing(r)) setRes({ err: "missing" });
+      else setRes({ err: r && r.error === "forbidden" ? "forbidden" : "error" });
+    }).catch(() => { if (alive) setRes({ err: "error" }); });
+    return () => { alive = false; };
+  }, [restaurant]);
+  const fresh = React.useMemo(() => newWines(wines), [wines]);
+  const rows = res && res.rows ? teamRows(res.rows, fresh) : null, sum = rows ? teamSummary(rows) : null;
+  const day = (ts) => { try { return new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }); } catch (e) { return ""; } };
+  const msg = (t) => <div data-wine-team-msg={res.err} style={{ textAlign: "center", padding: "40px 24px", fontSize: 14, lineHeight: 1.6, color: (T.para && T.para.color) || text }}>{t}</div>;
+  // новых вин нет — кто занимается и кто нет
+  const parts = !sum ? [] : (fresh.length ? ["выучили " + sum.passed + " из " + sum.total, sum.opened ? "учат " + sum.opened : "", sum.notnew ? "не открывали " + sum.notnew : ""]
+    : [sum.active ? "занимаются " + sum.active : ""]).concat(sum.none ? ["не занимались " + sum.none] : []).filter(Boolean);
+  return (
+    <div style={T.screen} className="sa-screen" data-wine-team={rows ? rows.length : res ? res.err : "load"}>
+      {Head("Кто выучил новые вина")}
+      {!res ? <SkelCards a11y={!!a11y} rows={4} h={64} style={{ padding: "12px 16px 24px" }} /> : null}
+      {res && res.err === "missing" ? msg(<>Нужен этап базы 44: выполни <b style={{ color: gold }}>supabase/supabase-stage44-wines.sql</b> в Supabase → SQL Editor. После этого здесь будет каждый сотрудник: выучены ли новые вина, сколько вин выучено в «Знаю?», вина бокалом и викторина.</>) : null}
+      {res && res.err === "forbidden" ? msg("Сводка доступна руководителю своего заведения. Другие заведения видят руководящий состав сети и владелец.") : null}
+      {res && res.err === "error" ? msg("Не получилось загрузить. Проверь связь и открой ещё раз.") : null}
+      {rows ? (
+        <div style={{ padding: "4px 16px 120px" }}>
+          <div data-lens-card="" data-wine-team-sum="" style={{ ...T.modCard, display: "block", cursor: "default", padding: "12px 14px", margin: "0 0 14px" }}>
+            <div style={{ fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.4 }}>{fresh.length ? "Новые вина: " + fresh.map(wineTitle).slice(0, 3).join(", ") + (fresh.length > 3 ? " и ещё " + (fresh.length - 3) : "") : "Новых вин сейчас нет"}</div>
+            <div data-wine-team-line="" style={{ fontSize: 13, color: sub, marginTop: 4, lineHeight: 1.5 }}>{parts.length ? parts.join(" · ") : "В команде пока никого."}</div>
+          </div>
+          {rows.map((r) => {
+            const stateLine = r.state === "passed" ? ["Новые вина выучены ✓" + (r.passedAt ? " · " + day(r.passedAt) : ""), okText]
+              : r.state === "opened" ? ["Новые вина: учит, осталось " + r.left + " из " + fresh.length, gold]
+              : r.state === "notnew" ? ["Новые вина не открыты", sub] : r.state === "none" ? ["Тренировки по винам пока нет", sub] : null;
+            const prog = [r.total != null ? "«Знаю?» " + (r.known || 0) + " из " + r.total : "", r.glassTotal ? "бокалом " + (r.glassKnown || 0) + " из " + r.glassTotal : "",
+              r.quizOf ? "викторина " + (r.quizRight || 0) + " из " + r.quizOf : ""].filter(Boolean).join(" · ");
+            return (
+              <div key={r.id} data-lens-card="" data-wine-team-row={r.id} data-wine-team-state={r.state} style={{ ...T.modCard, cursor: "default", margin: "0 0 10px", alignItems: "flex-start" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...T.modTitle, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>{r.name || "Сотрудник"}<span style={{ fontSize: 12, color: sub, fontWeight: "normal" }}>{positionLabel(r.pos)}</span></div>
+                  {stateLine ? <div data-wine-team-status="" style={{ fontSize: 13, color: stateLine[1], marginTop: 3, lineHeight: 1.45 }}>{stateLine[0]}</div> : null}
+                  {prog ? <div data-wine-team-prog="" style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.45 }}>{prog}</div> : null}
+                </div>
+                {r.state === "passed" ? <span style={{ flexShrink: 0, marginTop: 2 }}>{UI_SVG.checkCircle(green, 20)}</span> : r.state === "opened" ? <span style={{ flexShrink: 0, marginTop: 2 }}>{UI_SVG.eye(gold, 18)}</span> : null}
+              </div>);
+          })}
+        </div>) : null}
+    </div>);
+}
+
 // ─────────────────────────────── ТРЕНИРОВКА: ГЛАВНАЯ
 // Как главная тренажёра меню: «Новые вина» (если есть), путь новичка «С чего начать: вина бокалом», колода, викторина.
 // Не проверенные вина — не в тренировке: руководителю — «Проверить подряд», остальным — сколько ждут проверки.
@@ -521,6 +609,7 @@ export function WineTrainHub({ T, a11y, gold, green, wines, dishes = [], restaur
         {row("say60", GAME_SVG.clock(gold, 20), "Опиши за 60 секунд", "Расскажи о вине вслух за минуту и сверься с карточкой")}
         {row("pron", <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /></svg>,
           "Как произносить", "Вина, сорта и регионы: ударение, по слогам, послушать в оригинале")}
+        {edit ? row("team", UI_SVG.eye(gold, 19), "Кто выучил новые вина", fresh.length ? "Кто выучил, кто учит и кто не открывал; «Знаю?», вина бокалом и викторина каждого" : "Как каждый учит карту: «Знаю?», вина бокалом, викторина") : null}
         {pairsN < 2 && edit ? <div data-wine-hub-pairs={pairsN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "0 2px 10px" }}>«Вино к блюду» появится, когда хотя бы у двух блюд будут отмечены вина: «Редактор вин», раздел «К блюдам».</div> : null}
       </> : <div data-lens-card="" style={{ ...T.modCard, display: "block", cursor: "default", padding: "14px 16px", fontSize: 14, color: text, lineHeight: 1.5 }}>
         Для тренировки нужно хотя бы два проверенных вина.{edit ? " Проверь, что дописал AI, и вина появятся здесь." : " Руководитель добавит и проверит карту."}</div>}

@@ -132,8 +132,9 @@ describe("v124: экраны", () => {
     expect(L).toContain('useInnerTop(openId ? "card:" + openId');
   });
   it("тренировка: «Вино к блюду», «Опиши за 60 секунд», «Как произносить» (оборот карточки и словарь «Наша карта»)", () => {
-    for (const s of ["export function WinePairQuiz", "export function WineDescribe60", "export function WineSay", '"Вино к блюду"', '"Опиши за 60 секунд"', '"Как произносить"', "pairsN >= 2 ? row(\"pair\"",
+    for (const s of ["export function WinePairQuiz", "export function WineDescribe60", "export function WineSay", '"Опиши за 60 секунд"', '"Как произносить"', "pairsN >= 2 ? row(\"pair\"",
       "{flip ? <WineSay", "data-wine-point={p.key}", "data-wine-popt={i}"]) expect(TR, s).toContain(s);
+    expect(rd("lib/drinks.js")).toContain('pair: "Вино к блюду"');   // v127: у крепкого — «Крепкое к блюду»
     for (const s of ['view === "pair"', 'view === "say60"', 'view === "pron"', 'ownLabel="Наша карта"', 'ownWhere="в карте:"']) expect(L, s).toContain(s);
     expect(P).toContain('ownLabel = "Наше меню", ownWhere = "в блюде"');
     expect(P).toContain("dish: d.label || d.name");

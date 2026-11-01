@@ -279,16 +279,20 @@ const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
 mkdirSync(OUT + "/in", { recursive: true });
 const { writeFileSync } = await import("node:fs");
 writeFileSync(OUT + "/in/page.jpg", JPG); writeFileSync(OUT + "/in/carta.pdf", PDF);
-const toList = async (page) => { await go(page, "reference", 1800); return clickText(page, ".sa-card, [data-ref-card]", "Наша винная карта"); };
+// v127 (Доп. 440): «Наша винная карта» теперь — вкладка «Вина» в «Барной карте» (Справочник → «Барная карта» → «Вина»)
+const openBarWines = async (page) => { const okk = await clickText(page, ".sa-card, [data-ref-card]", "Барная карта"); if (!okk) return false; for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
+  await page.evaluate(() => { const b = document.querySelector('[data-bar-tab="wine"]'); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }); await sleep(400); return true; };
+const toList = async (page) => { await go(page, "reference", 1800); return openBarWines(page); };
 
 await run("LIST", async () => {
   const srv = srvOf(MENU_W);
   const a = await open({ who: ANNA, srv, menu: MENU_W });
   await hideToasts(a.page);
   await go(a.page, "reference", 1800);
-  const cardTxt = await txt(a.page.locator('[data-ref-card="winelist"]'));
-  ok("LIST: в «Справочнике» — «Наша винная карта · 5 вин · бокалом 3» (архив не считается)", /Наша винная карта 5 вин · бокалом 3/.test(cardTxt), cardTxt);
-  await clickText(a.page, "[data-ref-card]", "Наша винная карта"); await sleep(1500);
+  // v127: «Наша винная карта» — вкладка «Вина» в «Барной карте»; в Справочнике — одна «Барная карта» (архив не считается)
+  const cardTxt = await txt(a.page.locator('[data-ref-card="barcard"]'));
+  ok("LIST: в «Справочнике» — «Барная карта · коктейли · вина 5» (архив не считается)", /^Барная карта Коктейли \d+ · вина 5( ›)?$/.test(cardTxt), cardTxt);
+  await openBarWines(a.page); await sleep(1100);
   const sum = await txt(a.page.locator("[data-wine-sum]"));
   const groups = await a.page.evaluate(() => [...document.querySelectorAll("[data-wine-group]")].map((g) => g.getAttribute("data-wine-group")).join(","));
   ok("LIST: «5 вин · бокалом 3» (у сотрудника без «не проверено»), группы по цвету в порядке карты", sum === "5 вин · бокалом 3" && groups === "sparkling,white,rose,red", sum + " | " + groups);
@@ -318,13 +322,15 @@ await run("LIST", async () => {
   const srv2 = srvOf(MENU);
   const b = await open({ who: ANNA, srv: srv2 });
   await hideToasts(b.page); await go(b.page, "reference", 1800);
-  ok("LIST: пустая карта — у сотрудника входа нет", !(await b.page.locator('[data-ref-card="winelist"]').count()));
+  // v127: «Барная карта» есть у всех (коктейли), но вкладки «Вина» у сотрудника при пустой винной карте нет
+  await clickText(b.page, "[data-ref-card]", "Барная карта"); await sleep(1200);
+  ok("LIST: пустая карта — у сотрудника вкладки «Вина» нет", !(await b.page.locator('[data-bar-tab="wine"]').count()) && (await b.page.locator("[data-bar-cocktails]").count()) === 1);
   await b.ctx.close();
   const m = await open({ who: MARIA, srv: srvOf(MENU) });
   await hideToasts(m.page); await go(m.page, "reference", 1800);
-  const mt = await txt(m.page.locator('[data-ref-card="winelist"]'));
-  ok("LIST: пустая карта — у руководителя «Пока пусто: добавь вина»", /Пока пусто: добавь вина/.test(mt), mt);
-  await m.page.locator('[data-ref-card="winelist"]').click(); await sleep(1200);
+  await openBarWines(m.page); await sleep(900);
+  const mt = await txt(m.page.locator("[data-wine-sum]"));
+  ok("LIST: пустая карта — у руководителя вкладка «Вина»: «Карта пока пустая…»", /^Карта пока пустая\. Добавь вина/.test(mt), mt);
   ok("LIST: в пустой карте руководителю — «Добавить вина»", (await m.page.locator('[data-lens-btn="main"]').filter({ hasText: "Добавить вина" }).count()) === 1);
   await m.ctx.close();
 });
@@ -461,9 +467,9 @@ await run("LENS", async () => {
   const fld = await st(a.page, '[data-wine-field="name"]'), sv = await st(a.page, "[data-wine-save]");
   ok("LENS: форма — поля стеклом, «Сохранить» — плашка", !!fld && fld.bg === GLASS && isMain(sv), JSON.stringify([fld, sv]));
   await go(a.page, "reference", 1800);
-  const rc = await st(a.page, '[data-ref-card="winelist"]'), art = await a.page.locator('[data-ref-card="winelist"] [data-ref-art="winelist"] svg').count();
+  const rc = await st(a.page, '[data-ref-card="barcard"]'), art = await a.page.locator('[data-ref-card="barcard"] [data-ref-art="winelist"] svg').count();
   const h = await a.page.evaluate(() => [...document.querySelectorAll("[data-ref-card]")].map((c) => Math.round(c.getBoundingClientRect().height)));
-  ok("LENS: «Справочник» — курсы карточками; у «Нашей винной карты» — свой витраж и та же высота, что у курсов", lensCard(rc) && art === 1 && new Set(h).size === 1, JSON.stringify([rc, art, h]));
+  ok("LENS: «Справочник» — курсы карточками; у «Барной карты» — витраж винной карты и та же высота, что у курсов", lensCard(rc) && art === 1 && new Set(h).size === 1, JSON.stringify([rc, art, h]));
   await shot(a.page, "reference");
   await a.ctx.close();
   // карточка «Дальше» под пройденной темой (владелец: «Ещё пару нашёл. Далее…»): у Анны «Психология первого дня» пройдена

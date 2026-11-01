@@ -45,6 +45,10 @@ const txt = async () => (await page.locator("body").innerText()).replace(/\s+/g,
 // v110 (Доп. 423): группы вкладок — кнопками, свёрнуты; открыть все (или одну по названию)
 const openGroups = async (name = null) => { await page.evaluate((n) => document.querySelectorAll('[data-hub-toggle][aria-expanded="false"]').forEach((b) => { if (!n || b.getAttribute("data-hub-toggle") === n) b.click(); }), name); await page.waitForTimeout(500); };
 const tap = async (sel) => { await page.locator(sel).first().click(); await page.waitForTimeout(500); };
+// v127 (Доп. 440): вина и крепкое — вкладки «Барной карты» (открывается та, где был в прошлый раз)
+const toBar = async (tab, ms = 1500) => { await page.evaluate(() => window.__saNav && window.__saNav("reference")); await page.waitForTimeout(300);   // заново: карточка и тренировка закрыты
+  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(ms);
+  await page.locator(`[data-bar-tab="${tab}"]`).click().catch(() => {}); await page.waitForTimeout(600); };
 
 await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" });
 await page.evaluate(() => { localStorage.clear(); });
@@ -293,7 +297,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m10-ai-interview");
   // v122 (Доп. 435): винная карта с фото бутылок; «Импорт» → «Фото бутылок» — этикетки «читаются» без нейросети, фото
   // остаётся в записи (хранилища в демо нет): Гави — новым вином, у «Шабли» появляется фото
-  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1800);
+  await toBar("wine", 1800);
   const th = await page.evaluate(() => [...document.querySelectorAll("[data-wine-row] [data-wine-thumb]")].map((t) => t.getAttribute("data-wine-thumb")));
   ok("Винная карта в демо: у всех строк миниатюры, у пяти вин — фото бутылки", th.length === 8 && th.filter((x) => x === "photo").length === 5, JSON.stringify(th));
   await shot("m11-wines-photos");
@@ -313,7 +317,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m13-bottles-saved");
   // v123 (Доп. 436): тренировка по винам (владелец: «их учить очень сложно, особенно для новичка»): «Учить вина» над
   // картой, новые вина, путь новичка, колода, викторина; не проверенное — «Проверка подряд»
-  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1800);
+  await toBar("wine", 1800);
   const en = await page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"); return e ? { hi: e.getAttribute("data-wine-train-open"), t: e.innerText.replace(/\s+/g, " ") } : null; });
   ok("Винная карта: «Учить вина» над картой, два новых вина подсвечены", !!en && en.hi === "new" && /Новые вина: 2/.test(en.t), JSON.stringify(en));
   await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
@@ -338,7 +342,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m17-wine-review");
   // v124 (Доп. 437), владелец: «как мы сам редактор можем сделать более удобнее и красивее?» — сводка и «Что дописать»,
   // форма по разделам с подсказками; в тренировке «Вино к блюду» и «Опиши за 60 секунд»
-  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1500);
+  await toBar("wine", 1500);
   await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
   const sm = await page.evaluate(() => ({ line: (document.querySelector("[data-wine-sum-line]") || {}).textContent || "", gaps: [...document.querySelectorAll("[data-wine-gap]")].map((e) => e.getAttribute("data-wine-gap")).join(",") }));
   ok("Редактор вин: сводка сверху и «Что дописать» (без фото, без блюд…)", /^\d+ вин/.test(sm.line) && /nophoto/.test(sm.gaps), JSON.stringify(sm));
@@ -347,7 +351,7 @@ if (!ONLY || ONLY.includes("maria")) {
   const parts = await page.evaluate(() => [...document.querySelectorAll("[data-wine-part]")].map((e) => e.getAttribute("data-wine-part")).join(","));
   ok("Новое вино: форма по разделам, подсказки страны из карты", parts === "origin,serve,guest,pair" && (await page.locator('[data-wine-hints="country"] [data-wine-hint]').count()) >= 4, parts);
   await shot("m19-wine-form-parts");
-  await page.evaluate(() => window.__saNav && window.__saNav("wines")); await page.waitForTimeout(1500);
+  await toBar("wine", 1500);
   await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
   await page.locator('[data-wine-train="pair"]').click().catch(() => {}); await page.waitForTimeout(900);
   await page.locator('[data-wine-popt="0"]').click().catch(() => {}); await page.waitForTimeout(300);
@@ -368,6 +372,50 @@ if (!ONLY || ONLY.includes("maria")) {
     line: (document.querySelector("[data-wine-team-line]") || {}).textContent || "" }));
   ok("«Кто выучил новые вина»: Анна выучила, Вера и Илья учат, Пётр не открывал, остальные не занимались", /^e-anna:passed,/.test(tm.states) && /e-vera:opened/.test(tm.states) && /e-ilya:opened/.test(tm.states) && /e-petr:notnew/.test(tm.states) && /выучили 1 из \d+ · учат 2 · не открывали 1 · не занимались \d+/.test(tm.line), JSON.stringify(tm));
   await shot("m22-wine-team");
+  // v127 (Доп. 440): «Барная карта» — коктейли, вина и крепкое под одной кнопкой; у крепкого всё, как у вин
+  await page.evaluate(() => window.__saNav && window.__saNav("reference")); await page.waitForTimeout(1500);
+  const bc = await page.evaluate(() => { const e = document.querySelector('[data-ref-card="barcard"]'); return e ? e.innerText.replace(/\s+/g, " ") : ""; });
+  ok("Справочник: «Барная карта» вместо «Нашей винной карты» и «Бар: коктейли»", /^Барная карта Коктейли \d+ · вина 9 · крепкое 10/.test(bc) && !(await page.locator('[data-ref-card="winelist"], [data-ref-card="cocktails"]').count()), bc);
+  await page.locator('[data-ref-card="barcard"]').click().catch(() => {}); await page.waitForTimeout(1500);
+  await page.locator('[data-bar-tab="cocktail"]').click().catch(() => {}); await page.waitForTimeout(600);
+  const ck = await page.evaluate(() => ({ tabs: (document.querySelector("[data-bar-tabs]") || { getAttribute: () => "" }).getAttribute("data-bar-tabs"),
+    groups: [...document.querySelectorAll("[data-bar-ck-group]")].map((e) => e.getAttribute("data-bar-ck-group")).join(","),
+    neg: ((document.querySelector('[data-bar-ck="negroni"] [data-bar-ck-spirits]') || {}).textContent || "") }));
+  ok("Коктейли нашего бара по основе; у «Негрони» — что из нашей карты в нём", ck.tabs === "cocktail,wine,spirit" && /^Джин,Водка,Ром/.test(ck.groups) && /Hendrick's/.test(ck.neg) && /Campari/.test(ck.neg), JSON.stringify(ck));
+  await shot("m23-bar-cocktails");
+  await page.locator('[data-bar-tab="spirit"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const sl = await page.evaluate(() => ({ kind: (document.querySelector("[data-drink-kind]") || { getAttribute: () => "" }).getAttribute("data-drink-kind"), rows: document.querySelectorAll("[data-wine-row]").length,
+    hi: (document.querySelector("[data-wine-train-open]") || { getAttribute: () => "" }).getAttribute("data-wine-train-open"), t: ((document.querySelector("[data-wine-train-open]") || {}).textContent || "").replace(/\s+/g, " ") }));
+  ok("Крепкое: десять позиций по видам, «Учить крепкое» с двумя новинками", sl.kind === "spirit" && sl.rows === 10 && sl.hi === "new" && /Новинки: 2/.test(sl.t), JSON.stringify(sl));
+  await shot("m24-bar-spirits");
+  await page.locator('[data-wine-row="sp-demo-3"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const card = await page.evaluate(() => ({ price: ((document.querySelector("[data-wine-card]") || {}).textContent || "").replace(/\u00a0/g, " ").includes("40 мл 550"), ck: [...document.querySelectorAll("[data-spirit-cocktail]")].map((e) => e.textContent.trim()).join(",") }));
+  ok("Карточка «Maker's Mark»: цена порции и «В коктейлях нашего бара» (на бурбоне)", card.price && /Олд фэшн/.test(card.ck) && !/Манхэттен/.test(card.ck), JSON.stringify(card));
+  await shot("m25-spirit-card");
+  await toBar("spirit", 1500);
+  await page.locator("[data-wine-train-open]").click().catch(() => {}); await page.waitForTimeout(800);
+  const sh = await page.evaluate(() => [...document.querySelectorAll("[data-wine-train]")].map((e) => e.getAttribute("data-wine-train")).join(","));
+  ok("Учить крепкое: новинки, «С чего начать: ходовое», колода, викторина, «Крепкое к блюду», «Опиши за 60 секунд», «Как произносить», «Кто выучил»", sh === "new,glass,deck,quiz,pair,say60,pron,team", sh);   // путь новичка — тот же пункт, что у вин
+  await shot("m26-spirit-train");
+  await page.locator('[data-wine-train="quiz"]').click().catch(() => {}); await page.waitForTimeout(900);
+  await page.locator('[data-wine-opt="0"]').click().catch(() => {}); await page.waitForTimeout(400);
+  const sq = await page.evaluate(() => ({ ok: document.querySelectorAll('[data-lens-opt="ok"]').length, why: !!document.querySelector("[data-wine-why]") }));
+  ok("Викторина по крепкому: после ответа — верный вариант и пояснение", sq.ok === 1 && sq.why, JSON.stringify(sq));
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator('[data-wine-train="team"]').click().catch(() => {}); await page.waitForTimeout(1200);
+  const st = await page.evaluate(() => [...document.querySelectorAll("[data-wine-team-row]")].map((e) => e.getAttribute("data-wine-team-row") + ":" + e.getAttribute("data-wine-team-state")).join(","));
+  ok("«Кто выучил новинки крепкого»: Илья выучил, Анна учит, Вера не открывала новинки", /^e-ilya:passed,/.test(st) && /e-anna:opened/.test(st) && /e-vera:notnew/.test(st), st);
+  await shot("m27-spirit-team");
+  await toBar("spirit", 1500);
+  await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
+  const se = await page.evaluate(() => ({ line: (document.querySelector("[data-wine-sum-line]") || {}).textContent || "", rev: !!document.querySelector("[data-wine-review-start]") }));
+  ok("Редактор крепкого: «10 позиций», одна ждёт «Проверки подряд»", /^10 позиций/.test(se.line) && se.rev, JSON.stringify(se));
+  await page.locator("[data-wine-new]").click().catch(() => {}); await page.waitForTimeout(600);
+  const sf = await page.evaluate(() => ({ parts: [...document.querySelectorAll("[data-wine-part]")].map((e) => e.getAttribute("data-wine-part")).join(","), cats: document.querySelectorAll("[data-wine-cat]").length,
+    portions: [...document.querySelectorAll("[data-wine-portion]")].map((e) => e.getAttribute("data-wine-portion")).join(",") }));
+  ok("Новая позиция: вид чипами, порция 25, 40, 50 мл или своя", sf.parts === "origin,serve,guest,pair" && sf.cats === 9 && sf.portions === "25,40,50", JSON.stringify(sf));
+  await page.locator('[data-wine-part="serve"]').click().catch(() => {}); await page.waitForTimeout(400);
+  await shot("m28-spirit-form");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

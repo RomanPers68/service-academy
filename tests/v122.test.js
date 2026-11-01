@@ -63,7 +63,7 @@ describe("v122: api/wine-import.js — этикетка (mode label)", () => {
   const A = rd("api/wine-import.js");
   it("вход label: снимок бутылки; подсказка — читать этикетку, цены не заполнять; лимит — 200 запросов в час", () => {
     expect(A).toContain('} else if (b.mode === "label") {');
-    expect(A).toContain("parts = [{ text: PROMPTS.label }, { image, mime }];");
+    expect(A).toContain("parts = [{ text: P.label }, { image, mime }];");   // v127: P — подсказки вин или крепкого (b.kind)
     expect(A).toMatch(/label: `Ты — сомелье[\s\S]*Прочитай этикетку[\s\S]*Цены не заполняй/);
     expect(A).toContain('rateLimit("wine:" + b.token, 200, 3600_000)');
     expect(A.indexOf("verifySession(b.token)")).toBeLessThan(A.indexOf('b.mode === "label"'));
@@ -105,7 +105,7 @@ describe("v122: длинная карта в PDF (владелец: «У мен�
     expect(A).toContain("${SHEET_SHAPE}");
     expect(A).not.toMatch(/SHEET_SHAPE = `[^`]*"story"/);
     expect(A).toContain("const max = sheet ? 16000 : 8000;");
-    expect(A).toContain('parts = [{ text: PROMPTS.sheet(str(b.after, 120)) }, { pdf }];');
+    expect(A).toContain('parts = [{ text: P.sheet(str(b.after, 120)) }, { pdf }];');   // v127: P — подсказки вин или крепкого
   });
   it("parseLoose: из оборванного ответа — целые вина (скобки и кавычки в строках не путают), обрывок — мимо", async () => {
     const { parseLoose } = await import("../api/wine-import.js");
@@ -157,15 +157,15 @@ describe("v122: длинная карта в PDF (владелец: «У мен�
   it("приложение: оборванный ответ — ещё заход с after (до 8), повторы мимо; не дочитал — прочитанное можно добавить", () => {
     expect(E).toContain("const MAX_ROUNDS = 8;");
     expect(E).toContain("if (j.cut && n && round < MAX_ROUNDS) { after = String(j.wines[j.wines.length - 1].name || \"\"); return ask(); }");
-    expect(E).toContain("const key = normName(wineTitle(w)); if (!w.name || seen.has(key)) continue;");
+    expect(E).toContain("const key = normName(K.title(w)); if (!w.name || seen.has(key)) continue;");   // v127: K — вина или крепкое (lib/drinks.js)
     expect(E).toContain('"Дочитать не получилось: " + err + ". Прочитанное можно добавить');
-    expect(E).toContain('(found.length ? ", прочитано " + winesWord(found.length) : "")');
+    expect(E).toContain('(found.length ? ", прочитано " + K.word(found.length) : "")');
   });
   it("«Дополнить ноты и подачу через AI» в обзоре: пачками по 15, только у отмеченных без нот и фразы, в пустые поля", () => {
     expect(E).toContain('data-wine-enrich=""');
     expect(E).toContain("const idx = out.map((x, i) => i).filter((i) => out[i].keep && !out[i].w.short && !(out[i].w.notes || []).length);");
     expect(E).toContain('askAi({ mode: "names", names: part.map((i) => out[i].w.name) })');
-    expect(E).toContain("out[i] = { ...out[i], w: mergeAi(out[i].w, got[j]) };");
+    expect(E).toContain("out[i] = { ...out[i], w: K.mergeAi(out[i].w, got[j]) };");
   });
 });
 
@@ -175,8 +175,9 @@ describe("v122: «Редактор вин» — фото в форме и «Фо
     expect(E).toContain("700 / Math.max(img.width, img.height)");
     expect(E).toContain("fetch(`${SUPABASE_URL}/functions/v1/photo-upload`");
     expect(E).toContain("body: JSON.stringify({ token: saToken(), restaurant, dishId: id, image: data }) })");
-    expect(E).toContain('const blank = () => ({ id: "", _nid: newId(), name: "",');
-    expect(E).toContain("const rec = normWine(confirm ? confirmWine(form, who) : form, { id: form.id || form._nid });");
+    expect(E).toContain('const blankWine = () => ({ id: "", _nid: newId(), name: "",');   // v127: у крепкого — свой бланк
+    expect(E).toContain('const blank = () => (K.kind === "spirit" ? blankSpirit(K) : blankWine());');
+    expect(E).toContain("const rec = K.norm(confirm ? K.confirm(form, who) : form, { id: form.id || form._nid });");
     expect(E).toContain(".then((url) => { setForm((x) => (x && (x.id || x._nid) === id ? { ...x, img: url } : x));");
     // пока фото грузится, «Сохранить» ждёт
     expect(E).toContain('disabled={busy || (pic && pic.state === "up")}');
@@ -187,17 +188,17 @@ describe("v122: «Редактор вин» — фото в форме и «Фо
   });
   it("этикетка: снимок до 1800 px → mode label; пустое название — с этикетки, остальное — только в пустые поля; новое вино без названия читается сразу", () => {
     expect(E).toContain('shrink(file).then((b) => askAi({ mode: "label", imageBase64: b, mime: "image/jpeg" }))');
-    expect(E).toContain('setForm((x) => mergeAi(String(x.name || "").trim() ? x : { ...x, name: g.name || "" }, g))');
+    expect(E).toContain('setForm((x) => K.mergeAi(String(x.name || "").trim() ? x : { ...x, name: g.name || "" }, g))');
     expect(E).toContain('const id = form.id || form._nid, auto = !form.id && !String(form.name || "").trim();');
     expect(E).toContain("if (auto) readLabel(file);");
   });
   it("импорт «Фото бутылок»: пачка снимков, по одному запросу; что в карте — по bottlePlan; сохранение: сначала фото, потом меню", () => {
     expect(E).toContain('data-wine-imp="bottles"');
     expect(E).toContain('<input ref={bottleRef} type="file" accept="image/*" multiple data-wine-bottles-input=""');
-    expect(E).toContain("const plan = bottlePlan(w, live); found.push({ w, data, plan, keep: plan.keep, dup: plan.kind !== \"new\" });");
+    expect(E).toContain("const plan = K.bottlePlan(w, live); found.push({ w, data, plan, keep: plan.keep, dup: plan.kind !== \"new\" });");
     expect(E).toContain("try { url = await uploadPhoto(restaurant, x.plan.to || x.w.id, x.data); }");
-    expect(E).toContain("persist(applyBottles(shared, entries),");
-    expect(E).toContain('attach: "в карте без фото: фото и пустые поля с этикетки добавятся к нему"');
+    expect(E).toContain("persist(K.applyBottles(shared, entries),");
+    expect(rd("lib/drinks.js")).toContain('attach: "в карте без фото: фото и пустые поля с этикетки добавятся к нему"');   // v127: тексты вин — в lib/drinks.js
     // за раз — до 40 снимков, остальные — следующей пачкой (снимки держатся в памяти до сохранения)
     expect(E).toContain("const MAX_SHOTS = 40;");
     expect(E).toContain("const files = picked.slice(0, MAX_SHOTS), cut = picked.length - files.length;");
@@ -214,7 +215,7 @@ describe("v122: «Верно для всех в списке» (владелец
   it("только в «Не проверено»; первое касание переспрашивает, второе подтверждает всё, что в списке (с поиском — найденное)", () => {
     expect(E).toContain('{only === "unchecked" && list.length ? (');
     expect(E).toContain("if (!sureAll) { setSureAll(true); vibrate(\"light\"); return; }");
-    expect(E).toContain("persist(withWines(shared, list.map((w) => normWine(confirmWine(w, who)))), \"Проверено: \" + winesWord(list.length),");
+    expect(E).toContain("persist(K.withRecs(shared, list.map((w) => K.norm(K.confirm(w, who)))), \"Проверено: \" + K.word(list.length),");
     expect(E).toContain("React.useEffect(() => { setSureAll(false); }, [only, q]);");
     expect(E).toContain('"Верно для всех в списке: " + list.length');
   });
@@ -236,7 +237,7 @@ describe("v122: «Винная карта» — миниатюры и фото �
   });
   it("карточка вина: фото сверху целиком (не обрезано)", () => {
     expect(L).toContain('data-wine-photo-big=""');
-    expect(L).toMatch(/alt=\{"Бутылка: " \+ wineTitle\(w\)\}[^>]*maxHeight: 300, borderRadius: 14, objectFit: "contain"/);
+    expect(L).toMatch(/alt=\{"Бутылка: " \+ K\.title\(w\)\}[^>]*maxHeight: 300, borderRadius: 14, objectFit: "contain"/);   // v127: K — вина или крепкое
   });
 });
 

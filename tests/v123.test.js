@@ -176,18 +176,22 @@ describe("v123: экраны", () => {
   const TR = rd("ui/wine-train.jsx"), L = rd("ui/wine-list.jsx"), E = rd("ui/wine-editor.jsx"), M = rd("ui/menu-trainer.jsx"), APP = rd("App.jsx");
   it("колода: свайп, переворот, «Знаю?» и «Наоборот», фильтры; прогресс и «Знаю?» — по ресторану, режим дня считается", () => {
     for (const s of ['className="sa-ck-wrap"', '"sa-ck-inner" + (settled ? " sa-ck-settled" : "")', 'data-wine-deck-mode="quiz"', "Знаю?", "data-wine-deck-reverse", "Наоборот",
-      "data-wine-deck-chip={k}", 'data-wine-mark="ok"', "Знал", "Повторить", "markSr(w.id, ok); bumpDaily(uk);", "useWineSR(restaurant)", "srDue(sr, w.id)", "reversible(w)",
-      "Выучил новые вина ✓", "Дальше: вся карта", "выучено {known} из {liveN}"]) expect(TR, s).toContain(s);
+      "data-wine-deck-chip={k}", 'data-wine-mark="ok"', "Знал", "Повторить", "markSr(w.id, ok); bumpDaily(uk);", "useWineSR(restaurant, K)", "srDue(sr, w.id)", "reversibleFor(K, w)",
+      "выучено {known} из {liveN}"]) expect(TR, s).toContain(s);
+    // v127 (Доп. 440): тексты вин — в lib/drinks.js (у крепкого свои), колода одна на оба вида
+    for (const s of ['learned: "Выучил новые вина ✓"', "Дальше: вся карта"]) expect(rd("lib/drinks.js"), s).toContain(s);
     // в «Наоборот» на карточке нет фото: на этикетке название
     expect(TR).toContain("{w.img && !reverse ? <img");
   });
   it("викторина: вопросы один раз на заход, пояснение после ответа, ошибки — к повтору в «Знаю?»", () => {
-    for (const s of ["React.useState(() => makeQuiz(wines, dishes, { n: 10 }))", "data-lens-opt=", "data-wine-why", "res.wrong.forEach((id) => markSr(id, false))", "Повторить ошибки", "Ещё раз", "Вопрос {step + 1} из {questions.length}"])
+    for (const s of ["React.useState(() => quizFor(K, wines, dishes, { n: 10 }))", "data-lens-opt=", "data-wine-why", "res.wrong.forEach((id) => markSr(id, false))", "Повторить ошибки", "Ещё раз", "Вопрос {step + 1} из {questions.length}"])
       expect(TR, s).toContain(s);
   });
   it("главная тренировки: новые вина, путь новичка, колода, викторина; не проверенные — руководителю «Проверить подряд»", () => {
-    for (const s of ['row("new"', '"Новые вина"', '"С чего начать: вина бокалом"', '"Колода вин"', '"Викторина по винам"', "data-wine-review-open", "Проверить подряд", "ждут проверки руководителем"])
+    for (const s of ['row("new"', "data-wine-review-open", "Проверить подряд", "ждут проверки руководителем"])
       expect(TR, s).toContain(s);
+    // v127: названия строк — из текстов вида (lib/drinks.js)
+    for (const s of ['"Новые вина"', '"С чего начать: вина бокалом"', '"Колода вин"', '"Викторина по винам"']) expect(rd("lib/drinks.js"), s).toContain(s);
   });
   it("винная карта: «Учить вина» сверху, вход «@train» сразу в тренировку", () => {
     for (const s of ["data-wine-train-open", "Учить вина", 'startId === "@train"', '<WineTrainHub', '<WineDeck', '<WineQuiz', 'onReview={() => onEdit("@review")}']) expect(L, s).toContain(s);
@@ -195,7 +199,7 @@ describe("v123: экраны", () => {
   it("тренажёр меню: «Винная карта» — вход в тренировку своего ресторана; App ведёт в карту с «@train»", () => {
     expect(M).toContain("data-menu-wines={wn}");
     expect(M).toContain("onWines = null }");
-    expect(APP).toContain('onWines={() => { setWineStart("@train"); navigate("wines"); }}');
+    expect(APP).toContain('onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }}');   // v127: в «Барной карте» — вкладка «Вина»
   });
   it("редактор: «Проверка подряд» (Верно, Исправить, Пропустить, итог), вход «@review»; новое вино и импорт — с addedAt", () => {
     for (const s of ["data-wine-review-start={uncheckedN}", "Проверка подряд", 'startEditId === "@review"', "data-wine-review-ok", "data-wine-review-fix", "data-wine-review-skip",

@@ -171,17 +171,22 @@ describe("v125: экран и отчёты", () => {
   const TR = rd("ui/wine-train.jsx"), L = rd("ui/wine-list.jsx");
   const T = { screen: {}, modCard: {}, para: { color: "#ddd" }, modTitle: { color: "#fff" }, modSub: { color: "#aaa" }, doneBtn: {} };
   it("телефон сообщает: открыл «Новые вина», выучил, вышел из колоды после отметок, викторина; одно и то же — не дважды", () => {
-    for (const s of ["export function wineReport(kind, data, wines, restaurant, sr = null)", 'rpcSync("wine_progress_set", { p_token: saToken(), p_kind: kind, p_data })',
-      "if (k === lastReport.k && t - lastReport.t < 3000) return;", 'if (initialOnly === "new" && newIds.length) wineReport("opened", { ids: newIds }, wines, restaurant);',
-      'if (marked.current) wineReport("stats", {}, winesRef.current, restaurant);', "markSr(w.id, ok); bumpDaily(uk); marked.current = true;",
-      'wineReport("quiz", { quiz: { right: res.right, of: res.total } }, wines, restaurant, sr0);']) expect(TR, s).toContain(s);
-    expect(L).toContain('wineReport("passed", { ids: fresh.map((x) => x.id) }, all, restaurant)');
+    // v127 (Доп. 440): тот же отчёт и у крепкого — вид K (lib/drinks.js) последним аргументом, у вин — этап 44
+    for (const s of ["export function wineReport(kind, data, wines, restaurant, sr = null, K = WINE)", "rpcSync(K.rpc.set, { p_token: saToken(), p_kind: kind, p_data })",
+      "if (k === lastReport.k && t - lastReport.t < 3000) return;", 'if (initialOnly === "new" && newIds.length) wineReport("opened", { ids: newIds }, wines, restaurant, null, K);',
+      'if (marked.current) wineReport("stats", {}, winesRef.current, restaurant, null, K);', "markSr(w.id, ok); bumpDaily(uk); marked.current = true;",
+      'wineReport("quiz", { quiz: { right: res.right, of: res.total } }, wines, restaurant, sr0, K);']) expect(TR, s).toContain(s);
+    expect(L).toContain('wineReport("passed", { ids: fresh.map((x) => x.id) }, all, restaurant, null, K)');
+    expect(rd("lib/drinks.js")).toContain('rpc: { set: "wine_progress_set", team: "wine_progress_team", stage: "44", sql: "supabase/supabase-stage44-wines.sql" },');
   });
   it("«Кто выучил новые вина»: пункт тренировки только руководителю; нет этапа — что выполнить; отказ и сбой — словами", () => {
-    for (const s of ['edit ? row("team", UI_SVG.eye(gold, 19), "Кто выучил новые вина"', 'rpc("wine_progress_team", { p_token: saToken(), p_restaurant: restaurant })',
-      'else if (rpcMissing(r)) setRes({ err: "missing" });', "supabase/supabase-stage44-wines.sql</b> в Supabase → SQL Editor", "Сводка доступна руководителю своего заведения.",
-      "Не получилось загрузить. Проверь связь и открой ещё раз.", "Новые вина выучены ✓", '"Новые вина: учит, осталось " + r.left + " из " + fresh.length', '"Новые вина не открыты"',
-      '"Тренировки по винам пока нет"', "data-wine-team-row={r.id} data-wine-team-state={r.state}", 'const okText = a11y ? "#2F6B45" : green;']) expect(TR, s).toContain(s);
+    for (const s of ['edit ? row("team", UI_SVG.eye(gold, 19), K.t.team', "rpc(K.rpc.team, { p_token: saToken(), p_restaurant: restaurant })",
+      'else if (rpcMissing(r)) setRes({ err: "missing" });', "{K.rpc.sql}</b> в Supabase → SQL Editor", "Сводка доступна руководителю своего заведения.",
+      "Не получилось загрузить. Проверь связь и открой ещё раз.", '[K.t.teamLearning + r.left + " из " + fresh.length, gold]',
+      "data-wine-team-row={r.id} data-wine-team-state={r.state}", 'const okText = a11y ? "#2F6B45" : green;']) expect(TR, s).toContain(s);
+    // v127: тексты вин — в lib/drinks.js, слово в слово как в v125
+    for (const s of ['team: "Кто выучил новые вина"', 'teamWhat: "выучены ли новые вина"', 'teamDone: "Новые вина выучены ✓"', 'teamLearning: "Новые вина: учит, осталось "',
+      'teamNot: "Новые вина не открыты"', 'teamNo: "Тренировки по винам пока нет"']) expect(rd("lib/drinks.js"), s).toContain(s);
     for (const s of ['["quiz", "pair", "say60", "pron", "team"].includes(key)', 'if (view === "team") return <WineTeam']) expect(L, s).toContain(s);
   });
   it("экран рисуется: до ответа сервера — заготовка строк; в тренировке пункт есть у руководителя и нет у сотрудника", async () => {

@@ -10,6 +10,8 @@
 // v125 (Доп. 438), владелец: «Да, давай сделаем» — «Кто выучил новые вина». Телефон присылает тренировку на сервер (этап 44,
 // wine_progress_set): открыл и выучил новые вина, счёт «Знаю?», викторину; руководителю — команда (wine_progress_team).
 // v126 (Доп. 439): выученное до v125 телефон досылает сам (lib/wine-sync.js); что ушло, помнит.
+// v127 (Доп. 440): «Барная карта» — те же экраны для крепкого. Вид напитка K (lib/drinks.js): поля, слова, ключи на
+// телефоне и функции сервера (крепкое — этап 45); без K — вина, как было.
 import React from "react";
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -17,7 +19,9 @@ import { bumpDaily } from "../lib/deck-extras";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { COLOR_GROUP, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked } from "../lib/wine";
 import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKnown, glassPath, reverseClues, reversible, makeQuiz, quizScore,
-  dishPairs, pairQuiz, describePoints, describePick, wineStats, teamRows, teamSummary } from "../lib/wine-train";
+  dishPairs, pairQuiz, describePoints, describePick, wineStats, teamRows, teamSummary,
+  pathFor, cluesFor, reversibleFor, quizFor, pairQuizFor, describeFor, describePickFor, statsFor } from "../lib/wine-train";
+import { WINE } from "../lib/drinks";   // v127: вид напитка (вина, крепкое)
 import { findPronounce, stressText } from "../lib/pronounce";   // v124: «Как произносить» на обороте карточки
 import { SayButton } from "./pronounce";
 import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";   // v125: тренировка — на сервер (этап 44)
@@ -28,6 +32,8 @@ import { SkelCards } from "./skeleton";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
 const winesN = (n) => n + " " + plural(n, "вино", "вина", "вин");
+// v127: ключ на телефоне для вида напитка: «Знаю?», «Выучил», что ушло на сервер (у вин — прежние sa_wine_…)
+export const kKey = (K, part, restaurant) => (K || WINE).keys[part] + (restaurant || "x");
 const load = (k, dflt) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? dflt : v; } catch (e) { return dflt; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -56,16 +62,32 @@ export const WineArt = ({ color, gold, h = 150 }) => {
     </svg>);
 };
 
+// v127: крепкое — бутылка с плечами (виски, коньяк…), цвет напитка по виду
+const SP_TINT = { whisky: "#C98B2F", cognac: "#A0552D", rum: "#8B4A1F", gin: "#CFE3E6", agave: "#E6D7A8", vodka: "#E3ECEF", liqueur: "#B5473A", bitter: "#B23A3A", other: "#C9A86A" };
+export const SpiritArt = ({ cat, gold, h = 150 }) => {
+  const c = SP_TINT[cat] || gold, id = "sa-sa-" + (cat || "x");
+  return (
+    <svg width={Math.round(h * 0.42)} height={h} viewBox="0 0 60 150" aria-hidden="true" data-wine-art={"sp-" + (cat || "")} style={{ display: "block" }}>
+      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={c} stopOpacity="0.5" /><stop offset="1" stopColor={c} stopOpacity="0.92" /></linearGradient></defs>
+      <path d="M10 70h40v68a5 5 0 0 1-5 5H15a5 5 0 0 1-5-5z" fill={`url(#${id})`} />
+      <path d="M24 6h12v22c0 4 18 6 18 18v94a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6V46c0-12 18-14 18-18z" fill="none" stroke={gold} strokeWidth="1.6" strokeLinejoin="round" />
+      <rect x="22" y="2" width="16" height="8" rx="2" fill="none" stroke={gold} strokeWidth="1.2" />
+      <rect x="13" y="88" width="34" height="30" rx="3" fill="none" stroke={gold} strokeOpacity="0.7" strokeWidth="1.2" />
+    </svg>);
+};
+export const DrinkArt = ({ K, w, gold, h }) => ((K || WINE).kind === "spirit" ? <SpiritArt cat={w && w.cat} gold={gold} h={h} /> : <WineArt color={w && w.color} gold={gold} h={h} />);
+
 /** v124: «Как произносить» — слова словаря (data/pronounce) в названии, сорте и регионе вина: ударение, послушать,
  *  оригинал. Касание строки не переворачивает карточку. */
-export function WineSay({ w, gold, text, sub, a11y }) {
+export function WineSay({ w, gold, text, sub, a11y, K = WINE }) {
   // сначала слова из названия, потом сорт, потом регион; не больше трёх
   const items = React.useMemo(() => {
     if (!w) return [];
     const out = [];
-    for (const [t, n] of [[w.name, 2], [(w.grapes || []).join(" "), 2], [w.region, 1]]) for (const e of t ? findPronounce(t, n) : []) if (!out.some((x) => x.w === e.w)) out.push(e);
+    const srcs = K.kind === "spirit" ? [[w.name, 2], [w.producer, 1], [w.region, 1]] : [[w.name, 2], [(w.grapes || []).join(" "), 2], [w.region, 1]];
+    for (const [t, n] of srcs) for (const e of t ? findPronounce(t, n) : []) if (!out.some((x) => x.w === e.w)) out.push(e);
     return out.slice(0, 3);
-  }, [w]);
+  }, [w, K]);
   if (!items.length) return null;
   return (
     <div data-wine-say={items.length} onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
@@ -84,28 +106,30 @@ export function WineSay({ w, gold, text, sub, a11y }) {
  *  этапа (функция не найдена) — запрос просто отбрасывается; нет сети — уйдёт, когда появится (rpcSync). То же сообщение
  *  второй раз за 3 секунды не уходит: двойной монтаж эффекта (StrictMode при разработке), двойное касание. */
 let lastReport = { k: "", t: 0 };
-export function wineReport(kind, data, wines, restaurant, sr = null) {
+export function wineReport(kind, data, wines, restaurant, sr = null, K = WINE) {
   try {
     if (!saToken()) return;
-    const p_data = { ...(data || {}), stats: wineStats(wines, sr || load(srKey(restaurant), {})) };
-    const k = JSON.stringify([kind, restaurant, p_data]), t = Date.now();
+    const p_data = { ...(data || {}), stats: statsFor(K, wines, sr || load(kKey(K, "sr", restaurant), {})) };
+    const k = JSON.stringify([K.kind, kind, restaurant, p_data]), t = Date.now();
     if (k === lastReport.k && t - lastReport.t < 3000) return;
     lastReport = { k, t };
-    const undo = markSent(restaurant, kind, data && data.ids);   // v126: что ушло, досылка не повторит; сервер отверг — дошлётся потом
-    rpcSync("wine_progress_set", { p_token: saToken(), p_kind: kind, p_data }).then((res) => { if (res === "drop") undo(); }).catch(() => {});
+    const undo = markSent(restaurant, kind, data && data.ids, K);   // v126: что ушло, досылка не повторит; сервер отверг — дошлётся потом
+    rpcSync(K.rpc.set, { p_token: saToken(), p_kind: kind, p_data }).then((res) => { if (res === "drop") undo(); }).catch(() => {});
   } catch (e) {}
 }
 
 /** «Знаю?»: прогресс колоды на телефоне, по ресторану. */
-export function useWineSR(restaurant) {
-  const [sr, setSr] = React.useState(() => load(srKey(restaurant), {}));
-  const mark = (id, ok) => setSr((cur) => { const next = srMark(cur, id, ok); save(srKey(restaurant), next); return next; });
+export function useWineSR(restaurant, K = WINE) {
+  const key = kKey(K, "sr", restaurant);
+  const [sr, setSr] = React.useState(() => load(key, {}));
+  const mark = (id, ok) => setSr((cur) => { const next = srMark(cur, id, ok); save(key, next); return next; });
   return [sr, mark];
 }
 /** «Выучил новые вина»: какие вина были в выученной волне. */
-export function useLearned(restaurant) {
-  const [ids, setIds] = React.useState(() => load(learnedKey(restaurant), []));
-  const learn = (list) => { const next = (list || []).map((w) => w.id); save(learnedKey(restaurant), next); setIds(next); };
+export function useLearned(restaurant, K = WINE) {
+  const key = kKey(K, "learned", restaurant);
+  const [ids, setIds] = React.useState(() => load(key, []));
+  const learn = (list) => { const next = (list || []).map((w) => w.id); save(key, next); setIds(next); };
   return [ids, learn];
 }
 
@@ -113,15 +137,15 @@ export function useLearned(restaurant) {
 // Механика — как у Колоды меню (ui/menu-deck.jsx): свайп 1:1 с продолжением, тап — переворот, после переворота карточка
 // «садится» плоской (WebKit плохо прокручивает повёрнутое). only: all | glass | new | focus | цвет.
 export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head, title = "Колода вин", initialMode = "deck", initialOnly = "all",
-  newIds = [], focusIds = [], onLearned = null }) {
+  newIds = [], focusIds = [], onLearned = null, K = WINE }) {
   const text = T.modTitle.color, sub = T.modSub.color;
-  const [sr, markSr] = useWineSR(restaurant);
+  const [sr, markSr] = useWineSR(restaurant, K);
   // v125: «Новые вина» открыты — на сервер; отмечал карточки — при выходе из колоды счёт «Знаю?» туда же
   const marked = React.useRef(false), winesRef = React.useRef(wines);
   winesRef.current = wines;
   React.useEffect(() => {
-    if (initialOnly === "new" && newIds.length) wineReport("opened", { ids: newIds }, wines, restaurant);
-    return () => { if (marked.current) wineReport("stats", {}, winesRef.current, restaurant); };
+    if (initialOnly === "new" && newIds.length) wineReport("opened", { ids: newIds }, wines, restaurant, null, K);
+    return () => { if (marked.current) wineReport("stats", {}, winesRef.current, restaurant, null, K); };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const [mode, setMode] = React.useState(initialMode);   // deck | quiz («Знаю?»)
   const [only, setOnly] = React.useState(initialOnly);
@@ -135,9 +159,9 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
   const toggleFlip = () => { if (flip && settled) { setSettled(false); requestAnimationFrame(() => setFlip(false)); } else setFlip((f) => !f); };
 
   // порядок колоды — порядок карты: по цвету, внутри — по алфавиту
-  const base = React.useMemo(() => groupByColor(trainable(wines)).flatMap(([, ws]) => ws), [wines]);
-  const fits = (w, k) => (k === "all" ? true : k === "glass" ? w.byGlass : k === "new" ? newIds.includes(w.id) : k === "focus" ? focusIds.includes(w.id) : w.color === k);
-  const found = React.useMemo(() => findWines(base, q).filter((w) => !reverse || reversible(w)), [base, q, reverse]);
+  const base = React.useMemo(() => K.groups(trainable(wines)).flatMap(([, ws]) => ws), [wines, K]);
+  const fits = (w, k) => (k === "all" ? true : k === "glass" ? K.pathTest(w) : k === "new" ? newIds.includes(w.id) : k === "focus" ? focusIds.includes(w.id) : K.groupKey(w) === k);
+  const found = React.useMemo(() => K.find(base, q).filter((w) => !reverse || reversibleFor(K, w)), [base, q, reverse, K]);
   const pool = found.filter((w) => fits(w, only));
   const due = pool.filter((w) => !w.stop && srDue(sr, w.id));   // «сегодня нет» в повтор не идёт, как у меню
   const list = mode === "quiz" ? due : pool;
@@ -199,9 +223,9 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
   const tag = (t) => <span key={t} data-lens-tag="" style={{ padding: "3px 9px", borderRadius: 999, fontSize: 12, border: `1px solid ${gold}44`, color: text, whiteSpace: "nowrap" }}>{t}</span>;
   const sec = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "12px 0 5px" }}>{t}</div>;
   const open = filters || !!q || only !== initialOnly;
-  const chips = [["all", "Все", base.length], ...(base.some((x) => x.byGlass) ? [["glass", "Бокалом", base.filter((x) => x.byGlass).length]] : []),
+  const chips = [["all", "Все", base.length], ...(base.some(K.pathTest) ? [["glass", K.t.pathChip, base.filter(K.pathTest).length]] : []),
     ...(newIds.length ? [["new", "Новые", base.filter((x) => newIds.includes(x.id)).length]] : []), ...(focusIds.length ? [["focus", "Ошибки", base.filter((x) => focusIds.includes(x.id)).length]] : []),
-    ...groupByColor(base).filter(([k]) => k !== "other").map(([k, ws]) => [k, COLOR_GROUP[k], ws.length])];
+    ...K.groups(base).filter(([k]) => k !== "other").map(([k, ws]) => [k, K.GROUP[k], ws.length])];
 
   return (
     <div style={T.screen} className="sa-screen" data-wine-deck={mode} data-wine-deck-only={only}>
@@ -218,7 +242,7 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
         </div>
         {open ? (
           <div className="sa-fadein" style={{ marginBottom: 12 }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Вино, регион, сорт, нота…" data-lens-field="" aria-label="Найти вино в колоде"
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={K.t.deckPh} data-lens-field="" aria-label={K.t.deckAria}
               style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: SERIF, fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
               <span role="button" tabIndex={0} data-wine-deck-reverse={reverse ? "on" : ""} style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse((r) => !r); vibrate("light"); }} {...onActivate(() => setReverse((r) => !r))}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
@@ -235,8 +259,8 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
       {!w ? (
         <div data-wine-deck-empty={mode} style={{ textAlign: "center", padding: "44px 24px 100px" }}>
           <div style={{ ...T.bold, marginBottom: 8 }}>{mode === "quiz" ? (pool.length ? "Всё повторено ✓" : "Здесь пусто") : "Ничего не нашлось"}</div>
-          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>{mode === "quiz" && pool.length ? "Карточки вернутся по интервалам: через день, три, неделю, месяц." : reverse && !pool.length ? "Для «Наоборот» у вина нужны хотя бы две подсказки: регион, сорт, стиль или ноты." : "Попробуй другое слово или сними фильтр."}</div>
-          {mode === "quiz" && pool.length && only === "new" && onLearned ? <button type="button" className="sa-btn sa-btn-pulse" data-lens-btn="main" data-wine-learned="" style={{ ...T.doneBtn, background: green || gold, width: "100%" }} onClick={onLearned}>Выучил новые вина ✓</button> : null}
+          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>{mode === "quiz" && pool.length ? "Карточки вернутся по интервалам: через день, три, неделю, месяц." : reverse && !pool.length ? K.t.reverseNeed : "Попробуй другое слово или сними фильтр."}</div>
+          {mode === "quiz" && pool.length && only === "new" && onLearned ? <button type="button" className="sa-btn sa-btn-pulse" data-lens-btn="main" data-wine-learned="" style={{ ...T.doneBtn, background: green || gold, width: "100%" }} onClick={onLearned}>{K.t.learned}</button> : null}
           {mode === "quiz" && pool.length && only !== "all" && !(only === "new" && onLearned) ? <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-deck-all="" style={{ ...T.doneBtn, background: "transparent", border: `1px solid ${gold}88`, color: text, width: "100%" }} onClick={() => setOnly("all")}>Дальше: вся карта</button> : null}
         </div>
       ) : (
@@ -253,32 +277,32 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
                   {w.stop ? <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red, color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div> : null}
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: reverse ? 150 : 200, margin: "2px 0 14px" }}>
                     {w.img && !reverse ? <img src={w.img} alt="" decoding="async" data-wine-deck-photo="" style={{ display: "block", maxWidth: "100%", maxHeight: a11y ? 230 : 210, objectFit: "contain", borderRadius: 12 }} />
-                      : <WineArt color={w.color} gold={gold} h={reverse ? 140 : 170} />}
+                      : <DrinkArt K={K} w={w} gold={gold} h={reverse ? 140 : 170} />}
                   </div>
-                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{reverse ? "Что за вино? · " : ""}{COLOR_GROUP[w.color] || COLOR_GROUP.other}{w.byGlass ? " · бокалом" : ""}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{reverse ? K.t.whatIs : ""}{K.oneLabel(w)}{K.pathTest(w) ? " · " + K.t.pathBadge : ""}</div>
                   {reverse ? (
-                    <div data-wine-clues="" style={{ fontFamily: SERIF, fontSize: 16, color: text, lineHeight: 1.45 }}>{reverseClues(w).map((c) => <div key={c}>{c}</div>)}</div>
+                    <div data-wine-clues="" style={{ fontFamily: SERIF, fontSize: 16, color: text, lineHeight: 1.45 }}>{cluesFor(K, w).map((c) => <div key={c}>{c}</div>)}</div>
                   ) : (<>
-                    <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.2 }}>{wineTitle(w)}</div>
+                    <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.2 }}>{K.title(w)}</div>
                     {w.producer && !String(w.name).toLowerCase().includes(String(w.producer).toLowerCase()) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{w.producer}</div> : null}
                   </>)}
-                  <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 10 }}>{reverse ? "Так гость и описывает, что хочет. Вспомни, какое это вино в карте, и переверни." : "Вспомни, откуда оно, сорт, стиль и как описать гостю. Потом переверни и сверься."}</div>
+                  <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 10 }}>{reverse ? K.t.reverseHint : K.t.frontHint}</div>
                   <div style={{ marginTop: "auto", paddingTop: 10, fontSize: 11, color: gold, fontStyle: "italic", textAlign: "center" }}>{reverse ? "название по тапу" : "ответ по тапу"}</div>
                   </div>
                 </div>
                 <div className="sa-ck-face sa-ck-back" data-lens-edge="" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
-                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{COLOR_GROUP[w.color] || COLOR_GROUP.other}{w.byGlass ? " · бокалом" : ""}</div>
-                  <div data-wine-back-title="" style={{ fontFamily: SERIF, fontSize: 19, color: text, lineHeight: 1.25 }}>{wineTitle(w)}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{K.oneLabel(w)}{K.pathTest(w) ? " · " + K.t.pathBadge : ""}</div>
+                  <div data-wine-back-title="" style={{ fontFamily: SERIF, fontSize: 19, color: text, lineHeight: 1.25 }}>{K.title(w)}</div>
                   {w.producer ? <div style={{ fontSize: 13, color: sub, marginTop: 2 }}>{w.producer}</div> : null}
-                  {wineLine(w) ? <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginTop: 8 }}>{wineLine(w)}</div> : null}
-                  {winePrice(w) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{winePrice(w)}</div> : null}
-                  {flip ? <WineSay w={w} gold={gold} text={text} sub={sub} a11y={a11y} /> : null}
+                  {K.line(w) ? <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginTop: 8 }}>{K.line(w)}</div> : null}
+                  {K.price(w) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{K.price(w)}</div> : null}
+                  {flip ? <WineSay w={w} gold={gold} text={text} sub={sub} a11y={a11y} K={K} /> : null}
                   {w.short ? <>{sec("Одной фразой гостю")}<div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 15, lineHeight: 1.5, color: text }}>«{w.short}»</div></> : null}
                   {(w.notes || []).length ? <>{sec("Ноты")}<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{w.notes.map(tag)}</div></> : null}
-                  {w.temp || w.glass ? <>{sec("Подача")}<div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>{[w.temp, w.glass ? "бокал «" + w.glass + "»" : ""].filter(Boolean).join(" · ")}</div></> : null}
+                  {K.serveText(w) ? <>{sec("Подача")}<div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>{K.serveText(w)}</div></> : null}
                   {(w.pair || []).map(dishName).filter(Boolean).length ? <>{sec("К блюдам")}<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{(w.pair || []).map(dishName).filter(Boolean).map(tag)}</div></> : null}
                   {w.pairNote ? <div style={{ fontSize: 13, color: sub, lineHeight: 1.5, marginTop: 6 }}>{w.pairNote}</div> : null}
-                  {w.story ? <>{sec("О вине")}<div style={{ fontSize: 13.5, color: text, lineHeight: 1.6 }}>{w.story}</div></> : null}
+                  {w.story ? <>{sec(K.t.about)}<div style={{ fontSize: 13.5, color: text, lineHeight: 1.6 }}>{w.story}</div></> : null}
                 </div>
               </div>
             </div>
@@ -306,12 +330,12 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
 // ─────────────────────────────── ВИКТОРИНА ПО ВИНАМ
 // 10 вопросов по своей карте (lib/wine-train.js: makeQuiz). Вопросы собираются один раз на заход: если меню команды
 // обновится с сервера посреди викторины, вопросы не сменятся. Ошибки в конце — к повтору в «Знаю?».
-export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head, onRepeat }) {
+export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head, onRepeat, K = WINE }) {
   const sub = T.modSub.color, text = T.modTitle.color;
-  const [questions, setQuestions] = React.useState(() => makeQuiz(wines, dishes, { n: 10 }));
+  const [questions, setQuestions] = React.useState(() => quizFor(K, wines, dishes, { n: 10 }));
   const [step, setStep] = React.useState(0);
   const [picks, setPicks] = React.useState([]);
-  const [, markSr] = useWineSR(restaurant);
+  const [, markSr] = useWineSR(restaurant, K);
   const done = questions.length > 0 && step >= questions.length;
   const res = done ? quizScore(questions, picks) : null;
   const doneRef = React.useRef(false);
@@ -321,30 +345,30 @@ export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restau
     res.wrong.forEach((id) => markSr(id, false));   // вино с ошибкой — снова к повтору
     bumpDaily(uk);
     // v125: итог — на сервер; счёт «Знаю?» уже с ошибками (их карточки снова к повтору)
-    let sr0 = load(srKey(restaurant), {});
+    let sr0 = load(kKey(K, "sr", restaurant), {});
     res.wrong.forEach((id) => { sr0 = srMark(sr0, id, false); });
-    wineReport("quiz", { quiz: { right: res.right, of: res.total } }, wines, restaurant, sr0);
+    wineReport("quiz", { quiz: { right: res.right, of: res.total } }, wines, restaurant, sr0, K);
   }, [done]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const again = () => { doneRef.current = false; setQuestions(makeQuiz(wines, dishes, { n: 10 })); setStep(0); setPicks([]); vibrate("light"); };
-  const nameOf = (id) => wineTitle(trainable(wines).find((x) => x.id === id));
+  const again = () => { doneRef.current = false; setQuestions(quizFor(K, wines, dishes, { n: 10 })); setStep(0); setPicks([]); vibrate("light"); };
+  const nameOf = (id) => K.title(trainable(wines).find((x) => x.id === id));
 
   if (!questions.length) return (
-    <div style={T.screen} className="sa-screen" data-wine-quiz="none">{Head("Викторина по винам")}
-      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>Для викторины нужно хотя бы два проверенных вина с регионом, сортом или стилем.</div>
+    <div style={T.screen} className="sa-screen" data-wine-quiz="none">{Head(K.t.quiz)}
+      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>{K.t.quizNeed}</div>
     </div>);
 
   if (done) {
     const pct = Math.round((res.right / res.total) * 100), c = pct >= 80 ? gold : pct >= 50 ? green : red;
     return (
       <div style={T.screen} className="sa-screen" data-wine-quiz="done" data-wine-quiz-score={res.right + "/" + res.total}>
-        {Head("Викторина по винам")}
+        {Head(K.t.quiz)}
         <div style={{ textAlign: "center", padding: "44px 24px 100px" }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <div style={{ width: 76, height: 76, borderRadius: "50%", background: c + "1F", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {pct >= 80 ? UI_SVG.trophy(gold, 38) : pct >= 50 ? UI_SVG.target(green, 36) : UI_SVG.book(red, 36)}</div>
           </div>
           <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{res.right} из {res.total}</div>
-          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: res.wrong.length ? 12 : 20 }}>{pct >= 80 ? "Карту знаешь хорошо." : pct >= 50 ? "Неплохо. Вина с ошибками вернулись в «Знаю?»." : "Пройди колоду и возвращайся. Вина с ошибками уже в «Знаю?»."}</div>
+          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: res.wrong.length ? 12 : 20 }}>{pct >= 80 ? "Карту знаешь хорошо." : pct >= 50 ? K.t.quizMid : K.t.quizLow}</div>
           {res.wrong.length ? (
             <div data-wine-quiz-wrong={res.wrong.length} style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 18 }}>
               {res.wrong.map((id) => <span key={id} data-lens-tag="" style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12.5, border: `1px solid ${gold}55`, color: text }}>{nameOf(id)}</span>)}
@@ -362,7 +386,7 @@ export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restau
   const answer = (i) => { if (pick != null) return; setPicks((p) => { const n = p.slice(); n[step] = i; return n; }); vibrate(i === qq.answer ? "light" : "error"); };
   return (
     <div style={T.screen} className="sa-screen" data-wine-quiz={step} data-wine-quiz-kind={qq.kind}>
-      {Head("Викторина по винам")}
+      {Head(K.t.quiz)}
       <div key={step} className="sa-cardpage-r" style={T.quizWrap}>
         <div style={{ ...T.quizProgress, ...labelStyle(T.a11y ? 16 : 13) }}>Вопрос {step + 1} из {questions.length} · {restaurant}</div>
         <div style={T.quizQ}>{qq.q}</div>
@@ -389,32 +413,32 @@ export function WineQuiz({ T, a11y, gold, green, red, wines, dishes = [], restau
 
 // ─────────────────────────────── v124: ВИНО К БЛЮДУ
 // Блюдо меню (с фото) → какое вино предложить. Пары — из поля «к блюдам» у вин (lib/wine-train.js: pairQuiz).
-export function WinePairQuiz({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head }) {
+export function WinePairQuiz({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head, K = WINE }) {
   const sub = T.modSub.color;
-  const [questions, setQuestions] = React.useState(() => pairQuiz(wines, dishes, { n: 8 }));
+  const [questions, setQuestions] = React.useState(() => pairQuizFor(K, wines, dishes, { n: 8 }));
   const [step, setStep] = React.useState(0);
   const [picks, setPicks] = React.useState([]);
   const done = questions.length > 0 && step >= questions.length;
   const right = questions.filter((q, i) => picks[i] === q.answer).length;
   const doneRef = React.useRef(false);
   React.useEffect(() => { if (done && !doneRef.current) { doneRef.current = true; bumpDaily(uk); } }, [done]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const again = () => { doneRef.current = false; setQuestions(pairQuiz(wines, dishes, { n: 8 })); setStep(0); setPicks([]); vibrate("light"); };
+  const again = () => { doneRef.current = false; setQuestions(pairQuizFor(K, wines, dishes, { n: 8 })); setStep(0); setPicks([]); vibrate("light"); };
   if (!questions.length) return (
-    <div style={T.screen} className="sa-screen" data-wine-pairq="none">{Head("Вино к блюду")}
-      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>Нужны хотя бы два блюда, к которым в карте отмечены вина. Отмечают в «Редакторе вин», раздел «К блюдам».</div>
+    <div style={T.screen} className="sa-screen" data-wine-pairq="none">{Head(K.t.pair)}
+      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>{K.t.pairNeed}</div>
     </div>);
   if (done) {
     const pct = Math.round((right / questions.length) * 100), c = pct >= 80 ? gold : pct >= 50 ? green : red;
     return (
       <div style={T.screen} className="sa-screen" data-wine-pairq="done" data-wine-pairq-score={right + "/" + questions.length}>
-        {Head("Вино к блюду")}
+        {Head(K.t.pair)}
         <div style={{ textAlign: "center", padding: "44px 24px 100px" }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <div style={{ width: 76, height: 76, borderRadius: "50%", background: c + "1F", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {pct >= 80 ? UI_SVG.trophy(gold, 38) : pct >= 50 ? UI_SVG.target(green, 36) : UI_SVG.book(red, 36)}</div>
           </div>
           <div style={{ ...T.bold, fontSize: 21, marginBottom: 8 }}>{right} из {questions.length}</div>
-          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>{pct >= 80 ? "Пары из карты знаешь." : "Повтори пары: на обороте карточки вина есть «К блюдам»."}</div>
+          <div style={{ color: sub, fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>{pct >= 80 ? "Пары из карты знаешь." : K.t.pairLow}</div>
           <button type="button" className="sa-btn" data-lens-btn="main" data-wine-pairq-again="" style={{ ...T.doneBtn, width: "100%", margin: 0, background: gold }} onClick={again}>Ещё раз</button>
         </div>
       </div>);
@@ -423,7 +447,7 @@ export function WinePairQuiz({ T, a11y, gold, green, red, wines, dishes = [], re
   const answer = (i) => { if (pick != null) return; setPicks((p) => { const n = p.slice(); n[step] = i; return n; }); vibrate(i === qq.answer ? "light" : "error"); };
   return (
     <div style={T.screen} className="sa-screen" data-wine-pairq={step}>
-      {Head("Вино к блюду")}
+      {Head(K.t.pair)}
       <div key={step} className="sa-cardpage-r" style={T.quizWrap}>
         <div style={{ ...T.quizProgress, ...labelStyle(T.a11y ? 16 : 13) }}>Блюдо {step + 1} из {questions.length} · {restaurant}</div>
         {qq.img ? <img src={qq.img} alt="" data-wine-pairq-photo="" style={{ display: "block", width: "100%", height: 150, objectFit: "cover", borderRadius: 14, marginBottom: 12 }} /> : null}
@@ -458,18 +482,18 @@ function Countdown({ sec, gold, red, sub, onEnd }) {
       <div style={{ height: 4, borderRadius: 3, background: gold + "26", overflow: "hidden" }}><div style={{ width: (left / sec) * 100 + "%", height: "100%", background: c, transition: "width 1s linear" }} /></div>
     </div>);
 }
-export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head }) {
+export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], restaurant, uk, Head, K = WINE }) {
   const text = T.modTitle.color, sub = T.modSub.color;
-  const [w, setW] = React.useState(() => describePick(wines, dishes));
+  const [w, setW] = React.useState(() => describePickFor(K, wines, dishes));
   const [phase, setPhase] = React.useState("ready");   // ready | speak | compare
   const [said, setSaid] = React.useState([]);
   React.useEffect(() => { if (phase === "compare") bumpDaily(uk); }, [phase]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const next = () => { setW((cur) => describePick(wines, dishes, cur ? cur.id : "") || cur); setPhase("ready"); setSaid([]); vibrate("light"); };
+  const next = () => { setW((cur) => describePickFor(K, wines, dishes, cur ? cur.id : "") || cur); setPhase("ready"); setSaid([]); vibrate("light"); };
   if (!w) return (
     <div style={T.screen} className="sa-screen" data-wine-say60="none">{Head("Опиши за 60 секунд")}
-      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>Нужны проверенные вина, где в карточке есть хотя бы регион, сорт и стиль.</div>
+      <div style={{ textAlign: "center", padding: "50px 24px", color: sub, fontSize: 14, lineHeight: 1.5 }}>{K.t.sayNeed}</div>
     </div>);
-  const points = describePoints(w, dishes);
+  const points = describeFor(K, w, dishes);
   const toggle = (k) => { setSaid((s0) => (s0.includes(k) ? s0.filter((x) => x !== k) : [...s0, k])); vibrate("light"); };
   return (
     <div style={T.screen} className="sa-screen" data-wine-say60={phase} data-wine-say60-wine={w.id}>
@@ -477,14 +501,14 @@ export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], 
       <div style={{ padding: "6px 16px 100px" }}>
         <div key={w.id} className="sa-cardpage-r" data-lens-card="" style={{ ...glass(T), padding: "18px 18px 16px" }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            {w.img ? <img src={w.img} alt="" style={{ width: 62, height: 84, objectFit: "cover", borderRadius: 10, flexShrink: 0, border: `1px solid ${gold}44` }} /> : <WineArt color={w.color} gold={gold} h={84} />}
+            {w.img ? <img src={w.img} alt="" style={{ width: 62, height: 84, objectFit: "cover", borderRadius: 10, flexShrink: 0, border: `1px solid ${gold}44` }} /> : <DrinkArt K={K} w={w} gold={gold} h={84} />}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ ...labelStyle(13.5), color: gold }}>{COLOR_GROUP[w.color] || COLOR_GROUP.other}{w.byGlass ? " · бокалом" : ""}</div>
-              <div style={{ fontFamily: SERIF, fontSize: 20, color: text, lineHeight: 1.2, marginTop: 2 }}>{wineTitle(w)}</div>
+              <div style={{ ...labelStyle(13.5), color: gold }}>{K.oneLabel(w)}{K.pathTest(w) ? " · " + K.t.pathBadge : ""}</div>
+              <div style={{ fontFamily: SERIF, fontSize: 20, color: text, lineHeight: 1.2, marginTop: 2 }}>{K.title(w)}</div>
             </div>
           </div>
           {phase === "ready" ? <div style={{ color: (T.para && T.para.color) || text, fontSize: 14, lineHeight: 1.6, marginTop: 14 }}>
-            Гость спрашивает: «а что это за вино?». У тебя минута. Расскажи вслух, как в зале: откуда оно, из какого винограда, какое на вкус, к чему подать. И закончи фразой, после которой хочется заказать.</div> : null}
+            {K.t.sayAsk}</div> : null}
           {phase === "speak" ? <div style={{ marginTop: 14 }}><Countdown sec={60} gold={gold} red={red} sub={sub} onEnd={() => setPhase("compare")} /></div> : null}
           {phase === "compare" ? (
             <div style={{ marginTop: 14 }} data-wine-say60-points={points.length}>
@@ -506,7 +530,7 @@ export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], 
         <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
           {phase === "ready" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-go="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={() => { setPhase("speak"); vibrate("medium"); }}>Старт ›</button> : null}
           {phase === "speak" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-stop="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={() => setPhase("compare")}>Я закончил(а)</button> : null}
-          {phase === "compare" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-next="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={next}>Следующее вино →</button> : null}
+          {phase === "compare" ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-say60-next="" style={{ ...T.doneBtn, margin: 0, background: gold, flex: 1 }} onClick={next}>{K.t.sayNext}</button> : null}
         </div>
       </div>
     </div>);
@@ -515,20 +539,20 @@ export function WineDescribe60({ T, a11y, gold, green, red, wines, dishes = [], 
 // ─────────────────────────────── v125: КТО ВЫУЧИЛ НОВЫЕ ВИНА
 // Руководителю: вся команда заведения (этап 44, wine_progress_team) — выучены ли ТЕКУЩИЕ новые вина (сравнение со списком
 // новых вин карты: добавили вино — снова «учит»), счёт «Знаю?», вина бокалом, викторина. Нет этапа — что выполнить.
-export function WineTeam({ T, a11y, gold, green, wines, restaurant, Head }) {
+export function WineTeam({ T, a11y, gold, green, wines, restaurant, Head, K = WINE }) {
   const text = T.modTitle.color, sub = T.modSub.color;
   const okText = a11y ? "#2F6B45" : green;   // «выучены» на светлом — темнее зелёный (контраст мелкой подписи)
   const [res, setRes] = React.useState(null);   // null — грузим; { rows } | { err: missing | forbidden | error }
   React.useEffect(() => {
     let alive = true;
-    rpc("wine_progress_team", { p_token: saToken(), p_restaurant: restaurant }).then((r) => {
+    rpc(K.rpc.team, { p_token: saToken(), p_restaurant: restaurant }).then((r) => {
       if (!alive) return;
       if (r && r.ok && Array.isArray(r.rows)) setRes({ rows: r.rows });
       else if (rpcMissing(r)) setRes({ err: "missing" });
       else setRes({ err: r && r.error === "forbidden" ? "forbidden" : "error" });
     }).catch(() => { if (alive) setRes({ err: "error" }); });
     return () => { alive = false; };
-  }, [restaurant]);
+  }, [restaurant, K]);
   const fresh = React.useMemo(() => newWines(wines), [wines]);
   const rows = res && res.rows ? teamRows(res.rows, fresh) : null, sum = rows ? teamSummary(rows) : null;
   const day = (ts) => { try { return new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }); } catch (e) { return ""; } };
@@ -538,22 +562,22 @@ export function WineTeam({ T, a11y, gold, green, wines, restaurant, Head }) {
     : [sum.active ? "занимаются " + sum.active : ""]).concat(sum.none ? ["не занимались " + sum.none] : []).filter(Boolean);
   return (
     <div style={T.screen} className="sa-screen" data-wine-team={rows ? rows.length : res ? res.err : "load"}>
-      {Head("Кто выучил новые вина")}
+      {Head(K.t.team)}
       {!res ? <SkelCards a11y={!!a11y} rows={4} h={64} style={{ padding: "12px 16px 24px" }} /> : null}
-      {res && res.err === "missing" ? msg(<>Нужен этап базы 44: выполни <b style={{ color: gold }}>supabase/supabase-stage44-wines.sql</b> в Supabase → SQL Editor. После этого здесь будет каждый сотрудник: выучены ли новые вина, сколько вин выучено в «Знаю?», вина бокалом и викторина.</>) : null}
+      {res && res.err === "missing" ? msg(<>Нужен этап базы {K.rpc.stage}: выполни <b style={{ color: gold }}>{K.rpc.sql}</b> в Supabase → SQL Editor. После этого здесь будет каждый сотрудник: {K.t.teamWhat}, {K.t.teamSql}.</>) : null}
       {res && res.err === "forbidden" ? msg("Сводка доступна руководителю своего заведения. Другие заведения видят руководящий состав сети и владелец.") : null}
       {res && res.err === "error" ? msg("Не получилось загрузить. Проверь связь и открой ещё раз.") : null}
       {rows ? (
         <div style={{ padding: "4px 16px 120px" }}>
           <div data-lens-card="" data-wine-team-sum="" style={{ ...T.modCard, display: "block", cursor: "default", padding: "12px 14px", margin: "0 0 14px" }}>
-            <div style={{ fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.4 }}>{fresh.length ? "Новые вина: " + fresh.map(wineTitle).slice(0, 3).join(", ") + (fresh.length > 3 ? " и ещё " + (fresh.length - 3) : "") : "Новых вин сейчас нет"}</div>
+            <div style={{ fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.4 }}>{fresh.length ? K.t.teamNew + fresh.map(K.title).slice(0, 3).join(", ") + (fresh.length > 3 ? " и ещё " + (fresh.length - 3) : "") : K.t.teamNone}</div>
             <div data-wine-team-line="" style={{ fontSize: 13, color: sub, marginTop: 4, lineHeight: 1.5 }}>{parts.length ? parts.join(" · ") : "В команде пока никого."}</div>
           </div>
           {rows.map((r) => {
-            const stateLine = r.state === "passed" ? ["Новые вина выучены ✓" + (r.passedAt ? " · " + day(r.passedAt) : ""), okText]
-              : r.state === "opened" ? ["Новые вина: учит, осталось " + r.left + " из " + fresh.length, gold]
-              : r.state === "notnew" ? ["Новые вина не открыты", sub] : r.state === "none" ? ["Тренировки по винам пока нет", sub] : null;
-            const prog = [r.total != null ? "«Знаю?» " + (r.known || 0) + " из " + r.total : "", r.glassTotal ? "бокалом " + (r.glassKnown || 0) + " из " + r.glassTotal : "",
+            const stateLine = r.state === "passed" ? [K.t.teamDone + (r.passedAt ? " · " + day(r.passedAt) : ""), okText]
+              : r.state === "opened" ? [K.t.teamLearning + r.left + " из " + fresh.length, gold]
+              : r.state === "notnew" ? [K.t.teamNot, sub] : r.state === "none" ? [K.t.teamNo, sub] : null;
+            const prog = [r.total != null ? "«Знаю?» " + (r.known || 0) + " из " + r.total : "", r.glassTotal ? K.t.teamPath + (r.glassKnown || 0) + " из " + r.glassTotal : "",
               r.quizOf ? "викторина " + (r.quizRight || 0) + " из " + r.quizOf : ""].filter(Boolean).join(" · ");
             return (
               <div key={r.id} data-lens-card="" data-wine-team-row={r.id} data-wine-team-state={r.state} style={{ ...T.modCard, cursor: "default", margin: "0 0 10px", alignItems: "flex-start" }}>
@@ -572,13 +596,13 @@ export function WineTeam({ T, a11y, gold, green, wines, restaurant, Head }) {
 // ─────────────────────────────── ТРЕНИРОВКА: ГЛАВНАЯ
 // Как главная тренажёра меню: «Новые вина» (если есть), путь новичка «С чего начать: вина бокалом», колода, викторина.
 // Не проверенные вина — не в тренировке: руководителю — «Проверить подряд», остальным — сколько ждут проверки.
-export function WineTrainHub({ T, a11y, gold, green, wines, dishes = [], restaurant, edit, onOpen, onReview }) {
+export function WineTrainHub({ T, a11y, gold, green, wines, dishes = [], restaurant, edit, onOpen, onReview, K = WINE }) {
   const text = T.modTitle.color, sub = T.modSub.color;
   const pairsN = dishPairs(wines, dishes).length;   // v124: «Вино к блюду» — от двух блюд с отмеченными винами
-  const [sr] = useWineSR(restaurant);
-  const [learnedIds] = useLearned(restaurant);
+  const [sr] = useWineSR(restaurant, K);
+  const [learnedIds] = useLearned(restaurant, K);
   const train = trainable(wines), fresh = newWines(wines), learned = allLearned(fresh, learnedIds);
-  const gp = glassPath(wines, sr), known = train.filter((w) => srKnown(sr, w.id)).length;
+  const gp = pathFor(K, wines, sr), known = train.filter((w) => srKnown(sr, w.id)).length, wN = K.word;
   const uncheckedN = (wines || []).filter((w) => w && !w.archived && unchecked(w)).length;
   const iconBox = { width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 };
   const bar = (k, n, c) => <div style={{ height: 4, borderRadius: 3, background: a11y ? "rgba(139,106,48,0.18)" : "rgba(214,178,102,0.16)", overflow: "hidden", marginTop: 7 }}><div style={{ width: Math.round((k / Math.max(1, n)) * 100) + "%", height: "100%", background: c }} /></div>;
@@ -600,28 +624,28 @@ export function WineTrainHub({ T, a11y, gold, green, wines, dishes = [], restaur
   return (
     <div style={{ padding: "4px 16px 140px" }} data-wine-hub={train.length}>
       <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 12px", lineHeight: 1.5 }} data-wine-hub-sum="">
-        {train.length ? "В тренировке " + winesN(train.length) + (known ? " · выучено " + known : "") : "Проверенных вин пока нет."}</div>
+        {train.length ? "В тренировке " + wN(train.length) + (known ? " · выучено " + known : "") : K.t.hubNone}</div>
       {train.length >= 2 ? <>
-        {fresh.length ? row("new", learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20), "Новые вина",
-          learned ? "Выучено ✓ · " + winesN(fresh.length) + ". Можно повторить" : winesN(fresh.length) + " за последний месяц. Выучи к смене", null, learned ? "ok" : "hi") : null}
-        {gp.total ? row("glass", BUILD_SVG.wineglass(glassDone ? green : gold, 20), "С чего начать: вина бокалом",
-          glassDone ? "Бокалом выучены все " + gp.total + ". Дальше: вся карта в колоде" : "Их спрашивают чаще всего. Выучено " + gp.known + " из " + gp.total, bar(gp.known, gp.total, glassDone ? green : gold)) : null}
-        {row("deck", GAME_SVG.cards(gold, 20), "Колода вин", "Карточки с поиском и фильтрами, режимы «Знаю?» и «Наоборот»: вино по описанию гостя")}
-        {row("quiz", UI_SVG.quiz(gold, 20), "Викторина по винам", "10 вопросов по своей карте: откуда, сорт, стиль, бокалом или нет, к какому блюду")}
-        {pairsN >= 2 ? row("pair", UI_SVG.cloche(gold, 20), "Вино к блюду", "Гость заказал блюдо: что предложить? По парам из своей карты") : null}
-        {row("say60", GAME_SVG.clock(gold, 20), "Опиши за 60 секунд", "Расскажи о вине вслух за минуту и сверься с карточкой")}
+        {fresh.length ? row("new", learned ? UI_SVG.checkCircle(green, 20) : GAME_SVG.cards(gold, 20), K.t.hubNew,
+          learned ? "Выучено ✓ · " + wN(fresh.length) + ". Можно повторить" : wN(fresh.length) + " за последний месяц. Выучи к смене", null, learned ? "ok" : "hi") : null}
+        {gp.total ? row("glass", (K.kind === "spirit" ? BUILD_SVG.glass : BUILD_SVG.wineglass)(glassDone ? green : gold, 20), K.t.hubPath,
+          glassDone ? K.t.hubPathDone(gp.total) : "Их спрашивают чаще всего. Выучено " + gp.known + " из " + gp.total, bar(gp.known, gp.total, glassDone ? green : gold)) : null}
+        {row("deck", GAME_SVG.cards(gold, 20), K.t.deck, K.t.hubDeckSub)}
+        {row("quiz", UI_SVG.quiz(gold, 20), K.t.quiz, K.t.hubQuizSub)}
+        {pairsN >= 2 ? row("pair", UI_SVG.cloche(gold, 20), K.t.pair, "Гость заказал блюдо: что предложить? По парам из своей карты") : null}
+        {row("say60", GAME_SVG.clock(gold, 20), "Опиши за 60 секунд", K.t.hubSaySub)}
         {row("pron", <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /></svg>,
-          "Как произносить", "Вина, сорта и регионы: ударение, по слогам, послушать в оригинале")}
-        {edit ? row("team", UI_SVG.eye(gold, 19), "Кто выучил новые вина", fresh.length ? "Кто выучил, кто учит и кто не открывал; «Знаю?», вина бокалом и викторина каждого" : "Как каждый учит карту: «Знаю?», вина бокалом, викторина") : null}
-        {pairsN < 2 && edit ? <div data-wine-hub-pairs={pairsN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "0 2px 10px" }}>«Вино к блюду» появится, когда хотя бы у двух блюд будут отмечены вина: «Редактор вин», раздел «К блюдам».</div> : null}
+          "Как произносить", K.t.hubPronSub)}
+        {edit ? row("team", UI_SVG.eye(gold, 19), K.t.team, K.t.hubTeamSub(fresh.length > 0)) : null}
+        {pairsN < 2 && edit ? <div data-wine-hub-pairs={pairsN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "0 2px 10px" }}>{K.t.hubPairsHint}</div> : null}
       </> : <div data-lens-card="" style={{ ...T.modCard, display: "block", cursor: "default", padding: "14px 16px", fontSize: 14, color: text, lineHeight: 1.5 }}>
-        Для тренировки нужно хотя бы два проверенных вина.{edit ? " Проверь, что дописал AI, и вина появятся здесь." : " Руководитель добавит и проверит карту."}</div>}
+        {K.t.hubNeed}{edit ? K.t.hubNeedEdit : " Руководитель добавит и проверит карту."}</div>}
       {uncheckedN ? (edit ? (
         <div data-lens-card="warn" data-wine-hub-check={uncheckedN} style={{ ...T.modCard, display: "block", cursor: "default", padding: "12px 14px", marginTop: 6 }}>
-          <div style={{ fontSize: 13.5, color: text, lineHeight: 1.5 }}>Не проверено: {winesN(uncheckedN)}. В тренировку они попадут после проверки: новичок не должен учить то, что AI мог перепутать.</div>
+          <div style={{ fontSize: 13.5, color: text, lineHeight: 1.5 }}>Не проверено: {wN(uncheckedN)}. В тренировку они попадут после проверки: новичок не должен учить то, что AI мог перепутать.</div>
           <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-review-open="" onClick={() => { vibrate("light"); onReview(); }}
             style={{ marginTop: 10, padding: "8px 14px", borderRadius: 999, border: `1px solid ${gold}77`, background: "transparent", color: gold, fontFamily: SERIF, fontSize: 13.5, cursor: "pointer" }}>Проверить подряд</button>
         </div>) : (
-        <div data-wine-hub-wait={uncheckedN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "6px 2px 0" }}>Ещё {winesN(uncheckedN)} ждут проверки руководителем: в тренировку попадут после неё.</div>)) : null}
+        <div data-wine-hub-wait={uncheckedN} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, margin: "6px 2px 0" }}>Ещё {wN(uncheckedN)} ждут проверки руководителем: в тренировку попадут после неё.</div>)) : null}
     </div>);
 }

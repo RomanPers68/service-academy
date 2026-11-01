@@ -96,17 +96,18 @@ describe("v120: вина — не блюда, а публикация меню �
   });
   it("тренажёр меню: в списке команды и «сиротах» вин нет; «Опубликовать» и стоп-лист сохраняют вина вместе с коктейлями", () => {
     const M = rd("ui/menu-trainer.jsx");
-    expect(M).toContain('!isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && !ownIds.has(d.id)');
-    expect(M).toContain('!isBarcard(s) && s.kind !== "cocktail" && s.kind !== "wine" &&');
-    expect(M).toContain('...(shared || []).filter(x => isBarcard(x) || (x && (x.kind === "cocktail" || x.kind === "wine")))');
-    expect(M).toContain('...(shared || []).filter(d => isBarcard(d) || (d && (d.kind === "cocktail" || d.kind === "wine")))');
+    // v127 (Доп. 440): и крепкое из «Барной карты» — тоже не блюдо и тоже сохраняется при публикации
+    expect(M).toContain('!isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && d.kind !== "spirit" && !ownIds.has(d.id)');
+    expect(M).toContain('!isBarcard(s) && s.kind !== "cocktail" && s.kind !== "wine" && s.kind !== "spirit" &&');
+    expect(M).toContain('...(shared || []).filter(x => isBarcard(x) || (x && (x.kind === "cocktail" || x.kind === "wine" || x.kind === "spirit")))');
+    expect(M).toContain('...(shared || []).filter(d => isBarcard(d) || (d && (d.kind === "cocktail" || d.kind === "wine" || d.kind === "spirit")))');
     expect(M).not.toMatch(/filter\(\w => isBarcard\(\w\) \|\| \(\w && \w\.kind === "cocktail"\)\)/);
   });
   it("брифинг, живой гость, кэш меню", () => {
-    expect(rd("lib/briefing.js")).toContain('const isDish = (d) => isItem(d) && d.kind !== "cocktail" && d.kind !== "wine";');
+    expect(rd("lib/briefing.js")).toContain('const isDish = (d) => isItem(d) && d.kind !== "cocktail" && d.kind !== "wine" && d.kind !== "spirit";');   // v127: и крепкое
     const G = rd("ui/live-guest.jsx");
-    expect(G).toContain('dishes.filter((d) => d.kind === "cocktail" || d.kind === "wine")');
-    expect(G).toContain('dishes: dishes.filter((d) => d.kind !== "cocktail" && d.kind !== "wine")');
+    expect(G).toContain('dishes.filter((d) => d.kind === "cocktail" || d.kind === "wine" || d.kind === "spirit")');   // v127: и крепкое
+    expect(G).toContain('dishes: dishes.filter((d) => d.kind !== "cocktail" && d.kind !== "wine" && d.kind !== "spirit")');
     // 140+ вин: кэш меню на телефоне больше не режется на 200-й записи
     expect(rd("lib/reference-context.js")).toContain("shared[restaurant] = dishes.slice(0, 600).map(");
   });
@@ -157,14 +158,14 @@ describe("v120: экраны", () => {
     expect(L).toContain('export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));');
   });
   it("App: экраны «wines» и «wineEditor», вход из «Справочника»", () => {
-    expect(APP).toContain('{screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><WineListScreen ');
+    // v127 (Доп. 440): экран «wines» — «Барная карта» (вкладки «Коктейли · Вина · Крепкое»), винная карта — её вкладка
+    expect(APP).toContain('{screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BarCardScreen ');
     expect(APP).toContain('{screen === "wineEditor" && <Suspense fallback={<ScreenLoader T={T} />}><WineEditor ');
     expect(APP).toContain('onWines={() => { setRefStart(null); navigate("wines"); }}');
-    expect(R).toContain('id: "winelist", t: "Наша винная карта"');
-    expect(R).toContain('return n || isLeader ? [');
+    expect(R).toContain('onWines ? { id: "barcard", art: "winelist", t: "Барная карта"');
   });
   it("«Справочник»: у «Нашей винной карты» — свой витраж, как у курсов (владелец: «выглядит как что-то инородное»)", () => {
-    expect(R).toContain('{["serving","wine","coffee","cocktails","winelist"].includes(c.id)');
+    expect(R).toContain('{["serving","wine","coffee","cocktails","winelist"].includes(c.art || c.id)');   // v127: у «Барной карты» — витраж винной карты
     const A = rd("ui/reference-art.jsx");
     expect(A).toContain("const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList };");
     expect(A).toMatch(/function WineList\(\{ light \}\) \{[\s\S]*viewBox="0 0 120 120"/);

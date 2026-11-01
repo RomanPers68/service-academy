@@ -275,7 +275,10 @@ const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
 mkdirSync(OUT + "/in", { recursive: true });
 const { writeFileSync } = await import("node:fs");
 writeFileSync(OUT + "/in/page.jpg", JPG); writeFileSync(OUT + "/in/carta.pdf", PDF);
-const toList = async (page) => { await go(page, "reference", 1800); return clickText(page, ".sa-card, [data-ref-card]", "Наша винная карта"); };
+// v127 (Доп. 440): «Наша винная карта» теперь — вкладка «Вина» в «Барной карте» (Справочник → «Барная карта» → «Вина»)
+const openBarWines = async (page) => { const okk = await clickText(page, ".sa-card, [data-ref-card]", "Барная карта"); if (!okk) return false; for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
+  await page.evaluate(() => { const b = document.querySelector('[data-bar-tab="wine"]'); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }); await sleep(400); return true; };
+const toList = async (page) => { await go(page, "reference", 1800); return openBarWines(page); };
 
 
 // ── v122: фото бутылок ──
@@ -341,12 +344,12 @@ const W_KEY = R0 + "|";
 const prog = (srv, id) => srv.S.wine[W_KEY + id] || null;
 const sets = (srv, kind) => srv.calls.filter((c) => c.fn === "wine_progress_set" && (!kind || c.body.p_kind === kind));
 const back = async (page) => { await page.locator('[data-lens="back"]').first().click(); await sleep(700); };
-// под нагрузкой (два прогона на двух ядрах) справочник открывается дольше: ждём «Наша винная карта» и «Учить вина»,
+// под нагрузкой (два прогона на двух ядрах) справочник открывается дольше: ждём «Барная карта», вкладку «Вина» и «Учить вина»,
 // при надобности открываем карту ещё раз; пункт тренировки — тоже дождаться
 const toHubW = async (page) => {
   for (let i = 0; i < 3; i++) {
     await go(page, "reference", 1200);
-    await until(() => clickText(page, ".sa-card, [data-ref-card]", "Наша винная карта"), 9000, 400);
+    await until(() => openBarWines(page), 9000, 400);
     if (await until(() => page.locator("[data-wine-train-open]").count(), 9000)) break;
   }
   await page.locator("[data-wine-train-open]").click(); await sleep(700);

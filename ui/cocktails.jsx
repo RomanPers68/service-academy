@@ -80,7 +80,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const [view, setView] = React.useState("cards");
   const mast = React.useMemo(() => loadMastery(uk), [uk, view]); // Доп. 218: печати Сборки — в указателе колоды
   // Доп. 244: прыжок к карточке по id (родня, замена)
-  const jumpTo = (id) => { const i = pool.findIndex(x => x.id === id); if (i >= 0) { setView("cards"); setIdx(i); setFlip(false); vibrate("light"); } else { setBase(""); setOnlyCard(false); setQ(""); setTimeout(() => { const j = ALL.findIndex(x => x.id === id); if (j >= 0) { setView("cards"); setIdx(j); setFlip(false); } }, 0); } };      // cards | index (оглавление)
+  const jumpTo = (id) => { startNav.current = true; const i = pool.findIndex(x => x.id === id); if (i >= 0) { setView("cards"); setIdx(i); setFlip(false); vibrate("light"); } else { setBase(""); setOnlyCard(false); setQ(""); setTimeout(() => { const j = ALL.findIndex(x => x.id === id); if (j >= 0) { setView("cards"); setIdx(j); setFlip(false); } }, 0); } };      // cards | index (оглавление)
   const [idx, setIdx] = React.useState(0);
   const [flip, setFlip] = React.useState(false);
   const [settled, setSettled] = React.useState(false); // Доп. 218: плоский режим после переворота
@@ -113,18 +113,23 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
   const list = mode === "quiz" ? due.filter(c => pool.includes(c)) : pool;
   const c = list[Math.min(idx, Math.max(0, list.length - 1))];
   const total = list.length;
-  React.useEffect(() => { setIdx(0); setFlip(false); }, [q, base, mode]);
+  React.useEffect(() => { if (q || base || mode !== "deck") startNav.current = true; setIdx(0); setFlip(false); }, [q, base, mode]);
   // Доп. 130: открыть колоду сразу на нужном коктейле (карточка из ответа ассистента)
+  // v127 (Доп. 440): номер — в самой колоде, а не в классике: свои коктейли идут первыми, а с «Картой бара» в колоде только её
+  // коктейли, и номер из классики показывал чужую карточку (свой коктейль не находился вовсе). Коктейля нет в «Карте бара» —
+  // колода показывает всю классику. Меню команды пришло позже (свои коктейли, карта бара) — найти ещё раз, пока сам не листал.
+  const startNav = React.useRef(false);
   React.useEffect(() => {
-    if (!startId) return;
-    const i = COCKTAILS.findIndex(c => c.id === startId);
+    if (!startId || startNav.current) return;
+    const i = pool.findIndex(c => c.id === startId);
     if (i >= 0) { setIdx(i); setFlip(false); }
-  }, [startId]);
+    else if (onlyCard && ALL.some(c => c.id === startId)) setOnlyCard(false);
+  }, [startId, pool]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const OUT_MS = 260, IN_MS = 420;
   const go = (d) => {
     if (!total || busy.current) return;
-    busy.current = true;
+    busy.current = true; startNav.current = true;
     vibrate("light");
     const sign = d > 0 ? -1 : 1; // вперёд — улетает влево
     setWrap(`translateX(${sign * 120}%) rotate(${sign * 9}deg) scale(.96)`,

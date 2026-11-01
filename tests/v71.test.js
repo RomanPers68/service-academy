@@ -160,7 +160,8 @@ describe("v71: поиск — меню команды, как в «Колоде 
     const mt = rd("ui/menu-trainer.jsx");
     expect(mt).toContain("const showSamples = hs === false ? true : hs === true ? false : shared.length === 0;");
     // v120: и без вин (записи kind:"wine" — винная карта, не блюда)
-    expect(mt).toContain('const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived);');
+    // v127: и без крепкого (записи kind:"spirit" — «Барная карта», не блюда)
+    expect(mt).toContain('const team = shared.filter(d => d && d.id && d.name && !isBarcard(d) && d.kind !== "cocktail" && d.kind !== "wine" && d.kind !== "spirit" && !ownIds.has(d.id) && !del.has(d.id) && !d.archived);');
   });
   it("карта бара: если настроена — только её коктейли и свои; если нет — все", () => {
     expect(barCocktails([]).length).toBe(COCKTAILS.length);

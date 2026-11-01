@@ -15,6 +15,8 @@
 // (after). Ноты и рассказ приложение добавляет потом режимом names, пачками по 15. Не JSON — в ошибке начало ответа.
 // Ключ тот же, что у импорта меню: OPENROUTER_API_KEY (или старый ANTHROPIC_API_KEY) в Vercel → Environment Variables.
 // Всё, что вернула модель, приложение помечает «не проверено», пока руководитель не подтвердит (lib/wine.js, ai[]).
+// v127 (Доп. 440): «Барная карта» — kind: "spirit" — то же для крепкого (виски, коньяк, ром, джин…): свои поля (вид,
+// стиль, выдержка, крепость, порция и её цена, как подают), свои подсказки модели; ответ — тот же { wines, cut }.
 
 export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
@@ -76,6 +78,61 @@ const PROMPTS = {
 между полями.\n${SHEET_SHAPE}\n${after ? "Начало карты уже прочитано: начни с вина, которое идёт сразу после «" + after + "», и продолжай до конца карты.\n" : ""}${RULES}`,
 };
 
+// ── v127: крепкое ──
+const SP_CATS = ["whisky", "cognac", "rum", "gin", "agave", "vodka", "liqueur", "bitter", "other"];
+const SP_GLASSES = ["тюльпан", "гленкерн", "снифтер", "рокс", "шот", "хайбол"];
+const SP_SERVE = ["чистым", "со льдом", "с каплей воды", "охлаждённым", "в коктейле"];
+const SP_SHAPE = `{
+  "name": "название, как в карте (марка и выдержка, если она в названии)",
+  "producer": "производитель: дом, дистиллерия или бренд",
+  "cat": "одно из: ${SP_CATS.join(" | ")} (other: кальвадос, граппа, писко, абсент, саке)",
+  "style": "стиль: односолодовый, купажированный, бурбон, VSOP, XO, London Dry, бланко, репосадо, тёмный ром и т. п.",
+  "country": "страна по-русски",
+  "region": "регион, если известен",
+  "age": "выдержка, как принято писать: 12 лет, VSOP, XO; или пустая строка",
+  "abv": "крепость, число",
+  "portion": "порция в мл числом, если указана в карте (обычно 25, 40 или 50), или пустая строка",
+  "pricePortion": "цена порции числом или пустая строка",
+  "priceBottle": "цена бутылки числом или пустая строка",
+  "volume": "объём бутылки, как в карте",
+  "serve": ["как подают: ${SP_SERVE.join(" | ")}"],
+  "glass": "одно из: ${SP_GLASSES.join(" | ")}",
+  "temp": "температура подачи словами, например: комнатная, охлаждённым",
+  "notes": ["3–5 коротких нот вкуса и аромата"],
+  "short": "одна фраза для гостя, живо и без штампов, до 120 знаков",
+  "story": "2–3 предложения для официанта: что это, чем интересно, как рассказать гостю"
+}`;
+const SP_SHEET_SHAPE = `{
+  "name": "название, как в карте",
+  "producer": "производитель, если указан",
+  "cat": "одно из: ${SP_CATS.join(" | ")}",
+  "style": "стиль, если указан",
+  "country": "страна, если указана",
+  "age": "выдержка, если указана",
+  "portion": "порция в мл числом, если указана",
+  "pricePortion": "цена порции числом или пустая строка",
+  "priceBottle": "цена бутылки числом или пустая строка",
+  "volume": "объём бутылки, как в карте"
+}`;
+const SP_RULES = `Пиши по-русски, названия марок оставляй как в карте. Если не уверен в факте (производитель, страна, выдержка) — оставь поле
+пустым, ничего не выдумывай. Цены, порцию и выдержку бери только с листа, из названия или с этикетки. Верни ТОЛЬКО валидный JSON без
+markdown и пояснений.`;
+const SP_PROMPTS = {
+  fill: (name) => `Ты — бармен ресторанной академии. Помоги официанту с крепким напитком «${name}» из барной карты ресторана.
+Верни один JSON-объект:\n${SP_SHAPE}\n${SP_RULES}`,
+  names: (names) => `Ты — бармен ресторанной академии. Ниже крепкие напитки из барной карты ресторана, по одному в строке.
+Для каждого верни объект — получится JSON-массив в том же порядке, поле "name" — как в строке:\n${SP_SHAPE}\n${SP_RULES}\n\nНапитки:\n${names.join("\n")}`,
+  label: `Ты — бармен ресторанной академии. На фото — бутылка крепкого напитка из бара ресторана, снята телефоном.
+Прочитай этикетку и верни один JSON-объект. С этикетки бери название, производителя, страну, регион, выдержку, крепость и объём;
+в "name" — как назвать напиток в карте: марка и выдержка. Остальное (вид, стиль, подача, бокал, ноты, фраза гостю) — из своих
+знаний, только если уверен. Цены и порцию не заполняй. Если на фото нет бутылки или этикетку не прочитать, верни {"name": ""}:\n${SP_SHAPE}\n${SP_RULES}`,
+  sheet: (after) => `Ты — бармен ресторанной академии. На листе — барная карта ресторана (фото страницы или PDF).
+Перепиши по порядку все крепкие напитки (виски, коньяк и бренди, ром, джин, текила и мескаль, водка, ликёры, биттеры,
+кальвадос, граппа и прочее) JSON-массивом объектов. Вина, пиво, коктейли и безалкогольное не бери. Бери только то, что написано
+в карте; вид — по разделу карты или по названию. Ноты, описания и подачу не пиши: их добавят отдельно. Пиши компактно, без
+пробелов и переносов между полями.\n${SP_SHEET_SHAPE}\n${after ? "Начало карты уже прочитано: начни с напитка, который идёт сразу после «" + after + "», и продолжай до конца карты.\n" : ""}${SP_RULES}`,
+};
+
 const OPENROUTER_MODELS = [process.env.OPENROUTER_WINE_MODEL, process.env.OPENROUTER_MENU_MODEL, "anthropic/claude-sonnet-4.6", "google/gemini-2.5-flash"].filter(Boolean);
 
 function parse(text) {
@@ -114,6 +171,16 @@ function clean(w) {
     abv: money(w.abv) && money(w.abv) < 80 ? Number(String(w.abv).replace(",", ".").replace(/[^\d.]/g, "")) : "",
     byGlass: w.byGlass === true, priceGlass: money(w.priceGlass), priceBottle: money(w.priceBottle), volume: str(w.volume, 12),
     temp: str(w.temp, 24), glass: GLASSES.includes(w.glass) ? w.glass : "", notes: arr(w.notes, 6, 32), short: str(w.short, 200), story: str(w.story, 900),
+  };
+}
+function cleanSpirit(w) {
+  const abv = money(w.abv) && money(w.abv) < 100 ? Number(String(w.abv).replace(",", ".").replace(/[^\d.]/g, "")) : "";
+  const portion = money(w.portion) && money(w.portion) <= 500 ? money(w.portion) : "";
+  return {
+    name: str(w.name, 120), producer: str(w.producer, 80), cat: SP_CATS.includes(w.cat) ? w.cat : str(w.cat, 24), style: str(w.style, 40), country: str(w.country, 40), region: str(w.region, 80),
+    age: str(w.age, 24), abv, portion, pricePortion: money(w.pricePortion), priceBottle: money(w.priceBottle), volume: str(w.volume, 12),
+    serve: arr(w.serve, 4, 24).filter((x) => SP_SERVE.includes(x)), glass: SP_GLASSES.includes(w.glass) ? w.glass : "", temp: str(w.temp, 32),
+    notes: arr(w.notes, 6, 32), short: str(w.short, 200), story: str(w.story, 900),
   };
 }
 const orText = (data) => { const c = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
@@ -171,28 +238,29 @@ export default async function handler(req, res) {
   if (!rateLimit("wine:" + b.token, 200, 3600_000)) return res.status(429).json({ error: "Слишком много запросов подряд: попробуй через час" });
 
   let parts;
+  const sp = b.kind === "spirit", P = sp ? SP_PROMPTS : PROMPTS;   // v127: крепкое
   if (b.mode === "fill") {
     const name = str(b.name, 120);
     if (!name) return res.status(400).json({ error: "Нет названия" });
-    parts = [{ text: PROMPTS.fill(name) }];
+    parts = [{ text: P.fill(name) }];
   } else if (b.mode === "names") {
     const names = (Array.isArray(b.names) ? b.names : []).map((x) => str(x, 120)).filter(Boolean).slice(0, 15);
     if (!names.length) return res.status(400).json({ error: "Нет названий" });
-    parts = [{ text: PROMPTS.names(names) }];
+    parts = [{ text: P.names(names) }];
   } else if (b.mode === "photo") {
     const image = String(b.imageBase64 || "").replace(/^data:[^;]*;base64,/, "");
     const mime = /^image\/(jpeg|png|webp)$/.test(b.mime) ? b.mime : "image/jpeg";
     if (!image) return res.status(400).json({ error: "Снимок не получен" });
-    parts = [{ text: PROMPTS.sheet(str(b.after, 120)) }, { image, mime }];
+    parts = [{ text: P.sheet(str(b.after, 120)) }, { image, mime }];
   } else if (b.mode === "label") {
     const image = String(b.imageBase64 || "").replace(/^data:[^;]*;base64,/, "");
     const mime = /^image\/(jpeg|png|webp)$/.test(b.mime) ? b.mime : "image/jpeg";
     if (!image) return res.status(400).json({ error: "Снимок не получен" });
-    parts = [{ text: PROMPTS.label }, { image, mime }];
+    parts = [{ text: P.label }, { image, mime }];
   } else if (b.mode === "pdf") {
     const pdf = String(b.pdfBase64 || "").replace(/^data:[^;]*;base64,/, "");
     if (!pdf) return res.status(400).json({ error: "Файл не получен" });
-    parts = [{ text: PROMPTS.sheet(str(b.after, 120)) }, { pdf }];
+    parts = [{ text: P.sheet(str(b.after, 120)) }, { pdf }];
   } else return res.status(400).json({ error: "Неизвестный режим" });
 
   try {
@@ -203,12 +271,12 @@ export default async function handler(req, res) {
     let got = out.cut ? null : parse(out.text), cut = !!out.cut;
     if (!got) { const loose = parseLoose(out.text); if (loose.length) { got = loose; cut = cut || !/\]\s*(```)?\s*$/.test(String(out.text).trim()); } }
     if (!got) return res.status(422).json({ error: "Модель ответила не списком: «" + String(out.text || "").replace(/\s+/g, " ").trim().slice(0, 140) + "…». Попробуй ещё раз или «Фото страницы» по одной" });
-    let wines = got.filter((w) => w && typeof w === "object").map(clean).filter((w) => w.name).slice(0, 120);
-    // с этикетки — одно вино, без цен и подачи бокалом (их на бутылке нет)
-    if (b.mode === "label") wines = wines.slice(0, 1).map((w) => ({ ...w, byGlass: false, priceGlass: "", priceBottle: "" }));
-    if (!wines.length) return res.status(422).json({ error: b.mode === "fill" ? "Модель не узнала это вино: заполни руками"
+    let wines = got.filter((w) => w && typeof w === "object").map(sp ? cleanSpirit : clean).filter((w) => w.name).slice(0, 120);
+    // с этикетки — одно вино, без цен и подачи бокалом (их на бутылке нет); у крепкого — без цен и порции
+    if (b.mode === "label") wines = wines.slice(0, 1).map((w) => (sp ? { ...w, portion: "", pricePortion: "", priceBottle: "" } : { ...w, byGlass: false, priceGlass: "", priceBottle: "" }));
+    if (!wines.length) return res.status(422).json({ error: b.mode === "fill" ? (sp ? "Модель не узнала этот напиток: заполни руками" : "Модель не узнала это вино: заполни руками")
       : b.mode === "label" ? "Этикетку не прочитать: сними бутылку ближе, при свете, этикеткой к камере"
-      : "На листе не нашлось ни одного вина: проверь снимок и попробуй ещё раз" });
+      : sp ? "На листе не нашлось ни одного крепкого напитка: проверь снимок и попробуй ещё раз" : "На листе не нашлось ни одного вина: проверь снимок и попробуй ещё раз" });
     return res.status(200).json({ wines, model: out.model, cut: sheet && cut });
   } catch (e) {
     return res.status(500).json({ error: "Сбой: " + (e && e.message ? e.message : "unknown") });

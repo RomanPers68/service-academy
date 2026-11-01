@@ -60,17 +60,21 @@ export function makeServer(opts) {
   S.late = S.late || {}; S.cal = S.cal || {}; S.seen = S.seen || {}; S.tgAuth = S.tgAuth || {}; S.allAt = S.allAt || {};
   // v125 (Доп. 438): этап 44 — тренировка по винам на сервере. opts.wineProg: { id сотрудника: { passed, opened, известное…,
   // passedAt / openedAt / statsAt / quizAt — смещение в днях от сейчас } }
-  if (!S.wine) {
-    S.wine = {};
+  // v127 (Доп. 440): этап 45 — то же для крепкого (S.spirit, opts.spiritProg)
+  const seedProg = (key, prog) => {
+    if (S[key]) return;
+    S[key] = {};
     const t = (d) => (d == null ? null : new Date(clock() + d * 864e5).toISOString());
-    for (const [id, r] of Object.entries(opts.wineProg || {})) {
+    for (const [id, r] of Object.entries(prog || {})) {
       const e = PEOPLE.find((x) => x.id === id); if (!e) continue;
       const at = [r.passedAt, r.openedAt, r.statsAt, r.quizAt].filter((x) => x != null);
-      S.wine[e.restaurant + "|" + id] = { passed: r.passed || [], passedAt: t(r.passedAt), opened: r.opened || [], openedAt: t(r.openedAt),
+      S[key][e.restaurant + "|" + id] = { passed: r.passed || [], passedAt: t(r.passedAt), opened: r.opened || [], openedAt: t(r.openedAt),
         known: r.known ?? null, total: r.total ?? null, glassKnown: r.glassKnown ?? null, glassTotal: r.glassTotal ?? null, statsAt: t(r.statsAt),
         quizRight: r.quizRight ?? null, quizOf: r.quizOf ?? null, quizAt: t(r.quizAt), at: at.length ? t(Math.max(...at)) : t(0) };
     }
-  }
+  };
+  seedProg("wine", opts.wineProg);
+  seedProg("spirit", opts.spiritProg);
   S.srv = S.srv || { hook: false, last: null, app: null, code: null };
   // v106 (этап 40): «Утро руководителя»: настройки, кто подключил Telegram, «спасибо» гостей и занятия по дням (смещения от
   // сегодня), прочтения брифинга прошлых дней, чек-листы по дням. Состояние прошлых версий демо — из opts.
@@ -376,7 +380,7 @@ export function makeServer(opts) {
   const wpInt = (v) => (typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100000, Math.floor(v))) : null);
   const wpCap = (a, c) => (a == null ? null : c == null ? a : Math.min(a, c));
   const isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
-  function wineSet(p, b) {
+  function wineSet(p, b, key = "wine") {
     if (!p) return { ok: false, error: "auth" };
     const rest = p.restaurant || "";
     if (!rest) return { ok: false, error: "no_restaurant" };
@@ -387,7 +391,7 @@ export function makeServer(opts) {
     const qz = isObj(d.quiz) ? d.quiz : {};
     if (kind === "quiz" && !(wpInt(qz.of) > 0)) return { ok: false, error: "quiz" };
     const k = rest + "|" + p.id;
-    const r = S.wine[k] || (S.wine[k] = { passed: [], passedAt: null, opened: [], openedAt: null, known: null, total: null, glassKnown: null, glassTotal: null, statsAt: null, quizRight: null, quizOf: null, quizAt: null, at: null });
+    const r = S[key][k] || (S[key][k] = { passed: [], passedAt: null, opened: [], openedAt: null, known: null, total: null, glassKnown: null, glassTotal: null, statsAt: null, quizRight: null, quizOf: null, quizAt: null, at: null });
     if (kind === "opened") { r.opened = wpIds(d.ids); r.openedAt = now(); }
     else if (kind === "passed") { r.passed = wpIds(d.ids); r.passedAt = now(); }
     else if (kind === "quiz") { const of = wpInt(qz.of); r.quizRight = wpCap(wpInt(qz.right), of) ?? 0; r.quizOf = of; r.quizAt = now(); }
@@ -399,14 +403,14 @@ export function makeServer(opts) {
     r.at = now();
     return { ok: true };
   }
-  function wineTeam(p, b) {
+  function wineTeam(p, b, key = "wine") {
     if (!p) return { ok: false, error: "auth" };
     if (!isLead(p)) return { ok: false, error: "forbidden", restaurant: p.restaurant };
     const rest = String(b.p_restaurant || "").trim() || p.restaurant;
     if (rest !== p.restaurant && !(p.is_admin || p.position === "senior")) return { ok: false, error: "forbidden", restaurant: p.restaurant };
     const cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
     const rows = PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active").map((e) => {
-      const r = S.wine[rest + "|" + e.id];
+      const r = S[key][rest + "|" + e.id];
       return { id: e.id, name: full(e), pos: String(e.position || "").toLowerCase(), passed: r ? r.passed : [], passedAt: r ? r.passedAt : null, opened: r ? r.opened : [], openedAt: r ? r.openedAt : null,
         known: r ? r.known : null, total: r ? r.total : null, glassKnown: r ? r.glassKnown : null, glassTotal: r ? r.glassTotal : null, statsAt: r ? r.statsAt : null,
         quizRight: r ? r.quizRight : null, quizOf: r ? r.quizOf : null, quizAt: r ? r.quizAt : null, at: r ? r.at : null, _n: e.name || "", _s: e.surname || "" };
@@ -438,6 +442,8 @@ export function makeServer(opts) {
     if (fn === "menu_progress_team") return { ok: true, rows: [] };
     if (fn === "wine_progress_set") return wineSet(p, b);     // v125: этап 44
     if (fn === "wine_progress_team") return wineTeam(p, b);
+    if (fn === "spirit_progress_set") return wineSet(p, b, "spirit");     // v127: этап 45 — крепкое, как вина
+    if (fn === "spirit_progress_team") return wineTeam(p, b, "spirit");
     if (fn === "case_list") return { ok: true, lead: isLead(p), team: 0, fresh: 0, inbox: 0, mine_new: 0, top: null };
     if (fn === "menu_get") return clone(S.menu);
     if (fn === "menu_set") {

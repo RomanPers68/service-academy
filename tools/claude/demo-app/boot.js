@@ -24,7 +24,8 @@ import { calPage } from "../../../lib/ical.js";
 import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
 import { eveText, eveKb } from "../../../lib/newbie.js";
-import { normWine, TEMP_HINT } from "../../../lib/wine.js";   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
+import { normWine, TEMP_HINT } from "../../../lib/wine.js";
+import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";   // v127: крепкое в «Барной карте» демо   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -141,7 +142,8 @@ const DEMO_WINES = [
 // v122 (Доп. 435): у части вин — «фото бутылки». Хранилища в демо нет, снимков бутылок тоже: рисуем бутылку с этикеткой
 // на холсте (своя простая картинка) и кладём JPEG прямо в запись. У «Шабли» фото нет — в «Импорт» → «Фото бутылок» снимок
 // добавится к нему.
-const GLASS_OF = { sparkling: ["#4F5E2E", "#7C8C49"], white: ["#5B6A33", "#8A9A57"], rose: ["#E6B2A1", "#F5D2C4"], red: ["#1E2A1B", "#3A4A32"], dessert: ["#9A6420", "#C98F3E"] };
+const GLASS_OF = { sparkling: ["#4F5E2E", "#7C8C49"], white: ["#5B6A33", "#8A9A57"], rose: ["#E6B2A1", "#F5D2C4"], red: ["#1E2A1B", "#3A4A32"], dessert: ["#9A6420", "#C98F3E"],
+  amber: ["#4A2A0C", "#A2652A"], clear: ["#4F5D63", "#9FB3BA"] };   // v127: янтарное и прозрачное стекло — для крепкого
 function bottlePic(w) {
   try {
     const c = document.createElement("canvas"); c.width = 300; c.height = 400;
@@ -170,6 +172,37 @@ const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кья
 const NEW_IN_DEMO = ["Совиньон Блан", "Москато д’Асти"];
 DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic(w) : "",
   addedAt: NEW_IN_DEMO.includes(w.name) ? Date.now() - 3 * 864e5 : 0 }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
+// v127 (Доп. 440): крепкое «Двух морей» в «Барной карте» — десять позиций по видам. Две добавлены три дня назад («Новинки»),
+// пять — «ходовое» (путь новичка), у «Olmeca» ноты и фразу дописал AI и их ещё не проверили; у трёх — фото бутылки (своя
+// простая картинка, как у вин)
+const DEMO_SPIRITS = [
+  { name: "Glenfiddich 12", producer: "William Grant & Sons", cat: "whisky", style: "односолодовый", country: "Шотландия", region: "Спейсайд", age: "12 лет", abv: 40, portion: 40, pricePortion: 650, priceBottle: 9800, volume: "0,7 л",
+    serve: ["чистым", "с каплей воды"], glass: "гленкерн", temp: "комнатная, 18–20 °C", hot: true, notes: ["груша", "мёд", "дуб"], short: "Мягкий спейсайд с грушей и мёдом: хорош для знакомства с односолодовым.",
+    story: "Один из самых известных односолодовых. Бочки из-под бурбона и хереса дают грушу, мёд и лёгкий дуб. Тому, кто пьёт виски редко, предложи с каплей воды: аромат раскроется." },
+  { name: "Lagavulin 16", producer: "Lagavulin", cat: "whisky", style: "торфяной", country: "Шотландия", region: "Айла", age: "16 лет", abv: 43, portion: 40, pricePortion: 1200, priceBottle: 21000, volume: "0,7 л",
+    serve: ["чистым", "с каплей воды"], glass: "гленкерн", temp: "комнатная, 18–20 °C", notes: ["торфяной дым", "йод", "сухофрукты"], short: "Дым, море и сухофрукты Айлы: для тех, кто любит торф.", pair: [dish("Крабовая котлета")] },
+  { name: "Maker's Mark", producer: "Maker's Mark", cat: "whisky", style: "бурбон", country: "США", region: "Кентукки", abv: 45, portion: 40, pricePortion: 550, priceBottle: 7900, volume: "0,7 л",
+    serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", temp: "комнатная или со льдом", hot: true, notes: ["карамель", "ваниль", "пшеничный хлеб"], short: "Сладкий бурбон с карамелью и ванилью: чистым, со льдом или в «Олд фэшн»." },
+  { name: "Hennessy VS", producer: "Hennessy", cat: "cognac", style: "VS", country: "Франция", region: "Коньяк", abv: 40, portion: 40, pricePortion: 750, priceBottle: 11500, volume: "0,7 л",
+    serve: ["чистым"], glass: "тюльпан", temp: "комнатная, 18–20 °C", hot: true, notes: ["ваниль", "дуб", "сухофрукты"], short: "Молодой живой коньяк: ваниль, дуб и сухофрукты, после ужина." },
+  { name: "Havana Club 7", producer: "Havana Club", cat: "rum", style: "выдержанный", country: "Куба", age: "7 лет", abv: 40, portion: 40, pricePortion: 450, priceBottle: 6500, volume: "0,7 л",
+    serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", temp: "комнатная или со льдом", notes: ["табак", "какао", "ваниль"], short: "Кубинский ром с какао и табаком: чистым или со льдом." },
+  { name: "Hendrick's", producer: "William Grant & Sons", cat: "gin", style: "травяной", country: "Шотландия", abv: 41.4, portion: 40, pricePortion: 520, priceBottle: 8500, volume: "0,7 л",
+    serve: ["в коктейле", "охлаждённым"], glass: "хайбол", temp: "охлаждённым", hot: true, notes: ["огурец", "роза", "можжевельник"], short: "Огурец и роза: в джин-тоник с ломтиком огурца.", pair: [dish("Креветка темпура"), dish("Кальмар")] },
+  { name: "Белуга Нобл", producer: "Белуга", cat: "vodka", style: "классическая", country: "Россия", abv: 40, portion: 50, pricePortion: 450, priceBottle: 7200, volume: "0,7 л",
+    serve: ["охлаждённым"], glass: "шот", temp: "охлаждённой, 4–6 °C", hot: true, notes: ["злаки", "мягкость", "чистый вкус"], short: "Мягкая и чистая: охлаждённой к закускам из морепродуктов.", pair: [dish("Закуска из морепродуктов"), dish("Ассорти паштетов")] },
+  { name: "Olmeca Blanco", producer: "Olmeca", cat: "agave", style: "бланко", country: "Мексика", region: "Халиско", abv: 38, portion: 40, pricePortion: 380, priceBottle: 4900, volume: "0,7 л",
+    serve: ["в коктейле", "чистым"], glass: "шот", temp: "комнатная", notes: ["агава", "цитрус", "перец"], short: "Свежая бланко: в «Маргариту» или шотом с лаймом.", ai: ["notes", "short"] },
+  { name: "Campari", producer: "Campari", cat: "bitter", style: "аперитив", country: "Италия", abv: 25, portion: 40, pricePortion: 400, priceBottle: 3900, volume: "0,7 л",
+    serve: ["со льдом", "в коктейле"], glass: "рокс", temp: "со льдом", notes: ["горький апельсин", "травы"], short: "Горький апельсин и травы: в «Негрони» или со льдом и содовой." },
+  { name: "Baileys Original", producer: "Baileys", cat: "liqueur", style: "сливочный", country: "Ирландия", abv: 17, portion: 50, pricePortion: 400, priceBottle: 3600, volume: "0,7 л",
+    serve: ["со льдом"], glass: "рокс", temp: "со льдом", notes: ["сливки", "ваниль", "какао"], short: "Сливки, ваниль и какао: к кофе или вместо десерта." },
+];
+const SPIRIT_GLASS = { whisky: "amber", cognac: "amber", rum: "amber", liqueur: "amber", bitter: "red", gin: "clear", agave: "clear", vodka: "clear" };
+const SP_PIC = ["Glenfiddich 12", "Hennessy VS", "Hendrick's"], SP_NEW = ["Maker's Mark", "Havana Club 7"];
+DEMO_SPIRITS.forEach((w, i) => MENU.push(normSpirit({ ...w, pair: (w.pair || []).filter(Boolean),
+  img: SP_PIC.includes(w.name) ? bottlePic({ name: w.name, color: SPIRIT_GLASS[w.cat] || "amber", vintage: w.age || "" }) : "",
+  addedAt: SP_NEW.includes(w.name) ? Date.now() - 3 * 864e5 : 0 }, { id: "sp-demo-" + (i + 1), ai: w.ai || [] })));
 // AI винной карты в демо — без нейросети: по словам названия угадываем стиль, честно помеченный «AI» (в приложении — api/wine-import.js)
 const WINE_GUESS = [[/просекко|prosecco|шампан|champagne|кава|cava|брют|brut|игрист|франчакорт/i, "sparkling", ["шардоне"], ["яблоко", "бриошь", "цитрус"]],
   [/шабли|chablis|шардоне|chardonnay|мерсо/i, "white", ["шардоне"], ["яблоко", "мел", "лимон"]], [/альбариньо|albariño|albarino/i, "white", ["альбариньо"], ["персик", "морская соль", "цитрус"]],
@@ -193,7 +226,43 @@ const LABELS = [["Гави ди Гави", "La Scolca", "Италия", "Пье�
   ["Бароло", "Pio Cesare", "Италия", "Пьемонт", "2018"], ["Пино Нуар", "Louis Jadot", "Франция", "Бургундия", "2020"], ["Альбариньо", "Pazo Señorans", "Испания", "Риас-Байшас", "2022"],
   ["Риоха Резерва", "Muga", "Испания", "Риоха", "2018"]];
 let labelN = 0;
+// v127: AI крепкого в демо — тоже без нейросети: вид, страна и подача по словам названия (в приложении — api/wine-import.js, kind: "spirit")
+const SPIRIT_GUESS = [
+  [/mezcal|мескал/i, { cat: "agave", style: "мескаль", country: "Мексика", region: "Оахака", abv: 40, serve: ["чистым"], glass: "шот", notes: ["дым", "агава", "цитрус"] }],
+  [/bourbon|бурбон|maker|jim beam|wild turkey|woodford|buffalo/i, { cat: "whisky", style: "бурбон", country: "США", region: "Кентукки", abv: 45, serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", notes: ["карамель", "ваниль", "дуб"] }],
+  [/jameson|bushmills|irish|ирланд/i, { cat: "whisky", style: "купажированный", country: "Ирландия", abv: 40, serve: ["чистым", "со льдом"], glass: "рокс", notes: ["ваниль", "орех", "мёд"] }],
+  [/glen|macallan|lagavulin|laphroaig|talisker|ardbeg|bowmore|виски|whisk|скотч|scotch/i, { cat: "whisky", style: "односолодовый", country: "Шотландия", abv: 40, serve: ["чистым", "с каплей воды"], glass: "гленкерн", notes: ["мёд", "дуб", "сухофрукты"] }],
+  [/hennessy|martell|courvoisier|remy|rémy|коньяк|cognac|арарат|ararat|бренди|brandy/i, { cat: "cognac", style: "VSOP", country: "Франция", region: "Коньяк", abv: 40, serve: ["чистым"], glass: "тюльпан", notes: ["ваниль", "дуб", "сухофрукты"] }],
+  [/bacardi|havana|zacapa|captain|diplomatico|(^|\s)ром(\s|$)|(^|\s)rum(\s|$)/i, { cat: "rum", style: "выдержанный", country: "Куба", abv: 40, serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", notes: ["ваниль", "карамель", "тропические фрукты"] }],
+  [/(^|\s)gin(\s|$)|джин|beefeater|bombay|tanqueray|hendrick|monkey/i, { cat: "gin", style: "London Dry", country: "Великобритания", abv: 40, serve: ["в коктейле"], glass: "хайбол", notes: ["можжевельник", "цитрус", "кориандр"] }],
+  [/tequila|текил|patron|patrón|olmeca|cuervo|don julio/i, { cat: "agave", style: "бланко", country: "Мексика", region: "Халиско", abv: 38, serve: ["в коктейле", "чистым"], glass: "шот", notes: ["агава", "цитрус", "перец"] }],
+  [/водк|vodka|beluga|белуг|absolut|grey goose|finlandia/i, { cat: "vodka", style: "классическая", country: "Россия", abv: 40, serve: ["охлаждённым"], glass: "шот", notes: ["злаки", "мягкость"] }],
+  [/campari|кампари|aperol|апероль|angostura|ангостура|becherovka|бехеровка|биттер|bitter/i, { cat: "bitter", style: "аперитив", country: "Италия", abv: 25, serve: ["со льдом", "в коктейле"], glass: "рокс", notes: ["горький апельсин", "травы"] }],
+];
+const SP_SHORT = { whisky: "Виски с характером: чистым или с каплей воды.", cognac: "Ваниль и дуб: после ужина, чистым.", rum: "Мягкая сладость: чистым или со льдом.",
+  gin: "Можжевельник и цитрус: в джин-тоник.", agave: "Агава и цитрус: в «Маргариту» или шотом.", vodka: "Чистая и мягкая: охлаждённой к закускам.", liqueur: "Сладкий ликёр: к кофе или десерту.",
+  bitter: "Горечь и травы: аперитив перед ужином." };
+const yearsWord = (n) => n + " " + (n % 10 === 1 && n % 100 !== 11 ? "год" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "года" : "лет");
+const guessSpirit = (name) => {
+  const g = (SPIRIT_GUESS.find(([re]) => re.test(name)) || [null, { cat: "liqueur", style: "", country: "", abv: 30, serve: ["со льдом"], glass: "рокс", notes: ["сладость", "пряности"] }])[1];
+  const y = Number((String(name).match(/(^|\s)(\d{1,2})(\s|$)/) || [])[2] || 0);
+  return { name, ...g, age: y ? yearsWord(y) : "", temp: TEMP_HINT_SP[g.cat] || "", short: SP_SHORT[g.cat] || "" };
+};
+// этикетка: «Белуга Нобл» в карте без фото — фото добавится к ней; «Hennessy VS» уже с фото — не отмечено, отметишь — заменится
+const SP_LABELS = [["Talisker 10", "Talisker", "Шотландия", "Острова", 45.8], ["Белуга Нобл", "Белуга", "Россия", "", 40], ["Hennessy VS", "Hennessy", "Франция", "Коньяк", 40],
+  ["Jameson", "Jameson", "Ирландия", "", 40]];
+let spLabelN = 0;
+const SP_SHEET = [["Talisker 10", "Talisker", 720, 11900], ["Jameson", "Jameson", 450, 5900], ["Courvoisier VSOP", "Courvoisier", 980, 14500], ["Bacardi Carta Blanca", "Bacardi", 350, 3900],
+  ["Beefeater London Dry", "Beefeater", 380, 4300], ["Aperol", "Aperol", 350, 2900]];
+const demoSpiritAi = (b) => {
+  if (b.mode === "fill") return { wines: [guessSpirit(String(b.name || ""))] };
+  if (b.mode === "label") { const [name, producer, country, region, abv] = SP_LABELS[spLabelN++ % SP_LABELS.length]; return { wines: [{ ...guessSpirit(name), producer, country, region, abv, portion: "", pricePortion: "", priceBottle: "" }] }; }
+  if (b.mode === "names") return { wines: (b.names || []).slice(0, 15).map((n) => guessSpirit(String(n))) };
+  // фото страницы или PDF: в демо — одна и та же «страница» из шести позиций
+  return { wines: SP_SHEET.map(([name, producer, pp, bt]) => ({ ...guessSpirit(name), producer, portion: 40, pricePortion: pp, priceBottle: bt, notes: [], short: "", story: "" })) };
+};
 const demoWineAi = (b) => {
+  if (b.kind === "spirit") return demoSpiritAi(b);   // v127
   if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
   if (b.mode === "label") { const [name, producer, country, region, vintage] = LABELS[labelN++ % LABELS.length]; return { wines: [{ ...guessWine(name), producer, country, region, vintage }] }; }
   if (b.mode === "names") return { wines: (b.names || []).slice(0, 15).map((n) => guessWine(String(n))) };
@@ -276,6 +345,13 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
     "e-ilya": { passed: ["wn-demo-3"], passedAt: -2, opened: ["wn-demo-3"], openedAt: -2, known: 3, total: 7, glassKnown: 3, glassTotal: 5, statsAt: -2, quizRight: 6, quizOf: 10, quizAt: -3 },
     "e-petr": { known: 1, total: 7, glassKnown: 1, glassTotal: 5, statsAt: -3 },
   },
+  // v127 (Доп. 440): тренировка по крепкому (этап 45): Илья (бармен) выучил новинки («Maker's Mark» и «Havana Club 7»), Анна
+  // их учит, Вера учит карту, новинки не открывала; остальные пока не занимались
+  spiritProg: {
+    "e-ilya": { passed: ["sp-demo-3", "sp-demo-5"], passedAt: -1, opened: ["sp-demo-3", "sp-demo-5"], openedAt: -2, known: 8, total: 9, glassKnown: 5, glassTotal: 5, statsAt: -1, quizRight: 10, quizOf: 10, quizAt: -1 },
+    "e-anna": { opened: ["sp-demo-3", "sp-demo-5"], openedAt: -1, known: 3, total: 9, glassKnown: 3, glassTotal: 5, statsAt: -1 },
+    "e-vera": { known: 1, total: 9, glassKnown: 1, glassTotal: 5, statsAt: -2 },
+  },
   // v107: новички (смещения дней от сегодня), памятка заведения, собеседования «Берём»
   newbies: [
     { emp: "e-ksenia", started: -1, buddy: "e-anna", buddyBy: "u-maria", checked: ["d1c"], hello: { at: -1, time: "18:40", by: "u-maria", greet: ["e-petr", "e-vera", "e-ilya"] } },
@@ -304,6 +380,8 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
     if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400);
     else if (o && o.kind === "gain") setTimeout(() => tgChat(text, o.kb, nowHM(), { note: "Так 1-го числа в 10:00 приходит итог прошлого месяца. Кнопка открывает его в приложении." }), 400);   // v109
     else setTimeout(() => tgToast(text, acts), 500); } });
+// v127: демо, открытое сегодня ещё до этой сборки, — крепкое приходит в меню команды один раз (дальше — как правил руководитель)
+if (!srv.S.spiritSeeded) { srv.S.spiritSeeded = 1; if (Array.isArray(srv.S.menu) && !srv.S.menu.some((d) => d && d.kind === "spirit")) srv.S.menu.push(...MENU.filter((d) => d && d.kind === "spirit")); }
 const save = () => { lsSet(K_SRV, JSON.stringify(srv.S)); lsSet(K_DAY, TODAY); };
 const D = srv.D;
 // приложение только что открыли: сейчас я ни в одном чате (бот пишет мне в Telegram, как в жизни)

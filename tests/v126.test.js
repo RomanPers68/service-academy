@@ -144,9 +144,11 @@ describe("v126: где досылается", () => {
   it("через 8 с после входа (App), при открытии винной карты; wineReport запоминает, что ушло, и возвращает при отказе", () => {
     expect(APP).toContain('import { wineCatchUp } from "./lib/wine-sync";');
     expect(APP).toContain("const t = setTimeout(() => { wineCatchUp({ restaurant: profile.restaurant, uk: ukP }); }, 8000);");
-    expect(L).toContain("const [shared, , menuLoaded] = useTeamMenu(restaurant);");
-    expect(L).toContain("React.useEffect(() => { if (menuLoaded) wineCatchUp({ restaurant, uk, wines: all }); }, [menuLoaded]);");
-    expect(TR).toContain("const undo = markSent(restaurant, kind, data && data.ids);");
+    // v127 (Доп. 440): карту грузит «Барная карта» (team) или сама вкладка; досылка выученного до v125 — только у вин
+    expect(L).toContain("const own = useTeamMenu(team ? \"\" : restaurant);");
+    expect(L).toContain("const [shared, , menuLoaded] = team || own;");
+    expect(L).toContain('React.useEffect(() => { if (menuLoaded && K.kind === "wine") wineCatchUp({ restaurant, uk, wines: all }); }, [menuLoaded]);');
+    expect(TR).toContain("const undo = markSent(restaurant, kind, data && data.ids, K);");
     expect(TR).toContain('.then((res) => { if (res === "drop") undo(); })');
     expect(API).toMatch(/else if \(res === "ok"\) \{ flushQueue\(\); \}\n    return res;\n  \}\);/);
     expect(S).toContain("if (!plan || otherUsers(uk, keys()).length) return Promise.resolve(null);");
@@ -159,6 +161,6 @@ describe("v126: где досылается", () => {
       expect(dashes(rd(f)), f).toBe(0);
       expect(code(rd(f)), f).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
     }
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v126</span>");
+    expect(rd("ui/menu-trainer.jsx")).toMatch(/· сборка v(12[6-9]|1[3-9]\d|[2-9]\d\d)<\/span>/);   // v127: дальше — новые сборки
   });
 });

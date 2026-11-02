@@ -224,7 +224,8 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 }
 
 // ── Корень раздела ──
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null }) {
+// v128: onBarItem(kind, id) — коктейль, вино или крепкое из поиска справочника: карточка в «Барной карте»
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null, onBarItem = null }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
@@ -267,7 +268,8 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
     }
   };
   if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
-    scopeText="Введи минимум 2 буквы. Ищу по главам справочника, глоссарию и меню ресторана."
+    scopeText={onBarItem ? "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию, меню ресторана и барной карте." : "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию и меню ресторана."}
+    onCocktail={onBarItem ? (id) => onBarItem("cocktail", id) : undefined} onDrink={onBarItem || undefined}
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
   if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab}
     hintNode={rHint && rSteps.length ? (

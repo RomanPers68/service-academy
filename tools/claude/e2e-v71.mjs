@@ -5,7 +5,7 @@
 //   HIT    — «‹ назад» на 14 экранах: место нажатия не меньше 40×40 (проверка elementFromPoint по углам), тап сбоку от
 //            значка возвращает назад; стрелки карточек урока;
 //   SEARCH — лупа в верхней строке на главной, «Смене», «Меню»; нет в тесте; «негрони» → карточка из карты бара → тап
-//            открывает колоду на Негрони; «орех» → блюдо из меню команды с аллергенами, примеры скрыты (как в «Колоде меню»);
+//            открывает колоду на Негрони (v128 — его карточку в «Барной карте»); «орех» → блюдо из меню команды с аллергенами, примеры скрыты (как в «Колоде меню»);
 //   HUBS   — «Я»: группы по порядку, итоги и настройки строками; «Команда» у руководителя: «Управление» первым; «Смена»;
 //            компьютер 1440×900 — подписи групп над плитками; 320 px — без прокрутки вбок;
 //   TG     — полноэкранный Telegram (v72: строка снова под кнопками Telegram — в их строке на iPhone её накрывает подложка
@@ -212,15 +212,16 @@ if (want("SEARCH")) {
   }
   await nav(o.page, "roleSelect", 900);
   await o.page.click("[data-top-search]"); await sleep(1300);
-  const onSearch = await o.page.evaluate(() => !!document.querySelector('input[placeholder="Блюдо, аллерген, коктейль, термин…"]') && !document.querySelector("[data-top-search]"));
+  const onSearch = await o.page.evaluate(() => !!document.querySelector('input[placeholder="Блюдо, аллерген, вино, коктейль…"]') && !document.querySelector("[data-top-search]"));
   ok("SEARCH: тап по лупе открывает поиск; на самом поиске лупы нет", onSearch);
   await o.page.fill("input", "негрони"); await sleep(800);
   const ng = await o.page.evaluate(() => { const c = document.querySelector('[data-search-cocktail="negroni"]'); return c ? c.innerText.replace(/\s+/g, " ") : null; });
   ok("SEARCH: «негрони» — карточка из карты бара со спеком", !!ng && /Негрони/.test(ng) && /Джин 30 мл/.test(ng) && /стир/i.test(ng), ng);
   await shot(o.page, "search-negroni");
   await o.page.click('[data-search-cocktail="negroni"]'); await sleep(2000);
-  const deck = await o.page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
-  ok("SEARCH: тап — «Колода бармена» открыта на Негрони", /Колода бармена/.test(deck) && /НЕГРОНИ|Негрони/.test(deck), deck.slice(0, 160));
+  // v128 (Доп. 441): тап — карточка «Негрони» в «Барной карте»: рецепт сразу, «Учить в колоде» — там же
+  const deck = await o.page.evaluate(() => ({ card: (document.querySelector("[data-bar-ck-card]") || { getAttribute: () => "" }).getAttribute("data-bar-ck-card"), t: document.body.innerText.replace(/\s+/g, " ") }));
+  ok("SEARCH: тап — карточка «Негрони» в «Барной карте»", deck.card === "negroni" && /Негрони/.test(deck.t) && /Учить в колоде/.test(deck.t), deck.t.slice(0, 160));
   await o.page.click("[data-top-search]"); await sleep(1200);
   await o.page.fill("input", "орех"); await sleep(800);
   const nut = await o.page.evaluate(() => ({ text: document.body.innerText.replace(/\s+/g, " "), al: [...document.querySelectorAll("[data-dish-allergens]")].map((e) => e.innerText) }));
@@ -288,7 +289,7 @@ if (want("TG")) {
     ok(`TG ${T}: лупа и тема нажимаются (сверху ничего не лежит)`, g.searchHit && g.themeHit);
     await shot(o.page, `tg-${T.toLowerCase()}-home`);
     await o.page.click("[data-top-search]"); await sleep(1200);
-    ok(`TG ${T}: лупа открывает поиск`, !!(await o.page.$('input[placeholder="Блюдо, аллерген, коктейль, термин…"]')));
+    ok(`TG ${T}: лупа открывает поиск`, !!(await o.page.$('input[placeholder="Блюдо, аллерген, вино, коктейль…"]')));
     await nav(o.page, "roleSelect", 900);
     await o.page.evaluate(() => window.Telegram.WebApp.exitFullscreen()); await sleep(500);
     const back = await o.page.evaluate(() => ({ pos: getComputedStyle(document.querySelector("[data-sa-topbar]")).position, saTop: getComputedStyle(document.documentElement).getPropertyValue("--sa-top").trim(), lbl: getComputedStyle(document.querySelector("[data-sa-topbar] .sa-topbar-lbl")).display }));

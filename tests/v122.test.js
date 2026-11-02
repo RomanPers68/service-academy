@@ -247,7 +247,7 @@ describe("v122: демо — фото без хранилища, этикетк�
     expect(B).toContain("if (/\\/functions\\/v1\\/photo-upload/.test(url))");
     expect(B).toContain('if (b.mode === "label") { const [name, producer, country, region, vintage] = LABELS[labelN++ % LABELS.length];');
     expect(B.indexOf("/functions\\/v1\\/photo-upload/")).toBeLessThan(B.indexOf("if (/supabase\\.co/.test(url)"));
-    expect(B).toContain('const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико", "Москато д’Асти", "Рислинг Кабинетт"];');
+    expect(B).toContain('const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико / Chianti Classico", "Москато д’Асти", "Рислинг Кабинетт / Riesling Kabinett"];');   // v128: «Русское / Original»
     expect(B).not.toMatch(/WITH_PIC = \[[^\]]*"Шабли"/);   // у «Шабли» фото нет — импорт бутылок добавит его
   });
 });

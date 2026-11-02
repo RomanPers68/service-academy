@@ -171,11 +171,12 @@ describe("v71: поиск — меню команды, как в «Колоде 
   it("экран поиска: блюда через общее правило, раздел «Карта бара», аллергены в строке, переход к карточке коктейля", () => {
     const s = rd("ui/search.jsx"), app = rd("App.jsx");
     expect(s).toContain("const dishesFor = (restaurant) => menuDishesFromStorage(restaurant);");
-    expect(s).toContain("Карта бара");
+    expect(s).toContain("Барная карта");   // v128 (Доп. 441): раздел — «Барная карта», с винами и крепким
     expect(s).toContain("data-search-cocktail");
     expect(s).toContain("data-dish-allergens");
-    expect(s).toContain('placeholder="Блюдо, аллерген, коктейль, термин…"');
-    expect(app).toContain('onCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }}');
+    expect(s).toContain('placeholder="Блюдо, аллерген, вино, коктейль…"');
+    // v128: коктейль из поиска — его карточка в «Барной карте» (рецепт сразу; «Учить в колоде» — там же)
+    expect(app).toContain('onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }}');
   });
   it("лупа в верхней строке на любом экране, кроме теста, экзамена и собеседования кандидата", () => {
     const app = rd("App.jsx");

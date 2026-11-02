@@ -13,6 +13,7 @@
 // v127 (Доп. 440): «Барная карта» — те же экраны для крепкого. Вид напитка K (lib/drinks.js): поля, слова, ключи на
 // телефоне и функции сервера (крепкое — этап 45); без K — вина, как было.
 import React from "react";
+import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { bumpDaily } from "../lib/deck-extras";
@@ -283,7 +284,8 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
                   {reverse ? (
                     <div data-wine-clues="" style={{ fontFamily: SERIF, fontSize: 16, color: text, lineHeight: 1.45 }}>{cluesFor(K, w).map((c) => <div key={c}>{c}</div>)}</div>
                   ) : (<>
-                    <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.2 }}>{K.title(w)}</div>
+                    <div style={{ fontFamily: SERIF, fontSize: 21, color: text, lineHeight: 1.2 }}>{titleParts(K, w).main}</div>
+                    {titleParts(K, w).orig ? <div data-wine-orig="" style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, color: sub, lineHeight: 1.35, marginTop: 3 }}>{titleParts(K, w).orig}</div> : null}
                     {w.producer && !String(w.name).toLowerCase().includes(String(w.producer).toLowerCase()) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{w.producer}</div> : null}
                   </>)}
                   <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginTop: 10 }}>{reverse ? K.t.reverseHint : K.t.frontHint}</div>
@@ -292,7 +294,8 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
                 </div>
                 <div className="sa-ck-face sa-ck-back" data-lens-edge="" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
                   <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{K.oneLabel(w)}{K.pathTest(w) ? " · " + K.t.pathBadge : ""}</div>
-                  <div data-wine-back-title="" style={{ fontFamily: SERIF, fontSize: 19, color: text, lineHeight: 1.25 }}>{K.title(w)}</div>
+                  <div data-wine-back-title="" style={{ fontFamily: SERIF, fontSize: 19, color: text, lineHeight: 1.25 }}>{titleParts(K, w).main}</div>
+                  {titleParts(K, w).orig ? <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: sub, lineHeight: 1.35, marginTop: 2 }}>{titleParts(K, w).orig}</div> : null}
                   {w.producer ? <div style={{ fontSize: 13, color: sub, marginTop: 2 }}>{w.producer}</div> : null}
                   {K.line(w) ? <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginTop: 8 }}>{K.line(w)}</div> : null}
                   {K.price(w) ? <div style={{ fontSize: 13, color: sub, marginTop: 4 }}>{K.price(w)}</div> : null}

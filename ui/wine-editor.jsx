@@ -20,6 +20,7 @@
 // v127 (Доп. 440): «Барная карта» — тот же редактор для крепкого (kind; вид напитка K — lib/drinks.js): вид, стиль,
 // выдержка, крепость, порция (25, 40, 50 мл или своё число) и её цена, как подают, «Ходовое» (учить первым).
 import React from "react";
+import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
@@ -95,7 +96,8 @@ const askAiFull = (body) => fetch("/api/wine-import", { method: "POST", headers:
 const askAi = (body) => askAiFull(body).then((j) => j.wines);
 const MAX_ROUNDS = 8;   // v122: заходов на одну длинную карту (продолжение с вина после последнего прочитанного)
 
-export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine" }) {
+// v128: onDone(id, текст) — форму открыли «Править» из карточки: закрыл её (сохранил, отменил, убрал) — снова в карточку
+export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine", onDone = null }) {
   const K = drinkOf(kind);
   const blank = () => (K.kind === "spirit" ? blankSpirit(K) : blankWine());
   const askAi = (body) => askAiFull(K.kind === "wine" ? body : { ...body, kind: K.kind }).then((j) => j.wines);
@@ -116,7 +118,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const [only, setOnly] = React.useState("all");        // all | unchecked | glass | stop | archive
   const [sureAll, setSureAll] = React.useState(false);  // v122: «Верно для всех в списке» — второе касание
   React.useEffect(() => { setSureAll(false); }, [only, q]);
-  const photoRef = React.useRef(null), pdfRef = React.useRef(null), started = React.useRef(false);
+  const photoRef = React.useRef(null), pdfRef = React.useRef(null), started = React.useRef(false), fromCard = React.useRef(null);
   const picRef = React.useRef(null), bottleRef = React.useRef(null);
   const [pic, setPic] = React.useState(null);           // фото в форме: { file, data, state: up | ok | err, err }
   const [rev, setRev] = React.useState(null);           // v123: «Проверка подряд» — { ids, i, ok, fix, skip }
@@ -131,8 +133,10 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     if (started.current || !startEditId) return;
     if (startEditId === "@review") { if (wines.length) { started.current = true; startReview(); } return; }
     const r = wines.find((x) => x.id === startEditId);
-    if (r) { started.current = true; setForm({ ...blank(), ...r }); }
+    if (r) { started.current = true; fromCard.current = r.id; setForm({ ...blank(), ...r }); }
   }, [wines, startEditId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v128: форма из карточки — по закрытии туда же (с текстом, что сохранилось), а не в список редактора
+  const backToCard = (okText = "") => { const id = fromCard.current; if (!id || !onDone) return false; fromCard.current = null; onDone(id, okText); return true; };
   const startReview = () => { remember(); setRev({ ids: K.uncheckedQueue(wines), i: 0, ok: 0, fix: 0, skip: 0 }); setMsg(""); vibrate("light"); };
   const revCur = rev ? wines.find((x) => x.id === rev.ids[rev.i]) : null;
   React.useEffect(() => {   // вино из очереди удалили или убрали в архив (в форме) — дальше
@@ -215,6 +219,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
       persist(K.withRec(shared, rec), "«" + rec.name + "» в карте у всех", () => {
         setSure(false);
         if (goNext && nextRec) { setForm({ ...blank(), ...nextRec }); setSeq((q0) => (q0 ? { ...q0, at: nextAt } : q0)); setAiErr(""); return; }
+        if (!rev && backToCard("Сохранено: в карте у всех")) return;
         setForm(null); setSeq(null);
         if (rev) setRev((r) => (r ? { ...r, i: r.i + 1, fix: r.fix + 1 } : r));
       });
@@ -248,7 +253,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     const dishOrder = [...dishes.filter((d) => pairs.has(d.id)), ...dishes.filter((d) => !pairs.has(d.id))];
     return (
       <div style={T.screen} className="sa-screen" data-wine-form={form.id || "new"}>
-        {Head(isNew ? K.t.newOne : K.t.editOne, () => { setForm(null); setSeq(null); setSure(false); setAiErr(""); })}
+        {Head(isNew ? K.t.newOne : K.t.editOne, () => { if (backToCard()) return; setForm(null); setSeq(null); setSure(false); setAiErr(""); })}
         <div style={{ padding: "4px 16px 220px" }}>
           {label("Фото бутылки")}
           <div data-lens-card="" data-wine-photo={pic ? pic.state : form.img ? "on" : "none"} style={{ ...card, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px" }}>
@@ -359,8 +364,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           </>)}
           {!isNew ? (
             <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
-              <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => persist(K.withRec(shared, K.norm({ ...form, archived: !form.archived })), form.archived ? "Вернули в карту" : "Убрали в архив", () => setForm(null))} style={pill(false, { color: text })}>{form.archived ? "Вернуть в карту" : "В архив"}</button>
-              <button type="button" className="sa-btn" data-lens-btn="danger" data-wine-del="" onClick={() => { if (!sure) { setSure(true); vibrate("light"); return; } persist(K.without(shared, form.id), "Удалено", () => { setForm(null); setSure(false); }); }}
+              <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => persist(K.withRec(shared, K.norm({ ...form, archived: !form.archived })), form.archived ? "Вернули в карту" : "Убрали в архив", () => { if (!backToCard(form.archived ? "Вернули в карту" : "Убрали в архив")) setForm(null); })} style={pill(false, { color: text })}>{form.archived ? "Вернуть в карту" : "В архив"}</button>
+              <button type="button" className="sa-btn" data-lens-btn="danger" data-wine-del="" onClick={() => { if (!sure) { setSure(true); vibrate("light"); return; } persist(K.without(shared, form.id), "Удалено", () => { setSure(false); if (!backToCard("Удалено")) setForm(null); }); }}
                 style={pill(false, { color: red, borderColor: red + "88" })}>{sure ? "Удалить насовсем?" : "Удалить"}</button>
             </div>) : null}
           {note}
@@ -369,7 +374,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           {/* v124: открыли из списка и в нём есть следующее — «Сохранить» и «Сохранить и дальше ›» (отмена — стрелкой «назад»
               в шапке); иначе — «Отмена» и «Сохранить» */}
           {nextRec ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-save="" onClick={() => save(false)} disabled={busy || (pic && pic.state === "up")} style={{ ...softBtn, flex: 1, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>Сохранить</button>
-            : <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => { setForm(null); setSeq(null); setSure(false); }} style={{ ...softBtn, flex: 1 }}>Отмена</button>}
+            : <button type="button" className="sa-btn" data-lens-btn="soft" onClick={() => { if (backToCard()) return; setForm(null); setSeq(null); setSure(false); }} style={{ ...softBtn, flex: 1 }}>Отмена</button>}
           {nextRec ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-save-next={nextRec.id} onClick={() => save(false, true)} disabled={busy || (pic && pic.state === "up")} style={{ ...mainBtn, flex: 1.6, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>{busy ? "Сохраняю…" : pic && pic.state === "up" ? "Загружаю фото…" : "Сохранить и дальше ›"}</button>
             : <button type="button" className="sa-btn" data-lens-btn="main" data-wine-save="" onClick={() => save(false)} disabled={busy || (pic && pic.state === "up")} style={{ ...mainBtn, flex: 1.6, opacity: busy || (pic && pic.state === "up") ? 0.6 : 1 }}>{busy ? "Сохраняю…" : pic && pic.state === "up" ? "Загружаю фото…" : "Сохранить"}</button>}
         </div>
@@ -675,7 +680,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
                   <div key={w.id} data-lens-card="" data-wine-erow={w.id} style={{ ...card, marginBottom: 8, padding: "10px 12px", display: "flex", gap: 10, alignItems: "center" }}>
                     {withPics ? <WineThumb w={w} gold={gold} a11y={a11y} onClick={open} /> : null}
                     <div role="button" tabIndex={0} onClick={open} {...onActivate(open)} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
-                      <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.3, opacity: w.stop ? 0.6 : 1 }}>{K.title(w)}</div>
+                      <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.3, opacity: w.stop ? 0.6 : 1 }}>{titleParts(K, w).main}</div>
+                      {titleParts(K, w).orig ? <div data-wine-orig="" style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 12.5, color: sub, lineHeight: 1.35 }}>{titleParts(K, w).orig}</div> : null}
                       {K.line(w) ? <div style={{ fontSize: 12.5, color: sub, marginTop: 2, lineHeight: 1.4 }}>{K.line(w)}</div> : null}
                       <div style={{ fontSize: 12, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {K.price(w) ? <span style={{ color: text }}>{K.price(w)}</span> : null}

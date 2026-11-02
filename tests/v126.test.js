@@ -146,7 +146,7 @@ describe("v126: где досылается", () => {
     expect(APP).toContain("const t = setTimeout(() => { wineCatchUp({ restaurant: profile.restaurant, uk: ukP }); }, 8000);");
     // v127 (Доп. 440): карту грузит «Барная карта» (team) или сама вкладка; досылка выученного до v125 — только у вин
     expect(L).toContain("const own = useTeamMenu(team ? \"\" : restaurant);");
-    expect(L).toContain("const [shared, , menuLoaded] = team || own;");
+    expect(L).toContain("const [shared, setShared, menuLoaded] = team || own;");   // v128: «Верно для раздела» сохраняет меню
     expect(L).toContain('React.useEffect(() => { if (menuLoaded && K.kind === "wine") wineCatchUp({ restaurant, uk, wines: all }); }, [menuLoaded]);');
     expect(TR).toContain("const undo = markSent(restaurant, kind, data && data.ids, K);");
     expect(TR).toContain('.then((res) => { if (res === "drop") undo(); })');

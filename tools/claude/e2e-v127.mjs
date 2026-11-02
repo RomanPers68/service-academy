@@ -3,8 +3,9 @@
 // ввод. Делаем сразу все, как у вин», «Да, делаем». Сервер — как у вин (fake-server.js; этап 45 — pg-check-stage45). Разделы:
 //   HUB       — в Справочнике одна «Барная карта» (сколько чего), без «Нашей винной карты» и «Бар: коктейли»;
 //   TABS      — «Коктейли · Вина · Крепкое», открывается та, где был; без вин — «Коктейли · Крепкое»;
-//   COCKTAILS — коктейли нашего бара по основе, «Из нашей карты», поиск, касание — тот коктейль в колоде (и свой),
-//               «Колода бармена», «Бар-лаборатория», «Редактор» у руководителя;
+//   COCKTAILS — коктейли нашего бара по основе, «Из нашей карты», поиск, касание — тот коктейль в колоде (и свой; v128 —
+//               сначала его карточка в «Барной карте», оттуда «Учить в колоде»), «Колода бармена», «Бар-лаборатория»,
+//               «Редактор» у руководителя;
 //   SPIRITS   — разделы по виду, строка с порцией, «Ходовое», карточка и «В коктейлях нашего бара»;
 //   EDITOR    — «Редактор крепкого»: вид, стиль, порция чипом или своя, подача, бокал, «ходовое»; AI и импорт — крепкое;
 //   TRAIN     — тренировка: новинки («Выучил новинки ✓» — этап 45, свои ключи), викторина, «Крепкое к блюду»;
@@ -499,18 +500,22 @@ await run("COCKTAILS", async () => {
   const rum = await o.page.evaluate(() => [...document.querySelectorAll("[data-bar-ck-group]")].map((e) => e.getAttribute("data-bar-ck-group")).join());
   ok("COCKTAILS: чип основы оставляет только её", rum === "Ром", rum);
   await o.page.locator('[data-bar-ck-only="all"]').click(); await sleep(300);
-  // касание — коктейль в «Колоде бармена»: на нём, даже когда свои идут первыми
-  await o.page.locator('[data-bar-ck="negroni"]').click(); await sleep(1500);
+  // касание — коктейль в «Колоде бармена»: на нём, даже когда свои идут первыми (v128: через его карточку в «Барной карте»)
+  await o.page.locator('[data-bar-ck="negroni"]').click(); await sleep(600);
+  await o.page.locator("[data-bar-ck-learn]").click(); await sleep(1500);
   const f1 = await deckFront(o.page);
   ok("COCKTAILS: касание «Негрони» — колода открыта на «Негрони» (свои коктейли впереди не сбивают)", /^Негрони/i.test(f1), f1.slice(0, 80));
   await shot(o.page, "deck-negroni");
   await back(o.page); await sleep(600);
+  await back(o.page); await sleep(500);   // v128: из колоды — в карточку «Негрони», из неё — в список
   ok("COCKTAILS: назад — снова «Барная карта» на коктейлях", (await tabsOf(o.page)).ck);
-  await o.page.locator('[data-bar-ck="ck-sea"]').click(); await sleep(1500);
+  await o.page.locator('[data-bar-ck="ck-sea"]').click(); await sleep(600);
+  await o.page.locator("[data-bar-ck-learn]").click(); await sleep(1500);
   const f2 = await deckFront(o.page);
   ok("COCKTAILS: свой коктейль открывается сам, а не первая карточка", /^Морской бриз по-нашему/i.test(f2), f2.slice(0, 80));
   await back(o.page); await sleep(600);
-  await o.page.locator('[data-bar-learn="lab"]').click(); await sleep(1600);
+  await back(o.page); await sleep(500);
+  await o.page.locator('[data-bar-learn="lab"]').click(); await sleep(1600);   // v128: колода и лаборатория — сразу, двумя кнопками
   ok("COCKTAILS: «Бар-лаборатория» открывается («Сборка руками»)", !(await o.page.locator("[data-bar-cocktails]").count()) && /Сборка руками/.test(await txt(o.page.locator("body"))));
   await back(o.page); await sleep(600);
   await openBar(o.page, "cocktail");
@@ -521,7 +526,7 @@ await run("COCKTAILS", async () => {
   const s2 = srvOf(MENU_B), o2 = await open({ who: ANNA, srv: s2, menu: MENU_B });
   await hideToasts(o2.page);
   await openBar(o2.page, "cocktail");
-  ok("COCKTAILS: у сотрудника «Редактора» нет, «Колода бармена» есть", !(await o2.page.locator("[data-bar-ck-edit]").count()) && (await o2.page.locator('[data-bar-learn="deck"]').count()) === 1);
+  ok("COCKTAILS: у сотрудника «Редактора» нет, «Колода» есть", !(await o2.page.locator("[data-bar-ck-edit]").count()) && (await o2.page.locator('[data-bar-learn="deck"]').count()) === 1);
   await o2.page.locator('[data-bar-learn="deck"]').click(); await sleep(1500);
   ok("COCKTAILS: «Колода бармена» — колода", (await o2.page.locator(".sa-ck-front").count()) > 0);
   await o2.ctx.close();
@@ -552,7 +557,8 @@ await run("SPIRITS", async () => {
   ok("SPIRITS: карточка — откуда и что, порция и бутылка", /США, Кентукки · виски, бурбон · 45%/.test(card) && /40 мл 550 ₽ · бутылка 7 900 ₽/.test(card), card.slice(0, 200));
   ok("SPIRITS: «В коктейлях нашего бара» — на бурбоне, без «Манхэттена» на ржаном", cks.includes("old-fashioned") && !cks.includes("manhattan"), cks.join());
   await shot(o.page, "spirit-card");
-  await o.page.locator('[data-spirit-cocktail="old-fashioned"]').click(); await sleep(1500);
+  await o.page.locator('[data-spirit-cocktail="old-fashioned"]').click(); await sleep(700);   // v128: его карточка — здесь же
+  await o.page.locator("[data-bar-ck-learn]").click(); await sleep(1500);
   const f = await deckFront(o.page);
   ok("SPIRITS: касание коктейля — он в «Колоде бармена»", /^Олд фэшн/i.test(f), f.slice(0, 60));
   const [e1, e2] = noErr(o); ok("SPIRITS: без ошибок", e1, e2);

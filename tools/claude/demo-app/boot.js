@@ -25,7 +25,8 @@ import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
-import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";   // v127: крепкое в «Барной карте» демо   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
+import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";
+import { nameParts } from "../../../lib/bar-view.js";   // v128: на «этикетке» — русское название   // v127: крепкое в «Барной карте» демо   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
 
 const K_SRV = "__demo_srv", K_WHO = "__demo_who", K_DAY = "__demo_day", K_T = "__demo_t", K_NEW = "__demo_newphone";
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -126,15 +127,15 @@ const DEMO_WINES = [
   { name: "Шабли", producer: "Domaine Laroche", country: "Франция", region: "Бургундия, Шабли", grapes: ["шардоне"], color: "white", sweet: "сухое", vintage: "2022", byGlass: true, priceGlass: 950, priceBottle: 5200, temp: "8–10 °C", glass: "бургундия",
     notes: ["зелёное яблоко", "мел", "лимон"], short: "Свежее, минеральное, с кислинкой: к морепродуктам лучше не придумать.", story: "Шардоне без дуба с известняковых почв Шабли: чистое, звонкое, с меловым послевкусием. Гостю: «если любите свежие белые без сладости».",
     pair: [dish("Закуска из морепродуктов"), dish("Салат с крабом"), dish("Кальмар")] },
-  { name: "Совиньон Блан", producer: "Cloudy Bay", country: "Новая Зеландия", region: "Мальборо", grapes: ["совиньон блан"], color: "white", sweet: "сухое", vintage: "2023", priceBottle: 6900, temp: "8–10 °C", glass: "универсальный",
+  { name: "Совиньон Блан / Sauvignon Blanc", producer: "Cloudy Bay", country: "Новая Зеландия", region: "Мальборо", grapes: ["совиньон блан"], color: "white", sweet: "сухое", vintage: "2023", priceBottle: 6900, temp: "8–10 °C", glass: "универсальный",
     notes: ["маракуйя", "крыжовник", "свежескошенная трава"], short: "Яркий и ароматный: тропические фрукты и свежая зелень.", pair: [dish("Салат с креветками")] },
-  { name: "Рислинг Кабинетт", producer: "Dr. Loosen", country: "Германия", region: "Мозель", grapes: ["рислинг"], color: "white", sweet: "полусладкое", vintage: "2021", byGlass: true, priceGlass: 780, priceBottle: 4300, temp: "8–10 °C", glass: "универсальный",
+  { name: "Рислинг Кабинетт / Riesling Kabinett", producer: "Dr. Loosen", country: "Германия", region: "Мозель", grapes: ["рислинг"], color: "white", sweet: "полусладкое", vintage: "2021", byGlass: true, priceGlass: 780, priceBottle: 4300, temp: "8–10 °C", glass: "универсальный",
     notes: ["персик", "лайм", "мёд"], short: "Сочный, с лёгкой сладостью и кислинкой: к острому и азиатскому.", pair: [dish("Кальмар в азиатском стиле")] },
   { name: "Розе Côtes de Provence", producer: "Château d’Esclans", country: "Франция", region: "Прованс", grapes: ["гренаш", "сенсо"], color: "rose", sweet: "сухое", vintage: "2023", priceBottle: 5900, temp: "8–10 °C", glass: "универсальный",
     notes: ["клубника", "грейпфрут", "травы"], short: "Бледное и сухое розовое: лето в бокале.", ai: ["grapes", "notes", "short"] },
   { name: "Пино Нуар", producer: "Louis Jadot", country: "Франция", region: "Бургундия", grapes: ["пино нуар"], color: "red", sweet: "сухое", vintage: "2020", byGlass: true, priceGlass: 1100, priceBottle: 6100, temp: "14–16 °C", glass: "бургундия",
     notes: ["вишня", "малина", "лесная подстилка"], short: "Лёгкое красное: можно и к рыбе, и к крабовой котлете.", pair: [dish("Крабовая котлета")] },
-  { name: "Кьянти Классико", producer: "Castello di Ama", country: "Италия", region: "Тоскана", grapes: ["санджовезе"], color: "red", sweet: "сухое", vintage: "2019", priceBottle: 7400, temp: "16–18 °C", glass: "бордо",
+  { name: "Кьянти Классико / Chianti Classico", producer: "Castello di Ama", country: "Италия", region: "Тоскана", grapes: ["санджовезе"], color: "red", sweet: "сухое", vintage: "2019", priceBottle: 7400, temp: "16–18 °C", glass: "бордо",
     notes: ["вишня", "фиалка", "пряности"], short: "Классическая Тоскана: вишня, специи, бодрая кислотность." },
   { name: "Москато д’Асти", producer: "Saracco", country: "Италия", region: "Пьемонт", grapes: ["москато"], color: "dessert", sweet: "сладкое", vintage: "2023", byGlass: true, priceGlass: 590, priceBottle: 3300, temp: "6–8 °C", glass: "флюте",
     notes: ["абрикос", "апельсиновый цвет", "мускат"], short: "Сладкое и чуть игристое: к десерту, особенно к конфетам.", pair: [dish("Ассорти конфет")] },
@@ -167,10 +168,11 @@ function bottlePic(w) {
     return c.toDataURL("image/jpeg", 0.8);
   } catch (e) { return ""; }
 }
-const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико", "Москато д’Асти", "Рислинг Кабинетт"];
+const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кьянти Классико / Chianti Classico", "Москато д’Асти", "Рислинг Кабинетт / Riesling Kabinett"];
 // v123 (Доп. 436): два вина добавлены три дня назад — в тренировке «Новые вина»; остальные — давно (без addedAt, как до v123)
-const NEW_IN_DEMO = ["Совиньон Блан", "Москато д’Асти"];
-DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic(w) : "",
+const NEW_IN_DEMO = ["Совиньон Блан / Sauvignon Blanc", "Москато д’Асти"];
+// v128 (Доп. 441): у трёх вин название «Русское / Original», как в карте владельца: в списке — в две строки
+DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic({ ...w, name: nameParts(w.name).main }) : "",
   addedAt: NEW_IN_DEMO.includes(w.name) ? Date.now() - 3 * 864e5 : 0 }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
 // v127 (Доп. 440): крепкое «Двух морей» в «Барной карте» — десять позиций по видам. Две добавлены три дня назад («Новинки»),
 // пять — «ходовое» (путь новичка), у «Olmeca» ноты и фразу дописал AI и их ещё не проверили; у трёх — фото бутылки (своя

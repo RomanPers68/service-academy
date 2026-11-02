@@ -365,7 +365,8 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
     const lv = mastery[current.id]?.level || 0;
     return (
       <div style={T.screen} className="sa-screen">
-        {Head(current.name, () => setView("hub"))}
+        {/* v128 (Доп. 441): пришли «Собрать руками» из карточки коктейля или колоды — «назад» туда же, а не в общий вид лаборатории */}
+        {Head(current.name, () => (startId && current.id === startId ? onBack() : setView("hub")))}
         <div style={{ padding: "4px 16px 100px" }}>
           <div data-lens-card="" style={{ ...frost, borderRadius: 18, padding: 16, display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
             <div style={{ width: 96, height: 96, flexShrink: 0 }}><GlassView glass={current.glass} fill={0.75} colors={current.ing.map(i => ING_COLOR(i[0]))} ice={current.ice === "crushed" ? "crushed" : current.ice ? "cube" : null} garnish={current.garnish} a11y={a11y} /></div>

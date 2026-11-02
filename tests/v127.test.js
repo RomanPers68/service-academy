@@ -316,13 +316,13 @@ describe("v127: экраны", () => {
     expect(staff).not.toContain("data-bar-tabs");
     const lead = renderToString(React.createElement(BarCardScreen, { T, a11y: false, profile: { restaurant: "R", position: "manager" }, onBack: () => {}, onEdit: () => {}, onCocktailDeck: () => {}, onBarLab: () => {} }));
     expect(lead).toContain('data-bar-tabs="cocktail,wine,spirit"');
-    expect(lead).toContain('data-bar-learn="deck"');
+    expect(lead).toContain('data-bar-learn="deck"');   // v128: колода и лаборатория — две кнопки рядом
     expect(lead).toContain('data-bar-learn="lab"');
     expect(lead).toContain(">Барная карта<");
   });
   it("вкладка запоминается; вина и крепкое — один экран с видом; коктейль — в «Колоду бармена»", () => {
     const BC = rd("ui/bar-card.jsx");
-    for (const s of ['const TAB_KEY = "sa_bar_tab";', "React.useEffect(() => { saveTab(cur); }, [cur]);", 'data-bar-tab={k}', "<WineListScreen key={cur} kind={cur}",
+    for (const s of ['const TAB_KEY = "sa_bar_tab";', "React.useEffect(() => { saveTab(cur); }, [cur]);", 'data-bar-tab={pin ? undefined : k}', "<WineListScreen key={cur} kind={cur}",
       "onEdit={onEdit ? (id) => onEdit(cur, id) : undefined}", "Из нашей карты: ", "В карте бара пока нет коктейлей."]) expect(BC, s).toContain(s);
     const L = rd("ui/wine-list.jsx");
     for (const s of ["const K = drinkOf(kind);", "data-drink-kind={K.kind}", "В коктейлях нашего бара", "data-spirit-cocktail={c.id}", 'if (menuLoaded && K.kind === "wine") wineCatchUp(']) expect(L, s).toContain(s);

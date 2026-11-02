@@ -14,6 +14,8 @@
 // v111 (Доп. 424): «Утро» у Марии в виде «Линза» — кружки строк и «Собрать брифинг» с кольцом линзы.
 // v121 (Доп. 434): Мария — AI-интервью в демо (вопросы без нейросети), поле, микрофон и волна по одной линии.
 // v122 (Доп. 435): Мария — винная карта с фото бутылок, «Импорт» → «Фото бутылок» (этикетки и фото без сервера).
+// v128 (Доп. 441): Мария — «Барная карта»: проверка, «Подобрать гостю», шапка не уезжает, «Колода» и «Лаборатория» рядом,
+// карточка коктейля здесь же, «следующее ›», поиск сверху находит вино, после «Сохранить» — снова карточка.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -416,6 +418,54 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("Новая позиция: вид чипами, порция 25, 40, 50 мл или своя", sf.parts === "origin,serve,guest,pair" && sf.cats === 9 && sf.portions === "25,40,50", JSON.stringify(sf));
   await page.locator('[data-wine-part="serve"]').click().catch(() => {}); await page.waitForTimeout(400);
   await shot("m28-spirit-form");
+  // v128 (Доп. 441): «Барная карта» удобнее, проще, красивее
+  await toBar("wine", 1500);
+  const v8 = await page.evaluate(() => ({ banner: ((document.querySelector("[data-wine-check-banner]") || {}).textContent || ""),
+    orig: ((document.querySelector('[data-wine-row="wn-demo-4"] [data-wine-orig]') || {}).textContent || ""), sec: [...document.querySelectorAll("[data-wine-sec-ok]")].map((e) => e.getAttribute("data-wine-sec-ok")) }));
+  ok("Винная карта: руководителю — сколько ждёт проверки; «Русское / Original» — в две строки", /^\d+ вин[оа]? (ждут|ждёт) проверки/.test(v8.banner) && v8.orig === "Riesling Kabinett" && v8.sec.length > 0, JSON.stringify(v8));
+  await shot("m29-wines-check");
+  await page.locator("[data-wine-sec-ok]").first().click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator("[data-wine-sec-ok]").first().click().catch(() => {}); await page.waitForTimeout(1200);
+  const cm = await page.evaluate(() => (document.querySelector("[data-wine-check-msg]") || {}).textContent || "");
+  ok("«Верно для раздела»: второе касание — раздел проверен", /^Проверено: \d+ вин/.test(cm), cm);
+  await page.locator("[data-wine-pick-open]").click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator('[data-wine-budget="1"]').click().catch(() => {}); await page.waitForTimeout(300);
+  const pk = await page.evaluate(() => ({ n: (document.querySelector("[data-wine-pick-n]") || {}).textContent || "", b: document.querySelectorAll("[data-wine-budget]").length }));
+  ok("«Подобрать гостю»: бюджет тремя ступенями по ценам карты, «Нашлось: …»", pk.b === 3 && /^Нашлось: \d+ вин/.test(pk.n), JSON.stringify(pk));
+  await shot("m30-wines-pick");
+  await page.locator("[data-wine-pick-reset]").click().catch(() => {}); await page.waitForTimeout(200);
+  await page.evaluate(() => { const r = document.getElementById("root"); r.scrollTop = r.scrollHeight; }); await page.waitForTimeout(700);
+  const pn = await page.evaluate(() => { const p = document.querySelector("[data-bar-pin]"); return p ? p.querySelectorAll("[data-bar-pin-tab]").length : 0; });
+  ok("Шапка не уезжает: внизу карты сверху — вкладки, разделы, поиск и «наверх»", pn === 3, String(pn));
+  await shot("m31-wines-pin");
+  await toBar("cocktail", 1500);
+  const ckv = await page.evaluate(() => { const d = document.querySelector('[data-bar-learn="deck"]'), l = document.querySelector('[data-bar-learn="lab"]');
+    return { row: !!(d && l) && Math.abs(d.getBoundingClientRect().top - l.getBoundingClientRect().top) < 2, art: document.querySelectorAll("[data-bar-ck] [data-bar-ck-art] svg").length, rows: document.querySelectorAll("[data-bar-ck]").length }; });
+  ok("Коктейли: «Колода» и «Лаборатория» — две кнопки в одну строку, у каждого коктейля — бокал в его цвете", ckv.row && ckv.rows > 50 && ckv.art === ckv.rows, JSON.stringify(ckv));
+  await shot("m32-cocktails-art");
+  // затем владелец: «Делаешь лишние движения» — «Да, давай»: карточка коктейля здесь же, листать подряд, поиск находит вина
+  await page.locator('[data-bar-ck="negroni"]').click().catch(() => {}); await page.waitForTimeout(700);
+  const cc = await page.evaluate(() => { const c = document.querySelector("[data-bar-ck-card]"); return c ? { id: c.getAttribute("data-bar-ck-card"), ing: c.querySelectorAll("[data-bar-ck-ing] > div").length,
+    how: c.querySelectorAll("[data-bar-ck-how] li").length, learn: !!c.querySelector("[data-bar-ck-learn]"), build: !!c.querySelector("[data-bar-ck-build]") } : null; });
+  ok("Карточка коктейля в «Барной карте»: состав с граммовкой, как готовить, «Учить в колоде», «Собрать руками»", !!cc && cc.id === "negroni" && cc.ing === 3 && cc.how === 7 && cc.learn && cc.build, JSON.stringify(cc));
+  await shot("m33-cocktail-card");
+  await page.evaluate(() => { const r = document.getElementById("root"); r.scrollTop = r.scrollHeight; }); await page.waitForTimeout(400);
+  await shot("m34-card-steps");
+  await page.locator('[data-card-step="next"]').click().catch(() => {}); await page.waitForTimeout(600);
+  const nx = await page.evaluate(() => ({ id: (document.querySelector("[data-bar-ck-card]") || { getAttribute: () => "" }).getAttribute("data-bar-ck-card"), at: (document.querySelector("[data-card-steps]") || { getAttribute: () => "" }).getAttribute("data-card-steps") }));
+  ok("«следующее ›» — следующий коктейль списка", !!nx.id && nx.id !== "negroni" && /^\d+\/\d+$/.test(nx.at), JSON.stringify(nx));
+  await page.evaluate(() => window.__saNav && window.__saNav("search")); await page.waitForTimeout(900);
+  await page.locator("input").first().fill("кьянти").catch(() => {}); await page.waitForTimeout(700);
+  const sw = await page.evaluate(() => [...document.querySelectorAll("[data-search-drink]")].map((e) => e.getAttribute("data-search-drink")));
+  ok("Поиск сверху находит вино: «кьянти»", sw.length === 1, JSON.stringify(sw));
+  await shot("m35-search-wine");
+  await page.locator("[data-search-drink]").first().click().catch(() => {}); await page.waitForTimeout(1500);
+  ok("Касание — карточка вина в «Барной карте»", (await page.locator("[data-wine-card]").count()) === 1);
+  await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
+  await page.locator("[data-wine-save]").click().catch(() => {}); await page.waitForTimeout(1500);
+  const sv = await page.evaluate(() => ({ card: !!document.querySelector("[data-wine-card]"), note: (document.querySelector("[data-wine-saved]") || {}).textContent || "" }));
+  ok("«Править» → «Сохранить» — снова карточка вина, «Сохранено…»", sv.card && sv.note === "Сохранено: в карте у всех", JSON.stringify(sv));
+  await shot("m36-wine-saved");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

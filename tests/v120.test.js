@@ -172,7 +172,7 @@ describe("v120: экраны", () => {
   });
   it("линза с самого начала: карточки, поля, плашки и стекло; «Справочник» — карточки, значок без витража — линза", () => {
     expect(count(L, 'data-lens-card=""')).toBeGreaterThanOrEqual(2);
-    expect(L).toContain('data-lens-field=""');
+    expect(L + rd("ui/bar-kit.jsx")).toContain('data-lens-field=""');   // v129: поле поиска карты — общее (ui/bar-kit.jsx, SearchField)
     expect(E).toContain('data-lens-btn="main" data-wine-new=""');
     expect(E).toContain('data-lens-btn="main" data-wine-save=""');
     expect(E).toContain('data-lens-btn="soft" data-lens-ink="" data-wine-fill=""');

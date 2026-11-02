@@ -15,6 +15,10 @@
 // Затем: «Как ещё проще и удобнее мы можем сделать?» — «Да, давай». Карточки листаются подряд («‹ предыдущее»,
 // «следующее ›»); коктейль из карточки крепкого открывается здесь же, в «Барной карте», и «назад» возвращает в крепкое;
 // после «Править» и «Сохранить» — снова эта карточка.
+// v129 (Доп. 442), владелец: «Что бы человек зайдя в неё не заблудился и все было интуитивно понятно?» — «Давай все».
+// Сверху «Барная карта · Вина»; строка «Учить» вместо «Учить вина» (сразу «С чего начать», «Колода», «Викторина», «Ещё» —
+// прежняя тренировка); «Показаны: Красные, 7 из 30 · Показать все» и конец списка; поиск смотрит и другие вкладки; золотая
+// стрелка у строки; карточки листаются пальцем; вкладка помнит раздел, поиск, подбор и место (ui/bar-kit.jsx).
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -27,12 +31,13 @@ import { WineDeck, WineQuiz, WineTrainHub, WinePairQuiz, WineDescribe60, WineTea
 import { PronounceScreen } from "./pronounce";   // v124: словарь «Как произносить» с разделом «Наша карта»
 import { wineCatchUp } from "../lib/wine-sync";   // v126: выученное до v125 — на сервер
 import { drinkOf } from "../lib/drinks";   // v127: вина и крепкое
-import { pathFor } from "../lib/wine-train";
+import { pathFor, srKnown } from "../lib/wine-train";
 import { kKey } from "./wine-train";
 import { spiritCocktails } from "../lib/spirit-cocktails";
-import { BUILD_SVG } from "./icons";
+import { BUILD_SVG, GAME_SVG, UI_SVG } from "./icons";
 import { titleParts, SWEET, sweetOf, budgetPrice, budgetSteps, inBudget, budgetLabels, checkWord } from "../lib/bar-view";   // v128
-import { usePin, BarPin, scrollToEl, focusSearch, useBackToRow, stepsOf, PrevNext } from "./bar-pin";
+import { usePin, BarPin, scrollToEl, focusSearch, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint } from "./bar-kit";   // v129
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -56,8 +61,9 @@ export const WineThumb = ({ w, gold, a11y, onClick = null }) => (
 // v124: экран внутри экрана (карточка вина, форма, тренировка) открывается сверху, а список возвращается туда, где его
 // оставили. Прокручивается корень приложения (#root): без этого длинная форма вина, открытая из середины списка, начиналась
 // с середины. remember() — перед уходом со списка (касание строки), key — что сейчас на экране, listKey — сам список.
-export function useInnerTop(key, listKey = "list") {
-  const saved = React.useRef(0);
+// v129: initial — где был список этой вкладки в прошлый раз («Барная карта» помнит место вкладки)
+export function useInnerTop(key, listKey = "list", initial = 0) {
+  const saved = React.useRef(initial || 0);
   const el = () => (typeof document !== "undefined" ? document.getElementById("root") || document.scrollingElement : null);
   const remember = () => { try { saved.current = el().scrollTop; } catch (e) {} };
   React.useEffect(() => { try { const x = el(); if (x) x.scrollTop = key === listKey ? saved.current : 0; } catch (e) {} }, [key]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,7 +90,10 @@ export function useTeamMenu(restaurant) {
 // startId: id вина — сразу его карточка; "@train" — сразу тренировка (вход из тренажёра меню)
 // v128: cardBack — «назад» из карточки, открытой из карточки другой вкладки (крепкое ↔ коктейль): вернуться в ту; note —
 // строка под заголовком карточки, открытой из редактора после «Сохранить»
-export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind = "wine", tabs = null, pinTabs = null, listTitle = "Винная карта", cocktails = [], onOpenCocktail = null, team = null, cardBack = null, note = "" }) {
+// v129: keep — что вкладка помнит (q, only, pick, scroll), onKeep — запомнить; others(q) — что поиск нашёл в других вкладках,
+// onOther(вкладка, id, q) — открыть там карточку, onSearchIn(вкладка, q) — та вкладка с этим поиском; fromText — откуда пришёл
+export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind = "wine", tabs = null, pinTabs = null, listTitle = "Винная карта", cocktails = [], onOpenCocktail = null, team = null, cardBack = null, note = "",
+  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "" }) {
   const K = drinkOf(kind);
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
   const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A", green = a11y ? "#2E7D52" : "#5DBB8A";
@@ -95,14 +104,17 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   const own = useTeamMenu(team ? "" : restaurant);
   const [shared, setShared, menuLoaded] = team || own;
   const who = profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : "";
-  const [q, setQ] = React.useState("");
-  const [only, setOnly] = React.useState("all");   // all | glass | цвет
+  const k0 = keep || {};
+  const [q, setQ] = React.useState(k0.q || "");
+  const [only, setOnly] = React.useState(k0.only || "all");   // all | glass | цвет
   const train0 = startId === "@train";
   const [openId, setOpenId] = React.useState(train0 ? null : startId || null);
   const [view, setView] = React.useState(train0 ? "train" : "list");   // list | train | deck | quiz | pair | say60 | pron | team
   const [deck, setDeck] = React.useState(null);      // колода: { key, title, mode, only, focus }
   const [learnedIds, learn] = useLearned(restaurant, K);
-  const remember = useInnerTop(openId ? "card:" + openId : view === "deck" ? "deck:" + (deck ? deck.key : "") : view);
+  const remember = useInnerTop(openId ? "card:" + openId : view === "deck" ? "deck:" + (deck ? deck.key : "") : view, "list", k0.scroll);
+  useKeepScroll(view === "list" && !openId, k0.scroll, (y) => { if (onKeep) onKeep({ scroll: y }); });   // v129: вкладка помнит место
+  const [trainFrom, setTrainFrom] = React.useState("train");   // v129: тренировка из строки «Учить» — «назад» в карту
   useBackToRow(openId, (id) => '[data-wine-row="' + id + '"]');   // v128: листал карточки — строка последней в поле зрения
   const [saved, setSaved] = React.useState(note);   // v128: «Сохранено» под заголовком карточки после редактора
   React.useEffect(() => { if (!saved) return undefined; const t = setTimeout(() => setSaved(""), 6000); return () => clearTimeout(t); }, [saved]);
@@ -114,7 +126,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   React.useEffect(() => { if (menuLoaded && openId && !all.some((x) => x.id === openId)) setOpenId(null); }, [menuLoaded, all]);   // eslint-disable-line react-hooks/exhaustive-deps
   const colors = React.useMemo(() => K.groups(all).map(([k]) => k).filter((k) => k !== "other"), [all, K]);
   // v128: «Подобрать гостю» — бюджет (ступени по ценам своей карты; в «Бокалом» — цена бокала) и сладость вина
-  const [pick, setPick] = React.useState({ b: 0, s: "" });
+  const [pick, setPick] = React.useState(k0.pick || { b: 0, s: "" });
   const [pickOpen, setPickOpen] = React.useState(false);
   const glassOnly = only === "glass" && K.kind === "wine";
   const steps = React.useMemo(() => budgetSteps(all.map((w) => budgetPrice(K, w, glassOnly))), [all, K, glassOnly]);
@@ -130,6 +142,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => { if (!secSure) return undefined; const t = setTimeout(() => setSecSure(""), 6000); return () => clearTimeout(t); }, [secSure]);
   React.useEffect(() => { setSecSure(""); }, [q, only, pick]);
+  React.useEffect(() => { if (onKeep) onKeep({ q, only, pick }); }, [q, only, pick]);   // eslint-disable-line react-hooks/exhaustive-deps
   const confirmSection = (k, list) => {
     const ids = list.filter(unchecked).map((x) => x.id);
     if (!ids.length || busy) return;
@@ -146,6 +159,11 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   // v128: шапка не уезжает — строка разделов ушла вверх, сверху её копия
   const frameRef = React.useRef(null), chipsRef = React.useRef(null), searchRef = React.useRef(null);
   const pinBox = usePin(chipsRef, frameRef, view === "list" && !openId && all.length > 0);
+  // v129: под копией шапки — в каком разделе ты сейчас; выбранный раздел — в видимой части ленты
+  const secNow = useSection(view === "list" && !openId && all.length > 0, "[data-wine-group]", "data-wine-group");
+  React.useLayoutEffect(() => { showActiveChip(chipsRef.current); }, [only, view, openId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const swipe = useSwipe();
+  const [slide, setSlide] = React.useState("");   // карточка въезжает с той стороны, куда листаешь
   const withPics = all.some((w) => w.img);
   const dishes = React.useMemo(() => { try { return dishesOf(restaurant) || []; } catch (e) { return []; } }, [restaurant, shared]);
   const dishName = (id) => (dishes.find((d) => d && d.id === id) || {}).name || "";
@@ -170,6 +188,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   const fresh = React.useMemo(() => newWines(all), [all]);
   const trainN = React.useMemo(() => trainable(all).length, [all]);
   const trainHead = (title, back) => head(title, back, K.t.kicker, false);
+  const backTrain = () => setView(trainFrom);   // v129: из строки «Учить» — в карту, из «Ещё» — в тренировку
   const toDeck = (d) => { setDeck({ focus: [], ...d }); setView("deck"); vibrate("light"); };
   const openTrain = (key) => {
     if (["quiz", "pair", "say60", "pron", "team"].includes(key)) { setView(key); return; }
@@ -178,20 +197,20 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   if (view === "train") return (
     <div style={T.screen} className="sa-screen" data-wine-train-hub="">
       {trainHead("Тренировка", () => (train0 ? onBack() : setView("list")))}
-      <WineTrainHub T={T} a11y={a11y} gold={gold} green={green} wines={all} dishes={dishes} restaurant={restaurant} edit={!!edit} onOpen={openTrain} onReview={() => onEdit("@review")} K={K} />
+      <WineTrainHub T={T} a11y={a11y} gold={gold} green={green} wines={all} dishes={dishes} restaurant={restaurant} edit={!!edit} onOpen={(key) => { setTrainFrom("train"); openTrain(key); }} onReview={() => onEdit("@review")} K={K} />
     </div>);
   if (view === "deck" && deck) return (
     <WineDeck key={deck.key + ":" + deck.focus.join(",")} K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk}
-      Head={(t) => trainHead(t, () => setView("train"))} title={deck.title} initialMode={deck.mode} initialOnly={deck.only} newIds={fresh.map((x) => x.id)} focusIds={deck.focus}
-      onLearned={deck.key === "new" && !allLearned(fresh, learnedIds) ? () => { learn(fresh); wineReport("passed", { ids: fresh.map((x) => x.id) }, all, restaurant, null, K); vibrate("success"); setView("train"); } : null} />);
+      Head={(t) => trainHead(t, backTrain)} title={deck.title} initialMode={deck.mode} initialOnly={deck.only} newIds={fresh.map((x) => x.id)} focusIds={deck.focus}
+      onLearned={deck.key === "new" && !allLearned(fresh, learnedIds) ? () => { learn(fresh); wineReport("passed", { ids: fresh.map((x) => x.id) }, all, restaurant, null, K); vibrate("success"); setView(trainFrom); } : null} />);
   if (view === "quiz") return (
-    <WineQuiz K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))}
+    <WineQuiz K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, backTrain)}
       onRepeat={(ids) => toDeck({ key: "focus", title: "Повторить ошибки", mode: "quiz", only: "focus", focus: ids })} />);
-  if (view === "pair") return <WinePairQuiz K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))} />;
-  if (view === "say60") return <WineDescribe60 K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, () => setView("train"))} />;
-  if (view === "team") return <WineTeam K={K} T={T} a11y={a11y} gold={gold} green={green} wines={all} restaurant={restaurant} Head={(t) => trainHead(t, () => setView("train"))} />;   // v125
+  if (view === "pair") return <WinePairQuiz K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, backTrain)} />;
+  if (view === "say60") return <WineDescribe60 K={K} T={T} a11y={a11y} gold={gold} green={green} red={red} wines={all} dishes={dishes} restaurant={restaurant} uk={uk} Head={(t) => trainHead(t, backTrain)} />;
+  if (view === "team") return <WineTeam K={K} T={T} a11y={a11y} gold={gold} green={green} wines={all} restaurant={restaurant} Head={(t) => trainHead(t, backTrain)} />;   // v125
   if (view === "pron") return (
-    <PronounceScreen T={T} a11y={a11y} gold={gold} Head={(t) => trainHead(t, () => setView("train"))} glass={wineGlass} ownLabel="Наша карта" ownWhere="в карте:"
+    <PronounceScreen T={T} a11y={a11y} gold={gold} Head={(t) => trainHead(t, backTrain)} glass={wineGlass} ownLabel="Наша карта" ownWhere="в карте:"
       dishes={trainable(all).map((x) => ({ id: x.id, name: K.sayText(x), label: K.title(x) }))} />);
 
   // ── карточка вина ──
@@ -204,10 +223,12 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
     const sec = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "16px 0 6px" }}>{t}</div>;
     // v128: листать подряд — в порядке списка на экране (поиск, раздел, подбор)
     const nav = stepsOf(w.id, groups.flatMap(([, l]) => l), K.groups(all).flatMap(([, l]) => l));
+    // v129: листать и пальцем; карточка въезжает с той стороны, куда листаешь
+    const goCard = (id, dir) => { setSlide(dir); setOpenId(id); };
     return (
-      <div style={T.screen} className="sa-screen" data-wine-card={w.id}>
-        {head(tp.main, cardBack || (() => setOpenId(null)), K.t.kicker)}
-        <div style={{ padding: "4px 16px 140px" }}>
+      <div style={T.screen} className="sa-screen" data-wine-card={w.id} {...swipe(nav.prev ? () => goCard(nav.prev.id, "l") : null, nav.next ? () => goCard(nav.next.id, "r") : null)}>
+        {head(tp.main, cardBack || (() => setOpenId(null)), fromText || K.t.kicker)}
+        <div key={w.id} className={slide === "l" ? "sa-cardpage-l" : slide === "r" ? "sa-cardpage-r" : undefined} style={{ padding: "4px 16px 140px" }}>
           {saved && w.id === startId ? <div role="status" data-wine-saved="" style={{ fontSize: 13.5, color: a11y ? "#2F6B45" : green, lineHeight: 1.45, margin: "0 2px 10px" }}>{saved}</div> : null}
           {w.img ? (
             <div data-wine-photo-big="" style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>
@@ -237,7 +258,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
           {pairs.length || w.pairNote ? <>{sec("К блюдам")}
             {pairs.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{pairs.map((n) => <span key={n} data-lens-tag="" style={{ ...chip(false), cursor: "default", color: text }}>{n}</span>)}</div> : null}
             {w.pairNote ? <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5, marginTop: 6 }}>{w.pairNote}</div> : null}</> : null}
-          <PrevNext a11y={a11y} gold={gold} text={text} sub={sub} steps={nav} name={(x) => titleParts(K, x).main} onGo={(id) => setOpenId(id)} />
+          <PrevNext a11y={a11y} gold={gold} text={text} sub={sub} steps={nav} name={(x) => titleParts(K, x).main} onGo={(id) => goCard(id, nav.prev && id === nav.prev.id ? "l" : "r")} />
         </div>
       </div>
     );
@@ -247,11 +268,39 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
     <button key={k} type="button" aria-pressed={only === k} data-wine-only={pin ? undefined : k} data-wine-pin-only={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
       onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={chip(only === k)}>{t}</button>));
   const okText = a11y ? "#2F6B45" : green;
+  // v129: что прячет часть карты — строкой под разделами и в копии шапки; «Показать все» сбрасывает раздел, поиск и подбор
+  const qt = q.trim(), filtered = only !== "all" || !!qt || pickN > 0;
+  const onlyLabel = only === "all" ? "" : only === "glass" ? K.t.pathChip : K.GROUP[only] || "";
+  const resetAll = () => { setQ(""); setOnly("all"); setPick({ b: 0, s: "" }); setPickOpen(false); vibrate("light"); };
+  const filterNote = (compact) => <FilterNote parts={[onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "подбор гостю" : ""].filter(Boolean)} n={shown.length} total={all.length}
+    onReset={resetAll} gold={gold} text={text} sub={sub} a11y={a11y} compact={compact} />;
+  const secList = secNow ? groups.find(([k]) => k === secNow) : null;
+  const pinLine = filtered ? filterNote(true) : secList ? <div data-bar-pin-sec={secNow} style={{ ...labelStyle(13), color: a11y ? "#6B4E1A" : gold, marginTop: 5 }}>{K.GROUP[secNow] + " · " + secList[1].length}</div> : null;
+  const elsewhere = others && onOther && qt.length >= 2 ? others(qt, K.kind) : [];   // v129: поиск смотрит всю карту
+  const firstId = groups.length ? groups[0][1][0].id : null;
+  // v129: строка «Учить» — как у коктейлей: каждая кнопка сразу в дело; всё остальное — «Ещё» (прежняя «Тренировка»)
+  const learnItems = (() => {
+    if (!(trainN >= 2 || (edit && all.length))) return [];
+    const hub = () => { remember(); setTrainFrom("train"); setView("train"); };
+    const go = (key) => () => { remember(); setTrainFrom("list"); openTrain(key); };
+    const hi = fresh.length > 0 && !allLearned(fresh, learnedIds);
+    if (trainN < 2) return [{ key: "more", icon: (K.kind === "spirit" ? BUILD_SVG.glass : BUILD_SVG.wineglass)(gold, 18), title: K.t.learn, sub: K.t.trainCheck, wide: true, go: hub, attrs: { "data-wine-train-open": "" } }];
+    const sr = (() => { try { return JSON.parse(localStorage.getItem(kKey(K, "sr", restaurant)) || "{}"); } catch (e) { return {}; } })();
+    const gp = pathFor(K, all, sr), knownN = trainable(all).filter((x) => srKnown(sr, x.id)).length;
+    return [
+      hi ? { key: "new", icon: UI_SVG.star(gold, 18), title: K.t.newOnes, sub: K.word(fresh.length) + " за месяц", hi: true, go: go("new") } : null,
+      gp.total ? { key: "glass", icon: (K.kind === "spirit" ? BUILD_SVG.glass : BUILD_SVG.wineglass)(gold, 18), title: "С чего начать",
+        sub: K.t.pathSum + (gp.known >= gp.total ? ": выучено ✓" : ": " + gp.known + " из " + gp.total), go: go("glass") } : null,
+      { key: "deck", icon: GAME_SVG.cards(gold, 18), title: "Колода", sub: knownN ? "выучено " + knownN + " из " + trainN : "карточки с повтором", go: go("deck") },
+      { key: "quiz", icon: UI_SVG.quiz(gold, 18), title: "Викторина", sub: "10 вопросов", go: go("quiz") },
+      { key: "more", icon: UI_SVG.gradcap(gold, 18), title: "Ещё", sub: "все тренировки", go: hub, attrs: { "data-wine-train-open": hi ? "new" : "" } },
+    ].filter(Boolean);
+  })();
   return (
     <div ref={frameRef} style={T.screen} className="sa-screen" data-wine-list={all.length} data-drink-kind={K.kind}>
       {head(listTitle, onBack, "Справочник · " + restaurant)}
       {tabs}
-      <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} />
+      <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
         <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }} data-wine-sum="">
           {all.length ? K.word(all.length) + (glassN ? " · " + K.t.pathSum + " " + glassN : "")
@@ -269,27 +318,10 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
               style={{ ...T.doneBtn, width: "100%", margin: "10px 0 0", background: gold, color: "#1A1008", padding: "10px 12px", fontSize: 14 }}>Проверить подряд</button>
           </div>) : null}
         {checkMsg ? <div data-wine-check-msg="" style={{ fontSize: 13.5, lineHeight: 1.45, color: /^Проверено/.test(checkMsg) ? okText : red, margin: "0 2px 10px" }}>{checkMsg}</div> : null}
-        {trainN >= 2 || (edit && all.length) ? (() => {
-          // v123: вход в тренировку — над картой; новые вина, которые ещё не выучены, подсвечены
-          const hi = fresh.length > 0 && !allLearned(fresh, learnedIds), gp = pathFor(K, all, (() => { try { return JSON.parse(localStorage.getItem(kKey(K, "sr", restaurant)) || "{}"); } catch (e) { return {}; } })());
-          const go = () => { vibrate("light"); remember(); setView("train"); };
-          return (
-            <div className="sa-card" role="button" tabIndex={0} data-wine-train-open={hi ? "new" : ""} data-lens-card={hi ? "hi" : ""} onClick={go} {...onActivate(go)}
-              style={{ ...T.modCard, margin: "0 0 12px", ...(hi ? { border: `1px solid ${gold}AA` } : {}) }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: a11y ? "rgba(200,150,50,0.14)" : "rgba(200,169,110,0.13)", marginRight: 4 }}>{(K.kind === "spirit" ? BUILD_SVG.glass : BUILD_SVG.wineglass)(gold, 20)}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 8 }}>{K.t.learn}{hi ? <span style={{ ...labelStyle(13), color: "#1A1008", background: gold, borderRadius: 6, padding: "1px 6px" }}>новое</span> : null}</div>
-                <div style={{ ...T.modSub, whiteSpace: "normal" }}>{trainN < 2 ? K.t.trainCheck
-                  : hi ? K.t.trainNew(fresh.length)
-                  : gp.total ? K.t.trainPath(gp.known, gp.total) : K.t.trainPlain}</div>
-              </div>
-              <div style={T.modArrow}>›</div>
-            </div>);
-        })() : null}
+        <LearnStrip T={T} items={learnItems} gold={gold} />
         {all.length ? <>
           <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-            <input ref={searchRef} data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={K.t.searchPh} aria-label={K.t.searchAria}
-              style={{ flex: 1, minWidth: 0, boxSizing: "border-box", padding: "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none" }} />
+            <SearchField inputRef={searchRef} value={q} onChange={setQ} placeholder={K.t.searchPh} aria={K.t.searchAria} a11y={a11y} gold={gold} text={text} />
             {steps || sweets.length ? <button type="button" className="sa-btn" data-wine-pick-open={pickN} aria-pressed={pickOpen} aria-expanded={pickOpen} data-lens-btn={pickOpen || pickN ? "tab" : "soft"} data-lens-ink=""
               onClick={() => { setPickOpen((v) => !v); vibrate("light"); }} style={{ ...chip(pickOpen || pickN > 0), flexShrink: 0, padding: "0 14px", fontSize: 13.5 }}>{pickN ? "Подобрать · " + pickN : "Подобрать"}</button> : null}
           </div>
@@ -314,7 +346,8 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
           <div ref={chipsRef} className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
             {chipList(false)}
           </div>
-          {!shown.length ? <div style={{ fontSize: 14, color: sub, padding: "18px 2px" }}>Ничего не нашлось.</div> : null}
+          {filtered ? filterNote(false) : null}
+          {!shown.length ? <div data-bar-none={elsewhere.length ? "here" : "all"} style={{ fontSize: 14, color: sub, padding: elsewhere.length ? "14px 2px 2px" : "18px 2px" }}>{elsewhere.length ? "Здесь не нашлось." : "Ничего не нашлось."}</div> : null}
           {groups.map(([k, list]) => {
             const un = edit ? list.filter(unchecked).length : 0;
             return (
@@ -326,13 +359,13 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
                   {secSure === k ? "Подтвердить " + un + "? Коснись ещё раз" : "Верно для раздела: " + un}</button> : null}
               </div>
               {list.map((x) => {
-                const open = () => { vibrate("light"); remember(); setOpenId(x.id); };
+                const open = () => { vibrate("light"); remember(); setSlide(""); setOpenId(x.id); };
                 const tp = titleParts(K, x);
                 return (
-                  <div key={x.id} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
-                    style={{ ...T.modCard, display: withPics ? "flex" : "block", gap: 12, alignItems: "center", padding: "11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                  <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
+                    style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "11px 12px 11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
                     {withPics ? <WineThumb w={x} gold={gold} a11y={a11y} /> : null}
-                    <div style={withPics ? { flex: 1, minWidth: 0 } : undefined}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{tp.main}</span>
@@ -347,11 +380,15 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
                       {unchecked(x) ? <span data-wine-ai-tag="" title="Это дописал AI, руководитель ещё не проверил" style={{ fontSize: 11, lineHeight: 1.45, padding: "0 6px", borderRadius: 999, border: `1px solid ${sub}88`, color: sub }}>AI</span> : null}
                     </div> : null}
                     </div>
+                    <Chevron gold={gold} />
                   </div>
                 );
               })}
             </div>);
           })}
+          {filtered && shown.length ? <EndNote text={only !== "all" && !qt && !pickN ? "Это весь раздел «" + onlyLabel + "»" : "Это всё, что нашлось"} button={K.t.showAll} onClick={resetAll} gold={gold} sub={sub} a11y={a11y} /> : null}
+          <Elsewhere groups={elsewhere} none={!shown.length} onOpen={(tab, id) => onOther(tab, id, qt)} onAll={(tab) => onSearchIn(tab, qt)} T={T} gold={gold} text={text} sub={sub} />
+          <BarHint a11y={a11y} ready={shown.length > 0} has={{ tabs: !!tabs, row: !!firstId, learn: learnItems.length > 0 }} />
         </> : null}
       </div>
     </div>

@@ -905,8 +905,9 @@ await run("NARROW", async () => {
   // текст кнопки целиком (ширина текста — по Range: кольцо линзы ::after у плашки выходит за кнопку и сдвигает scrollWidth)
   const bb = await o.page.evaluate(() => [...document.querySelectorAll("[data-bar-ck-learn], [data-bar-ck-build]")].map((e) => { const rg = document.createRange(); rg.selectNodeContents(e); const s = getComputedStyle(e);
     return { cut: rg.getBoundingClientRect().width > e.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) + 0.5, h: Math.round(e.getBoundingClientRect().height) }; }));
-  ok("NARROW: 320 px — «Колода» и «Лаборатория» целиком и в одну строку, карточка коктейля без сдвига вбок, её кнопки — в одну строчку текста",
-    f3.sw <= f3.W && f4.sw <= f4.W && lt.length === 2 && lt.every((x) => !x.cut) && lt[0].top === lt[1].top && bb.length === 2 && bb.every((x) => !x.cut && x.h < 60), JSON.stringify({ f3, f4, lt, bb }));
+  // v129: кнопки — в общей строке «Учить» по две в ряд; «Лаборатория» в половину 320 px не влезает — друг под другом, целиком
+  ok("NARROW: 320 px — «Колода» и «Лаборатория» целиком, карточка коктейля без сдвига вбок, её кнопки — в одну строчку текста",
+    f3.sw <= f3.W && f4.sw <= f4.W && lt.length === 2 && lt.every((x) => !x.cut) && bb.length === 2 && bb.every((x) => !x.cut && x.h < 60), JSON.stringify({ f3, f4, lt, bb }));
   await o.ctx.close();
 });
 

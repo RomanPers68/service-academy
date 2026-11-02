@@ -417,7 +417,8 @@ function seed() {
     s["sa_streak" + uk] = JSON.stringify({ count: sn, best: Math.max(sn, 5), last: ago(1), days: Array.from({ length: sn }, (_, i) => ago(sn - i)) });
     s["sa_activity" + uk] = JSON.stringify(Object.fromEntries(Array.from({ length: sn }, (_, i) => [ago(sn - i), { st: 2, l: 1, q: 1 }])));
   }
-  for (const k of Object.keys(HINTS)) s["sa_hint_v" + HINTS_VERSION + "_" + k] = "1";
+  // v129 (Доп. 442): подсказку первого входа в «Барную карту» в демо видно (остальные отмечены прочитанными)
+  for (const k of Object.keys(HINTS)) if (k !== "barCard") s["sa_hint_v" + HINTS_VERSION + "_" + k] = "1";
   s["sa_hint_v" + HINTS_VERSION + "_track_orb"] = "1";
   Object.entries(s).forEach(([k, v]) => lsSet(k, v));
 }

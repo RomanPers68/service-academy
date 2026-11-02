@@ -50,9 +50,23 @@ const ICON = {
   up: (c) => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>,
 };
 
+/** v129: выбранная кнопка раздела — в видимой части своей ленты (иначе «Красные» уезжают за край, и не видно, что включено). */
+export const showActiveChip = (row) => {
+  try {
+    if (!row) return;
+    const el = row.querySelector('[aria-pressed="true"]'); if (!el) return;
+    const r = row.getBoundingClientRect(), b = el.getBoundingClientRect(), l = b.left - r.left + row.scrollLeft;
+    if (l < row.scrollLeft + 4 || l + b.width > row.scrollLeft + row.clientWidth - 4) row.scrollLeft = Math.max(0, l - (row.clientWidth - b.width) / 2);
+  } catch (e) {}
+};
+
 /** Копия шапки сверху: вкладки (tabs — их вариант для копии), разделы (chips), поиск и «наверх». Поиск — поле самой карты:
- *  касание прокручивает к нему и ставит курсор (поле в копии пропадало бы вместе с ней, пока список под ним меняется). */
-export function BarPin({ box, a11y, gold, tabs = null, chips, onSearch }) {
+ *  касание прокручивает к нему и ставит курсор (поле в копии пропадало бы вместе с ней, пока список под ним меняется).
+ *  v129: line — строка под разделами (что показано или в каком разделе ты сейчас); active — выбранный раздел, он всегда в
+ *  видимой части ленты. */
+export function BarPin({ box, a11y, gold, tabs = null, chips, onSearch, line = null, active = "" }) {
+  const rowRef = React.useRef(null);
+  React.useLayoutEffect(() => { showActiveChip(rowRef.current); }, [box ? box.width : 0, active]);   // eslint-disable-line react-hooks/exhaustive-deps
   if (!box || typeof document === "undefined") return null;
   const bg = { background: a11y ? "rgba(242,233,212,0.95)" : "rgba(23,18,9,0.94)", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)",
     borderBottom: `1px solid ${a11y ? "rgba(139,106,48,0.3)" : "rgba(214,178,102,0.25)"}` };
@@ -62,10 +76,11 @@ export function BarPin({ box, a11y, gold, tabs = null, chips, onSearch }) {
       padding: "calc(var(--sa-st, env(safe-area-inset-top, 0px)) + 6px) 12px 7px", ...bg }}>
       {tabs ? <div style={{ marginBottom: 6 }}>{tabs}</div> : null}
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div className="sa-hscroll" role="group" aria-label="Разделы" style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, overflowX: "auto" }}>{chips}</div>
+        <div ref={rowRef} className="sa-hscroll" role="group" aria-label="Разделы" style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, overflowX: "auto" }}>{chips}</div>
         {onSearch ? <button type="button" data-bar-pin-search="" aria-label="Поиск" data-lens="disc" onClick={() => { vibrate("light"); onSearch(); }} style={iconBtn}>{ICON.search(gold)}</button> : null}
         <button type="button" data-bar-pin-up="" aria-label="Наверх" data-lens="disc" onClick={() => { vibrate("light"); toTop(); }} style={iconBtn}>{ICON.up(gold)}</button>
       </div>
+      {line ? <div data-bar-pin-line="">{line}</div> : null}
     </div>, document.body);
 }
 /** Поиск из копии шапки: поле карты — сверху экрана, курсор в нём (клавиатура открывается в том же касании). */

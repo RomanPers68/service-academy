@@ -463,7 +463,8 @@ await run("TABS", async () => {
   ok("TABS: вкладка помнится на телефоне", (await o.page.evaluate(() => localStorage.getItem("sa_bar_tab"))) === "spirit");
   await o.page.locator('[data-bar-tab="wine"]').click(); await sleep(700);
   const t3 = await tabsOf(o.page);
-  ok("TABS: «Вина» — винная карта, как раньше («Учить вина»)", t3.kind === "wine" && /^Учить вина/.test(await txt(o.page.locator("[data-wine-train-open]"))), JSON.stringify(t3));
+  // v129: «Учить вина» — строка «Учить» (сразу «С чего начать», «Колода», «Викторина»; «Ещё» — тренировка целиком)
+  ok("TABS: «Вина» — винная карта, как раньше (учить — строкой «Учить»)", t3.kind === "wine" && /^(new,)?glass,deck,quiz,more$/.test(await o.page.evaluate(() => (document.querySelector("[data-bar-learn-row]") || { getAttribute: () => "" }).getAttribute("data-bar-learn-row"))), JSON.stringify(t3));
   const [e1, e2] = noErr(o); ok("TABS: без ошибок", e1, e2);
   await o.ctx.close();
   // сотрудник, у бара нет вин: «Коктейли · Крепкое»
@@ -542,8 +543,8 @@ await run("SPIRITS", async () => {
   ok("SPIRITS: разделы по виду в порядке карты, архива нет", L.groups === "whisky:2,cognac:1,rum:1,gin:1,agave:1,bitter:1", JSON.stringify(L));
   ok("SPIRITS: чипы — «Все», «Ходовое» и виды", L.chips === "Все|Ходовое|Виски|Коньяк и бренди|Ром|Джин|Текила и мескаль|Биттеры и настойки", L.chips);
   const row = nb(await txt(o.page.locator('[data-wine-row="sp-gle"]')));
-  ok("SPIRITS: строка — название, «ходовое», откуда и что, порция и бутылка", row === "Glenfiddich 12 ходовое Шотландия, Спейсайд · виски, односолодовый · 40% 40 мл 650 ₽ · бутылка 9 800 ₽", row);
-  ok("SPIRITS: «Учить крепкое» — две новинки", /^Учить крепкое ?новое ?Новинки: 2/.test(await txt(o.page.locator("[data-wine-train-open]"))));
+  ok("SPIRITS: строка — название, «ходовое», откуда и что, порция и бутылка", row === "Glenfiddich 12 ходовое Шотландия, Спейсайд · виски, односолодовый · 40% 40 мл 650 ₽ · бутылка 9 800 ₽ ›", row);   // v129: у строки — золотая стрелка
+  ok("SPIRITS: «Учить» — две новинки первыми", /^Новинки ?2 позиции за месяц$/.test(await txt(o.page.locator('[data-bar-learn="new"]'))));   // v129: строка «Учить»
   await shot(o.page, "spirits");
   await o.page.locator('[data-wine-list] input[type="search"]').fill("куба"); await sleep(400);
   ok("SPIRITS: поиск по стране", (await o.page.evaluate(() => [...document.querySelectorAll("[data-wine-row]")].map((e) => e.getAttribute("data-wine-row")).join())) === "sp-hav");

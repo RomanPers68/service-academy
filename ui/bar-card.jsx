@@ -13,6 +13,9 @@
 // бокал, состав с граммовкой, как готовить, подача, история, крепкое из нашей карты; «Учить в колоде» и «Собрать руками»;
 // карточки листаются подряд; «назад» — в то же место списка. Крепкое в коктейле и коктейль в крепком открывают друг друга,
 // «назад» возвращает в ту карточку, откуда пришёл.
+// v129 (Доп. 442), владелец: «Что бы человек зайдя в неё не заблудился и все было интуитивно понятно?» — «Давай все».
+// Каждая вкладка помнит раздел, поиск и место в списке; поиск во вкладке находит и в других («Нашлось во вкладке «Вина»»);
+// в карточке, открытой из другой, сверху «Из карточки Campari»; строка «Учить» — одна во всех вкладках (ui/bar-kit.jsx).
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -28,7 +31,10 @@ import { cocktailSpirits } from "../lib/spirit-cocktails";
 import { GAME_SVG, BUILD_SVG } from "./icons";
 import { CocktailArt } from "./cocktail-art";
 import { Sign } from "./signs";
-import { usePin, BarPin, scrollToEl, focusSearch, toTop, useBackToRow, stepsOf, PrevNext } from "./bar-pin";
+import { usePin, BarPin, scrollToEl, focusSearch, toTop, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint } from "./bar-kit";   // v129
+import { WINE, SPIRIT, drinkOf } from "../lib/drinks";
+import { titleParts } from "../lib/bar-view";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const TAB_KEY = "sa_bar_tab";
@@ -44,7 +50,8 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   const team = useTeamMenu(restaurant);
   const shared = team[0];
   const cocktails = React.useMemo(() => ourCocktails(shared), [shared]);
-  const winesN = React.useMemo(() => wineRecords(shared).filter((w) => !w.archived).length, [shared]);
+  const wines = React.useMemo(() => wineRecords(shared).filter((w) => !w.archived), [shared]);
+  const winesN = wines.length;
   const spirits = React.useMemo(() => spiritRecords(shared).filter((w) => !w.archived), [shared]);
   // вкладки: коктейли — всегда; вина и крепкое — когда в карте есть, руководителю — всегда (чтобы было куда добавить)
   const avail = TABS.filter(([k]) => k === "cocktail" ? cocktails.length > 0 : k === "wine" ? winesN > 0 || edit : spirits.length > 0 || edit).map(([k]) => k);
@@ -58,15 +65,46 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   };
   const [tab, setTab0] = React.useState(first);
   const cur = avail.includes(tab) ? tab : avail[0] || "cocktail";
-  const setTab = (k, pin = false) => { setTab0(k); setStart({ tab: null, id: null, back: null }); vibrate("light"); if (pin) toTop(false); };   // из копии сверху — новая вкладка с начала
+  // v129: каждая вкладка помнит раздел, поиск, подбор и место в списке, пока ты в «Барной карте» (вкладка сама отдаёт и берёт)
+  const mem = React.useRef({});
+  const keepOf = (k) => mem.current[k] || null;
+  const onKeepOf = (k) => (st) => { mem.current[k] = { ...(mem.current[k] || {}), ...st }; };
+  const setTab = (k, pin = false) => {
+    if (k === cur) { if (pin) toTop(); return; }   // своя вкладка из копии сверху — к началу
+    setTab0(k); setStart({ tab: null, id: null, back: null }); vibrate("light");
+  };
   const openIn = (k, id, back) => { setStart({ tab: k, id, back }); setTab0(k); };
   const jump = (k) => (id, from) => openIn(k, id, from ? { tab: cur, id: from, back: start.tab === cur ? start.back : null } : null);
   const backFor = (k) => (start.tab === k && start.back ? () => { vibrate("light"); openIn(start.back.tab, start.back.id, start.back.back); } : null);
   const startFor = (k) => (start.tab === k ? start.id : null);
+  // v129: поиск во вкладке смотрит всю карту — что нашлось в других вкладках (по три, и сколько всего)
+  const others = (q, except) => {
+    const t = String(q || "").trim(); if (t.length < 2) return [];
+    const out = [];
+    const add = (k, label, list, row) => { if (k !== except && avail.includes(k) && list.length) out.push({ tab: k, label, n: list.length, items: list.slice(0, 3).map(row) }); };
+    add("cocktail", "Коктейли", findCocktails(cocktails, t), (c) => ({ id: c.id, title: c.name, sub: [c.method, GLASS_SHORT[c.glass] || ""].filter(Boolean).join(" · ") }));
+    add("wine", "Вина", WINE.find(wines, t), (w) => ({ id: w.id, title: titleParts(WINE, w).main, sub: [WINE.line(w), WINE.price(w)].filter(Boolean).join(" · ") }));
+    add("spirit", "Крепкое", SPIRIT.find(spirits, t), (w) => ({ id: w.id, title: titleParts(SPIRIT, w).main, sub: [SPIRIT.line(w), SPIRIT.price(w)].filter(Boolean).join(" · ") }));
+    return out;
+  };
+  const onOther = (k, id, q) => { vibrate("light"); openIn(k, id, { tab: cur, id: null, q, back: null }); };   // «назад» — в поиск этой вкладки
+  const onSearchIn = (k, q) => { vibrate("light"); mem.current[k] = { ...(mem.current[k] || {}), q, only: "all", pick: { b: 0, s: "" }, scroll: 0 }; setStart({ tab: null, id: null, back: null }); setTab0(k); };
+  // v129: откуда пришёл — сверху карточки вместо «Барная карта · …»: туда и вернёт «назад»
+  const nameOf = (k, id) => {
+    if (k === "cocktail") { const x = cocktails.find((c) => c.id === id); return x ? x.name : ""; }
+    const x = (k === "wine" ? wines : spirits).find((w) => w.id === id);
+    return x ? titleParts(drinkOf(k), x).main : "";
+  };
+  const fromFor = (k) => {
+    if (start.tab !== k || !start.back) return "";
+    const b = start.back;
+    if (b.id) { const n = nameOf(b.tab, b.id); return n ? "Из карточки " + n : ""; }
+    return b.q ? "Из поиска «" + b.q + "»" : "";
+  };
   React.useEffect(() => { saveTab(cur); }, [cur]);   // вернулся из редактора или колоды — та же вкладка
   // v128: вкладки — и в копии шапки сверху (ui/bar-pin.jsx); у копии свои метки, чтобы не путать с вкладками на месте
   const tabBar = (pin) => (avail.length > 1 ? (
-    <div role="tablist" aria-label="Барная карта" data-bar-tabs={pin ? undefined : avail.join(",")} data-bar-pin-tabs={pin ? avail.join(",") : undefined} data-lens-seg="flat"
+    <div role="tablist" aria-label="Барная карта" id={pin ? undefined : "sa-bar-tabs"} data-bar-tabs={pin ? undefined : avail.join(",")} data-bar-pin-tabs={pin ? avail.join(",") : undefined} data-lens-seg="flat"
       style={{ display: "flex", gap: 4, margin: pin ? 0 : "2px 16px 12px", padding: 3, borderRadius: 999,
         border: `1px solid ${a11y ? "rgba(139,106,48,0.35)" : "rgba(214,178,102,0.35)"}`, background: a11y ? "rgba(255,255,255,0.45)" : "rgba(255,248,230,0.05)" }}>
       {TABS.filter(([k]) => avail.includes(k)).map(([k, t]) => {
@@ -81,9 +119,11 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   if (cur === "wine" || cur === "spirit") return (
     <WineListScreen key={cur} kind={cur} T={T} a11y={a11y} profile={profile} onBack={onBack} team={team} tabs={tabs} pinTabs={pinTabs} listTitle="Барная карта"
       startId={startFor(cur)} cardBack={backFor(cur)} note={startFor(cur) && startFor(cur) === startId ? note : ""}
-      onEdit={onEdit ? (id) => onEdit(cur, id) : undefined} cocktails={cocktails} onOpenCocktail={cocktails.length ? jump("cocktail") : null} />);
+      onEdit={onEdit ? (id) => onEdit(cur, id) : undefined} cocktails={cocktails} onOpenCocktail={cocktails.length ? jump("cocktail") : null}
+      keep={keepOf(cur)} onKeep={onKeepOf(cur)} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor(cur)} />);
   return <BarCocktails T={T} a11y={a11y} gold={gold} text={text} sub={sub} restaurant={restaurant} cocktails={cocktails} spirits={spirits} tabs={tabs} pinTabs={pinTabs} onBack={onBack}
     startId={startFor("cocktail")} cardBack={backFor("cocktail")} onOpenSpirit={avail.includes("spirit") ? jump("spirit") : null}
+    keep={keepOf("cocktail")} onKeep={onKeepOf("cocktail")} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor("cocktail")}
     onLearn={onOpenCocktail} onBuild={onBuildCocktail} onCocktailDeck={onCocktailDeck} onBarLab={onBarLab} onCocktailEdit={edit ? onCocktailEdit : null} />;
 }
 
@@ -94,10 +134,12 @@ const dots = (n) => "●".repeat(n) + "○".repeat(Math.max(0, 4 - n));
 // граммовка: число и единица неразрывно; «доверху» — без числа
 const amount = (i) => (i[1] === "" || i[1] == null ? "" : i[2] === "доверху" ? "доверху" : i[1] + " " + (i[2] || "мл"));
 
-function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit }) {
+function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit,
+  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "" }) {
   const red = a11y ? "#A33A2A" : "#E07878";
-  const [q, setQ] = React.useState("");
-  const [only, setOnly] = React.useState("all");
+  const k0 = keep || {};   // v129: вкладка помнит поиск, основу и место в списке
+  const [q, setQ] = React.useState(k0.q || "");
+  const [only, setOnly] = React.useState(k0.only || "all");
   const [openId, setOpenId] = React.useState(startId || null);   // v128: карточка коктейля — здесь же
   const found = findCocktails(cocktails, q);
   const groups = groupByBase(found);
@@ -105,10 +147,16 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
   const houseN = cocktails.filter((c) => c.house).length;
   const known = React.useMemo(() => knownOf(cocktails), [cocktails]);
   const c = openId ? cocktails.find((x) => x.id === openId) || null : null;
-  const remember = useInnerTop(c ? "card:" + c.id : "list");   // список — где был, карточка — сверху
+  const remember = useInnerTop(c ? "card:" + c.id : "list", "list", k0.scroll);   // список — где был, карточка — сверху
+  useKeepScroll(!c, k0.scroll, (y) => { if (onKeep) onKeep({ scroll: y }); });
+  React.useEffect(() => { if (onKeep) onKeep({ q, only }); }, [q, only]);   // eslint-disable-line react-hooks/exhaustive-deps
   useBackToRow(c ? c.id : null, (id) => '[data-bar-ck="' + id + '"]');
   const frameRef = React.useRef(null), chipsRef = React.useRef(null), searchRef = React.useRef(null);
   const pinBox = usePin(chipsRef, frameRef, !c && cocktails.length > 0);
+  const secNow = useSection(!c && cocktails.length > 0, "[data-bar-ck-group]", "data-bar-ck-group");   // v129: раздел под копией шапки
+  React.useLayoutEffect(() => { showActiveChip(chipsRef.current); }, [only, openId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const swipe = useSwipe();
+  const [slide, setSlide] = React.useState("");
   const chip = (on) => ({ flexShrink: 0, padding: "6px 12px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", whiteSpace: "nowrap",
     border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub });
   const badge = (t, col) => <span style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${col}88`, color: col, whiteSpace: "nowrap" }}>{t}</span>;
@@ -128,6 +176,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
   if (c) {
     const close = cardBack || (() => setOpenId(null));
     const nav = stepsOf(c.id, shown.flatMap(([, l]) => l), groups.flatMap(([, l]) => l));
+    const goCard = (id, dir) => { setSlide(dir); setOpenId(id); };   // v129: и пальцем; въезжает с той стороны, куда листаешь
     const ours = cocktailSpirits(c, spirits);
     const story = COCKTAIL_STORIES[c.id] || (c.house && (c.story || c.short) ? { story: c.story, guest: c.short } : null);
     const seq = !c.house ? buildScenario(c, COCKTAILS).steps : null;   // как в колоде и бар-лаборатории (один источник)
@@ -144,9 +193,9 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
       style={{ ...btnBase, width: "auto", flex: "1 1 0", minWidth: "min-content", whiteSpace: "nowrap", margin: 0, padding: "11px 12px", fontSize: 14.5, fontFamily: SERIF, cursor: "pointer",
         ...(main ? { background: gold, color: "#1A1008", border: "none" } : { background: "transparent", color: text, border: `1px solid ${gold}77` }) }}>{label}</button>;
     return (
-      <div style={T.screen} className="sa-screen" data-bar-ck-card={c.id}>
-        {head("Коктейли", c.name, close, c.house && onCocktailEdit ? editBtn(() => onCocktailEdit(c.full ? c.id : null, c.id), { "data-bar-ck-edit": "card" }, "Править") : null)}
-        <div style={{ padding: "4px 16px 140px" }}>
+      <div style={T.screen} className="sa-screen" data-bar-ck-card={c.id} {...swipe(nav.prev ? () => goCard(nav.prev.id, "l") : null, nav.next ? () => goCard(nav.next.id, "r") : null)}>
+        {head(fromText || "Барная карта · Коктейли", c.name, close, c.house && onCocktailEdit ? editBtn(() => onCocktailEdit(c.full ? c.id : null, c.id), { "data-bar-ck-edit": "card" }, "Править") : null)}
+        <div key={c.id} className={slide === "l" ? "sa-cardpage-l" : slide === "r" ? "sa-cardpage-r" : undefined} style={{ padding: "4px 16px 140px" }}>
           <div data-lens-card="" style={{ ...T.modCard, display: "flex", gap: 14, alignItems: "center", padding: "12px 16px", cursor: "default", opacity: c.stop ? 0.75 : 1 }}>
             {Array.isArray(c.color) ? <div data-bar-ck-art="big" aria-hidden="true" style={{ width: 76, flexShrink: 0, display: "flex", justifyContent: "center" }}><CocktailArt c={c} w={76} light={a11y} /></div> : null}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -188,23 +237,26 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
             {onLearn ? bigBtn({ "data-bar-ck-learn": c.id }, "Учить в колоде", onLearn, true) : null}
             {canBuild ? bigBtn({ "data-bar-ck-build": c.id }, "Собрать руками", onBuild, !onLearn) : null}
           </div> : null}
-          <PrevNext a11y={a11y} gold={gold} text={text} sub={sub} steps={nav} name={(x) => x.name} onGo={(id) => setOpenId(id)} />
+          <PrevNext a11y={a11y} gold={gold} text={text} sub={sub} steps={nav} name={(x) => x.name} onGo={(id) => goCard(id, nav.prev && id === nav.prev.id ? "l" : "r")} />
         </div>
       </div>);
   }
 
-  // v128: колода и лаборатория — две кнопки рядом, по касанию сразу туда. Ширина — по названию (min-content): не влезают оба
-  // целиком (320 px в «Для чтения») — друг под другом, а не «Лаборато…»
-  const learnBtn = (key, icon, title, subText, go) => go ? (
-    <div className="sa-card" role="button" tabIndex={0} data-bar-learn={key} data-lens-card="" onClick={() => { vibrate("light"); go(); }} {...onActivate(() => { vibrate("light"); go(); })}
-      style={{ ...T.modCard, flex: "1 1 0", minWidth: "min-content", margin: 0, padding: "10px 12px", gap: 9 }}>
-      <span aria-hidden="true" style={{ flexShrink: 0, display: "flex" }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
-        <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.35 }}>{subText}</div>
-      </div>
-    </div>) : null;
-  const open = (x) => () => { vibrate("light"); remember(); setOpenId(x.id); };
+  // v129: строка «Учить» — та же, что у вин и крепкого (ui/bar-kit.jsx); по касанию сразу в колоду или лабораторию
+  const learnItems = [
+    onCocktailDeck ? { key: "deck", icon: GAME_SVG.cards(gold, 18), title: "Колода", sub: known ? "выучено " + known + " из " + cocktails.length : "карточки с повтором", go: onCocktailDeck } : null,
+    onBarLab ? { key: "lab", icon: BUILD_SVG.glass(gold, 18), title: "Лаборатория", sub: "собрать руками", go: onBarLab } : null,
+  ].filter(Boolean);
+  // v129: что показано («Показаны: Ром, 6 из 57 · Показать все»), конец списка, что нашлось в других вкладках
+  const qt = q.trim(), filtered = only !== "all" || !!qt, shownN = shown.reduce((n, [, l]) => n + l.length, 0);
+  const resetAll = () => { setQ(""); setOnly("all"); vibrate("light"); };
+  const filterNote = (compact) => <FilterNote parts={[only !== "all" ? only : "", qt ? "по запросу «" + qt + "»" : ""].filter(Boolean)} n={shownN} total={cocktails.length}
+    onReset={resetAll} gold={gold} text={text} sub={sub} a11y={a11y} compact={compact} />;
+  const secList = secNow ? shown.find(([k]) => k === secNow) : null;
+  const pinLine = filtered ? filterNote(true) : secList ? <div data-bar-pin-sec={secNow} style={{ ...labelStyle(13), color: a11y ? "#6B4E1A" : gold, marginTop: 5 }}>{secNow + " · " + secList[1].length}</div> : null;
+  const elsewhere = others && onOther && qt.length >= 2 ? others(qt, "cocktail") : [];
+  const firstId = shown.length ? shown[0][1][0].id : null;
+  const open = (x) => () => { vibrate("light"); remember(); setSlide(""); setOpenId(x.id); };
   const chipList = (pin) => [["all", "Все"], ...groups.map(([k]) => [k, k])].map(([k, t]) => (
     <button key={k} type="button" aria-pressed={only === k} data-bar-ck-only={pin ? undefined : k} data-bar-pin-ck={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
       onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={chip(only === k)}>{t}</button>));
@@ -212,19 +264,16 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
     <div ref={frameRef} style={T.screen} className="sa-screen" data-bar-cocktails={cocktails.length}>
       {head("Справочник · " + restaurant, "Барная карта", onBack, onCocktailEdit ? editBtn(() => onCocktailEdit(null), { "data-bar-ck-edit": "" }, "Редактор") : null)}
       {tabs}
-      <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} />
+      <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
         <div data-bar-ck-sum="" style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }}>{cocktailsWord(cocktails.length) + (houseN ? " · свои " + houseN : "")}</div>
-        {onCocktailDeck || onBarLab ? <div data-bar-learn-row="" style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "0 0 12px" }}>
-          {learnBtn("deck", GAME_SVG.cards(gold, 20), "Колода", known ? "выучено " + known + " из " + cocktails.length : "карточки с повтором", onCocktailDeck)}
-          {learnBtn("lab", BUILD_SVG.glass(gold, 20), "Лаборатория", "собрать руками", onBarLab)}
-        </div> : null}
-        <input ref={searchRef} data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Коктейль или ингредиент" aria-label="Поиск по коктейлям"
-          style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none", marginTop: 4 }} />
+        <LearnStrip T={T} items={learnItems} gold={gold} />
+        <SearchField inputRef={searchRef} value={q} onChange={setQ} placeholder="Коктейль или ингредиент" aria="Поиск по коктейлям" a11y={a11y} gold={gold} text={text} style={{ marginTop: 4 }} />
         <div ref={chipsRef} className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
           {chipList(false)}
         </div>
-        {!found.length ? <div data-bar-ck-none="" style={{ fontSize: 14, color: sub, padding: "18px 2px" }}>{cocktails.length ? "Ничего не нашлось." : "В карте бара пока нет коктейлей."}</div> : null}
+        {filtered ? filterNote(false) : null}
+        {!found.length || !shownN ? <div data-bar-ck-none={elsewhere.length ? "here" : "all"} style={{ fontSize: 14, color: sub, padding: elsewhere.length ? "14px 2px 2px" : "18px 2px" }}>{!cocktails.length ? "В карте бара пока нет коктейлей." : elsewhere.length ? "Здесь не нашлось." : "Ничего не нашлось."}</div> : null}
         {shown.map(([k, list]) => (
           <div key={k} data-bar-ck-group={k}>
             <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 2px 6px" }}>{k} · {list.length}</div>
@@ -233,7 +282,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
               const ours = cocktailSpirits(x, spirits);
               const line = [x.method, GLASS_SHORT[x.glass] || ""].filter(Boolean).join(" · ");
               return (
-                <div key={x.id} role="button" tabIndex={0} data-bar-ck={x.id} data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "9px 14px 9px 10px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-bar-ck={x.id} data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "9px 12px 9px 10px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
                   {Array.isArray(x.color) ? <div data-bar-ck-art="" aria-hidden="true" style={{ width: 40, height: 52, flexShrink: 0, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><CocktailArt c={x} w={40} light={a11y} showIce={false} /></div> : null}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -244,10 +293,13 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
                     {line ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{line}</div> : null}
                     {ours.length ? <div data-bar-ck-spirits={ours.length} style={{ fontSize: 12.5, color: text, marginTop: 3, lineHeight: 1.4 }}>Из нашей карты: {ours.slice(0, 3).map(spiritTitle).join(", ")}{ours.length > 3 ? " и ещё " + (ours.length - 3) : ""}</div> : null}
                   </div>
-                  <div style={T.modArrow} aria-hidden="true">›</div>
+                  <Chevron gold={gold} />
                 </div>);
             })}
           </div>))}
+        {filtered && shownN ? <EndNote text={only !== "all" && !qt ? "Это весь раздел «" + only + "»" : "Это всё, что нашлось"} button="Показать все коктейли" onClick={resetAll} gold={gold} sub={sub} a11y={a11y} /> : null}
+        <Elsewhere groups={elsewhere} none={!shownN} onOpen={(tab, id) => onOther(tab, id, qt)} onAll={(tab) => onSearchIn(tab, qt)} T={T} gold={gold} text={text} sub={sub} />
+        <BarHint a11y={a11y} ready={shownN > 0} has={{ tabs: !!tabs, row: !!firstId, learn: learnItems.length > 0 }} />
       </div>
     </div>);
 }

@@ -352,9 +352,10 @@ await run("HUB", async () => {
   await photoRoutes(o.ctx, []);
   await hideToasts(o.page);
   await toList(o.page); await sleep(1300);
-  const entry = await o.page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"), s = document.querySelector('input[type="search"]');
-    return e ? { hi: e.getAttribute("data-wine-train-open"), t: e.innerText.replace(/\s+/g, " ").trim(), above: s ? e.getBoundingClientRect().top < s.getBoundingClientRect().top : null } : null; });
-  ok("HUB: над картой — «Учить вина»; новые вина ещё не выучены — подсвечено «новое»", !!entry && entry.hi === "new" && /^Учить вина\s*новое/.test(entry.t) && /Новые вина: 2/.test(entry.t) && entry.above === true, JSON.stringify(entry));
+  // v129 (Доп. 442): вместо карточки «Учить вина» — строка «Учить» (новые вина первыми и подсвечены; «Ещё» — тренировка)
+  const entry = await o.page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"), n = document.querySelector('[data-bar-learn="new"]'), s = document.querySelector('input[type="search"]');
+    return e ? { hi: e.getAttribute("data-wine-train-open"), t: n ? n.innerText.replace(/\s+/g, " ").trim() : "", lens: n ? n.getAttribute("data-lens-card") : "", above: s ? e.getBoundingClientRect().top < s.getBoundingClientRect().top : null } : null; });
+  ok("HUB: над картой — «Учить»; новые вина ещё не выучены — первыми и подсвечены", !!entry && entry.hi === "new" && entry.t === "Новые вина 2 вина за месяц" && entry.lens === "hi" && entry.above === true, JSON.stringify(entry));
   await shot(o.page, "hub-entry");
   await o.page.locator("[data-wine-train-open]").click(); await sleep(800);
   const hub = await o.page.evaluate(() => ({ n: (document.querySelector("[data-wine-hub]") || { getAttribute: () => null }).getAttribute("data-wine-hub"),
@@ -474,8 +475,9 @@ await run("NEW", async () => {
   const learned = await lsGet(o.page, LRK);
   ok("NEW: снова в тренировке — «Выучено ✓ · 2 вина», без «новое»; на телефоне — какие вина выучены", !!row && /Выучено ✓ · 2 вина/.test(row.t) && !/новое/.test(row.t) && row.lens === "ok" && JSON.stringify((learned || []).slice().sort()) === '["w-cha","w-pro"]', JSON.stringify({ row, learned }));
   await o.page.locator('[data-lens="back"]').first().click(); await sleep(700);
-  const entry = await o.page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"); return e ? { hi: e.getAttribute("data-wine-train-open"), t: e.innerText.replace(/\s+/g, " ").trim() } : null; });
-  ok("NEW: в карте «Учить вина» без подсветки; путь новичка — «бокалом выучено 2 из 3»", !!entry && entry.hi === "" && !/новое/.test(entry.t) && /бокалом выучено 2 из 3/.test(entry.t), JSON.stringify(entry));
+  const entry = await o.page.evaluate(() => { const e = document.querySelector("[data-wine-train-open]"), g = document.querySelector('[data-bar-learn="glass"]');
+    return e ? { hi: e.getAttribute("data-wine-train-open"), fresh: !!document.querySelector('[data-bar-learn="new"]'), t: g ? g.innerText.replace(/\s+/g, " ").trim() : "" } : null; });
+  ok("NEW: в карте новых вин в «Учить» больше нет; путь новичка — «бокалом: 2 из 3»", !!entry && entry.hi === "" && !entry.fresh && entry.t === "С чего начать бокалом: 2 из 3", JSON.stringify(entry));
   const [e1, e2] = noErr(o); ok("NEW: без ошибок", e1, e2);
   await o.ctx.close();
 });

@@ -235,6 +235,8 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-cardpage-r, .sa-cardpage-l { animation: none; } }
     /* Исключение: горизонтальные ленты (вкладки книги и т.п.) можно листать пальцем */
     .sa-hscroll, .sa-hscroll * { touch-action: pan-x pan-y !important; }
+    /* v129: поле поиска «Барной карты» — свой золотой крестик (ui/bar-kit.jsx), браузерный (синий в Chrome) прячем */
+    input[data-bar-search]::-webkit-search-cancel-button, input[data-bar-search]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
     /* v88: стол в редакторе схемы зала тянут пальцем: жест целиком его. С общим pan-y сдвиг пальца по вертикали
        прокручивал экран, и браузер отменял перетаскивание (pointercancel). */
     .sa-drag, .sa-drag * { touch-action: none !important; }

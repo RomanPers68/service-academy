@@ -128,8 +128,9 @@ describe("v128: экраны", () => {
   });
   it("коктейли: колода и лаборатория — две кнопки рядом, бокал в цвете коктейля; вкладки — и в копии шапки", () => {
     const BC = rd("ui/bar-card.jsx");
-    for (const s of ['learnBtn("deck"', 'learnBtn("lab"', '"Колода"', '"Лаборатория"', '"выучено " + known + " из " + cocktails.length', "<CocktailArt c={x} w={40} light={a11y} showIce={false} />",
-      'const SR_KEY = "sa_cocktail_sr";', "data-bar-pin-tab={pin ? k : undefined}", "const tabs = tabBar(false), pinTabs = tabBar(true);", "if (pin) toTop(false);"]) expect(BC, s).toContain(s);
+    // v129: две кнопки — в общей строке «Учить» (ui/bar-kit.jsx, LearnStrip); своя вкладка из копии сверху — к началу
+    for (const s of ['key: "deck"', 'key: "lab"', '"Колода"', '"Лаборатория"', '"выучено " + known + " из " + cocktails.length', "<CocktailArt c={x} w={40} light={a11y} showIce={false} />",
+      'const SR_KEY = "sa_cocktail_sr";', "data-bar-pin-tab={pin ? k : undefined}", "const tabs = tabBar(false), pinTabs = tabBar(true);", "if (k === cur) { if (pin) toTop(); return; }"]) expect(BC, s).toContain(s);
     for (const s of ['learnRow("hub"', '"Учить коктейли"', 'view === "learn"']) expect(BC, s).not.toContain(s);   // экрана посредине больше нет
     expect(rd("ui/wine-train.jsx")).toContain("{titleParts(K, w).main}");
     expect(rd("ui/wine-editor.jsx")).toContain("{titleParts(K, w).main}");
@@ -174,7 +175,7 @@ describe("v128: проще — без лишних касаний", () => {
     expect(html).not.toContain("Гарниш: ");   // у классики гарниш — последним шагом «Как готовить»
     expect(html).not.toContain("data-bar-cocktails=");   // список не рисуется под карточкой
     const list = renderToString(React.createElement(BarCardScreen, { T, a11y: false, profile: { restaurant: "R", position: "waiter" }, onBack: () => {}, onEdit: () => {}, onCocktailDeck: () => {}, onBarLab: () => {} }));
-    expect(list).toContain('data-bar-learn-row=""');
+    expect(list).toContain('data-bar-learn-row="deck,lab"');   // v129: строка «Учить»
     expect(list).toContain(">Колода<");
     expect(list).toContain(">Лаборатория<");
     expect(list).toContain(">собрать руками<");
@@ -194,7 +195,7 @@ describe("v128: проще — без лишних касаний", () => {
     const BC = rd("ui/bar-card.jsx"), L = rd("ui/wine-list.jsx"), E = rd("ui/wine-editor.jsx"), APP = rd("App.jsx"), P = rd("ui/bar-pin.jsx");
     for (const s of ["const jump = (k) => (id, from) => openIn(k, id, from ? { tab: cur, id: from, back: start.tab === cur ? start.back : null } : null);",
       "openIn(start.back.tab, start.back.id, start.back.back)", 'onOpenCocktail={cocktails.length ? jump("cocktail") : null}', 'onOpenSpirit={avail.includes("spirit") ? jump("spirit") : null}',
-      "const canBuild = !!onBuild && (!c.house || (isFullCocktail(c) && !c.stop));", "buildScenario(c, COCKTAILS).steps", "COCKTAIL_STORIES[c.id]", "onOpenSpirit(x.id, c.id)", "const remember = useInnerTop(c ? \"card:\" + c.id : \"list\");"]) expect(BC, s).toContain(s);
+      "const canBuild = !!onBuild && (!c.house || (isFullCocktail(c) && !c.stop));", "buildScenario(c, COCKTAILS).steps", "COCKTAIL_STORIES[c.id]", "onOpenSpirit(x.id, c.id)", "const remember = useInnerTop(c ? \"card:\" + c.id : \"list\", \"list\", k0.scroll);"]) expect(BC, s).toContain(s);
     for (const s of ["onOpenCocktail(c.id, w.id)", "cardBack || (() => setOpenId(null))", "useBackToRow(openId, (id) => '[data-wine-row=\"' + id + '\"]');", "if (menuLoaded && openId && !all.some((x) => x.id === openId)) setOpenId(null);"]) expect(L, s).toContain(s);
     for (const s of ["fromCard.current = r.id;", 'if (!rev && backToCard("Сохранено: в карте у всех")) return;', "if (backToCard()) return; setForm(null); setSeq(null); setSure(false); setAiErr(\"\");"]) expect(E, s).toContain(s);
     for (const s of ['onDone={(id, msg) => { setWineStart(id); setBarTab(wineKind); setBarNote(msg || ""); goBack("wines"); }}', 'onBuildCocktail={(id) => { setBarBack({ tab: "cocktail", id }); setLabStart(id); navigate("barLab"); }}',

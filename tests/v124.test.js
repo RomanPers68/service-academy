@@ -126,7 +126,7 @@ describe("v124: экраны", () => {
     expect(E).toContain('label("Бокалом, цена и объём"');
   });
   it("форма и проверка — сверху, список — где был (корень приложения)", () => {
-    expect(L).toContain("export function useInnerTop(key, listKey = \"list\")");
+    expect(L).toContain("export function useInnerTop(key, listKey = \"list\"");   // v129: третий параметр — где был список вкладки
     expect(L).toContain('document.getElementById("root")');
     expect(E).toContain('useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : "list")');
     expect(L).toContain('useInnerTop(openId ? "card:" + openId');

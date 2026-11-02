@@ -6,6 +6,7 @@
 //   "names" — { names: [...] } (до 15 за раз) → то же для списка названий (вставили столбиком из кассы, Word, переписки);
 //   "photo" — { imageBase64, mime } → страница винной карты снимком телефона: позиции с листа + что знает модель;
 //   "pdf"   — { pdfBase64 } → винная карта в PDF, как импорт меню;
+//   "taste" — v132 (Доп. 445): { items: [...] } (до 25) → { tastes } — вкус по шкалам для Сомелье;
 //   "label" — { imageBase64, mime } → v122 (Доп. 435): бутылка снимком — модель читает этикетку (название, производитель,
 //             регион, год, сорт, крепость, объём), стиль и подачу — из своих знаний; цены и «бокалом» не заполняет.
 // v122 (Доп. 435), владелец (31.10, снимок): «У меня редактор pdf-ку не принял» — «Модель вернула не-JSON». Карта на 140+
@@ -236,6 +237,32 @@ export default async function handler(req, res) {
   // 140 вин списком — это 10 запросов по 15 названий; плюс фото страниц и «по названию» по одному. v122: этикетки —
   // по бутылке за запрос (обход погреба — 140 снимков), поэтому 200 в час
   if (!rateLimit("wine:" + b.token, 200, 3600_000)) return res.status(429).json({ error: "Слишком много запросов подряд: попробуй через час" });
+
+  // v132 (Доп. 445): «Вкус по шкалам» для Сомелье — items (до 25 позиций) → { tastes: [{ i, body, acid, tannin, sweet, oak }] }
+  // (у крепкого — body, sweet, smoke, oak, spice) от 1 до 5. Приложение помечает шкалы «от ИИ», пока руководитель не проверит.
+  if (b.mode === "taste") {
+    const spT = b.kind === "spirit";
+    const items = (Array.isArray(b.items) ? b.items : []).slice(0, 25).map((x) => ({ name: str(x && x.name, 120), producer: str(x && x.producer, 80), country: str(x && x.country, 40),
+      region: str(x && x.region, 80), grapes: (Array.isArray(x && x.grapes) ? x.grapes : []).map((g) => str(g, 40)).filter(Boolean).slice(0, 6), color: str(x && x.color, 20),
+      sweet: str(x && x.sweet, 24), cat: str(x && x.cat, 20), style: str(x && x.style, 40), age: str(x && x.age, 24), abv: str(x && x.abv, 8) })).filter((x) => x.name);
+    if (!items.length) return res.status(400).json({ error: "Нет позиций" });
+    const keys = spT ? ["body", "sweet", "smoke", "oak", "spice"] : ["body", "acid", "tannin", "sweet", "oak"];
+    const axes = spT ? "body (тело), sweet (сладость), smoke (дым и торф), oak (дуб), spice (пряность)" : "body (тело), acid (кислотность), tannin (танины), sweet (сладость), oak (дуб)";
+    const text = "Ты сомелье. Для каждой позиции " + (spT ? "крепкого" : "вина") + " оцени вкус по шкалам от 1 до 5: " + axes
+      + ". Опирайся на то, что знаешь о самом вине, производителе, сорте и регионе; не знаешь — оцени по стилю. Ответ — только JSON-массив без пояснений: [{\"i\": номер, "
+      + keys.map((k) => "\"" + k + "\": 1-5").join(", ") + "}]. Позиции:\n" + items.map((x, i) => i + ". " + JSON.stringify(x)).join("\n");
+    try {
+      const out = orKey ? await viaOpenRouter(orKey, [{ text }], 3000) : await viaAnthropic(anKey, [{ text }], 3000);
+      if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
+      const got = parse(out.text) || parseLoose(out.text) || [];
+      const lv = (v) => { const n = Math.round(Number(v)); return n >= 1 && n <= 5 ? n : 0; };
+      const tastes = (Array.isArray(got) ? got : []).filter((t) => t && Number.isInteger(Number(t.i)) && Number(t.i) >= 0 && Number(t.i) < items.length)
+        .map((t) => Object.assign({ i: Number(t.i) }, ...keys.map((k) => ({ [k]: lv(t[k]) })))).filter((t) => keys.some((k) => t[k]));
+      return res.status(200).json({ tastes, model: out.model });
+    } catch (e) {
+      return res.status(500).json({ error: "Сбой: " + (e && e.message ? e.message : "unknown") });
+    }
+  }
 
   let parts;
   const sp = b.kind === "spirit", P = sp ? SP_PROMPTS : PROMPTS;   // v127: крепкое

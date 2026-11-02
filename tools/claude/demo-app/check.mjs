@@ -18,6 +18,7 @@
 // карточка коктейля здесь же, «следующее ›», поиск сверху находит вино, после «Сохранить» — снова карточка.
 // v129 (Доп. 442): Мария — подсказка первого входа в «Барную карту», строка «Учить», «Показаны: …», «Нашлось во вкладке».
 // v131 (Доп. 444): Мария — «Сомелье»: к блюду и бокалом, ответ с «почему» и фразой гостю, карточка и «назад» к подбору.
+// v132 (Доп. 445): Мария — «Сомелье» умнее: ответ в режиме сервера, «Гость взял», «На стол», итог и вкус по шкалам через ИИ.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -538,6 +539,35 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m44-som-card");
   await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
   ok("«Назад» — к подбору: просьба и ответ на месте", (await page.locator('[data-som-res="ai"]').count()) === 1);
+  // v132 (Доп. 445): «Сомелье» умнее — ответ в режиме «Сомелье» (подача, как сказать, фраза на выбор, уточнения, «Гость взял»),
+  // «На стол» с бокалом к каждому блюду, настройка руководителя (что берут, вкус по шкалам через ИИ)
+  await page.locator("[data-som-text]").fill("к «Кальмар в азиатском стиле»").catch(() => {});
+  await page.locator("[data-som-go]").click().catch(() => {}); await page.waitForTimeout(2000);
+  const j1 = await page.evaluate(() => ({ n: document.querySelectorAll("[data-som-pick]").length, serve: document.querySelectorAll("[data-som-serve]").length, vars: document.querySelectorAll("[data-som-var]").length,
+    name: (document.querySelector("[data-som-name]") || { getAttribute: () => "" }).getAttribute("data-som-name"), refine: [...document.querySelectorAll("[data-som-refine]")].map((e) => e.getAttribute("data-som-refine")).join(",") }));
+  ok("Сомелье в режиме сервера: у позиций подача, «Как сказать: Ри́слинг», фраза коротко, обычно и с историей, уточнения после ответа",
+    j1.n >= 2 && j1.serve === j1.n && j1.vars >= 3 && j1.name === "Ри́слинг" && /up/.test(j1.refine), JSON.stringify(j1));
+  await page.locator('[data-som-pick] [data-som-mark="taken"]').first().click().catch(() => {}); await page.waitForTimeout(600);
+  ok("«Гость взял» — отмечено", (await page.locator('[data-som-pick][data-som-marked="taken"]').count()) === 1);
+  await page.evaluate(() => { const r = document.querySelector("[data-som-res]"); if (r) r.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(300);
+  await shot("m45-som-json");
+  await page.locator("[data-som-text]").fill("").catch(() => {});
+  await page.locator('[data-som-chip="table"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('[data-som-sub="table"] [data-som-opt]')]; if (b[0]) b[0].click(); }); await page.waitForTimeout(200);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('[data-som-sub="table"] [data-som-opt]')]; if (b[3]) b[3].click(); }); await page.waitForTimeout(200);
+  await page.locator('[data-som-opt="стол:each"]').click().catch(() => {}); await page.waitForTimeout(200);
+  await page.locator("[data-som-go]").click().catch(() => {}); await page.waitForTimeout(2000);
+  const tgs = await page.evaluate(() => [...document.querySelectorAll("[data-som-group]")].map((g) => { let n = 0, e = g.nextElementSibling; while (e && e.hasAttribute("data-som-pick")) { n++; e = e.nextElementSibling; } return n; }));
+  ok("«На стол», бокал к каждому: два блюда, к каждому своя позиция", tgs.length === 2 && tgs.every((n) => n === 1), JSON.stringify(tgs));
+  await page.evaluate(() => { const r = document.querySelector("[data-som-res]"); if (r) r.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(300);
+  await shot("m46-som-table");
+  await page.evaluate(() => { const r = document.querySelector("[data-som-admin]"); if (r) r.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(300);
+  const adm = await page.evaluate(() => ((document.querySelector("[data-som-stats]") || {}).innerText || "").replace(/\s+/g, " "));
+  ok("Руководителю — что берут гости: «Чаще всего берут: Рислинг Кабинетт 2021…»", /^За 90 дней: подборов \d+, гости взяли \d+, не взяли \d+\. Чаще всего берут: Рислинг Кабинетт 2021/.test(adm), adm);
+  await page.locator("[data-som-taste-fill]").click().catch(() => {}); await page.waitForTimeout(5000);
+  const fm = await page.evaluate(() => ((document.querySelector("[data-som-taste-msg]") || {}).innerText || ""));
+  ok("«Вкус по шкалам: заполнить через ИИ» — шкалы у остальных позиций, помечены «от ИИ»", /^Готово: шкалы у \d+ позиц/.test(fm), fm);
+  await shot("m47-som-admin");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

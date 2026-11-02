@@ -39,6 +39,8 @@ import { titleParts, SWEET, sweetOf, budgetPrice, budgetSteps, inBudget, budgetL
 import { usePin, BarPin, scrollToEl, focusSearch, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
 import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
 import { drinkShareItem } from "../lib/share-items";   // v130: «Поделиться в чат»
+import { TasteBars } from "./taste";   // v132: вкус по шкалам
+import { tasteConfirmed } from "../lib/taste";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -159,6 +161,17 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
       else { setCheckMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
     }).catch(() => { setBusy(false); setCheckMsg("Нет связи"); vibrate("error"); });
   };
+  // v132: «Верно» у шкал вкуса от ИИ — снять пометку (вино при этом и так в тренировке: пометка шкал её не трогает)
+  const confirmTaste = (w) => {
+    if (busy || !w.taste) return;
+    setBusy(true); setCheckMsg("");
+    const next = K.withRec(shared, K.norm({ ...w, taste: tasteConfirmed(w.taste) }));
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then((res) => {
+      setBusy(false);
+      if (res && res.ok === true) { if (setShared) setShared(next); rememberSharedMenu(restaurant, next); vibrate("success"); }
+      else { setCheckMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
+    }).catch(() => { setBusy(false); setCheckMsg("Нет связи"); vibrate("error"); });
+  };
   // v128: шапка не уезжает — строка разделов ушла вверх, сверху её копия
   const frameRef = React.useRef(null), chipsRef = React.useRef(null), searchRef = React.useRef(null);
   const pinBox = usePin(chipsRef, frameRef, view === "list" && !openId && all.length > 0);
@@ -254,6 +267,12 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
             Не проверено: {w.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}. Это подсказал AI, руководитель ещё не подтвердил.</div> : null}
           {w.short ? <>{sec("Одной фразой гостю")}<div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.5, color: text }}>«{w.short}»</div></> : null}
           {(w.notes || []).length ? <>{sec("Ноты")}<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{w.notes.map((n) => <span key={n} data-lens-tag="" style={{ ...chip(false), cursor: "default", color: text }}>{n}</span>)}</div></> : null}
+          {/* v132: вкус по шкалам; от ИИ — пометка и «Верно» руководителю */}
+          {w.taste ? <>{sec("Вкус")}<TasteBars t={w.taste} kind={K.kind} gold={gold} text={text} sub={sub} />
+            {w.taste.ai ? <div data-taste-check="" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12.5, color: sub, marginTop: 6 }}>
+              <span>Шкалы от ИИ: руководитель ещё не проверил</span>
+              {edit ? <button type="button" className="sa-btn" data-taste-ok="" data-lens-btn="soft" data-lens-ink="" onClick={() => confirmTaste(w)} disabled={busy}
+                style={{ ...chip(false), color: text, padding: "5px 11px" }}>Верно</button> : null}</div> : null}</> : null}
           {serve ? <>{sec("Подача")}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.5 }}>{serve}</div></> : null}
           {w.story ? <>{sec(K.t.about)}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.6 }}>{w.story}</div></> : null}
           {inCocktails.length ? <>{sec("В коктейлях нашего бара")}<div data-spirit-cocktails={inCocktails.length} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{inCocktails.map((c) => {

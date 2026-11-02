@@ -20,6 +20,7 @@
 // v127 (Доп. 440): «Барная карта» — тот же редактор для крепкого (kind; вид напитка K — lib/drinks.js): вид, стиль,
 // выдержка, крепость, порция (25, 40, 50 мл или своё число) и её цена, как подают, «Ходовое» (учить первым).
 import React from "react";
+import { TasteEdit } from "./taste";   // v132: вкус по шкалам
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -353,6 +354,9 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
             {label("Одной фразой гостю", "short")}{field("short", "Как официант скажет за столом")}
             {label(K.t.about, "story")}
             <textarea data-lens-field="" data-wine-field="story" rows={3} style={{ ...inputSt, minHeight: 82, resize: "vertical" }} placeholder="Стиль, чем интересно, как рассказать гостю" value={shown(form.story)} onChange={(e) => set("story", e.target.value)} />
+            {/* v132: вкус по шкалам — для Сомелье (пара к блюду); правка руками снимает пометку ИИ */}
+            {label("Вкус по шкалам", "taste")}
+            <TasteEdit kind={K.kind} value={form.taste} onChange={(t) => setForm((x) => ({ ...x, taste: t }))} gold={gold} text={text} sub={sub} />
           </>)}
           {part("pair", <>
             <div style={{ height: 10 }} />

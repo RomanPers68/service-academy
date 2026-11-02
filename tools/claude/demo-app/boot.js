@@ -172,7 +172,10 @@ const WITH_PIC = ["Просекко DOC Extra Dry", "Пино Нуар", "Кья
 // v123 (Доп. 436): два вина добавлены три дня назад — в тренировке «Новые вина»; остальные — давно (без addedAt, как до v123)
 const NEW_IN_DEMO = ["Совиньон Блан / Sauvignon Blanc", "Москато д’Асти"];
 // v128 (Доп. 441): у трёх вин название «Русское / Original», как в карте владельца: в списке — в две строки
-DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic({ ...w, name: nameParts(w.name).main }) : "",
+// v132 (Доп. 445): у четырёх вин — вкус по шкалам (у «Кьянти» — от ИИ, ещё не проверен); остальным его дополнит «Заполнить через ИИ»
+const TASTE_DEMO = { "Шабли": { body: 2, acid: 5, tannin: 1, sweet: 1, oak: 1 }, "Пино Нуар": { body: 2, acid: 4, tannin: 2, sweet: 1, oak: 2 },
+  "Просекко DOC Extra Dry": { body: 1, acid: 4, tannin: 1, sweet: 2, oak: 1 }, "Кьянти Классико / Chianti Classico": { body: 3, acid: 4, tannin: 3, sweet: 1, oak: 2, ai: 1 } };
+DEMO_WINES.forEach((w, i) => MENU.push(normWine({ ...w, taste: TASTE_DEMO[w.name] || null, pair: (w.pair || []).filter(Boolean), img: WITH_PIC.includes(w.name) ? bottlePic({ ...w, name: nameParts(w.name).main }) : "",
   addedAt: NEW_IN_DEMO.includes(w.name) ? Date.now() - 3 * 864e5 : 0 }, { id: "wn-demo-" + (i + 1), ai: w.ai || [] })));
 // v127 (Доп. 440): крепкое «Двух морей» в «Барной карте» — десять позиций по видам. Две добавлены три дня назад («Новинки»),
 // пять — «ходовое» (путь новичка), у «Olmeca» ноты и фразу дописал AI и их ещё не проверили; у трёх — фото бутылки (своя
@@ -263,7 +266,16 @@ const demoSpiritAi = (b) => {
   // фото страницы или PDF: в демо — одна и та же «страница» из шести позиций
   return { wines: SP_SHEET.map(([name, producer, pp, bt]) => ({ ...guessSpirit(name), producer, portion: 40, pricePortion: pp, priceBottle: bt, notes: [], short: "", story: "" })) };
 };
+// v132 (Доп. 445): «Вкус по шкалам» через ИИ в демо — по цвету вина и виду крепкого
+const TASTE_BY = { red: [3, 3, 3, 1, 2], white: [2, 4, 1, 1, 1], sparkling: [1, 4, 1, 2, 1], rose: [2, 3, 1, 1, 1], orange: [3, 3, 2, 1, 1], dessert: [3, 3, 1, 5, 1], fortified: [4, 3, 2, 4, 3],
+  whisky: [4, 2, 2, 4, 2], cognac: [4, 3, 1, 4, 2], rum: [3, 4, 1, 3, 3], gin: [2, 1, 1, 1, 4], agave: [3, 1, 2, 1, 3], vodka: [1, 1, 1, 1, 1], liqueur: [3, 5, 1, 1, 2], bitter: [2, 3, 1, 1, 4], other: [3, 2, 1, 2, 2] };
+const demoTaste = (b) => {
+  const sp = b.kind === "spirit", keys = sp ? ["body", "sweet", "smoke", "oak", "spice"] : ["body", "acid", "tannin", "sweet", "oak"];
+  return { tastes: (b.items || []).slice(0, 25).map((x, i) => { const v = TASTE_BY[sp ? x.cat : x.color] || [3, 3, 2, 1, 2];
+    const t = Object.fromEntries(keys.map((k, j) => [k, v[j]])); if (sp && /торф|айла|islay/i.test([x.style, x.region, x.name].join(" "))) t.smoke = 5; if (!sp && /полусух|полуслад/.test(x.sweet || "")) t.sweet = 3; return { i, ...t }; }) };
+};
 const demoWineAi = (b) => {
+  if (b.mode === "taste") return demoTaste(b);   // v132
   if (b.kind === "spirit") return demoSpiritAi(b);   // v127
   if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
   if (b.mode === "label") { const [name, producer, country, region, vintage] = LABELS[labelN++ % LABELS.length]; return { wines: [{ ...guessWine(name), producer, country, region, vintage }] }; }
@@ -327,7 +339,13 @@ let saved = null;
 try { saved = lsGet(K_DAY) === TODAY ? JSON.parse(lsGet(K_SRV) || "null") : null; } catch (e) { saved = null; }
 // пройденное: Анна и Мария не новички (инструменты открыты), коллеги — для заданий «кто прошёл»
 const DONE = ["s0-1", "s0-2", "s0-3", "s0-4", "s1-1", "s1-2"];
-const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved,
+// v132: журнал Сомелье — за последние недели гости брали Рислинг к кальмару и Шабли к закуске из морепродуктов
+const SOM_SEED = [];
+for (let i = 0; i < 9; i++) SOM_SEED.push({ rest: R0, emp: i % 2 ? "e-petr" : "e-anna", ev: "run", item: "", dishes: [], ask: "", t: Date.now() - (i + 1) * 2 * 864e5 });
+for (let i = 0; i < 3; i++) SOM_SEED.push({ rest: R0, emp: "e-anna", ev: "taken", item: "wine:wn-demo-4", dishes: [dish("Кальмар в азиатском стиле")].filter(Boolean), ask: "", t: Date.now() - (i + 2) * 3 * 864e5 });
+for (let i = 0; i < 2; i++) SOM_SEED.push({ rest: R0, emp: "e-petr", ev: "taken", item: "wine:wn-demo-2", dishes: [dish("Закуска из морепродуктов")].filter(Boolean), ask: "", t: Date.now() - (i + 3) * 4 * 864e5 });
+SOM_SEED.push({ rest: R0, emp: "e-petr", ev: "declined", item: "wine:wn-demo-7", dishes: [], ask: "", t: Date.now() - 5 * 864e5 });
+const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved, som: SOM_SEED,
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
   tgKnown: { [TG_ANNA]: "e-anna" },
@@ -535,6 +553,29 @@ const AI_REPLY = "Это демо: Наставник здесь не подкл
 
 // v131 (Доп. 444): «Сомелье» в демо без ИИ. Из присланного списка (строки «1. Вино · Шабли · … · ноты: … · к блюдам: …»)
 // берёт первые три и пишет «почему» и фразу гостю по их же строкам, в том формате, который просит приложение.
+// v132 (Доп. 445): режим «Сомелье» сервера в демо — та же разметка ответа (JSON); выбор — первые строки карты, а для
+// «бокал к каждому» — по первой строке к каждому блюду; «почему», фраза, коротко, с историей и подача — по строке карты.
+function demoSomJson(som) {
+  const card = Array.isArray(som.card) ? som.card : [];
+  const each = /Бокал к каждому/.test(String(som.table || ""));
+  const nDish = each ? (String(som.table).match(/(^| \|\| )\d\) /g) || []).length : 0;
+  let idx = [], dishOf = [];
+  const inDish = (l, k) => { const m = / · к блюду ([\d, ]+)$/.exec(l); return !!m && m[1].split(", ").map(Number).includes(k); };
+  if (each) { for (let k = 1; k <= nDish; k++) { const i = card.findIndex((l, j) => !idx.includes(j) && inDish(l, k)); if (i >= 0) { idx.push(i); dishOf.push(k); } } }
+  else idx = card.slice(0, 3).map((_, i) => i);
+  const picks = idx.map((i, k) => {
+    const parts = card[i].replace(/^★ /, "").split(" · "), name = parts[1] || "";
+    const notes = (parts.find((x) => /^ноты: /.test(x)) || "").replace(/^ноты: /, "").split(", ").filter(Boolean);
+    const taste = (parts.find((x) => /^вкус: /.test(x)) || "");
+    const red = /красное/.test(card[i]), spirit = /^Крепкое/.test(parts[0]);
+    const why = (som.dish && card[i].includes("к блюдам: ") && card[i].includes(String(som.dish).split(";")[0]) ? "В нашей карте его ставят к этому блюду" : taste ? "По вкусу подходит: " + taste.replace(/^вкус: /, "").split(" · ").slice(0, 2).join(", ") : "Подходит по стилю: " + (parts[2] || "").split(", ")[0])
+      + (/дороже/.test(String(som.refine || "")) ? "; на ступень выше показанного" : /полегче/.test(String(som.refine || "")) ? "; легче показанного" : /насыщеннее/.test(String(som.refine || "")) ? "; плотнее показанного" : "") + ".";
+    return { n: i + 1, dish: each ? dishOf[k] : 0, why, say: (/дороже/.test(String(som.refine || "")) ? "Если хочется чего-то особенного, советую " : "Советую ") + name + (notes.length ? ": " + notes.slice(0, 2).join(" и ") : "") + ". Принести?",
+      short: name + (notes.length ? ", " + notes[0] : ""), story: "Это " + name + (parts[2] ? ", " + parts[2].split(" · ")[0] : "") + ". Расскажу, откуда оно и чем интересно, если гость спросит.",
+      serve: spirit ? "Чистым или со льдом, бокал по карточке" : red ? "14–16 °C, бокал «бургундия»; декантировать не нужно" : "Охладить до 8–10 °C, бокал «универсальный»" };
+  });
+  return JSON.stringify({ picks, note: picks.length ? "" : "Из карты ничего не подходит." });
+}
 function demoSom(b) {
   const msg = String(((b.messages || [])[0] || {}).content || "");
   const asked = ((/^Блюдо из нашего меню: ([^,;\n]+)/m.exec(msg) || [])[1] || "").trim();
@@ -569,6 +610,7 @@ window.fetch = function (input, init) {
   }
   if (/\/functions\/v1\/ai-chat/.test(url)) {
     let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+    if (b.mode === "sommelier" && b.som) return wait(1200).then(() => json({ ok: true, reply: demoSomJson(b.som), model: "demo", remaining: 17, som: 1 }));   // v132
     if (b.mode === "sommelier") return wait(1100).then(() => json({ ok: true, reply: demoSom(b), model: "demo", remaining: 17 }));   // v131
     return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
   }

@@ -55,6 +55,7 @@ export function makeServer(opts) {
     chats: [{ id: 1, kind: "team", rest: R0, pin: null }, { id: 2, kind: "leads", rest: R0, pin: null }, { id: 3, kind: "net", rest: "", pin: null }],
     msgs: [], reads: {}, photos: {}, seq: 100, pseq: 500, votes: {}, progress: clone(opts.progress || {}), quizzes: clone(opts.quizzes || {}), tg: [], menu: clone(opts.menu || []), months: {}, saved: [],
     brief: null, briefSent: 0, log: [], wishes: {},
+    som: clone(opts.som || []),   // v132: журнал Сомелье (этап 47)
   };
   // v99: этап 39 (состояние из прошлых версий демо — без этих полей)
   S.late = S.late || {}; S.cal = S.cal || {}; S.seen = S.seen || {}; S.tgAuth = S.tgAuth || {}; S.allAt = S.allAt || {};
@@ -380,6 +381,39 @@ export function makeServer(opts) {
   const wpInt = (v) => (typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100000, Math.floor(v))) : null);
   const wpCap = (a, c) => (a == null ? null : c == null ? a : Math.min(a, c));
   const isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+  // ── v132: «Сомелье» — журнал «взял / не взял» и сводка заведения (этап 47) ──
+  function somAdd(p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    const rest = p.restaurant || "";
+    if (!rest) return { ok: false, error: "no_restaurant" };
+    const ev = b.p_ev;
+    if (!["run", "taken", "declined"].includes(ev)) return { ok: false, error: "ev" };
+    const it = String(b.p_item == null ? "" : b.p_item).trim().slice(0, 80);
+    if (ev !== "run" && !/^(wine|spirit|cocktail):.+/.test(it)) return { ok: false, error: "item" };
+    S.som = S.som || [];
+    const t = clock();
+    if (S.som.filter((r) => r.rest === rest && r.emp === p.id && t - r.t < 864e5).length >= 300) return { ok: false, error: "limit" };
+    if (ev !== "run") S.som = S.som.filter((r) => !(r.rest === rest && r.emp === p.id && r.item === it && r.ev !== "run" && t - r.t < 600e3));
+    const dishes = (Array.isArray(b.p_dishes) ? b.p_dishes : []).filter((x) => String(x == null ? "" : x).trim()).slice(0, 6).map((x) => String(x).trim().slice(0, 60));
+    S.som.push({ rest, emp: p.id, ev, item: ev === "run" ? "" : it, dishes, ask: String(b.p_ask == null ? "" : b.p_ask).slice(0, 300), t });
+    return { ok: true };
+  }
+  function somStats(p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    const rest = p.restaurant || "";
+    if (!rest) return { ok: false, error: "no_restaurant" };
+    const d = Math.min(Math.max(Number(b.p_days) || 90, 1), 365), t0 = clock() - d * 864e5;
+    const rows = (S.som || []).filter((r) => r.rest === rest && r.t > t0);
+    const cmp = (a, b2) => (a < b2 ? -1 : a > b2 ? 1 : 0);
+    const by = {};
+    for (const r of rows) if (r.ev !== "run") { const x = by[r.item] || (by[r.item] = { item: r.item, taken: 0, declined: 0 }); x[r.ev]++; }
+    const items = Object.values(by).sort((a, b2) => b2.taken - a.taken || a.declined - b2.declined || cmp(a.item, b2.item)).slice(0, 100);
+    const pb = {};
+    for (const r of rows) if (r.ev === "taken") for (const dish of r.dishes) { const k = dish + "|" + r.item; (pb[k] = pb[k] || { dish, item: r.item, taken: 0 }).taken++; }
+    const pairs = Object.values(pb).sort((a, b2) => b2.taken - a.taken || cmp(a.dish, b2.dish) || cmp(a.item, b2.item)).slice(0, 200);
+    return { ok: true, restaurant: rest, days: d, runs: rows.filter((r) => r.ev === "run").length, taken: rows.filter((r) => r.ev === "taken").length,
+      declined: rows.filter((r) => r.ev === "declined").length, items, pairs };
+  }
   function wineSet(p, b, key = "wine") {
     if (!p) return { ok: false, error: "auth" };
     const rest = p.restaurant || "";
@@ -440,6 +474,10 @@ export function makeServer(opts) {
     if (fn === "my_mentors") return { ok: true, rows: [] };
     if (fn === "qday_inbox") return { ok: true, items: [] };
     if (fn === "menu_progress_team") return { ok: true, rows: [] };
+    // v132 (Доп. 445): этап 47 — «Сомелье» учится на том, что берут (как supabase-stage47-sommelier.sql: pg-check-stage47);
+    // opts.noStage47 — сервер без этапа: функции нет (404), приложение пишет в журнал телефона
+    if (fn === "som_log_add") return opts.noStage47 ? { code: "PGRST202", message: "Could not find the function" } : somAdd(p, b);
+    if (fn === "som_stats") return opts.noStage47 ? { code: "PGRST202", message: "Could not find the function" } : somStats(p, b);
     if (fn === "wine_progress_set") return wineSet(p, b);     // v125: этап 44
     if (fn === "wine_progress_team") return wineTeam(p, b);
     if (fn === "spirit_progress_set") return wineSet(p, b, "spirit");     // v127: этап 45 — крепкое, как вина
@@ -521,7 +559,7 @@ export function makeServer(opts) {
         S.srv.code = hex32().slice(0, 12);
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
-      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
+      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds") && !(opts.noStage47 && f === "som_log_add")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
         cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }, { name: "sa-newbie", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };

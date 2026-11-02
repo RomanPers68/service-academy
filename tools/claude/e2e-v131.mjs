@@ -572,7 +572,7 @@ await run("ENTRY", async () => {
   ok("ENTRY: экран «Сомелье» — «Барная карта · Наставник», что подобрать: Всё · Вино · Крепкое · Коктейли, выбрано «Вино» (вкладка)",
     !!s1 && s1.title === "Сомелье" && s1.what === "wine" && s1.whats === "all,wine,spirit,cocktail" && (await txt(o.page.locator('[data-som] [data-lens="back"] + div > div').first())) === "Барная карта · Наставник", JSON.stringify(s1));
   ok("ENTRY: поле с примером и микрофоном; быстрые просьбы: к блюду, бокалом, бюджет, похоже на…, аперитив, к десерту, дижестив; «Подобрать»",
-    nb(await o.page.locator("[data-som-text]").getAttribute("placeholder")) === "Например: к рибаю, сухое красное, до 5 000" && s1.chips === "dish,glass,budget,like,occ-aperitif,occ-dessert,occ-digestif"
+    nb(await o.page.locator("[data-som-text]").getAttribute("placeholder")) === "Например: к рибаю, сухое красное, до 5 000" && s1.chips === "dish,table,glass,budget,like,occ-aperitif,occ-dessert,occ-digestif"
     && (await txt(o.page.locator("[data-som-go]"))) === "Подобрать", JSON.stringify(s1.chips));
   await shot(o.page, "entry-som");
   await back(o.page);

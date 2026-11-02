@@ -58,7 +58,7 @@ describe("v77: подсказка Наставника — тёплый тон �
     expect(rd("supabase/functions/ai-chat/index.ts")).toContain("`Без списков, нумерации, заголовков, жирного и эмодзи.");
   });
   it("номер функции — 77", () => {
-    expect(chat.AI_CHAT_V).toBe(77);
+    expect(chat.AI_CHAT_V).toBeGreaterThanOrEqual(77);   // v132 — 78 (режим «Сомелье»)
   });
 });
 

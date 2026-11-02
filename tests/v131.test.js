@@ -218,7 +218,8 @@ describe("v131: быстрые просьбы и экран", () => {
     expect(B).toContain("onOpen={(k, id) => { setSom(false); openIn(k, id, { som: true }); }}");
     expect(B).toContain("if (start.back.som) { setStart({ tab: null, id: null, back: null }); setSom(true); return; }");
     expect(B).toContain('if (b.som) return "Из подбора Сомелье";');
-    expect(rd("ui/bar-sommelier.jsx")).toContain('body: JSON.stringify({ token: saToken(), mode: "sommelier", messages: [{ role: "user", content: prompt }] })');
+    // v132: и вся подходящая карта для режима «Сомелье» на сервере (som), короткий список — в messages, как раньше
+    expect(rd("ui/bar-sommelier.jsx")).toContain('body: JSON.stringify({ token: saToken(), mode: "sommelier", messages: [{ role: "user", content: prompt }], som })');
   });
   it("демо: ответ Сомелье без ИИ в том же формате; гид «Сомелье»; без тире-ритма и эмодзи в новом коде; метка — v131", () => {
     const D = rd("tools/claude/demo-app/boot.js");

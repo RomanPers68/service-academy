@@ -769,7 +769,7 @@ const GUEST_TRACKS = ["seasonal", "core", "spg", "bar", "manager", "service_mana
 // версия функции в ответах: приложение по ней видит, что сервер уже знает роли (до v42 метки нет); приложение
 // сравнивает «не меньше 42». v67 — модели Claude 5.x и кэш подсказки Наставника; v76 — правила стиля ответа;
 // v77 — тёплый тон Наставника
-const AI_CHAT_V = 77;
+const AI_CHAT_V = 78;   // v132 (Доп. 445): режим «Сомелье» (mode "sommelier", som: вся подходящая карта, ответ JSON)
 function lessonMapFor(place: string, track = "") {
   const heads = TRACK_MAP[track] || ROLE_MAP[place] || ROLE_MAP.hall;
   const parts = LESSON_MAP.split(/\n(?=【)/).filter((p) => heads.some((h) => p.startsWith("【" + h + " ")));
@@ -852,6 +852,49 @@ export function mentorRequest(m: string, parts: { stable: string; personal: stri
   // размышлений (пауза в разговоре), текстом — лёгкие: на простой вопрос модель не думает, на сложный — подумает
   return { model: m, messages: [system, ...msgs], ...genOpts(m, voice ? 280 : 520, 0.6, voice ? "off" : "low") };
 }
+// ── v132 (Доп. 445): «Сомелье» из «Барной карты» ──
+// Своя подсказка (не Наставника-учителя): правила сочетаний, «вкус по шкалам», правила дома, что у нас берут; карта —
+// всё, что подходит под просьбу (приложение уже убрало стоп, архив и то, что не в бюджете), под номерами; ответ — JSON.
+// Старое приложение режим не шлёт — для него всё как раньше; новое приложение без этого сервера получает ответ Наставника
+// по короткому списку из messages (его формат [[pick:N]] приложение тоже понимает).
+const cutS = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+export const SOM_LIMITS = { ask: 400, dish: 1800, table: 700, refine: 300, prev: 400, rules: 800, stats: 700, line: 260, lines: 200, card: 24000 };
+export function somSystem(rest: string) {
+  return [
+    `Ты сомелье ресторана${rest ? " «" + cutS(rest, 80) + "»" : ""}. Помогаешь официанту подобрать гостю напиток из барной карты заведения.`,
+    "Правила:",
+    "- Выбирай только из пронумерованного списка «Карта»: других вин, марок и цен не называй и не придумывай.",
+    "- Пара к еде: жирное и сливочное — кислотность или пузырьки; красное мясо и гриль — танины и тело; рыба и морепродукты — белое, игристое или розовое, без танинов; острое и пряное — ароматное, с лёгкой сладостью, невысокий алкоголь; солёное и жареное — игристое; десерт — вино слаще десерта; вес вина под вес блюда.",
+    "- Если у позиции дан вкус по шкалам (тело, кислотность, танины, сладость, дуб — от 1 до 5), опирайся на него.",
+    "- «Как у нас принято» — правила ресторана: соблюдай их. Позиции со звёздочкой ★ ресторан советует первыми: при прочих равных выбирай их.",
+    "- «Берут у нас» — что гости этого ресторана уже брали к этому блюду или по такой просьбе: хороший знак.",
+    "- Уже предложенное не повторяй. Уточнение гостя («полегче», «посуше», «подороже»…) — главное в выборе.",
+    "- Пиши по-русски, просто и тепло, без восклицаний и штампов. Факты о вине и хозяйстве — только если уверен.",
+    "Ответ — только JSON, без пояснений и разметки:",
+    '{"picks":[{"n":номер из карты,"dish":номер блюда стола или 0,"why":"почему подходит, одно предложение","say":"фраза официанта гостю, одно-два предложения","short":"совсем коротко, до восьми слов","story":"фраза гостю с интересным фактом о вине или хозяйстве; не уверен — пустая строка","serve":"как подать: температура, бокал, декантировать ли — коротко"}],"note":"ничего не подходит — чего не хватает; иначе пустая строка"}',
+    "Выбери 2 или 3 позиции. Если стол просит бокал к каждому блюду — по одной позиции на блюдо, с его номером в поле dish.",
+  ].join("\n");
+}
+export function somUser(som: Record<string, unknown>) {
+  const L = SOM_LIMITS;
+  const rows: string[] = [];
+  const add = (label: string, v: unknown, n: number) => { const t = cutS(v, n); if (t) rows.push(label + t); };
+  add("Просьба гостя: ", som.ask, L.ask);
+  add("Блюдо из нашего меню: ", som.dish, L.dish);
+  add("Стол: ", som.table, L.table);
+  add("Уточнение: ", som.refine, L.refine);
+  add("Уже предлагали: ", som.prev, L.prev);
+  add("Как у нас принято: ", som.rules, L.rules);
+  add("Берут у нас: ", som.stats, L.stats);
+  const card = (Array.isArray(som.card) ? som.card : []).slice(0, L.lines).map((x, i) => (i + 1) + ". " + cutS(x, L.line));
+  let body = "", n = 0;
+  for (const ln of card) { if (body.length + ln.length + 1 > L.card) break; body += ln + "\n"; n++; }
+  rows.push("Карта (что подходит под просьбу: не в стопе, в бюджете), позиций: " + n + "\n" + body.trimEnd());
+  return rows.join("\n");
+}
+export function somRequest(m: string, rest: string, som: Record<string, unknown>) {
+  return { model: m, messages: [{ role: "system", content: somSystem(rest) }, { role: "user", content: somUser(som) }], ...genOpts(m, 1200, 0.4, "low") };
+}
 // сколько подсказки модель прочитала из кэша — в журнал функции (Supabase → Edge Functions → ai-chat → Logs)
 export function cacheStat(usage: Record<string, any> | null | undefined) {
   if (!usage) return null;
@@ -908,6 +951,8 @@ Deno.serve(async (req) => {
     if (isGuest && !guest && !customId) return json({ ok: false, error: "bad_guest" }, 400);
     // v31: ответ гостя потоком (по словам) — только реплики гостя, чек разбора — целиком
     const wantStream = !!(isGuest && !finish && stream);
+    // v132 (Доп. 445): «Сомелье» — своя подсказка и вся подходящая карта; лимит — как у Наставника (подбор считается как вопрос)
+    const somIn = !isGuest && mode === "sommelier" && reqBody?.som && typeof reqBody.som === "object" ? reqBody.som as Record<string, unknown> : null;
 
     // ── Авторизация через whoami: только реальные сотрудники ──
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -1093,6 +1138,7 @@ Deno.serve(async (req) => {
             : { model: m, ...genOpts(m, 180, 0.8),
                 messages: [{ role: "system", content: buildGuestSystem(emp, guest as Guest) }, ...history] })
           // v67: Наставник — подсказка из двух частей, у Claude с кэшем (mentorRequest)
+          : somIn ? somRequest(m, String(emp.restaurant || ""), somIn)   // v132
           : mentorRequest(m, buildSystemParts(emp, reglaments), !!voice, history)),
       });
       if (resp.ok) {
@@ -1100,6 +1146,7 @@ Deno.serve(async (req) => {
         const cs = cacheStat(data?.usage);
         if (cs) console.log("ai-chat usage", m, isGuest ? (finish ? "receipt" : "guest") : "mentor", JSON.stringify(cs));
         const reply = data?.choices?.[0]?.message?.content?.trim();
+        if (reply && somIn) { winner = m; return json({ ok: true, reply, model: data?.model || m, remaining, v: AI_CHAT_V, som: 1 }); }   // v132
         if (reply) { winner = m; return json({ ok: true, reply, model: data?.model || m, remaining, v: AI_CHAT_V }); }
         console.error("openrouter", m, "empty_reply");
         lastErr = "empty";

@@ -133,6 +133,7 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   if (print) return <BarPrint T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={print} onBack={() => { vibrate("light"); setPrint(null); }} />;
   if (som) return <BarSommelier T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={cur === "cocktail" ? "all" : cur}
     keep={somMem.current} onKeep={(st) => { somMem.current = st; }} onBack={() => { vibrate("light"); setSom(false); }} onShareChat={onShareChat}
+    team={team} edit={canEditWines(profile)} who={profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : ""}
     onOpen={(k, id) => { setSom(false); openIn(k, id, { som: true }); }} />;
   if (cur === "wine" || cur === "spirit") return (
     <WineListScreen key={cur} kind={cur} T={T} a11y={a11y} profile={profile} onBack={onBack} team={team} tabs={tabs} pinTabs={pinTabs} som={somRow} listTitle="Барная карта"

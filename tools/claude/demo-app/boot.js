@@ -532,6 +532,27 @@ function demoHr(b) {
 
 // ── сервер вместо Supabase: те же адреса, ответы из памяти ──
 const AI_REPLY = "Это демо: Наставник здесь не подключён к ИИ. В приложении он отвечает по меню, стандартам и урокам вашего заведения.";
+
+// v131 (Доп. 444): «Сомелье» в демо без ИИ. Из присланного списка (строки «1. Вино · Шабли · … · ноты: … · к блюдам: …»)
+// берёт первые три и пишет «почему» и фразу гостю по их же строкам, в том формате, который просит приложение.
+function demoSom(b) {
+  const msg = String(((b.messages || [])[0] || {}).content || "");
+  const asked = ((/^Блюдо из нашего меню: ([^,;\n]+)/m.exec(msg) || [])[1] || "").trim();
+  const rows = msg.split("\n").map((l) => /^(\d+)\. (.+)$/.exec(l)).filter(Boolean).slice(0, 3);
+  if (!rows.length) return "Из списка ничего не подходит.";
+  return rows.map(([, n, l]) => {
+    const parts = l.split(" · ");
+    const name = parts[1] || "";
+    const notes = (parts.find((x) => /^ноты: /.test(x)) || "").replace(/^ноты: /, "");
+    const dishes = (parts.find((x) => /^к блюдам: /.test(x)) || "").replace(/^к блюдам: /, "");
+    const style = parts.slice(2).filter((x) => !/₽|%|^ноты: |^к блюдам: |^бокалом$/.test(x)).slice(-2).join(", ");
+    const why = asked && dishes.indexOf(asked) >= 0 ? "в нашей карте его ставят к «" + asked + "»" + (notes ? ", в нотах " + notes : "")
+      : (style ? style + (notes ? ", в нотах " + notes : "") : "в нотах " + notes);
+    const say = "Советую " + name + (notes ? ": " + notes.split(", ").slice(0, 2).join(" и ") : "") + ". Принести?";
+    return "[[pick:" + n + "]] Почему: " + why.charAt(0).toUpperCase() + why.slice(1) + ". Гостю: «" + say + "»";
+  }).join("\n");
+}
+
 const json = (x, status = 200) => new Response(JSON.stringify(x === undefined ? null : x), { status, headers: { "Content-Type": "application/json" } });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const realFetch = window.fetch ? window.fetch.bind(window) : null;
@@ -546,7 +567,11 @@ window.fetch = function (input, init) {
     // вход через Telegram — чуть дольше, чтобы было видно «Узнаю тебя по Telegram…»
     return wait(m[1] === "tg_login" ? 1400 : 120 + Math.round(Math.random() * 160)).then(() => json(res, res && res.code === "PGRST202" ? 404 : 200));
   }
-  if (/\/functions\/v1\/ai-chat/.test(url)) return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
+  if (/\/functions\/v1\/ai-chat/.test(url)) {
+    let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+    if (b.mode === "sommelier") return wait(1100).then(() => json({ ok: true, reply: demoSom(b), model: "demo", remaining: 17 }));   // v131
+    return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
+  }
   // v122: фото бутылки — в демо хранилища нет, снимок остаётся в записи (в приложении — ссылка хранилища, photo-upload)
   if (/\/functions\/v1\/photo-upload/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(600).then(() => json(/^data:image\/(jpeg|png|webp);base64,/.test(String(b.image || "")) ? { ok: true, url: b.image } : { ok: false, error: "bad_request" })); }
   if (/\/functions\/v1\/ai-hr/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "assess" ? 1400 : 900).then(() => json(demoHr(b))); }   // v121

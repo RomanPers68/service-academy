@@ -37,6 +37,7 @@ import { Sign } from "./signs";
 import { usePin, BarPin, scrollToEl, focusSearch, toTop, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
 import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
 import { BarPrint } from "./bar-print";   // v130
+import { BarSommelier, SomEntry } from "./bar-sommelier";   // v131: «Сомелье»
 import { cocktailShareItem } from "../lib/share-items";   // v130: «Поделиться в чат» и из карточки коктейля здесь
 import { WINE, SPIRIT, drinkOf } from "../lib/drinks";
 import { titleParts } from "../lib/bar-view";
@@ -80,7 +81,8 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   };
   const openIn = (k, id, back) => { setStart({ tab: k, id, back }); setTab0(k); };
   const jump = (k) => (id, from) => openIn(k, id, from ? { tab: cur, id: from, back: start.tab === cur ? start.back : null } : null);
-  const backFor = (k) => (start.tab === k && start.back ? () => { vibrate("light"); openIn(start.back.tab, start.back.id, start.back.back); } : null);
+  // v131: карточку открыли из «Сомелье» — «назад» возвращает к подбору (он помнит просьбу и ответ)
+  const backFor = (k) => (start.tab === k && start.back ? () => { vibrate("light"); if (start.back.som) { setStart({ tab: null, id: null, back: null }); setSom(true); return; } openIn(start.back.tab, start.back.id, start.back.back); } : null);
   const startFor = (k) => (start.tab === k ? start.id : null);
   // v129: поиск во вкладке смотрит всю карту — что нашлось в других вкладках (по три, и сколько всего)
   const others = (q, except) => {
@@ -103,12 +105,17 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   const fromFor = (k) => {
     if (start.tab !== k || !start.back) return "";
     const b = start.back;
+    if (b.som) return "Из подбора Сомелье";
     if (b.id) { const n = nameOf(b.tab, b.id); return n ? "Из карточки " + n : ""; }
     return b.q ? "Из поиска «" + b.q + "»" : "";
   };
   React.useEffect(() => { saveTab(cur); }, [cur]);   // вернулся из редактора или колоды — та же вкладка
   // v130: лист для печати — вместо вкладок; «назад» — в ту же вкладку, на то же место (вкладка помнит)
   const [print, setPrint] = React.useState(null);
+  // v131 (Доп. 444): «Сомелье» — вместо вкладок, как печать; просьба и ответ живут, пока ты в «Барной карте»
+  const [som, setSom] = React.useState(false);
+  const somMem = React.useRef(null);
+  const somRow = cocktails.length + wines.length + spirits.length >= 2 ? <SomEntry T={T} a11y={a11y} onClick={() => setSom(true)} /> : null;
   // v128: вкладки — и в копии шапки сверху (ui/bar-pin.jsx); у копии свои метки, чтобы не путать с вкладками на месте
   const tabBar = (pin) => (avail.length > 1 ? (
     <div role="tablist" aria-label="Барная карта" id={pin ? undefined : "sa-bar-tabs"} data-bar-tabs={pin ? undefined : avail.join(",")} data-bar-pin-tabs={pin ? avail.join(",") : undefined} data-lens-seg="flat"
@@ -124,12 +131,15 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   const tabs = tabBar(false), pinTabs = tabBar(true);
 
   if (print) return <BarPrint T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={print} onBack={() => { vibrate("light"); setPrint(null); }} />;
+  if (som) return <BarSommelier T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={cur === "cocktail" ? "all" : cur}
+    keep={somMem.current} onKeep={(st) => { somMem.current = st; }} onBack={() => { vibrate("light"); setSom(false); }} onShareChat={onShareChat}
+    onOpen={(k, id) => { setSom(false); openIn(k, id, { som: true }); }} />;
   if (cur === "wine" || cur === "spirit") return (
-    <WineListScreen key={cur} kind={cur} T={T} a11y={a11y} profile={profile} onBack={onBack} team={team} tabs={tabs} pinTabs={pinTabs} listTitle="Барная карта"
+    <WineListScreen key={cur} kind={cur} T={T} a11y={a11y} profile={profile} onBack={onBack} team={team} tabs={tabs} pinTabs={pinTabs} som={somRow} listTitle="Барная карта"
       startId={startFor(cur)} cardBack={backFor(cur)} note={startFor(cur) && startFor(cur) === startId ? note : ""}
       onEdit={onEdit ? (id) => onEdit(cur, id) : undefined} cocktails={cocktails} onOpenCocktail={cocktails.length ? jump("cocktail") : null}
       keep={keepOf(cur)} onKeep={onKeepOf(cur)} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor(cur)} onPrint={setPrint} onShareChat={onShareChat} />);
-  return <BarCocktails T={T} a11y={a11y} gold={gold} text={text} sub={sub} restaurant={restaurant} cocktails={cocktails} spirits={spirits} tabs={tabs} pinTabs={pinTabs} onBack={onBack}
+  return <BarCocktails T={T} a11y={a11y} gold={gold} text={text} sub={sub} restaurant={restaurant} cocktails={cocktails} spirits={spirits} tabs={tabs} pinTabs={pinTabs} som={somRow} onBack={onBack}
     startId={startFor("cocktail")} cardBack={backFor("cocktail")} onOpenSpirit={avail.includes("spirit") ? jump("spirit") : null}
     keep={keepOf("cocktail")} onKeep={onKeepOf("cocktail")} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor("cocktail")} onPrint={setPrint} onShareChat={onShareChat}
     onLearn={onOpenCocktail} onBuild={onBuildCocktail} onCocktailDeck={onCocktailDeck} onBarLab={onBarLab} onCocktailEdit={edit ? onCocktailEdit : null} />;
@@ -142,7 +152,7 @@ const dots = (n) => "●".repeat(n) + "○".repeat(Math.max(0, 4 - n));
 // граммовка: число и единица неразрывно; «доверху» — без числа
 const amount = (i) => (i[1] === "" || i[1] == null ? "" : i[2] === "доверху" ? "доверху" : i[1] + " " + (i[2] || "мл"));
 
-function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit,
+function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, som = null, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit,
   keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null }) {
   const red = a11y ? "#A33A2A" : "#E07878";
   const k0 = keep || {};   // v129: вкладка помнит поиск, основу и место в списке
@@ -273,6 +283,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
     <div ref={frameRef} style={T.screen} className="sa-screen" data-bar-cocktails={cocktails.length}>
       {head("Справочник · " + restaurant, "Барная карта", onBack, onCocktailEdit ? editBtn(() => onCocktailEdit(null), { "data-bar-ck-edit": "" }, "Редактор") : null)}
       {tabs}
+      {som}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 2px 10px" }}>

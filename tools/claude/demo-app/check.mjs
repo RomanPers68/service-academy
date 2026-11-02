@@ -17,6 +17,7 @@
 // v128 (Доп. 441): Мария — «Барная карта»: проверка, «Подобрать гостю», шапка не уезжает, «Колода» и «Лаборатория» рядом,
 // карточка коктейля здесь же, «следующее ›», поиск сверху находит вино, после «Сохранить» — снова карточка.
 // v129 (Доп. 442): Мария — подсказка первого входа в «Барную карту», строка «Учить», «Показаны: …», «Нашлось во вкладке».
+// v131 (Доп. 444): Мария — «Сомелье»: к блюду и бокалом, ответ с «почему» и фразой гостю, карточка и «назад» к подбору.
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -516,6 +517,27 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("В «Вся команда» — карточка «Вино» и «Открыть в Барной карте»", /^вино/i.test(wc) && /Открыть в Барной карте/.test(wc), wc.slice(0, 120));
   await shot("m41-share-wine");
   for (let i = 0; i < 3 && (await page.locator("[data-chat]").count()); i++) { await page.locator("[data-chat] .ch-back").first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(700); }
+  // v131 (Доп. 444): «Сомелье» — просьба одним касанием (к блюду, бокалом), ответ с «почему» и фразой гостю; карточка и «назад» к подбору
+  await toBar("wine");
+  await page.evaluate(() => { const b = document.querySelector("[data-bar-som-open]"); if (b) b.click(); }); await page.waitForTimeout(800);
+  ok("«Сомелье» под вкладками «Барной карты»: экран подбора, выбрано «Вино»", (await page.locator('[data-som="wine"]').count()) === 1);
+  await shot("m42-som");
+  await page.locator('[data-som-chip="dish"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator('[data-som-sub="dish"] [data-som-opt]').first().click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator('[data-som-chip="glass"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator("[data-som-go]").click().catch(() => {});
+  await page.waitForSelector('[data-som-res="ai"]', { timeout: 9000 }).catch(() => {}); await page.waitForTimeout(400);
+  const smr = await page.evaluate(() => ({ n: document.querySelectorAll("[data-som-pick]").length, why: document.querySelectorAll("[data-som-why]").length, say: document.querySelectorAll("[data-som-say]").length,
+    left: (document.querySelector("[data-som-left]") || { getAttribute: () => "" }).getAttribute("data-som-left"), text: (document.querySelector("[data-som-text]") || {}).value || "" }));
+  ok("«К блюду» и «Бокалом» — фраза в поле; «Подобрать»: вина из нашей карты, у каждого «Почему» и «Гостю», у Наставника осталось 17 вопросов",
+    /^к «.+», бокалом$/.test(smr.text) && smr.n >= 2 && smr.n <= 3 && smr.why === smr.n && smr.say === smr.n && smr.left === "17", JSON.stringify(smr));
+  await page.evaluate(() => { const r = document.querySelector("[data-som-res]"); if (r) r.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(300);
+  await shot("m43-som-res");
+  await page.locator("[data-som-open]").first().click().catch(() => {}); await page.waitForTimeout(900);
+  ok("Касание — карточка вина, сверху «Из подбора Сомелье»", /Из подбора Сомелье/.test(await txt()));
+  await shot("m44-som-card");
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  ok("«Назад» — к подбору: просьба и ответ на месте", (await page.locator('[data-som-res="ai"]').count()) === 1);
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

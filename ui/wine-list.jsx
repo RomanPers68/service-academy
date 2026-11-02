@@ -95,7 +95,7 @@ export function useTeamMenu(restaurant) {
 // onOther(вкладка, id, q) — открыть там карточку, onSearchIn(вкладка, q) — та вкладка с этим поиском; fromText — откуда пришёл
 // v130: onPrint({ kind, ids, label }) — лист для печати (что показано, если выбран раздел, поиск или подбор); onShareChat(item) —
 // «Поделиться в чат» из карточки
-export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind = "wine", tabs = null, pinTabs = null, listTitle = "Винная карта", cocktails = [], onOpenCocktail = null, team = null, cardBack = null, note = "",
+export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind = "wine", tabs = null, som = null, pinTabs = null, listTitle = "Винная карта", cocktails = [], onOpenCocktail = null, team = null, cardBack = null, note = "",
   keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null }) {
   const K = drinkOf(kind);
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
@@ -304,6 +304,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
     <div ref={frameRef} style={T.screen} className="sa-screen" data-wine-list={all.length} data-drink-kind={K.kind}>
       {head(listTitle, onBack, "Справочник · " + restaurant)}
       {tabs}
+      {som}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 2px 10px" }}>

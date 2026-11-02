@@ -16,7 +16,9 @@ import { MicButton } from "./mic";
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone (общая с чатом)
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
-import { withRefContext, rememberSharedMenu, dishesOf } from "../lib/reference-context";
+import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf } from "../lib/reference-context";   // v130: и вина с крепким
+import { WINE, SPIRIT } from "../lib/drinks";
+import { titleParts } from "../lib/bar-view";
 import { cleanReply } from "../lib/reply-clean";   // v76–v77: разметка, которую чат не показывает («###», «-», «---»), — обычным текстом
 import { pickCards } from "../lib/ai-cards";   // v94: карточка того блюда, о котором спросили (общая с чатом)
 import { COCKTAILS } from "../data/cocktails";
@@ -401,7 +403,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     guestbook: "Книга отзывов", weeklyguest: "Гость недели", leaderboard: "Рейтинг", stats: "Мой прогресс",
     certificates: "Сертификаты", guide: "Гид по приложению", onboarding: "Первая неделя", profile: "Аккаунт",
     mentor: "Наставничество", shift: "Вкладка «Смена»", team: "Вкладка «Команда»", me: "Вкладка «Я»",
-    cocktails: "Открыть колоду", barlab: "Сборка руками",
+    cocktails: "Открыть колоду", barlab: "Сборка руками", wines: "Открыть барную карту",   // v130: вина и крепкое
     // Доп. 310: разделы v28–v29
     track: "Мой трек", warmup: "Разминка", week: "Чек недели", remind: "Напоминания в Telegram", myreport: "Мой отчёт",
     // v30
@@ -419,19 +421,40 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   // [[dish:ID]] (id даны ей в контексте); если забыла — ищем в тексте ответа
   // точные названия коктейлей и блюд своего ресторана. Не больше двух карточек.
   const myDishes = React.useMemo(() => dishesOf(profile?.restaurant), [profile?.restaurant, msgs.length]);
+  const myDrinks = React.useMemo(() => barDrinksOf(profile?.restaurant), [profile?.restaurant, msgs.length]);   // v130: вина и крепкое
   // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида; неизвестный id
   // тоже вычищаем из текста. v94: выбор — lib/ai-cards.js, общий с чатом: сначала то, о чём спросили (question —
   // вопрос перед ответом), потом метки, потом названия в тексте, но не строки состава и не то, что входит в выбранное
   // блюдо (спросили салат «Два моря», а карточкой приходил «Краб стригун» из его состава)
   const parseCards = (text, question = "") => {
-    const pc = pickCards({ text: text || "", question, dishes: myDishes, cocktails: COCKTAILS, max: 2 });
-    return { clean: pc.text.replace(/\n{3,}/g, "\n\n").trim(), cards: pc.picks.map((p) => (p.kind === "cocktail" ? { kind: "cocktail", c: p.item } : { kind: "dish", d: p.item })) };
+    const pc = pickCards({ text: text || "", question, dishes: myDishes, cocktails: COCKTAILS, drinks: myDrinks, max: 2 });
+    return { clean: pc.text.replace(/\n{3,}/g, "\n\n").trim(), cards: pc.picks.map((p) => (p.kind === "cocktail" ? { kind: "cocktail", c: p.item } : p.kind === "wine" || p.kind === "spirit" ? { kind: p.kind, w: p.item } : { kind: "dish", d: p.item })) };
   };
   const askBefore = (i) => { for (let j = i - 1; j >= 0; j--) if (msgs[j] && msgs[j].role === "user") return String(msgs[j].content || ""); return ""; };
   const cardBox = { marginTop: 10, display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 14, cursor: "pointer",
     border: `1px solid ${gold}55`, background: a11y ? "rgba(139,106,48,0.07)" : "rgba(200,169,110,0.07)",
     boxShadow: `inset 0 1px 0 ${a11y ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.08)"}` };
   const VisualCard = ({ card }) => {
+    // v130: вино или крепкое — фото бутылки (или силуэт), откуда, цена; касание — карточка в «Барной карте»
+    if (card.kind === "wine" || card.kind === "spirit") {
+      const w = card.w, K = card.kind === "spirit" ? SPIRIT : WINE, tp = titleParts(K, w), go = () => onNavigate && onNavigate({ [card.kind]: w.id });
+      return (
+        <div style={cardBox} data-ai-card={card.kind + ":" + w.id} onClick={() => { vibrate("light"); go(); }} {...onActivate(go)} aria-label={tp.main}>
+          {w.img
+            ? <img src={w.img} alt="" loading="lazy" decoding="async" style={{ width: 64, height: 92, objectFit: "contain", borderRadius: 12, flexShrink: 0, border: `1px solid ${gold}44`, background: a11y ? "rgba(139,106,48,0.06)" : "rgba(255,248,230,0.04)" }} />
+            : <div aria-hidden="true" style={{ width: 64, height: 92, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}66`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="48" viewBox="0 0 20 44" fill="none" stroke={gold} strokeWidth="1.4" strokeLinejoin="round"><path d="M8 2h4v9c0 2 4 4 4 9v20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V20c0-5 4-7 4-9z" /></svg></div>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 14, color: T.modTitle.color, lineHeight: 1.25 }}>{tp.main}</div>
+            {tp.orig ? <div style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 12, color: sub, marginTop: 1 }}>{tp.orig}</div> : null}
+            {K.line(w) ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 4 }}>{K.line(w)}</div> : null}
+            {K.price(w) ? <div style={{ fontSize: 12.5, color: T.modTitle.color, marginTop: 3 }}>{K.price(w)}</div> : null}
+            {w.stop ? <div style={{ fontSize: 11.5, color: RED, marginTop: 4 }}>сегодня нет</div> : null}
+            <div style={{ fontSize: 11, color: gold, marginTop: 4 }}>Открыть в Барной карте ›</div>
+          </div>
+        </div>
+      );
+    }
     if (card.kind === "cocktail") {
       const c = card.c;
       return (

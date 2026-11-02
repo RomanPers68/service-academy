@@ -37,7 +37,8 @@ import { spiritCocktails } from "../lib/spirit-cocktails";
 import { BUILD_SVG, GAME_SVG, UI_SVG } from "./icons";
 import { titleParts, SWEET, sweetOf, budgetPrice, budgetSteps, inBudget, budgetLabels, checkWord } from "../lib/bar-view";   // v128
 import { usePin, BarPin, scrollToEl, focusSearch, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
-import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint } from "./bar-kit";   // v129
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
+import { drinkShareItem } from "../lib/share-items";   // v130: «Поделиться в чат»
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -92,8 +93,10 @@ export function useTeamMenu(restaurant) {
 // строка под заголовком карточки, открытой из редактора после «Сохранить»
 // v129: keep — что вкладка помнит (q, only, pick, scroll), onKeep — запомнить; others(q) — что поиск нашёл в других вкладках,
 // onOther(вкладка, id, q) — открыть там карточку, onSearchIn(вкладка, q) — та вкладка с этим поиском; fromText — откуда пришёл
+// v130: onPrint({ kind, ids, label }) — лист для печати (что показано, если выбран раздел, поиск или подбор); onShareChat(item) —
+// «Поделиться в чат» из карточки
 export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind = "wine", tabs = null, pinTabs = null, listTitle = "Винная карта", cocktails = [], onOpenCocktail = null, team = null, cardBack = null, note = "",
-  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "" }) {
+  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null }) {
   const K = drinkOf(kind);
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
   const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A", green = a11y ? "#2E7D52" : "#5DBB8A";
@@ -245,6 +248,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
               {w.abv && K.kind !== "spirit" ? badge(String(w.abv).replace(".", ",") + "%", sub) : null}
             </div>
             {K.price(w) ? <div style={{ fontSize: 14, color: text, marginTop: 10 }}>{K.price(w)}</div> : null}
+            {onShareChat ? <div style={{ marginTop: 12 }}><ShareChat id={K.kind + ":" + w.id} onClick={() => onShareChat(drinkShareItem(K, w))} gold={gold} text={text} /></div> : null}
           </div>
           {unchecked(w) ? <div data-wine-unchecked="" style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: amber }}>
             Не проверено: {w.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}. Это подсказал AI, руководитель ещё не подтвердил.</div> : null}
@@ -302,9 +306,13 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
       {tabs}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
-        <div style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }} data-wine-sum="">
-          {all.length ? K.word(all.length) + (glassN ? " · " + K.t.pathSum + " " + glassN : "")
-            : edit ? K.t.emptyEdit : K.t.empty}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 2px 10px" }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: sub }} data-wine-sum="">
+            {all.length ? K.word(all.length) + (glassN ? " · " + K.t.pathSum + " " + glassN : "")
+              : edit ? K.t.emptyEdit : K.t.empty}
+          </div>
+          {onPrint && all.length ? <PrintLink gold={gold} text={text} a11y={a11y}
+            onClick={() => { remember(); onPrint(filtered && shown.length ? { kind: K.kind, ids: shown.map((x) => x.id), label: [onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "подбор гостю" : ""].filter(Boolean).join(", ") } : { kind: K.kind }); }} /> : null}
         </div>
         {saved && startId && !all.some((x) => x.id === startId) ? <div role="status" data-wine-saved="" style={{ fontSize: 13.5, color: okText, lineHeight: 1.45, margin: "0 2px 10px" }}>{saved}</div> : null}
         {!all.length && edit ? <button type="button" className="sa-btn" data-lens-btn="main" onClick={() => onEdit(null)}

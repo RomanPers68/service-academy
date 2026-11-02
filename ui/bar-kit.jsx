@@ -12,9 +12,28 @@ import { topInsetPx } from "../lib/tg-screen";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { scrollRoot } from "./bar-pin";
+import { CHAT_SHARE_IC } from "./share-chat";   // v130: «Поделиться в чат» — тот же значок, что в колодах
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const rootTarget = (root) => (root === document.scrollingElement || root === document.documentElement ? window : root);
+
+// ── v130 (Доп. 443): печать и «Поделиться в чат» ──
+const PRINTER = (c, s = 15) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v7H6z" /></svg>);
+/** «Печать» в строке под вкладками (справа от «30 вин · бокалом 8»): лист под А4, как «Меню для печати». */
+export function PrintLink({ onClick, gold, text, a11y }) {
+  const ink = a11y ? "#6B4E1A" : gold;
+  return <button type="button" className="sa-btn" data-bar-print-open="" data-lens-btn="soft" data-lens-ink="" onClick={() => { vibrate("light"); onClick(); }}
+    style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: `1px solid ${gold}55`, background: "transparent", color: text, fontFamily: SERIF, fontSize: 13, cursor: "pointer", lineHeight: 1.2 }}>
+    {PRINTER(ink, 15)}Печать</button>;
+}
+/** «Поделиться в чат» в карточке вина, крепкого и коктейля: карточка уходит в чат команды. */
+export function ShareChat({ id, onClick, gold, text }) {
+  return <button type="button" className="sa-btn" data-share-chat={id} data-lens-btn="soft" data-lens-ink="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onClick(); }}
+    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: `1px solid ${gold}55`, background: "transparent", color: text, fontFamily: SERIF, fontSize: 12.5, cursor: "pointer", lineHeight: 1.2 }}>
+    {CHAT_SHARE_IC(gold, 14)}Поделиться в чат</button>;
+}
 
 /** Золотая стрелка у строки: видно, что строка открывается. */
 export const Chevron = ({ gold }) => <span aria-hidden="true" data-bar-chev="" style={{ flexShrink: 0, color: gold, opacity: 0.85, fontSize: 21, lineHeight: 1, fontFamily: SERIF, marginLeft: 2 }}>›</span>;

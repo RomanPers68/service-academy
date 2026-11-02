@@ -16,6 +16,9 @@
 // v129 (Доп. 442), владелец: «Что бы человек зайдя в неё не заблудился и все было интуитивно понятно?» — «Давай все».
 // Каждая вкладка помнит раздел, поиск и место в списке; поиск во вкладке находит и в других («Нашлось во вкладке «Вина»»);
 // в карточке, открытой из другой, сверху «Из карточки Campari»; строка «Учить» — одна во всех вкладках (ui/bar-kit.jsx).
+// v130 (Доп. 443), владелец: «Давай в барную карту добавим возможность распечатать информацию. Имею ввиду, как в меню» —
+// «Да, давай все». «Печать» в строке под вкладками открывает «Барную карту для печати» (ui/bar-print.jsx): вкладка, откуда
+// пришёл, и то, что на ней было показано. И «Поделиться в чат» в карточках: «вина и крепкие не имеют такой возможности».
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -32,7 +35,9 @@ import { GAME_SVG, BUILD_SVG } from "./icons";
 import { CocktailArt } from "./cocktail-art";
 import { Sign } from "./signs";
 import { usePin, BarPin, scrollToEl, focusSearch, toTop, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
-import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint } from "./bar-kit";   // v129
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
+import { BarPrint } from "./bar-print";   // v130
+import { cocktailShareItem } from "../lib/share-items";   // v130: «Поделиться в чат» и из карточки коктейля здесь
 import { WINE, SPIRIT, drinkOf } from "../lib/drinks";
 import { titleParts } from "../lib/bar-view";
 
@@ -43,7 +48,7 @@ const readTab = () => { try { return localStorage.getItem(TAB_KEY) || ""; } catc
 const saveTab = (t) => { try { localStorage.setItem(TAB_KEY, t); } catch (e) {} };
 
 // startTab + startId — открыть карточку (вина, крепкого; со startTab "cocktail" — коктейля); note — строка под её заголовком
-export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = null, startId = null, note = "", onOpenCocktail = null, onBuildCocktail = null, onCocktailDeck = null, onBarLab = null, onCocktailEdit = null }) {
+export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = null, startId = null, note = "", onOpenCocktail = null, onBuildCocktail = null, onCocktailDeck = null, onBarLab = null, onCocktailEdit = null, onShareChat = null }) {
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
   const restaurant = (profile && profile.restaurant) || "";
   const edit = canEditWines(profile) && !!onEdit;
@@ -102,6 +107,8 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
     return b.q ? "Из поиска «" + b.q + "»" : "";
   };
   React.useEffect(() => { saveTab(cur); }, [cur]);   // вернулся из редактора или колоды — та же вкладка
+  // v130: лист для печати — вместо вкладок; «назад» — в ту же вкладку, на то же место (вкладка помнит)
+  const [print, setPrint] = React.useState(null);
   // v128: вкладки — и в копии шапки сверху (ui/bar-pin.jsx); у копии свои метки, чтобы не путать с вкладками на месте
   const tabBar = (pin) => (avail.length > 1 ? (
     <div role="tablist" aria-label="Барная карта" id={pin ? undefined : "sa-bar-tabs"} data-bar-tabs={pin ? undefined : avail.join(",")} data-bar-pin-tabs={pin ? avail.join(",") : undefined} data-lens-seg="flat"
@@ -116,14 +123,15 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
     </div>) : null);
   const tabs = tabBar(false), pinTabs = tabBar(true);
 
+  if (print) return <BarPrint T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={print} onBack={() => { vibrate("light"); setPrint(null); }} />;
   if (cur === "wine" || cur === "spirit") return (
     <WineListScreen key={cur} kind={cur} T={T} a11y={a11y} profile={profile} onBack={onBack} team={team} tabs={tabs} pinTabs={pinTabs} listTitle="Барная карта"
       startId={startFor(cur)} cardBack={backFor(cur)} note={startFor(cur) && startFor(cur) === startId ? note : ""}
       onEdit={onEdit ? (id) => onEdit(cur, id) : undefined} cocktails={cocktails} onOpenCocktail={cocktails.length ? jump("cocktail") : null}
-      keep={keepOf(cur)} onKeep={onKeepOf(cur)} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor(cur)} />);
+      keep={keepOf(cur)} onKeep={onKeepOf(cur)} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor(cur)} onPrint={setPrint} onShareChat={onShareChat} />);
   return <BarCocktails T={T} a11y={a11y} gold={gold} text={text} sub={sub} restaurant={restaurant} cocktails={cocktails} spirits={spirits} tabs={tabs} pinTabs={pinTabs} onBack={onBack}
     startId={startFor("cocktail")} cardBack={backFor("cocktail")} onOpenSpirit={avail.includes("spirit") ? jump("spirit") : null}
-    keep={keepOf("cocktail")} onKeep={onKeepOf("cocktail")} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor("cocktail")}
+    keep={keepOf("cocktail")} onKeep={onKeepOf("cocktail")} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor("cocktail")} onPrint={setPrint} onShareChat={onShareChat}
     onLearn={onOpenCocktail} onBuild={onBuildCocktail} onCocktailDeck={onCocktailDeck} onBarLab={onBarLab} onCocktailEdit={edit ? onCocktailEdit : null} />;
 }
 
@@ -135,7 +143,7 @@ const dots = (n) => "●".repeat(n) + "○".repeat(Math.max(0, 4 - n));
 const amount = (i) => (i[1] === "" || i[1] == null ? "" : i[2] === "доверху" ? "доверху" : i[1] + " " + (i[2] || "мл"));
 
 function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit,
-  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "" }) {
+  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null }) {
   const red = a11y ? "#A33A2A" : "#E07878";
   const k0 = keep || {};   // v129: вкладка помнит поиск, основу и место в списке
   const [q, setQ] = React.useState(k0.q || "");
@@ -206,6 +214,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
                 {c.sweet ? <span style={{ whiteSpace: "nowrap" }}>сладость <span style={{ color: gold, letterSpacing: 1 }}>{dots(c.sweet)}</span></span> : null}
               </div> : null}
               {c.house || c.stop ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{c.house ? badge("свой", gold) : null}{c.stop ? badge("сегодня нет", red) : null}</div> : null}
+              {onShareChat ? <div style={{ marginTop: 10 }}><ShareChat id={"cocktail:" + c.id} onClick={() => onShareChat(cocktailShareItem(c))} gold={gold} text={text} /></div> : null}
             </div>
           </div>
           {ing.length ? <>{sec("Состав")}
@@ -266,7 +275,11 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
       {tabs}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />
       <div style={{ padding: "0 16px 140px" }}>
-        <div data-bar-ck-sum="" style={{ fontSize: 13.5, color: sub, margin: "2px 2px 10px" }}>{cocktailsWord(cocktails.length) + (houseN ? " · свои " + houseN : "")}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 2px 10px" }}>
+          <div data-bar-ck-sum="" style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: sub }}>{cocktailsWord(cocktails.length) + (houseN ? " · свои " + houseN : "")}</div>
+          {onPrint && cocktails.length ? <PrintLink gold={gold} text={text} a11y={a11y} onClick={() => { remember(); onPrint(filtered && shownN ? { kind: "cocktail", ids: shown.flatMap(([, l]) => l.map((x) => x.id)),
+            label: [only !== "all" ? only : "", qt ? "по запросу «" + qt + "»" : ""].filter(Boolean).join(", ") } : { kind: "cocktail" }); }} /> : null}
+        </div>
         <LearnStrip T={T} items={learnItems} gold={gold} />
         <SearchField inputRef={searchRef} value={q} onChange={setQ} placeholder="Коктейль или ингредиент" aria="Поиск по коктейлям" a11y={a11y} gold={gold} text={text} style={{ marginTop: 4 }} />
         <div ref={chipsRef} className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>

@@ -473,6 +473,7 @@ function ServiceAcademy() {
   const [wineStart, setWineStart] = useState(null); // v120: винная карта — открыть карточку вина
   const [barNote, setBarNote] = useState("");       // v128: строка в карточке после «Сохранить» в редакторе
   const [barBack, setBarBack] = useState(null);     // v128: из карточки коктейля — в колоду, лабораторию, редактор; «назад» вернёт в неё
+  const [barOpenN, setBarOpenN] = useState(0);      // v130: карточку открыли из чата, а «Барная карта» уже на экране — открыть заново
   // Доп. 246: ссылка ?print=bar из Telegram — сразу карта бара для печати
   useEffect(() => { try { if (new URLSearchParams(location.search).get("print") === "bar") navigate("barPrint"); } catch (e) {} }, []);
   const [menuMode, setMenuMode] = useState(null); // Доп. 210: режим дня → тренажёр меню
@@ -2671,6 +2672,12 @@ function ServiceAcademy() {
       jump("menuTrainer");
       return;
     }
+    // v130 (Доп. 443): карточка вина или крепкого в ответе → «Барная карта» на этой позиции
+    if (dest && typeof dest === "object" && (dest.wine || dest.spirit)) {
+      setBarBack(null); setBarNote(""); setWineStart(dest.wine || dest.spirit); setBarTab(dest.wine ? "wine" : "spirit"); setBarOpenN((n) => n + 1);
+      jump("wines");
+      return;
+    }
     // Карточка коктейля в ответе → колода на этом коктейле (Доп. 130)
     if (dest && typeof dest === "object" && dest.cocktail) {
       setCkStart(dest.cocktail);
@@ -2719,7 +2726,7 @@ function ServiceAcademy() {
     // разделы, stats = «Мой прогресс», analytics = «Аналитика»)
     const GO = { sos: "sos", glossary: "glossary", leaderboard: "leaderboard", profile: "profile", daily: "daily",
       checklist: "checklist", reference: "reference", stats: "stats", guestbook: "guestbook", mentor: "mentor",
-      menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", schedule: "schedule", mistakes: "mistakes",
+      menu: "menuTrainer", cocktails: "cocktails", barlab: "barLab", wines: "wines", schedule: "schedule", mistakes: "mistakes",
       certificates: "certificates", guide: "guide", onboarding: "onboarding", weeklyguest: "weeklyGuest",
       shift: "shift", team: "teamHub", me: "me", analytics: "analytics", candidate: "candidate", staff: "team", morning: "morning", gain: "gain" };
     const boss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));
@@ -2761,6 +2768,7 @@ function ServiceAcademy() {
     if (k === "dish") { assistantNavigate({ dish: id }, true); return; }
     if (k === "cocktail") { assistantNavigate({ cocktail: id }, true); return; }
     if (k === "ref") { setRefStart(id); navigate("reference"); return; }
+    if (k === "wine" || k === "spirit") { setBarBack(null); setBarNote(""); setWineStart(id); setBarTab(k); setBarOpenN((n) => n + 1); navigate("wines"); return; }   // v130: из чата — карточка в «Барной карте»
     if (k === "schedule") { navigate("schedule"); return; }   // v97: «График готов», «Пожелания» из чата
     if (k === "brief") { if (teamBrief) openTeamBrief(); else { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); } return; }   // как «Открыть» из бота
     if (k === "module") {
@@ -3413,7 +3421,7 @@ function ServiceAcademy() {
           onContents={activeModule ? () => navigate("module") : undefined} onShareChat={chatShare} />}
         {screen === "roleComplete" && <Suspense fallback={<ScreenLoader T={T} />}><RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} /></Suspense>}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onWines={() => { setRefStart(null); navigate("wines"); }} onBarItem={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onShareChat={chatShare} /></Suspense>}
-        {screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BarCardScreen T={T} a11y={a11y} profile={profile} startTab={barTab || (barBack && barBack.tab)} startId={wineStart || (barBack && barBack.id)} note={barNote} onBack={() => goBack("reference")}
+        {screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BarCardScreen key={"bar" + barOpenN} onShareChat={chatShare} T={T} a11y={a11y} profile={profile} startTab={barTab || (barBack && barBack.tab)} startId={wineStart || (barBack && barBack.id)} note={barNote} onBack={() => goBack("reference")}
           onEdit={(kind, id) => { setWineKind(kind === "spirit" ? "spirit" : "wine"); setWineEdit(id || null); navigate("wineEditor"); }}
           onOpenCocktail={(id) => { setBarBack({ tab: "cocktail", id }); setRefStart(null); setCkStart(id); navigate("cocktails"); }} onBuildCocktail={(id) => { setBarBack({ tab: "cocktail", id }); setLabStart(id); navigate("barLab"); }}
           onCocktailDeck={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }}

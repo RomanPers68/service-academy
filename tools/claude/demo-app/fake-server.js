@@ -521,7 +521,7 @@ export function makeServer(opts) {
         S.srv.code = hex32().slice(0, 12);
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
-      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.slice() : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
+      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
         cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }, { name: "sa-newbie", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };
@@ -918,7 +918,9 @@ export function makeServer(opts) {
         if (!it || (pc.due != null && !(/^\d{4}-\d{2}-\d{2}$/.test(pc.due) && pc.due >= TODAY && pc.due <= D(60)))) return { ok: false, error: "bad_request" };
         card = { t: "task", item: it, ...(pc.due ? { due: pc.due } : {}), to: "all" };
       } else if (t === "share") {
-        const it = item(pc.item, c.kind === "net" ? ["lesson", "quiz", "module", "ref"] : ["dish", "cocktail", "ref", "lesson", "quiz", "module"]);
+        // v130 (Доп. 443): этап 46 — вина и крепкое там же, где блюда и коктейли (как supabase-stage46-bar-share.sql:
+        // pg-check-stage46); opts.noStage46 — сервер без этапа: bad_request, как у заведения, где его ещё не запустили
+        const it = item(pc.item, c.kind === "net" ? ["lesson", "quiz", "module", "ref"] : ["dish", "cocktail", ...(opts.noStage46 ? [] : ["wine", "spirit"]), "ref", "lesson", "quiz", "module"]);
         if (!it) return { ok: false, error: "bad_request" };
         card = { t: "share", item: it, ...(cut(pc.note, 200) ? { note: cut(pc.note, 200) } : {}) };
       } else if (t === "poll") {

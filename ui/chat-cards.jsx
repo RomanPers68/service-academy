@@ -137,8 +137,9 @@ export const CARDS_CSS = `
 @keyframes chToast{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 `;
 
-const KIND = { dish: ["Блюдо", IC.dish], cocktail: ["Коктейль", IC.glass], ref: ["Справочник", IC.book], lesson: ["Урок", IC.play], quiz: ["Тест", IC.task], module: ["Тема", IC.book], brief: ["Брифинг", IC.brief] };
-const OPEN = { dish: "Открыть в Меню", cocktail: "Открыть в Колоде", ref: "Открыть в Справочнике", lesson: "Открыть урок", quiz: "Открыть тест", module: "Открыть тему" };
+// v130 (Доп. 443): вино и крепкое — из «Барной карты», туда и открываются
+const KIND = { dish: ["Блюдо", IC.dish], cocktail: ["Коктейль", IC.glass], wine: ["Вино", IC.wine], spirit: ["Крепкое", IC.spirit], ref: ["Справочник", IC.book], lesson: ["Урок", IC.play], quiz: ["Тест", IC.task], module: ["Тема", IC.book], brief: ["Брифинг", IC.brief] };
+const OPEN = { dish: "Открыть в Меню", cocktail: "Открыть в Колоде", wine: "Открыть в Барной карте", spirit: "Открыть в Барной карте", ref: "Открыть в Справочнике", lesson: "Открыть урок", quiz: "Открыть тест", module: "Открыть тему" };
 const kindName = (k) => (KIND[k] || ["Карточка"])[0];
 const kindIc = (k) => (KIND[k] || [null, IC.share])[1];
 const who = (m, me) => (m && me && String(m.emp) === String(me.id) ? "ты" : bubbleName(m && m.name));

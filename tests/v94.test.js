@@ -150,7 +150,7 @@ describe("v94: карточка под ответом Наставника (lib/
     expect(r.text).not.toMatch(/\[\[/);
     expect(rd("lib/chat-ai.js")).toContain("lessons: lessonTitles(), question: q });");
     const as = rd("ui/assistant.jsx");
-    expect(as).toContain("const pc = pickCards({ text: text || \"\", question, dishes: myDishes, cocktails: COCKTAILS, max: 2 });");
+    expect(as).toContain("const pc = pickCards({ text: text || \"\", question, dishes: myDishes, cocktails: COCKTAILS, drinks: myDrinks, max: 2 });");   // v130: и вина с крепким «Барной карты»
     expect(as).toContain("parseCards(nv.clean, askBefore(i))");
   });
 });

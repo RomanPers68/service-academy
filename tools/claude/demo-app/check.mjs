@@ -493,6 +493,29 @@ if (!ONLY || ONLY.includes("maria")) {
   ok("Поиск в коктейлях «кьянти» — «Здесь не нашлось.» и «Нашлось во вкладке «Вина»»", ew.none === "Здесь не нашлось." && ew.tabs === "wine", JSON.stringify(ew));
   await shot("m38-search-elsewhere");
   await page.locator("[data-bar-search-clear]").click().catch(() => {}); await page.waitForTimeout(300);
+  // v130: печать «Барной карты», как у меню, и «Поделиться в чат» из карточки вина
+  await page.locator('[data-bar-tab="wine"]').click().catch(() => {}); await page.waitForTimeout(700);
+  await page.evaluate(() => { const b = document.querySelector("[data-bar-print-open]"); if (b) b.click(); }); await page.waitForTimeout(900);
+  const bp = await page.evaluate(() => ({ kinds: [...document.querySelectorAll("[data-bar-print-kind]")].map((e) => e.getAttribute("data-bar-print-kind")).join(","),
+    on: (document.querySelector('[data-bar-print-kind][aria-pressed="true"]') || { getAttribute: () => "" }).getAttribute("data-bar-print-kind"), photo: (document.querySelector("[data-bar-print-photo]") || { getAttribute: () => "" }).getAttribute("data-bar-print-photo") }));
+  ok("«Печать» под вкладками — «Барная карта для печати»: коктейли, вина, крепкое, вся карта; выбраны вина, с фото бутылок", bp.kinds === "cocktail,wine,spirit,all" && bp.on === "wine" && bp.photo === "on", JSON.stringify(bp));
+  await shot("m39-bar-print");
+  await page.locator("[data-bar-print-go]").click().catch(() => {});
+  await page.waitForSelector("[data-bar-print-pages]", { timeout: 25000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  const bpg = await page.evaluate(() => { const i = document.querySelector("[data-bar-print-img]"); return { n: +((document.querySelector("[data-bar-print-pages]") || { getAttribute: () => 0 }).getAttribute("data-bar-print-pages")), w: i ? i.naturalWidth : 0, h: i ? i.naturalHeight : 0 }; });
+  ok("«Картинкой» — страницы под А4 (1520 × 2148), листаются", bpg.n >= 1 && bpg.w === 1520 && bpg.h === 2148, JSON.stringify(bpg));
+  await page.evaluate(() => { const i = document.querySelector("[data-bar-print-pages]"); if (i) i.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(400);
+  await shot("m40-bar-print-page");
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(700);
+  await page.locator("[data-wine-row]").first().click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator("[data-share-chat^='wine:']").click().catch(() => {}); await page.waitForTimeout(1000);
+  ok("В карточке вина — «Поделиться в чат»: лист с вином", (await page.locator("[data-chat-shareto^='wine:']").count()) === 1);
+  await page.locator("[data-chat-shareto-chat='team']").click().catch(() => {}); await page.waitForTimeout(1800);
+  const wc = await page.evaluate(() => { const c = [...document.querySelectorAll('[data-chat-card="share"]')].pop(); return c ? c.innerText.replace(/\s+/g, " ").trim() : ""; });
+  ok("В «Вся команда» — карточка «Вино» и «Открыть в Барной карте»", /^вино/i.test(wc) && /Открыть в Барной карте/.test(wc), wc.slice(0, 120));
+  await shot("m41-share-wine");
+  for (let i = 0; i < 3 && (await page.locator("[data-chat]").count()); i++) { await page.locator("[data-chat] .ch-back").first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(700); }
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

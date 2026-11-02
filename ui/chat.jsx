@@ -569,7 +569,10 @@ function ShareTo({ api, me, chats, item, onClose, onSent }) {
   const send = (c) => {
     if (busy) return;
     vibrate("light"); setBusy(c.id); setErr("");
-    Promise.resolve(api.cardSend(c.id, { t: "share", item, note: note.trim() })).then((r) => { setBusy(null); if (r && r.ok) onSent(c); else setErr(smartErr(r)); })
+    // v130: вино и крепкое сервер пропускает с этапа 46; без него — bad_request, и это надо сказать словами
+    const bar = item.kind === "wine" || item.kind === "spirit";
+    Promise.resolve(api.cardSend(c.id, { t: "share", item, note: note.trim() })).then((r) => { setBusy(null); if (r && r.ok) onSent(c);
+      else setErr(bar && r && r.error === "bad_request" ? "Вина и крепкое в чат пойдут после обновления сервера: этап 46 (supabase-stage46-bar-share.sql). Блюда и коктейли уже можно." : smartErr(r)); })
       .catch(() => { setBusy(null); setErr(smartErr({ error: "net" })); });
   };
   return (

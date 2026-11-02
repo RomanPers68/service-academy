@@ -41,6 +41,9 @@ export const IC = {
   ai: svg(<><path d="M21 11.5a8 8 0 0 1-8 8H6l-3 2.5v-10a8 8 0 0 1 8-8h2a8 8 0 0 1 8 7.5z" /><text x="12" y="14.2" textAnchor="middle" fontSize="7.5" fontWeight="bold" fontFamily="Georgia, serif" fill="currentColor" stroke="none">AI</text></>, 22, 1.7),
   dish: svg(<><path d="M4 16.5h16M5.5 16.5a6.5 6.5 0 0 1 13 0" /><path d="M12 8.5v1.5M10.5 8.5h3M3.5 19.5h17" /></>, 22),
   glass: svg(<><path d="M6 4.5h12l-6 7.5z" /><path d="M12 12v7M8.5 19.5h7" /></>, 22),
+  // v130 (Доп. 443): вино и крепкое из «Барной карты» — бокал для вина и рокс
+  wine: svg(<><path d="M7.5 3.5h9c.3 4.6-1.4 7.6-4.5 7.6S7.2 8.1 7.5 3.5z" /><path d="M7.8 7h8.4M12 11.1v8M8.5 19.5h7" /></>, 22),
+  spirit: svg(<><path d="M5.5 7.5h13l-1.3 10.6a1.6 1.6 0 0 1-1.6 1.4H8.4a1.6 1.6 0 0 1-1.6-1.4z" /><path d="M6.4 12.5h11.2" /></>, 22),
   book: svg(<><path d="M12 6.5c-2-1.6-5-2-8-1.5v13c3-.5 6-.1 8 1.5 2-1.6 5-2 8-1.5V5c-3-.5-6-.1-8 1.5z" /><path d="M12 6.5v13" /></>, 22),
   play: svg(<><circle cx="12" cy="12" r="8.6" /><path d="M10.2 8.6l5 3.4-5 3.4z" /></>, 22),
   clock: svg(<><circle cx="12" cy="12" r="8.6" /><path d="M12 7.5V12l3 2" /></>, 18),

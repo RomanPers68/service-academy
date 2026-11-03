@@ -1146,7 +1146,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return (
       <div className="sa-fadein" style={{ marginTop: 12 }}>
         {next ? (
-          <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
+          <button className="sa-btn sa-btn-pulse" data-lens-btn="main" style={{ ...T.doneBtn, background: color, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px" }} onClick={onNext}>
             <span style={{ textAlign: "left", minWidth: 0 }}>
               <span style={{ ...labelStyle(13), display: "block", opacity: 0.85 }}>Пройдено ✓ · {next.other ? `дальше · ${next.mod.title}` : "далее"}</span>
               <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70vw" }}>{next.lesson.title}{next.done ? " ✓" : ""}</span>
@@ -1154,7 +1154,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             <span style={{ fontSize: 21, flexShrink: 0 }}>›</span>
           </button>
         ) : (
-          <button className="sa-btn" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
+          <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
         )}
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
         {/* v97 (Доп. 410): пройденный урок — в чат команды карточкой, коллега откроет его у себя */}
@@ -1314,13 +1314,13 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
   const canCheck = !!tb && lesson.type === "lesson" && hasPracticePool(mod);
   const dueN = canCheck ? (mistakeBank || []).filter((m) => m && (!m.due || m.due <= Date.now())).length : 0;
   const FinishLesson = ({ mt }) => {
-    if (!canCheck) return <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: mt }} onClick={onComplete}>Урок пройден ✓</button>;
+    if (!canCheck) return <button className="sa-btn sa-btn-pulse" data-lens-btn="main" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: mt }} onClick={onComplete}>Урок пройден ✓</button>;
     return (
       <div style={{ marginTop: mt }}>
-        <button className="sa-btn sa-btn-pulse" data-tb-check="" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }} onClick={() => { vibrate("light"); setCheckOpen(true); }}>
+        <button className="sa-btn sa-btn-pulse" data-tb-check="" data-lens-btn="main" style={{ ...T.doneBtn, background: color, width: "100%", marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }} onClick={() => { vibrate("light"); setCheckOpen(true); }}>
           <span>Закрепить у стола</span><span style={{ ...labelStyle(13), opacity: 0.85 }}>· 2 ситуации{dueN ? " + повтор" : ""}</span>
         </button>
-        <button className="sa-btn" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", color: T.modTitle?.color || "#F0E8D8", border: `1px solid ${color}88`, boxShadow: "none" }} onClick={onComplete}>Урок пройден ✓</button>
+        <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" style={{ ...T.doneBtn, width: "100%", marginTop: 10, background: "transparent", color: T.modTitle?.color || "#F0E8D8", border: `1px solid ${color}88`, boxShadow: "none" }} onClick={onComplete}>Урок пройден ✓</button>
         <div style={{ textAlign: "center", fontSize: 12, color: T.modSub.color, marginTop: 8, lineHeight: 1.45 }}>Ситуации берутся из практики этого раздела, по теме урока. Можно пропустить.</div>
       </div>
     );
@@ -1344,7 +1344,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     return (
       <div style={{ ...T.screen, position: "relative" }}>
         <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{lesson.title}</div>{onContents && stepInfo ? (
-          <button onClick={onContents} aria-label={"Содержание раздела: шаг " + stepInfo.i + " из " + stepInfo.n} data-sa-contents=""
+          <button onClick={onContents} data-lens-btn="soft" data-lens-ink="" aria-label={"Содержание раздела: шаг " + stepInfo.i + " из " + stepInfo.n} data-sa-contents=""
             style={{ flexShrink: 0, background: "transparent", border: `1px solid ${color}77`, borderRadius: 999, padding: "4px 10px", color: inkOf(color, !!T.a11y), fontFamily: "monospace", fontSize: 11, letterSpacing: 0.5, cursor: "pointer", whiteSpace: "nowrap" }}>{stepInfo.i} из {stepInfo.n}</button>
         ) : null}<button onClick={() => { dismissModeHint(); setCardIdx(0); setCardMode(v => { try { localStorage.setItem("sa_lesson_cards", v ? "0" : "1"); } catch (e) {} return !v; }); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 10px", flexShrink: 0, display: "inline-flex", alignItems: "center", borderRadius: 12, animation: modeHint ? "pulse 2s infinite" : "none" }} aria-label={cardMode ? "Читать лентой" : "Читать карточками"}>{cardMode
           ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
@@ -1362,7 +1362,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div ref={bodyRef} key={cardMode ? "card" + cardIdx : "feed"} className={cardMode ? (cardDir === "l" ? "sa-cardpage-l" : "sa-cardpage-r") : undefined} onScroll={handleScroll} onTouchStart={onCardTouchStart} onTouchEnd={onCardTouchEnd} style={{ ...T.lessBody, padding:"12px 14px 44px" }}>
           {resumeBanner}
           {/* Стеклянная подложка для текста урока */}
-          <div style={{
+          <div data-lens-card="" data-lesson-glass="" style={{
             background: T.lessGlass?.bg || "rgba(255,250,238,0.05)",
             border: T.lessGlass?.border || "1px solid rgba(150,112,42,0.38)",
             borderTop: T.lessGlass?.borderTop || "1px solid rgba(215,170,68,0.46)",
@@ -1591,10 +1591,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 </div>
               ))}
             </div>
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.2)", color:T.para.color, marginTop:2, marginBottom:10 }} onClick={restartGame}>
+            <button className="sa-btn sa-btn-pulse" data-lens-btn="soft" data-lens-ink="" style={{ ...T.doneBtn, background:"rgba(255,255,255,0.12)", border:"1px solid rgba(255,255,255,0.2)", color:T.para.color, marginTop:2, marginBottom:10 }} onClick={restartGame}>
               <span style={{ display:"inline-flex", alignItems:"center", gap:8 }}><Sign n="refresh" s={16} />Сыграть ещё раз</span>
             </button>
-            <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onComplete}>
+            <button className="sa-btn sa-btn-pulse" data-lens-btn="main" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onComplete}>
               Продолжить →
             </button>
           </div>
@@ -1636,7 +1636,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               <div style={{ background:"rgba(212,168,90,0.2)", borderRadius:18, padding:"4px 12px", border:"1px solid rgba(212,168,90,0.4)" }}>
                 <span style={{ color:GOLD_SOFT, fontSize:12.5, fontWeight:"bold", display:"inline-flex", alignItems:"center", gap:4 }}><Sign n="star" s={13} />{practiceState.score}</span>
               </div>
-              {tb ? <button className="sa-btn" onClick={() => switchView(true)} aria-label="Вид «у стола»" style={{ background:"transparent", border:`1px solid ${color}88`, borderRadius:18, padding:"4px 10px", color: T.modSub.color, fontSize:11.5, cursor:"pointer", fontFamily:"Georgia, serif" }}>у стола</button> : null}
+              {tb ? <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" onClick={() => switchView(true)} aria-label="Вид «у стола»" style={{ background:"transparent", border:`1px solid ${color}88`, borderRadius:18, padding:"4px 10px", color: T.modSub.color, fontSize:11.5, cursor:"pointer", fontFamily:"Georgia, serif" }}>у стола</button> : null}
             </div>
           </div>
           <div style={{ display:"flex", gap:2 }}>
@@ -1682,7 +1682,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                   let bg = answered?(chosen&&i===sit.correct?"rgba(93,187,138,0.25)":chosen&&i!==sit.correct?"rgba(224,120,120,0.25)":!chosen&&i===sit.correct&&userWrong?"rgba(93,187,138,0.12)":T.simOpt.background):T.simOpt.background;
                   let bc = answered?(chosen&&i===sit.correct?GREEN:chosen&&i!==sit.correct?RED:!chosen&&i===sit.correct&&userWrong?GREEN:neutralBC):neutralBC;
                   return (
-                    <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))}
+                    <div key={i} className="sa-opt" data-lens-opt={bc === neutralBC ? "" : "m"} onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))}
                       style={{ flex:1, background:bg, border:`2px solid ${bc}`, borderRadius:14, padding:"16px 10px", textAlign:"center", color:T.para.color, fontSize:16, fontWeight:"bold", cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>
                       <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6 }}>{btn.gicon === "check" ? UI_SVG.checkCircle(btn.bc, 16) : UI_SVG.xCircle(btn.bc, 16)}{btn.label}</span>
                     </div>
@@ -1707,7 +1707,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 let bc = neutralBC;
                 let tc = T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" data-lens-opt={bc === neutralBC ? "" : "m"} onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -1729,7 +1729,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color;
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
+                return <div key={i} className="sa-opt" data-lens-opt={bc === neutralBC ? "" : "m"} onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s" }}>{opt}</div>;
               })}
             </>
           )}
@@ -1749,7 +1749,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 const isCorr = i===sit.correct;
                 let bg=T.simOpt.background,bc=neutralBC,tc=T.simOpt.color,prefix="";
                 if(answered){if(chosen&&isCorr){bg="rgba(93,187,138,0.2)";bc="#5DBB8A";tc="#5DBB8A";prefix="ok";}else if(chosen&&!isCorr){bg="rgba(224,120,120,0.2)";bc="#E07878";tc="#E07878";prefix="bad";}else if(!chosen&&isCorr&&practiceState.choice!==sit.correct){bg="rgba(93,187,138,0.1)";bc="#5DBB8A";tc="#5DBB8A";prefix="ok";}}
-                return <div key={i} className="sa-opt" onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix ? <Sign n={prefix === "ok" ? "checkC" : "xC"} s={16} style={{ marginRight: 6, verticalAlign: "-3px" }} /> : null}{opt}</div>;
+                return <div key={i} className="sa-opt" data-lens-opt={bc === neutralBC ? "" : "m"} onClick={()=>!answered&&wrappedPracticeChoice(i)} {...onActivate(()=>!answered&&wrappedPracticeChoice(i))} style={{ ...T.simOpt, background:bg, border:`2px solid ${bc}`, borderTop: bc !== neutralBC ? `2px solid ${bc}` : T.simOpt.borderTop, borderRadius:12, padding:"12px 14px", marginBottom:8, color:tc, lineHeight:1.6, cursor:answered?"default":"pointer", transition:"background 0.2s, border-color 0.2s, color 0.2s", boxShadow:answered&&chosen&&isCorr?"0 0 12px rgba(93,187,138,0.25)":"none" }}>{prefix ? <Sign n={prefix === "ok" ? "checkC" : "xC"} s={16} style={{ marginRight: 6, verticalAlign: "-3px" }} /> : null}{opt}</div>;
               })}
             </>
           )}
@@ -1767,7 +1767,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 </div>
               </div>
               {sayPhrase && <SayAloud phrase={sayPhrase} T={T} color={color} />}
-              <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onPracticeNext}>
+              <button ref={nextBtnRef} className="sa-btn sa-btn-pulse" data-lens-btn="main" style={{ ...T.doneBtn, background:color, marginTop:2 }} onClick={onPracticeNext}>
                 {practiceState.step+1<situations.length?"Дальше →":<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>Финиш {GAME_SVG.flag("currentColor", 14)}</span>}
               </button>
             </div>
@@ -1813,8 +1813,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               </div>
             )}
             {score >= lesson.questions.length * 0.7 && !quizState.blocked
-              ? <button className="sa-btn sa-btn-pulse" style={{ ...T.doneBtn, background:color, width:"100%", marginTop:8 }} onClick={onComplete}>Продолжить ✓</button>
-              : <button className="sa-btn" style={{ ...T.doneBtn, background:"#555", width:"100%", marginTop:8 }} onClick={onBack}>← Вернуться к урокам</button>
+              ? <button className="sa-btn sa-btn-pulse" data-lens-btn="main" style={{ ...T.doneBtn, background:color, width:"100%", marginTop:8 }} onClick={onComplete}>Продолжить ✓</button>
+              : <button className="sa-btn" data-lens-btn="soft" data-lens-ink="" style={{ ...T.doneBtn, background:"#555", width:"100%", marginTop:8 }} onClick={onBack}>← Вернуться к урокам</button>
             }
           </div>
         </div>

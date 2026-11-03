@@ -99,8 +99,12 @@ function announceUpdate() {
 // Доп. 279: Telegram держит страницу в памяти сутками, и «обновить» приходилось жать руками.
 // При каждом открытии сверяем, та ли сборка: index.html без кэша → сравниваем имя главного файла.
 // Совпало — молчим; разошлось — один раз перезагружаемся (и чистим кэши, если воркер есть).
+// v134 (Доп. 447), владелец (03.11): приложение было открыто, когда вышла v133, и он смотрел v132. Теперь и раз в 10 минут,
+// пока экран виден (в iOS-Telegram сервис-воркера нет, и сам он о новой сборке не узнает): новая сборка — тост «Готова новая
+// версия · Обновить»; по таймеру — один раз на сборку («Позже» не возвращается каждые 10 минут).
 (function autoUpdate() {
   const KEY = "sa_reload_at";
+  let told = "";
   const current = () => {
     try {
       const src = [...document.querySelectorAll('script[type="module"][src]')].map(x => x.getAttribute("src"));
@@ -117,6 +121,8 @@ function announceUpdate() {
       const m = html.match(/\/assets\/(index-[A-Za-z0-9_-]+\.js)/);
       const mine = current();
       if (!m || !mine || m[1] === mine) return;
+      if (reason === "tick" && told === m[1]) return;   // v134: эту сборку по таймеру уже предлагали
+      told = m[1];
       sessionStorage.setItem(KEY, String(Date.now()));
       if ("serviceWorker" in navigator) {
         try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
@@ -128,5 +134,6 @@ function announceUpdate() {
   };
   window.addEventListener("load", () => setTimeout(() => check("load"), 1200));
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check("visible"); });
+  setInterval(() => check("tick"), 10 * 60 * 1000);   // v134: раз в 10 минут, пока открыто (скрытое — check молчит)
 })();
 

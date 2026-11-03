@@ -393,7 +393,7 @@ if (!ONLY || ONLY.includes("maria")) {
   // v127 (Доп. 440): «Барная карта» — коктейли, вина и крепкое под одной кнопкой; у крепкого всё, как у вин
   await page.evaluate(() => window.__saNav && window.__saNav("reference")); await page.waitForTimeout(1500);
   const bc = await page.evaluate(() => { const e = document.querySelector('[data-ref-card="barcard"]'); return e ? e.innerText.replace(/\s+/g, " ") : ""; });
-  ok("Справочник: «Барная карта» вместо «Нашей винной карты» и «Бар: коктейли»", /^Барная карта Коктейли \d+ · вина 9 · крепкое 10/.test(bc) && !(await page.locator('[data-ref-card="winelist"], [data-ref-card="cocktails"]').count()), bc);
+  ok("Справочник: «Барная карта» вместо «Нашей винной карты» и «Бар: коктейли»", /^Барная карта Коктейли \d+ · вина 9 · крепкое 11/.test(bc) && !(await page.locator('[data-ref-card="winelist"], [data-ref-card="cocktails"]').count()), bc);
   await page.locator('[data-ref-card="barcard"]').click().catch(() => {}); await page.waitForTimeout(1500);
   await page.locator('[data-bar-tab="cocktail"]').click().catch(() => {}); await page.waitForTimeout(600);
   const ck = await page.evaluate(() => ({ tabs: (document.querySelector("[data-bar-tabs]") || { getAttribute: () => "" }).getAttribute("data-bar-tabs"),
@@ -404,7 +404,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await page.locator('[data-bar-tab="spirit"]').click().catch(() => {}); await page.waitForTimeout(900);
   const sl = await page.evaluate(() => ({ kind: (document.querySelector("[data-drink-kind]") || { getAttribute: () => "" }).getAttribute("data-drink-kind"), rows: document.querySelectorAll("[data-wine-row]").length,
     hi: (document.querySelector("[data-wine-train-open]") || { getAttribute: () => "" }).getAttribute("data-wine-train-open"), t: ((document.querySelector('[data-bar-learn="new"]') || {}).textContent || "").replace(/\s+/g, " ") }));
-  ok("Крепкое: десять позиций по видам, в «Учить» — две новинки первыми", sl.kind === "spirit" && sl.rows === 10 && sl.hi === "new" && /Новинки ?2 позиции за месяц/.test(sl.t), JSON.stringify(sl));
+  ok("Крепкое: одиннадцать позиций по видам (v134: и «Аберфелди 12»), в «Учить» — две новинки первыми", sl.kind === "spirit" && sl.rows === 11 && sl.hi === "new" && /Новинки ?2 позиции за месяц/.test(sl.t), JSON.stringify(sl));
   await shot("m24-bar-spirits");
   await page.locator('[data-wine-row="sp-demo-3"]').click().catch(() => {}); await page.waitForTimeout(900);
   const card = await page.evaluate(() => ({ price: ((document.querySelector("[data-wine-card]") || {}).textContent || "").replace(/\u00a0/g, " ").includes("40 мл 550"), ck: [...document.querySelectorAll("[data-spirit-cocktail]")].map((e) => e.textContent.trim()).join(",") }));
@@ -427,7 +427,7 @@ if (!ONLY || ONLY.includes("maria")) {
   await toBar("spirit", 1500);
   await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
   const se = await page.evaluate(() => ({ line: (document.querySelector("[data-wine-sum-line]") || {}).textContent || "", rev: !!document.querySelector("[data-wine-review-start]") }));
-  ok("Редактор крепкого: «10 позиций», одна ждёт «Проверки подряд»", /^10 позиций/.test(se.line) && se.rev, JSON.stringify(se));
+  ok("Редактор крепкого: «11 позиций», две ждут «Проверки подряд»", /^11 позиций/.test(se.line) && se.rev, JSON.stringify(se));
   await page.locator("[data-wine-new]").click().catch(() => {}); await page.waitForTimeout(600);
   const sf = await page.evaluate(() => ({ parts: [...document.querySelectorAll("[data-wine-part]")].map((e) => e.getAttribute("data-wine-part")).join(","), cats: document.querySelectorAll("[data-wine-cat]").length,
     portions: [...document.querySelectorAll("[data-wine-portion]")].map((e) => e.getAttribute("data-wine-portion")).join(",") }));
@@ -568,6 +568,22 @@ if (!ONLY || ONLY.includes("maria")) {
   const fm = await page.evaluate(() => ((document.querySelector("[data-som-taste-msg]") || {}).innerText || ""));
   ok("«Вкус по шкалам: заполнить через ИИ» — шкалы у остальных позиций, помечены «от ИИ»", /^Готово: шкалы у \d+ позиц/.test(fm), fm);
   await shot("m47-som-admin");
+  // v134 (Доп. 447): «Заполнить по названию» дописывает к тому, что уже есть. Владелец (03.11): «если уже что-то заполнено, то AI
+  // не может дополнить?». «Аберфелди 12» из карты: вид, страна, выдержка, порция и цена есть, остальное AI дописывает
+  await toBar("spirit", 1500);
+  await page.locator("[data-wine-edit]").click().catch(() => {}); await page.waitForTimeout(1500);
+  await page.locator('[data-wine-erow="sp-demo-11"] [role="button"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const ab0 = await page.evaluate(() => [...document.querySelectorAll("[data-wine-form] span")].map((e) => e.textContent).find((t) => /AI допишет/.test(t)) || "");
+  await page.locator("[data-wine-fill]").click().catch(() => {}); await page.waitForTimeout(1700);
+  const ab = await page.evaluate(() => { const v = (k) => (document.querySelector('[data-wine-field="' + k + '"]') || {}).value || ""; return { note: ((document.querySelector("[data-wine-ai-note]") || {}).textContent || ""), producer: v("producer"), region: v("region"), country: v("country"), age: v("age"),
+    check: ((document.querySelector("[data-wine-check]") || {}).textContent || "") }; });
+  ok("«Аберфелди 12»: «AI допишет пустые поля, заполненное не тронет»; дописаны производитель, стиль, регион, ноты и рассказ; страна и выдержка из карты на месте",
+    /AI допишет пустые поля, заполненное не тронет/.test(ab0) && /^Дописано: производитель, стиль, регион, крепость/.test(ab.note) && /о напитке$/.test(ab.note)
+    && ab.producer === "Aberfeldy" && ab.region === "Хайленд" && ab.country === "Шотландия" && ab.age === "12 лет" && /^AI дописал: вид, страна, выдержка, порция, цена порции, производитель/.test(ab.check), JSON.stringify({ ab0, ab }));
+  await shot("m48-spirit-fill");
+  await page.locator("[data-wine-fill]").click().catch(() => {}); await page.waitForTimeout(1700);
+  const ab2 = await page.evaluate(() => ((document.querySelector("[data-wine-ai-note]") || {}).textContent || ""));
+  ok("Ещё раз: «AI не знает об этой позиции больше, чем уже вписано»", ab2 === "AI не знает об этой позиции больше, чем уже вписано", ab2);
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

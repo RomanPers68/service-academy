@@ -202,6 +202,9 @@ const DEMO_SPIRITS = [
     serve: ["со льдом", "в коктейле"], glass: "рокс", temp: "со льдом", notes: ["горький апельсин", "травы"], short: "Горький апельсин и травы: в «Негрони» или со льдом и содовой." },
   { name: "Baileys Original", producer: "Baileys", cat: "liqueur", style: "сливочный", country: "Ирландия", abv: 17, portion: 50, pricePortion: 400, priceBottle: 3600, volume: "0,7 л",
     serve: ["со льдом"], glass: "рокс", temp: "со льдом", notes: ["сливки", "ваниль", "какао"], short: "Сливки, ваниль и какао: к кофе или вместо десерта." },
+  // v134 (Доп. 447): как у владельца на снимке: из карты пришли вид, страна, выдержка, порция и цена (помечены «AI»), остальное
+  // пусто; «Заполнить по названию» допишет остальное и вписанное не тронет
+  { name: "АБЕРФЕЛДИ 12 ЛЕТ / ABERFELDY 12 YEARS", cat: "whisky", country: "Шотландия", age: "12 лет", portion: 40, pricePortion: 700, ai: ["cat", "country", "age", "portion", "pricePortion"] },
 ];
 const SPIRIT_GLASS = { whisky: "amber", cognac: "amber", rum: "amber", liqueur: "amber", bitter: "red", gin: "clear", agave: "clear", vodka: "clear" };
 const SP_PIC = ["Glenfiddich 12", "Hennessy VS", "Hendrick's"], SP_NEW = ["Maker's Mark", "Havana Club 7"];
@@ -236,7 +239,7 @@ const SPIRIT_GUESS = [
   [/mezcal|мескал/i, { cat: "agave", style: "мескаль", country: "Мексика", region: "Оахака", abv: 40, serve: ["чистым"], glass: "шот", notes: ["дым", "агава", "цитрус"] }],
   [/bourbon|бурбон|maker|jim beam|wild turkey|woodford|buffalo/i, { cat: "whisky", style: "бурбон", country: "США", region: "Кентукки", abv: 45, serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", notes: ["карамель", "ваниль", "дуб"] }],
   [/jameson|bushmills|irish|ирланд/i, { cat: "whisky", style: "купажированный", country: "Ирландия", abv: 40, serve: ["чистым", "со льдом"], glass: "рокс", notes: ["ваниль", "орех", "мёд"] }],
-  [/glen|macallan|lagavulin|laphroaig|talisker|ardbeg|bowmore|виски|whisk|скотч|scotch/i, { cat: "whisky", style: "односолодовый", country: "Шотландия", abv: 40, serve: ["чистым", "с каплей воды"], glass: "гленкерн", notes: ["мёд", "дуб", "сухофрукты"] }],
+  [/glen|macallan|lagavulin|laphroaig|talisker|ardbeg|bowmore|aberfeldy|аберфелди|виски|whisk|скотч|scotch/i, { cat: "whisky", style: "односолодовый", country: "Шотландия", abv: 40, serve: ["чистым", "с каплей воды"], glass: "гленкерн", notes: ["мёд", "дуб", "сухофрукты"] }],
   [/hennessy|martell|courvoisier|remy|rémy|коньяк|cognac|арарат|ararat|бренди|brandy/i, { cat: "cognac", style: "VSOP", country: "Франция", region: "Коньяк", abv: 40, serve: ["чистым"], glass: "тюльпан", notes: ["ваниль", "дуб", "сухофрукты"] }],
   [/bacardi|havana|zacapa|captain|diplomatico|(^|\s)ром(\s|$)|(^|\s)rum(\s|$)/i, { cat: "rum", style: "выдержанный", country: "Куба", abv: 40, serve: ["чистым", "со льдом", "в коктейле"], glass: "рокс", notes: ["ваниль", "карамель", "тропические фрукты"] }],
   [/(^|\s)gin(\s|$)|джин|beefeater|bombay|tanqueray|hendrick|monkey/i, { cat: "gin", style: "London Dry", country: "Великобритания", abv: 40, serve: ["в коктейле"], glass: "хайбол", notes: ["можжевельник", "цитрус", "кориандр"] }],
@@ -248,10 +251,29 @@ const SP_SHORT = { whisky: "Виски с характером: чистым и�
   gin: "Можжевельник и цитрус: в джин-тоник.", agave: "Агава и цитрус: в «Маргариту» или шотом.", vodka: "Чистая и мягкая: охлаждённой к закускам.", liqueur: "Сладкий ликёр: к кофе или десерту.",
   bitter: "Горечь и травы: аперитив перед ужином." };
 const yearsWord = (n) => n + " " + (n % 10 === 1 && n % 100 !== 11 ? "год" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "года" : "лет");
-const guessSpirit = (name) => {
-  const g = (SPIRIT_GUESS.find(([re]) => re.test(name)) || [null, { cat: "liqueur", style: "", country: "", abv: 30, serve: ["со льдом"], glass: "рокс", notes: ["сладость", "пряности"] }])[1];
+// v134 (Доп. 447): «по названию» в демо знает дома и регионы нескольких марок; вид по названию не понять, а в карточке он
+// вписан (known.cat), значит, держимся его (как сервер: что вписано, то факты)
+const HOUSES = [[/aberfeldy|аберфелди/i, "Aberfeldy", "Хайленд", "односолодовый", ["мёд", "вереск", "ваниль"]],
+  [/glenfiddich|гленфиддик/i, "William Grant & Sons", "Спейсайд", "односолодовый", ["груша", "мёд", "дуб"]],
+  [/macallan|макаллан/i, "The Macallan", "Спейсайд", "односолодовый", ["херес", "сухофрукты", "пряности"]],
+  [/talisker|талискер/i, "Talisker", "Остров Скай", "односолодовый", ["дым", "морская соль", "перец"]],
+  [/jameson|джеймсон/i, "Jameson", "", "купажированный", ["ваниль", "орех", "мёд"]]];
+const SP_STORY = { whisky: "Виски выдерживают в дубовых бочках: отсюда мёд, ваниль и сухофрукты. Гостю предложи чистым или с каплей воды: аромат раскроется.",
+  cognac: "Коньяк делают из белого винограда и выдерживают в дубе. Подавай в тюльпане после ужина: тепло ладони раскрывает ваниль и сухофрукты.",
+  rum: "Ром делают из сахарного тростника, выдержанный мягче и слаще. Предложи чистым или со льдом, к десерту или после ужина.",
+  gin: "Джин настаивают на можжевельнике и травах. Лучше всего он раскрывается в джин-тонике с цедрой.",
+  agave: "Текилу и мескаль делают из агавы. Бланко хороша в «Маргарите», выдержанную пьют медленно и чистой.",
+  vodka: "Чистая и мягкая: подавай охлаждённой, к закускам и рыбе.", liqueur: "Сладкий ликёр: к кофе, к десерту или со льдом.",
+  bitter: "Горький аперитив: со льдом и содовой перед ужином или в «Негрони»." };
+const SP_BY_CAT = {};
+for (const [, g] of SPIRIT_GUESS) if (!SP_BY_CAT[g.cat] || g.style === "односолодовый" || g.style === "бланко") SP_BY_CAT[g.cat] = g;
+const guessSpirit = (name, known = null) => {
+  const hit = SPIRIT_GUESS.find(([re]) => re.test(name)), kc = known && known.cat;
+  const g = hit ? hit[1] : (kc && SP_BY_CAT[kc]) || { cat: "liqueur", style: "", country: "", abv: 30, serve: ["со льдом"], glass: "рокс", notes: ["сладость", "пряности"] };
+  const h = HOUSES.find(([re]) => re.test(name)) || null;
   const y = Number((String(name).match(/(^|\s)(\d{1,2})(\s|$)/) || [])[2] || 0);
-  return { name, ...g, age: y ? yearsWord(y) : "", temp: TEMP_HINT_SP[g.cat] || "", short: SP_SHORT[g.cat] || "" };
+  return { name, ...g, ...(h ? { producer: h[1], region: h[2] || g.region || "", style: h[3], notes: h[4] } : {}), age: y ? yearsWord(y) : "", temp: TEMP_HINT_SP[g.cat] || "",
+    short: SP_SHORT[g.cat] || "", story: SP_STORY[g.cat] || "" };
 };
 // этикетка: «Белуга Нобл» в карте без фото — фото добавится к ней; «Hennessy VS» уже с фото — не отмечено, отметишь — заменится
 const SP_LABELS = [["Talisker 10", "Talisker", "Шотландия", "Острова", 45.8], ["Белуга Нобл", "Белуга", "Россия", "", 40], ["Hennessy VS", "Hennessy", "Франция", "Коньяк", 40],
@@ -260,7 +282,7 @@ let spLabelN = 0;
 const SP_SHEET = [["Talisker 10", "Talisker", 720, 11900], ["Jameson", "Jameson", 450, 5900], ["Courvoisier VSOP", "Courvoisier", 980, 14500], ["Bacardi Carta Blanca", "Bacardi", 350, 3900],
   ["Beefeater London Dry", "Beefeater", 380, 4300], ["Aperol", "Aperol", 350, 2900]];
 const demoSpiritAi = (b) => {
-  if (b.mode === "fill") return { wines: [guessSpirit(String(b.name || ""))] };
+  if (b.mode === "fill") return { wines: [guessSpirit(String(b.name || ""), b.known || null)] };   // v134: и что уже вписано
   if (b.mode === "label") { const [name, producer, country, region, abv] = SP_LABELS[spLabelN++ % SP_LABELS.length]; return { wines: [{ ...guessSpirit(name), producer, country, region, abv, portion: "", pricePortion: "", priceBottle: "" }] }; }
   if (b.mode === "names") return { wines: (b.names || []).slice(0, 15).map((n) => guessSpirit(String(n))) };
   // фото страницы или PDF: в демо — одна и та же «страница» из шести позиций

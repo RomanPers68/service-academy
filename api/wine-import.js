@@ -18,6 +18,12 @@
 // Всё, что вернула модель, приложение помечает «не проверено», пока руководитель не подтвердит (lib/wine.js, ai[]).
 // v127 (Доп. 440): «Барная карта» — kind: "spirit" — то же для крепкого (виски, коньяк, ром, джин…): свои поля (вид,
 // стиль, выдержка, крепость, порция и её цена, как подают), свои подсказки модели; ответ — тот же { wines, cut }.
+// v134 (Доп. 447), владелец (03.11, снимок «Правки позиции» «Аберфелди 12» с красной строкой «Не получилось, попробуй ещё
+// раз»): «если уже что-то заполнено, то AI не может дополнить?». Может, но запрос не дождался ответа: модель думала дольше,
+// чем ждёт Vercel, Vercel оборвал запрос своей страницей (не JSON), и приложение не знало причины. Теперь «по названию» и
+// «по этикетке» (одна позиция): модель, что молчит дольше 30 с, не держит запрос, спрашиваем следующую; на всё 50 с, и если
+// не ответил никто, то ответ 504 словами. «По названию» получает known: что уже вписано в карточку (факты, их держаться) и
+// пишет только недостающее: ответ короче и быстрее, с картой не спорит.
 
 export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
@@ -64,7 +70,7 @@ const SHEET_SHAPE = `{
 const RULES = `Пиши по-русски. Если не уверен в факте (производитель, регион, сорт, год) — оставь поле пустым, ничего не выдумывай.
 Цены и год бери только с листа или из названия. Верни ТОЛЬКО валидный JSON без markdown и пояснений.`;
 const PROMPTS = {
-  fill: (name) => `Ты — сомелье ресторанной академии. Помоги официанту с вином «${name}» из винной карты ресторана.
+  fill: (name, facts = "") => `Ты — сомелье ресторанной академии. Помоги официанту с вином «${name}» из винной карты ресторана.${facts}
 Верни один JSON-объект:\n${SHAPE}\n${RULES}`,
   names: (names) => `Ты — сомелье ресторанной академии. Ниже названия вин из винной карты ресторана, по одному в строке.
 Для каждого верни объект — получится JSON-массив в том же порядке, поле "name" — как в строке:\n${SHAPE}\n${RULES}\n\nВина:\n${names.join("\n")}`,
@@ -119,7 +125,7 @@ const SP_RULES = `Пиши по-русски, названия марок ост
 пустым, ничего не выдумывай. Цены, порцию и выдержку бери только с листа, из названия или с этикетки. Верни ТОЛЬКО валидный JSON без
 markdown и пояснений.`;
 const SP_PROMPTS = {
-  fill: (name) => `Ты — бармен ресторанной академии. Помоги официанту с крепким напитком «${name}» из барной карты ресторана.
+  fill: (name, facts = "") => `Ты — бармен ресторанной академии. Помоги официанту с крепким напитком «${name}» из барной карты ресторана.${facts}
 Верни один JSON-объект:\n${SP_SHAPE}\n${SP_RULES}`,
   names: (names) => `Ты — бармен ресторанной академии. Ниже крепкие напитки из барной карты ресторана, по одному в строке.
 Для каждого верни объект — получится JSON-массив в том же порядке, поле "name" — как в строке:\n${SP_SHAPE}\n${SP_RULES}\n\nНапитки:\n${names.join("\n")}`,
@@ -133,6 +139,28 @@ const SP_PROMPTS = {
 в карте; вид — по разделу карты или по названию. Ноты, описания и подачу не пиши: их добавят отдельно. Пиши компактно, без
 пробелов и переносов между полями.\n${SP_SHEET_SHAPE}\n${after ? "Начало карты уже прочитано: начни с напитка, который идёт сразу после «" + after + "», и продолжай до конца карты.\n" : ""}${SP_RULES}`,
 };
+
+// v134 (Доп. 447): «по названию» — что уже вписано в карточку (known), фактами в подсказку; цен, порции и «бокалом» здесь нет:
+// по названию модель их не пишет
+const FILL_KEYS = ["producer", "country", "region", "grapes", "color", "sweet", "vintage", "abv", "volume", "temp", "glass", "notes", "short", "story"];
+const SP_FILL_KEYS = ["producer", "cat", "style", "country", "region", "age", "abv", "volume", "serve", "glass", "temp", "notes", "short", "story"];
+export function knownFacts(known, keys) {
+  const k = known && typeof known === "object" && !Array.isArray(known) ? known : {}, out = {};
+  for (const f of keys) {
+    const v = k[f], t = Array.isArray(v) ? v.map((x) => str(x, 40)).filter(Boolean).slice(0, 6).join(", ") : str(v, 120);
+    if (t) out[f] = t;
+  }
+  return out;
+}
+export function factsText(known, keys) {
+  if (!Object.keys(known).length) return "";
+  const rest = keys.filter((f) => !known[f]);
+  return "\nУже вписано в карточку (это верно, держись этого и не меняй): " + JSON.stringify(known) + "."
+    + (rest.length ? "\nЗаполни только недостающее: " + rest.join(", ") + ". Вписанные поля в ответе оставь пустыми." : "");
+}
+// v134: сколько ждать модель, когда позиция одна («по названию», «по этикетке»): каждую до 30 с, все вместе до 50 с
+const SLOW = "AI не успел ответить: нажми ещё раз. Если повторится, подожди минуту";
+const quickLim = () => ({ each: Number(process.env.WINE_AI_EACH_MS) || 30000, total: Number(process.env.WINE_AI_TOTAL_MS) || 50000 });
 
 const OPENROUTER_MODELS = [process.env.OPENROUTER_WINE_MODEL, process.env.OPENROUTER_MENU_MODEL, "anthropic/claude-sonnet-4.6", "google/gemini-2.5-flash"].filter(Boolean);
 
@@ -188,20 +216,29 @@ const orText = (data) => { const c = data && data.choices && data.choices[0] && 
   return typeof c === "string" ? c : Array.isArray(c) ? c.map((p) => (p && p.text) || "").join("") : ""; };
 
 // content — части сообщения: текст и (для листа) картинка или PDF
-async function viaOpenRouter(key, parts, maxTokens = 8000) {
+async function viaOpenRouter(key, parts, maxTokens = 8000, lim = null) {
   const headers = { Authorization: "Bearer " + key, "Content-Type": "application/json", "X-Title": "Service Academy wine import" };
   if (process.env.VERCEL_URL) headers["HTTP-Referer"] = "https://" + process.env.VERCEL_URL;
   const content = parts.map((p) => (p.text != null ? { type: "text", text: p.text }
     : p.pdf ? { type: "file", file: { filename: "wine.pdf", file_data: "data:application/pdf;base64," + p.pdf } }
     : { type: "image_url", image_url: { url: "data:" + p.mime + ";base64," + p.image } }));
-  let lastErr = "ни одна модель не ответила";
-  for (const model of OPENROUTER_MODELS) {
-    let r, data;
+  let lastErr = "ни одна модель не ответила", tried = 0, late = 0;
+  const t0 = Date.now();
+  for (let i = 0; i < OPENROUTER_MODELS.length; i++) {
+    const model = OPENROUTER_MODELS[i];
+    // v134: срок — каждой до lim.each, последней всё, что осталось от lim.total; осталось меньше 3 с (десятой доли) — не начинаем
+    let r, data, wait = 0;
+    if (lim) { const left = lim.total - (Date.now() - t0); if (left < Math.min(3000, lim.total / 10)) break; wait = i === OPENROUTER_MODELS.length - 1 ? left : Math.min(lim.each, left); }
+    const ac = wait ? new AbortController() : null, timer = ac ? setTimeout(() => ac.abort(), wait) : null;
+    tried++;
     try {
-      r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers,
+      r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers, signal: ac ? ac.signal : undefined,
         body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0.2, messages: [{ role: "user", content }] }) });
       data = await r.json();
-    } catch (e) { lastErr = model + ": сеть — " + (e && e.message ? e.message : "unknown"); continue; }
+    } catch (e) {
+      if (ac && ac.signal.aborted) { late++; lastErr = model + ": не ответила за " + Math.round(wait / 1000) + " с"; continue; }
+      lastErr = model + ": сеть — " + (e && e.message ? e.message : "unknown"); continue;
+    } finally { if (timer) clearTimeout(timer); }
     const err = (data && data.error) || (data && data.choices && data.choices[0] && data.choices[0].error);
     if (r.ok && !err) { const text = orText(data); const fin = data && data.choices && data.choices[0] && data.choices[0].finish_reason;
       if (text.trim()) return { ok: true, text, model: (data && data.model) || model, cut: fin === "length" }; lastErr = model + ": пустой ответ"; continue; }
@@ -210,19 +247,24 @@ async function viaOpenRouter(key, parts, maxTokens = 8000) {
     if (status === 402) return { ok: false, status: 502, error: "На OpenRouter закончились кредиты (402): пополни баланс на openrouter.ai → Credits." };
     lastErr = model + ": " + ((err && err.message) || "HTTP " + status);
   }
+  if (late && late === tried) return { ok: false, status: 504, error: SLOW };
   return { ok: false, status: 502, error: "Ошибка OpenRouter: " + lastErr };
 }
-async function viaAnthropic(key, parts, maxTokens = 8000) {
+async function viaAnthropic(key, parts, maxTokens = 8000, lim = null) {
   const content = parts.map((p) => (p.text != null ? { type: "text", text: p.text }
     : p.pdf ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: p.pdf } }
     : { type: "image", source: { type: "base64", media_type: p.mime, data: p.image } }));
   let r, data;
+  const ac = lim ? new AbortController() : null, timer = ac ? setTimeout(() => ac.abort(), lim.total) : null;
   try {
-    r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
+    r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: ac ? ac.signal : undefined,
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: maxTokens, messages: [{ role: "user", content }] }) });
     data = await r.json();
-  } catch (e) { return { ok: false, status: 502, error: "Сеть до Anthropic: " + (e && e.message ? e.message : "unknown") }; }
+  } catch (e) {
+    if (ac && ac.signal.aborted) return { ok: false, status: 504, error: SLOW };
+    return { ok: false, status: 502, error: "Сеть до Anthropic: " + (e && e.message ? e.message : "unknown") };
+  } finally { if (timer) clearTimeout(timer); }
   if (!r.ok) return { ok: false, status: 502, error: (data && data.error && data.error.message) || "Ошибка Claude API" };
   return { ok: true, text: (data.content || []).map((c) => c.text || "").join(""), model: data.model || "claude-sonnet-4-6", cut: data.stop_reason === "max_tokens" };
 }
@@ -269,7 +311,8 @@ export default async function handler(req, res) {
   if (b.mode === "fill") {
     const name = str(b.name, 120);
     if (!name) return res.status(400).json({ error: "Нет названия" });
-    parts = [{ text: P.fill(name) }];
+    const keys = sp ? SP_FILL_KEYS : FILL_KEYS;   // v134: что уже вписано — фактами, модель пишет только недостающее
+    parts = [{ text: P.fill(name, factsText(knownFacts(b.known, keys), keys)) }];
   } else if (b.mode === "names") {
     const names = (Array.isArray(b.names) ? b.names : []).map((x) => str(x, 120)).filter(Boolean).slice(0, 15);
     if (!names.length) return res.status(400).json({ error: "Нет названий" });
@@ -293,7 +336,8 @@ export default async function handler(req, res) {
   try {
     const sheet = b.mode === "photo" || b.mode === "pdf";
     const max = sheet ? 16000 : 8000;
-    const out = orKey ? await viaOpenRouter(orKey, parts, max) : await viaAnthropic(anKey, parts, max);
+    const lim = b.mode === "fill" || b.mode === "label" ? quickLim() : null;   // v134: одна позиция — модель не держит запрос дольше 30 с
+    const out = orKey ? await viaOpenRouter(orKey, parts, max, lim) : await viaAnthropic(anKey, parts, max, lim);
     if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
     let got = out.cut ? null : parse(out.text), cut = !!out.cut;
     if (!got) { const loose = parseLoose(out.text); if (loose.length) { got = loose; cut = cut || !/\]\s*(```)?\s*$/.test(String(out.text).trim()); } }

@@ -19,6 +19,11 @@
 // дальше» — следующее вино того же списка.
 // v127 (Доп. 440): «Барная карта» — тот же редактор для крепкого (kind; вид напитка K — lib/drinks.js): вид, стиль,
 // выдержка, крепость, порция (25, 40, 50 мл или своё число) и её цена, как подают, «Ходовое» (учить первым).
+// v134 (Доп. 447), владелец (03.11, «Аберфелди 12» с красной строкой «Не получилось, попробуй ещё раз»): «если уже что-то
+// заполнено, то AI не может дополнить?». Может: «Заполнить по названию» отдаёт AI, что уже вписано (lib/drinks.js: fillAsk),
+// и AI дописывает только пустое; дописывать нечего, так и пишем, без запроса; после ответа строка «Дописано: …» или «AI не
+// знает об этой позиции больше, чем уже вписано». Ответ без JSON (Vercel оборвал ожидание, сбой сервера) теперь словами, с
+// кодом: «AI не успел ответить…», а не «Не получилось».
 import React from "react";
 import { TasteEdit } from "./taste";   // v132: вкус по шкалам
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
@@ -91,9 +96,19 @@ const uploadPhoto = (restaurant, id, data) => fetch(`${SUPABASE_URL}/functions/v
   .then((r) => r.json().catch(() => null).then((j) => { if (j && j.ok && j.url) return j.url; throw new Error(photoWhy(r.status, j)); }));
 const fileB64 = (file) => new Promise((ok, bad) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = () => bad(new Error("Файл не прочитался")); fr.readAsDataURL(file); });
 // AI: ответ — { wines, cut } (cut — ответ оборвался на длинной карте: просим продолжение); ошибка — понятным текстом
+// v134: ответ не JSON — это страница Vercel, а не наша функция: 504 — не дождался AI, 413 — файл больше 4,5 МБ, 5xx — сбой
+export const aiWhy = (status) => (status === 504 || status === 408 ? "AI не успел ответить: сервер перестал ждать (код " + status + "). Нажми ещё раз"
+  : status === 413 ? "Файл слишком большой для AI (код 413): раздели PDF или сними страницы фото"
+  : status === 404 ? "Функция AI не найдена на сервере (код 404): /api/wine-import не развёрнута"
+  : status >= 500 ? "Сервер AI сейчас не отвечает (код " + status + "). Нажми ещё раз через минуту"
+  : status ? "AI не ответил (код " + status + "). Нажми ещё раз" : "AI ответил пусто. Нажми ещё раз");
 const askAiFull = (body) => fetch("/api/wine-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, token: saToken() }) })
   .catch(() => { throw new Error("Сеть недоступна или функция /api/wine-import не развёрнута."); })
-  .then((r) => r.json().catch(() => ({})).then((j) => { if (!r.ok || !Array.isArray(j.wines)) throw new Error((j && j.error) || "Не получилось, попробуй ещё раз"); return j; }));
+  .then((r) => r.json().catch(() => null).then((j) => {
+    if (r.ok && j && Array.isArray(j.wines)) return j;
+    if (j && j.error) throw new Error(j.error);
+    throw new Error(aiWhy(r.ok ? 0 : r.status));
+  }));
 const askAi = (body) => askAiFull(body).then((j) => j.wines);
 const MAX_ROUNDS = 8;   // v122: заходов на одну длинную карту (продолжение с вина после последнего прочитанного)
 
@@ -114,6 +129,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const [sure, setSure] = React.useState(false);        // «Удалить?» — второе касание
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiErr, setAiErr] = React.useState("");
+  const [aiNote, setAiNote] = React.useState("");       // v134: «Дописано: …», «AI не знает больше…», «Дописывать нечего…»
   const [imp, setImp] = React.useState(null);           // импорт: { stage: pick | text | names | work | review, … }
   const [q, setQ] = React.useState("");
   const [only, setOnly] = React.useState("all");        // all | unchecked | glass | stop | archive
@@ -127,7 +143,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const remember = useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : "list");   // форма — сверху, список — где был
   const wines = React.useMemo(() => K.records(shared), [shared, K]);
   const formKey = form ? form.id || form._nid : "";
-  React.useEffect(() => { setPic(null); }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
+  React.useEffect(() => { setPic(null); setAiNote(""); }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
+  const formRef = React.useRef(null); formRef.current = form;   // v134: с чем сравнить ответ AI (что дописано сейчас)
   const live = wines.filter((w) => !w.archived);
   const dishes = React.useMemo(() => { try { return (dishesOf(restaurant) || []).filter((d) => d && d.id && d.name); } catch (e) { return []; } }, [restaurant, shared]);
   React.useEffect(() => {   // «Править» из карточки вина — сразу форма; «@review» из тренировки — сразу «Проверка подряд»
@@ -180,19 +197,27 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     const has = (f) => (form.ai || []).includes(f);
     const label = (t, f) => <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 0 6px" }}>{t}{f && (Array.isArray(f) ? f.some(has) : has(f)) ? aiTag : null}</div>;
     const field = (f, ph, extra = {}) => <input data-lens-field="" data-wine-field={f} style={{ ...inputSt, ...extra }} placeholder={ph} value={shown(form[f])} onChange={(e) => set(f, e.target.value)} />;
+    // v134: AI сделал своё — строка о том, что дописано сейчас (или что ничего нового)
+    const noteOf = (g) => {
+      const cur = formRef.current || form, added = K.aiAdded(cur, K.mergeAi(cur, g));
+      return added.length ? "Дописано: " + added.map((f) => K.FIELD_RU[f] || f).join(", ") : "AI не знает об этой позиции больше, чем уже вписано";
+    };
     const fill = () => {
       const name = String(form.name || "").trim();
       if (!name) { setAiErr("Сначала название"); return; }
-      setAiBusy(true); setAiErr(""); vibrate("light");
-      askAi({ mode: "fill", name }).then((got) => { setAiBusy(false); setForm((x) => K.mergeAi(x, got[0] || {})); vibrate("success"); })
+      // v134: что вписано, уходит AI фактами (known), он пишет только пустое; пустого нет, запрос не нужен
+      const { known, missing } = K.fillAsk(form);
+      if (!missing.length) { setAiErr(""); setAiNote("Дописывать нечего: всё, что AI знает по названию, уже вписано"); vibrate("light"); return; }
+      setAiBusy(true); setAiErr(""); setAiNote(""); vibrate("light");
+      askAi({ mode: "fill", name, known }).then((got) => { setAiBusy(false); const g = got[0] || {}; setAiNote(noteOf(g)); setForm((x) => K.mergeAi(x, g)); vibrate("success"); })
         .catch((e) => { setAiBusy(false); setAiErr(e.message); });
     };
     // этикетка: AI читает снимок (до 1800 px); пустое название берёт с этикетки, остальное — только в пустые поля
     const readLabel = (file) => {
       if (!file || aiBusy) return;
-      setAiBusy(true); setAiErr(""); vibrate("light");
+      setAiBusy(true); setAiErr(""); setAiNote(""); vibrate("light");
       shrink(file).then((b) => askAi({ mode: "label", imageBase64: b, mime: "image/jpeg" }))
-        .then((got) => { setAiBusy(false); const g = got[0] || {}; setForm((x) => K.mergeAi(String(x.name || "").trim() ? x : { ...x, name: g.name || "" }, g)); vibrate("success"); })
+        .then((got) => { setAiBusy(false); const g = got[0] || {}; setAiNote(noteOf(g)); setForm((x) => K.mergeAi(String(x.name || "").trim() ? x : { ...x, name: g.name || "" }, g)); vibrate("success"); })
         .catch((e) => { setAiBusy(false); setAiErr(e.message); });
     };
     const onPic = (e) => {
@@ -276,9 +301,10 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
             <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-fill="" onClick={fill} disabled={aiBusy}
               style={{ ...pill(false), color: gold, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? "AI думает…" : "Заполнить по названию"}</button>
-            <span style={{ fontSize: 12.5, color: sub, lineHeight: 1.4, flex: "1 1 160px" }}>AI заполнит только пустые поля, вписанное руками не тронет</span>
+            <span style={{ fontSize: 12.5, color: sub, lineHeight: 1.4, flex: "1 1 160px" }}>AI допишет пустые поля, заполненное не тронет</span>
           </div>
           {aiErr ? <div role="alert" style={{ fontSize: 13, color: red, marginTop: 6, lineHeight: 1.45 }}>{aiErr}</div> : null}
+          {aiNote && !aiErr ? <div role="status" data-wine-ai-note="" style={{ fontSize: 13, color: gold, marginTop: 6, lineHeight: 1.45 }}>{aiNote}</div> : null}
           {unchecked(form) ? (
             <div data-lens-card="warn" data-wine-check="" style={{ ...card, marginTop: 12, borderColor: amber }}>
               <div style={{ fontSize: 13.5, color: text, lineHeight: 1.5 }}>AI дописал: {form.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}. Проверь: где не так, исправь руками, остальное подтверди.</div>

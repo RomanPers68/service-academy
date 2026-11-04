@@ -515,7 +515,8 @@ await run("PICK", async () => {
   const o = await open({ who: ANNA, srv, menu: MENU_BIG });
   await hideToasts(o.page);
   await openBar(o.page, "wine");
-  ok("PICK: рядом с поиском — «Подобрать», панели пока нет", (await txt(o.page.locator("[data-wine-pick-open]"))) === "Подобрать" && !(await o.page.locator("[data-wine-pick]").count()));
+  // v136 (Доп. 449): «Подобрать гостю» стало «Фильтр» (так же называлась кнопка «Сомелье»)
+  ok("PICK: рядом с поиском — «Фильтр», панели пока нет", (await txt(o.page.locator("[data-wine-pick-open]"))) === "Фильтр" && !(await o.page.locator("[data-wine-pick]").count()));
   await o.page.locator("[data-wine-pick-open]").click(); await sleep(300);
   const p = await o.page.evaluate(() => ({ budget: [...document.querySelectorAll("[data-wine-budget]")].map((e) => e.textContent.replace(/ /g, " ")).join("|"),
     sweet: [...document.querySelectorAll("[data-wine-sweet]")].map((e) => e.textContent).join("|"), n: (document.querySelector("[data-wine-pick-n]") || {}).textContent || "",
@@ -530,7 +531,7 @@ await run("PICK", async () => {
   ok("PICK: «до 7 000 ₽» — только вина до 7 000 за бутылку, «Нашлось: 11 вин»", ids1.slice().sort().join() === want1.slice().sort().join() && n1 === "Нашлось: 11 вин", JSON.stringify({ ids1, n1 }));
   await o.page.locator('[data-wine-sweet="semisweet"]').click(); await sleep(300);
   const ids2 = await rowIds(o.page), want2 = BIG.filter((w) => w.priceBottle <= 7000 && w.sweet === "полусладкое").map((w) => w.id);
-  ok("PICK: и полусладкое — пересечение; на кнопке — «Подобрать · 2»", ids2.slice().sort().join() === want2.slice().sort().join() && (await txt(o.page.locator("[data-wine-pick-open]"))) === "Подобрать · 2", ids2.join());
+  ok("PICK: и полусладкое — пересечение; на кнопке — «Фильтр · 2»", ids2.slice().sort().join() === want2.slice().sort().join() && (await txt(o.page.locator("[data-wine-pick-open]"))) === "Фильтр · 2", ids2.join());
   await shot(o.page, "pick-on");
   await o.page.locator("[data-wine-pick-reset]").click(); await sleep(300);
   ok("PICK: «Сбросить» — снова вся карта", (await rowIds(o.page)).length === 30);
@@ -611,6 +612,8 @@ await run("COCKTAILS", async () => {
 });
 
 // ── v128, затем: проще, без лишних касаний ──
+// v136 (Доп. 449): в карточке коктейля «Как готовить» свёрнуто — раскрыть касанием (без прокрутки страницы)
+const openHow = (page) => page.evaluate(() => { const b = document.querySelector('[data-bar-ck-how-toggle="closed"]'); if (b) b.click(); return !!b; });
 const ckCard = (page) => page.evaluate(() => { const c = document.querySelector("[data-bar-ck-card]"); if (!c) return null; const t = (sel) => [...c.querySelectorAll(sel)].map((e) => e.textContent.replace(/\s+/g, " ").trim());
   return { id: c.getAttribute("data-bar-ck-card"), title: (c.querySelector('[data-lens="back"] + div') || {}).textContent || "", ing: t("[data-bar-ck-ing] > div"), how: t("[data-bar-ck-how] li"), ours: [...c.querySelectorAll("[data-bar-ck-spirit]")].map((e) => e.getAttribute("data-bar-ck-spirit")),
     text: c.innerText.replace(/\s+/g, " "), learn: !!c.querySelector("[data-bar-ck-learn]"), build: !!c.querySelector("[data-bar-ck-build]"), edit: !!c.querySelector('[data-bar-ck-edit="card"]'), art: !!c.querySelector('[data-bar-ck-art="big"] svg'),
@@ -631,6 +634,7 @@ await run("CARD", async () => {
   // «Негрони» — в середине экрана; запомнить прокрутку
   const y0 = await o.page.evaluate(() => { const e = document.querySelector('[data-bar-ck="negroni"]'), r = document.getElementById("root"); e.scrollIntoView({ block: "center" }); return r.scrollTop; }); await sleep(300);
   await o.page.locator('[data-bar-ck="negroni"]').click(); await sleep(600);
+  await openHow(o.page);   // v136: «Как готовить» свёрнуто — раскрыть (без прокрутки)
   const c = await ckCard(o.page);
   ok("CARD: касание «Негрони» — карточка здесь же, сверху; списка под ней нет", !!c && c.id === "negroni" && c.top === 0 && !(await o.page.locator("[data-bar-cocktails]").count()), JSON.stringify(c && { id: c.id, top: c.top }));
   ok("CARD: бокал, состав с граммовкой", !!c && c.art && c.ing.join("|") === "Джин30 мл|Кампари30 мл|Красный вермут30 мл", JSON.stringify(c && c.ing));
@@ -656,8 +660,9 @@ await run("CARD", async () => {
   await back(o.page); await sleep(500);
   // свой коктейль: «свой», шаги — из его спека, «Править» у руководителя → редактор; назад — снова карточка
   await o.page.locator('[data-bar-ck="ck-sea"]').click(); await sleep(500);
+  await openHow(o.page);
   const h = await ckCard(o.page);
-  ok("CARD: свой коктейль — «свой», состав, шаги его спека, «Править»", !!h && h.id === "ck-sea" && /свой/.test(h.text) && h.ing.length === 2 && h.how.join("|") === "Лёд в хайбол|Водка и морс" && /Как готовить Лёд/.test(h.text) && h.edit && h.build, JSON.stringify(h && { how: h.how, ing: h.ing, edit: h.edit }));
+  ok("CARD: свой коктейль — «свой», состав, шаги его спека, «Править»", !!h && h.id === "ck-sea" && /свой/.test(h.text) && h.ing.length === 2 && h.how.join("|") === "Лёд в хайбол|Водка и морс" && /Как готовить · 2 шага ▾ Лёд/.test(h.text) && h.edit && h.build, JSON.stringify(h && { how: h.how, ing: h.ing, edit: h.edit }));
   await o.page.locator('[data-bar-ck-edit="card"]').click(); await sleep(1500);
   ok("CARD: «Править» — редактор своих коктейлей", /Свои коктейли|Морской бриз/.test(await txt(o.page.locator("body"))) && !(await o.page.locator("[data-bar-ck-card]").count()));
   for (let i = 0; i < 3 && !(await o.page.locator("[data-bar-ck-card]").count()); i++) { await back(o.page); await sleep(700); }
@@ -868,7 +873,8 @@ const look128 = async (tag, light) => {
   ok(`${tag}: карточка коктейля — состав карточкой линзы, «Учить в колоде» — плашка, «Собрать руками» и соседние — стекло`,
     !!ing && /radial-gradient/.test(ing.img) && ing.bc === P.EDGE && !!lb && /radial-gradient/.test(lb.img) && !!bd && bd.bg === P.GLASS && !!nx && nx.bg === P.GLASS, JSON.stringify([ing, lb, bd, nx]).slice(0, 400));
   if (light) {
-    const low3 = await pxAll(o.page, ['[data-bar-ck-ing] > div span', '[data-bar-ck-how] li', '[data-card-step="next"] span', "[data-bar-ck-learn]", "[data-bar-ck-build]", "[data-bar-ck-story]"]);
+    await openHow(o.page);
+    const low3 = await pxAll(o.page, ['[data-bar-ck-ing] > div span', '[data-bar-ck-how] li', '[data-bar-ck-how-toggle] span', '[data-card-step="next"] span', "[data-bar-ck-learn]", "[data-bar-ck-build]", "[data-bar-ck-story]"]);
     ok(`${tag}: в карточке коктейля всё читается (контраст по пикселям)`, !low3.length, JSON.stringify(low3));
   }
   const la2 = await lightAudit(o.page);

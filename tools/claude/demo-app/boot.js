@@ -349,6 +349,10 @@ const NB_PAST = [{ emp: "e-olga", started: dOff(dayOf(M1, 4)), solo: dOff(dayOf(
 if (dOff(dayOf(M0, 8)) <= -15) NB_PAST.push({ emp: "e-darya", started: dOff(dayOf(M0, 2)), solo: dOff(dayOf(M0, 8)), buddy: "e-vera", buddyBy: "u-maria" });
 // v106: утром в стопе два блюда — «Утро руководителя» показывает стоп-лист
 MENU.filter((d) => d && d.name && d.kind !== "cocktail").slice(3, 5).forEach((d) => Object.assign(d, { stop: { since: Date.now() - 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 3600e3 }));
+// v136 (Доп. 449): «Барная карта» удобнее и красивее. Руководитель отметил «★ Советуем первым» вино, крепкое и коктейль
+// (та же отметка, что «☆ Первым» в «Сомелье»); «Совиньон блан» сегодня закончился: в карточке «Предложи вместо» похожие из карты
+MENU.push({ id: "__somrules__", kind: "somrules", text: "", prio: ["wine:wn-demo-6", "spirit:sp-demo-1", "cocktail:negroni"], by: "Мария Ким", at: Date.now() - 2 * 864e5 });
+MENU.filter((d) => d && d.id === "wn-demo-3").forEach((d) => Object.assign(d, { stop: { since: Date.now() - 2 * 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 2 * 3600e3 }));
 
 // ── кто я: Анна, Мария или Роман; «Новый телефон» — Анна без входа, приложение открыто «в Telegram» ──
 const whoKey = lsGet(K_WHO);

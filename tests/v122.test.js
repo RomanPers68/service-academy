@@ -177,7 +177,9 @@ describe("v122: «Редактор вин» — фото в форме и «Фо
     expect(E).toContain("body: JSON.stringify({ token: saToken(), restaurant, dishId: id, image: data }) })");
     expect(E).toContain('const blankWine = () => ({ id: "", _nid: newId(), name: "",');   // v127: у крепкого — свой бланк
     expect(E).toContain('const blank = () => (K.kind === "spirit" ? blankSpirit(K) : blankWine());');
-    expect(E).toContain("const rec = K.norm(confirm ? K.confirm(form, who) : form, { id: form.id || form._nid });");
+    // v136 (Доп. 449): фото записи не теряется, если форма открыта с копии меню в телефоне (там нет фото data:)
+    expect(E).toContain("const src = confirm ? K.confirm(form, who) : form, base = form.id ? wines.find((x) => x.id === form.id) : null;");
+    expect(E).toContain("const rec = K.norm(!src.img && base && base.img && !picCleared.current ? { ...src, img: base.img } : src, { id: form.id || form._nid });");
     expect(E).toContain(".then((url) => { setForm((x) => (x && (x.id || x._nid) === id ? { ...x, img: url } : x));");
     // пока фото грузится, «Сохранить» ждёт
     expect(E).toContain('disabled={busy || (pic && pic.state === "up")}');
@@ -229,15 +231,19 @@ describe("v122: «Верно для всех в списке» (владелец
 
 describe("v122: «Винная карта» — миниатюры и фото в карточке", () => {
   const L = rd("ui/wine-list.jsx");
-  it("строки: миниатюра слева, если фото есть хоть у одного вина (без фото — силуэт бутылки, строки ровно)", () => {
-    expect(L).toContain("const withPics = all.some((w) => w.img);");
-    expect(L).toContain("{withPics ? <WineThumb w={x} gold={gold} a11y={a11y} /> : null}");
+  // v136 (Доп. 449): миниатюра у каждой строки всегда; без фото — нарисованная бутылка в цвете вина (lib/bottle-art.js), а не силуэт
+  it("строки: миниатюра слева у каждой строки (без фото — нарисованная бутылка, строки ровно)", () => {
+    expect(L).not.toContain("const withPics = all.some((w) => w.img);");
+    expect(L).toContain("<WineThumb w={x} gold={gold} a11y={a11y} />");
     expect(L).toContain('<img src={w.img} alt="" loading="lazy" decoding="async"');
-    expect(L).toContain("<BottleGlyph color={gold + \"80\"} w={14} />");
+    expect(L).toContain('<img src={bottleUrl(w.kind === "spirit" ? "spirit" : "wine", w)} alt=""');
+    expect(L).toContain("export const BottleGlyph = ");   // остался у редактора (рамка «Фото бутылки» без снимка)
   });
-  it("карточка вина: фото сверху целиком (не обрезано)", () => {
+  // v136: фото — слева в шапке карточки (целиком, до 150 px), касание — крупно на весь экран
+  it("карточка вина: фото целиком (не обрезано), касание — крупно", () => {
     expect(L).toContain('data-wine-photo-big=""');
-    expect(L).toMatch(/alt=\{"Бутылка: " \+ K\.title\(w\)\}[^>]*maxHeight: 300, borderRadius: 14, objectFit: "contain"/);   // v127: K — вина или крепкое
+    expect(L).toMatch(/alt=\{"Бутылка: " \+ K\.title\(w\)\}[^>]*maxHeight: 150, borderRadius: 10, objectFit: "contain"/);   // v127: K — вина или крепкое
+    expect(L).toMatch(/data-wine-photo-full=""[\s\S]{0,400}alt=\{"Бутылка: " \+ K\.title\(w\)\}[^>]*objectFit: "contain"/);
   });
 });
 

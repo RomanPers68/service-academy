@@ -24,6 +24,9 @@
 // и AI дописывает только пустое; дописывать нечего, так и пишем, без запроса; после ответа строка «Дописано: …» или «AI не
 // знает об этой позиции больше, чем уже вписано». Ответ без JSON (Vercel оборвал ожидание, сбой сервера) теперь словами, с
 // кодом: «AI не успел ответить…», а не «Не получилось».
+// v136 (Доп. 449): «Править» из карточки открывает форму сразу, с копии меню в телефоне, а в ней нет фото, снятых без
+// хранилища (data:, так в демо), и поля могут быть старыми; «Сохранить» стирало фото. Пришло меню с сервера, форму ещё не
+// трогали — форма из свежей записи; уже правят — подставляется фото; при сохранении фото записи не теряется, если не «Убрать».
 import React from "react";
 import { TasteEdit } from "./taste";   // v132: вкус по шкалам
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
@@ -122,7 +125,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const red = a11y ? "#A33A2A" : "#E07878", amber = a11y ? "#8A5A12" : "#E4B36A", green = a11y ? "#2E7D52" : "#5DBB8A";
   const restaurant = (profile && profile.restaurant) || "";
   const who = profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : "";
-  const [shared, setShared] = useTeamMenu(restaurant);
+  const [shared, setShared, loaded] = useTeamMenu(restaurant);
+  const opened = React.useRef(null), picCleared = React.useRef(false);   // v136: форма из карточки, как открыли; «Убрать» фото
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const [form, setForm] = React.useState(null);
@@ -143,7 +147,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const remember = useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : "list");   // форма — сверху, список — где был
   const wines = React.useMemo(() => K.records(shared), [shared, K]);
   const formKey = form ? form.id || form._nid : "";
-  React.useEffect(() => { setPic(null); setAiNote(""); }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
+  React.useEffect(() => { setPic(null); setAiNote(""); picCleared.current = false; }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
   const formRef = React.useRef(null); formRef.current = form;   // v134: с чем сравнить ответ AI (что дописано сейчас)
   const live = wines.filter((w) => !w.archived);
   const dishes = React.useMemo(() => { try { return (dishesOf(restaurant) || []).filter((d) => d && d.id && d.name); } catch (e) { return []; } }, [restaurant, shared]);
@@ -151,8 +155,17 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     if (started.current || !startEditId) return;
     if (startEditId === "@review") { if (wines.length) { started.current = true; startReview(); } return; }
     const r = wines.find((x) => x.id === startEditId);
-    if (r) { started.current = true; fromCard.current = r.id; setForm({ ...blank(), ...r }); }
+    if (r) { started.current = true; fromCard.current = r.id; const f = { ...blank(), ...r }; opened.current = loaded ? null : f; setForm(f); }
   }, [wines, startEditId]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v136: меню с сервера пришло после того, как форму открыли с копии в телефоне
+  React.useEffect(() => {
+    if (!loaded || !form || !form.id) return;
+    const fresh = wines.find((x) => x.id === form.id);
+    if (!fresh) return;
+    if (opened.current && form === opened.current) { opened.current = null; setForm({ ...blank(), ...fresh }); return; }
+    opened.current = null;
+    if (!form.img && fresh.img && !picCleared.current) setForm((x) => (x && x.id === fresh.id && !x.img ? { ...x, img: fresh.img } : x));
+  }, [loaded, wines]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v128: форма из карточки — по закрытии туда же (с текстом, что сохранилось), а не в список редактора
   const backToCard = (okText = "") => { const id = fromCard.current; if (!id || !onDone) return false; fromCard.current = null; onDone(id, okText); return true; };
   const startReview = () => { remember(); setRev({ ids: K.uncheckedQueue(wines), i: 0, ok: 0, fix: 0, skip: 0 }); setMsg(""); vibrate("light"); };
@@ -238,7 +251,9 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     const nextAt = seq && form.id ? seq.ids.findIndex((id, i) => i > seq.at && wines.some((x) => x.id === id && !x.archived)) : -1;
     const nextRec = nextAt >= 0 ? wines.find((x) => x.id === seq.ids[nextAt]) : null;
     const save = (confirm, goNext = false) => {
-      const rec = K.norm(confirm ? K.confirm(form, who) : form, { id: form.id || form._nid });
+      // v136: фото записи не теряется, если форма открыта без него (копия меню в телефоне), а «Убрать» не нажимали
+      const src = confirm ? K.confirm(form, who) : form, base = form.id ? wines.find((x) => x.id === form.id) : null;
+      const rec = K.norm(!src.img && base && base.img && !picCleared.current ? { ...src, img: base.img } : src, { id: form.id || form._nid });
       if (!rec.name) { setMsg("Нужно название"); vibrate("error"); return; }
       if (!form.id && !rec.addedAt) rec.addedAt = Date.now();   // v123: новое вино — в «Новые вина» на 30 дней
       // из «Проверки подряд»: сохранил исправленное — дальше по очереди
@@ -291,7 +306,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                 <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-pic-take="" onClick={() => picRef.current && picRef.current.click()} style={pill(false, { color: gold })}>{picSrc ? "Заменить" : "Сфотографировать"}</button>
                 {pic && pic.file ? <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-label="" onClick={() => readLabel(pic.file)} disabled={aiBusy} style={pill(false, { color: gold, opacity: aiBusy ? 0.6 : 1 })}>{aiBusy ? "AI читает…" : "Заполнить по этикетке"}</button> : null}
-                {picSrc ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-pic-del="" onClick={() => { setPic(null); setForm((x) => ({ ...x, img: "" })); vibrate("light"); }} style={pill(false, { color: text })}>Убрать</button> : null}
+                {picSrc ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-pic-del="" onClick={() => { setPic(null); picCleared.current = true; setForm((x) => ({ ...x, img: "" })); vibrate("light"); }} style={pill(false, { color: text })}>Убрать</button> : null}
               </div>
             </div>
             <input ref={picRef} type="file" accept="image/*" data-wine-pic-input="" onChange={onPic} style={{ display: "none" }} />

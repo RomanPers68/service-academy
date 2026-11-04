@@ -169,7 +169,10 @@ describe("v128: проще — без лишних касаний", () => {
       startTab: "cocktail", startId: "negroni", onOpenCocktail: () => {}, onBuildCocktail: () => {}, onCocktailDeck: () => {}, onBarLab: () => {} }));
     expect(html).toContain('data-bar-ck-card="negroni"');
     expect(html).toContain('data-bar-ck-art="big"');
-    for (const s of [">Состав<", ">Джин<", "30" + NB + "мл", "Как готовить · 7 шагов, как в лаборатории", "Стир 20 секунд", ">Подача<", "Три равные части", "Прошутто, оливки, брускетты",
+    // v136 (Доп. 449): «Как готовить» свёрнуто (состав с граммовкой уже сверху), шаги — по касанию
+    expect(html).toContain('data-bar-ck-how-toggle="closed"');
+    expect(html).not.toContain("Стир 20 секунд");
+    for (const s of [">Состав<", ">Джин<", "30" + NB + "мл", "Как готовить · 7 шагов, как в лаборатории", ">Подача<", "Три равные части", "Прошутто, оливки, брускетты",
       ">История<", "Граф Камилло Негрони", "Гостю: «", ">Учить в колоде<", ">Собрать руками<", "‹ предыдущее", "следующее ›", "крепость "]) expect(html, s).toContain(s);
     expect(html).toMatch(/data-card-steps="\d+\/\d+"/);
     expect(html).not.toContain("Гарниш: ");   // у классики гарниш — последним шагом «Как готовить»

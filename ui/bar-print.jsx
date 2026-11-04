@@ -15,6 +15,7 @@ import { GOLD, labelStyle } from "./tokens";
 import { PRINT_KINDS, KIND_RU, printSections, printText, paginate, rowsCount, posWord, PAGE } from "../lib/bar-print";
 import { dishesOf } from "../lib/reference-context";
 import { GLASS } from "./cocktail-art";
+import { drawBottle } from "../lib/bottle-art";   // v136: где нет фото — нарисованная бутылка (контуром, без чужих картинок: холст не «пачкается»)
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 // бумага — та же, что у «Меню для печати»
@@ -68,11 +69,12 @@ function drawArt(x, c, gx, gy) {
   if (c.garnish && c.garnish !== "none") { const [rx, ry, rw] = g.rim; x.beginPath(); x.arc(rx + rw * 0.72, ry - 6, 12, 0, Math.PI * 2); x.fillStyle = GARN[c.garnish] || "#E2A63A"; x.fill(); x.lineWidth = 3.5; x.stroke(); }
   x.restore();
 }
-// фото бутылки целиком (вписано, не обрезано); нет фото — силуэт
-function drawPhoto(x, img, X, Y) {
+// фото бутылки целиком (вписано, не обрезано); нет фото — нарисованная бутылка (v136), без вида — силуэт
+function drawPhoto(x, img, X, Y, look = null) {
   const b = box(X, Y, PH.w, PH.h, 10);
   x.fillStyle = C.box; x.fill(b);
   if (img) { x.save(); x.clip(b); const k = Math.min(PH.w / img.width, PH.h / img.height), w = img.width * k, h = img.height * k; x.drawImage(img, X + (PH.w - w) / 2, Y + (PH.h - h) / 2, w, h); x.restore(); }
+  else if (look) drawBottle(x, look.kind, look, X + 6, Y + 6, PH.w - 12, PH.h - 12);
   else { x.save(); x.translate(X + PH.w / 2 - 15, Y + PH.h / 2 - 33); x.scale(1.5, 1.5); x.strokeStyle = C.faint; x.lineWidth = 1.2; x.lineJoin = "round"; x.stroke(new Path2D(BOTTLE)); x.restore(); }
   x.strokeStyle = C.line; x.lineWidth = 1; x.stroke(b);
 }
@@ -127,6 +129,8 @@ export function BarPrint({ T, a11y, restaurant = "", cocktails = [], wines = [],
   }), [kind, kinds.join(","), useShown, lists, ctx]);   // eslint-disable-line react-hooks/exhaustive-deps
   const n = parts.reduce((a, p) => a + rowsCount(p.sections), 0);
   const hasPhotos = parts.some((p) => p.kind !== "cocktail" && p.sections.some((s) => s.rows.some((r) => r.img)));
+  // v136: бутылки есть у любого вина и крепкого (нет фото — нарисованная), переключатель — когда они есть в выбранном
+  const hasBottles = parts.some((p) => p.kind !== "cocktail" && rowsCount(p.sections) > 0);
 
   const build = async (photo) => {
     const S = 2, { W, H, PAD, HEAD, FOOT, SEC } = PAGE;
@@ -153,7 +157,7 @@ export function BarPrint({ T, a11y, restaurant = "", cocktails = [], wines = [],
       for (const r of rows) {
         if (r.sec !== last) { last = r.sec; x.fillStyle = C.faint; x.font = "600 " + F(11); x.fillText(String(r.sec).toUpperCase(), PAD, y + 6); y += SEC; }
         if (r.m === ART) drawArt(x, r.art, PAD, y - 2);
-        else if (r.m === PH) drawPhoto(x, imgOf.get(r.img) || null, PAD, y - 2);
+        else if (r.m === PH) drawPhoto(x, imgOf.get(r.img) || null, PAD, y - 2, r.look || null);
         let yy = y + 9;
         for (const s of r.segs) {
           s.lines.forEach((ln, i) => {
@@ -177,7 +181,7 @@ export function BarPrint({ T, a11y, restaurant = "", cocktails = [], wines = [],
     if (busy || !n) return null;
     setBusy("draw"); setHint(""); reset();
     let out = null;
-    try { out = await build(withPhoto && hasPhotos); }
+    try { out = await build(withPhoto && hasBottles); }
     catch (e) {
       if (withPhoto && hasPhotos) { setWithPhoto0(false); setHint("С фото не вышло. Собрал без них"); try { out = await build(false); } catch (e2) { out = null; } }
       if (!out) setHint("Не удалось собрать картинку");
@@ -248,10 +252,10 @@ export function BarPrint({ T, a11y, restaurant = "", cocktails = [], wines = [],
             <button type="button" aria-pressed={scope === "all"} data-bar-print-scope="all" data-lens-btn={scope === "all" ? "tab" : "soft"} data-lens-ink="" onClick={() => setScope("all")} style={chip(scope === "all")}>
               {"Все " + lists[filt.kind].length}</button>
           </div>) : null}
-        {hasPhotos ? <div style={{ marginTop: 8 }}>
+        {hasBottles ? <div style={{ marginTop: 8 }}>
           <span role="button" tabIndex={0} aria-pressed={withPhoto} data-bar-print-photo={withPhoto ? "on" : "off"} data-lens-btn="soft" data-lens-hi={withPhoto ? "" : undefined} onClick={togglePhoto} {...onActivate(togglePhoto)}
             style={{ display: "inline-block", padding: "7px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer", border: `1px solid ${withPhoto ? gold : gold + "44"}`, background: withPhoto ? "rgba(214,178,102,0.16)" : "transparent", color: withPhoto ? text : sub }}>
-            {withPhoto ? "С фото бутылок ✓" : "Без фото"}</span>
+            {withPhoto ? (hasPhotos ? "С фото бутылок ✓" : "С бутылками ✓") : hasPhotos ? "Без фото" : "Без бутылок"}</span>
         </div> : null}
       </div>
       <div style={{ padding: "14px 16px 10px", display: "flex", gap: 8, flexWrap: "wrap" }}>

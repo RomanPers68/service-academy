@@ -19,6 +19,13 @@
 // Сверху «Барная карта · Вина»; строка «Учить» вместо «Учить вина» (сразу «С чего начать», «Колода», «Викторина», «Ещё» —
 // прежняя тренировка); «Показаны: Красные, 7 из 30 · Показать все» и конец списка; поиск смотрит и другие вкладки; золотая
 // стрелка у строки; карточки листаются пальцем; вкладка помнит раздел, поиск, подбор и место (ui/bar-kit.jsx).
+// v136 (Доп. 449), владелец (04.11): «Как думаешь, ещё удобнее и красивее барную карту можно сделать?» — «Давай все» (кроме
+// первого пункта, «карта сразу на первом экране»: «пока не будем делать»). «Подобрать» у поиска — «Фильтр» (так же называлась
+// кнопка «Сомелье»); над списком — порядок «Разделы · Цена · А–Я» и «Подробно · Кратко» (кратко — строка: название, цена);
+// в карточке — «Похожие в нашей карте», а у позиции «сегодня нет» сверху «Предложи вместо: …»; «Как сказать» и
+// «Послушать»; «★ советуем» (руководитель отмечает прямо в карточке; раздел «Советуем»); у позиций без фото — нарисованная
+// бутылка в цвете вина или форме вида крепкого (lib/bottle-art.js); шапка карточки компактнее: бутылка слева, справа — откуда,
+// сорт, цены, и «Одной фразой гостю» видна сразу; у разделов — цветная точка.
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
@@ -35,12 +42,15 @@ import { pathFor, srKnown } from "../lib/wine-train";
 import { kKey } from "./wine-train";
 import { spiritCocktails } from "../lib/spirit-cocktails";
 import { BUILD_SVG, GAME_SVG, UI_SVG } from "./icons";
-import { titleParts, SWEET, sweetOf, budgetPrice, budgetSteps, inBudget, budgetLabels, checkWord } from "../lib/bar-view";   // v128
+import { titleParts, SWEET, sweetOf, budgetPrice, budgetSteps, inBudget, budgetLabels, checkWord, dotOf, SORTS, sortItems, similarOf } from "../lib/bar-view";   // v128; v136 — точки, порядок, похожие
 import { usePin, BarPin, scrollToEl, focusSearch, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
-import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat,
+  FILTER_IC, Dot, useListPref, ViewBar, HowToSay, PrioToggle } from "./bar-kit";   // v129; v130 — печать и «в чат»; v136 — фильтр, точки, вид списка, «Как сказать», «Советуем»
 import { drinkShareItem } from "../lib/share-items";   // v130: «Поделиться в чат»
 import { TasteBars } from "./taste";   // v132: вкус по шкалам
 import { tasteConfirmed } from "../lib/taste";
+import { bottleUrl } from "../lib/bottle-art";   // v136: нарисованная бутылка вместо пустой рамки
+import { readSomRules, withSomRules } from "../lib/sommelier";   // v136: «Советуем» — та же отметка, что «☆ Первым» в «Сомелье»
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -53,12 +63,13 @@ export const BottleGlyph = ({ color, w = 22 }) => (
   <svg width={w} height={Math.round(w * 2.2)} viewBox="0 0 20 44" aria-hidden="true" fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round">
     <path d="M8 2h4v9c0 2 4 4 4 9v20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V20c0-5 4-7 4-9z" /><path d="M4.6 25h10.8M4.6 34h10.8" opacity="0.6" />
   </svg>);
+// v136 (Доп. 449): без фото — нарисованная бутылка в цвете вина или форме вида крепкого (lib/bottle-art.js), а не пунктирная рамка
 export const WineThumb = ({ w, gold, a11y, onClick = null }) => (
-  <div data-wine-thumb={w.img ? "photo" : "none"} aria-hidden="true" onClick={onClick || undefined}
+  <div data-wine-thumb={w.img ? "photo" : "art"} aria-hidden="true" onClick={onClick || undefined}
     style={{ width: 38, height: 52, flexShrink: 0, borderRadius: 8, overflow: "hidden", display: "grid", placeItems: "center", cursor: onClick ? "pointer" : undefined,
-      border: `1px ${w.img ? "solid" : "dashed"} ${gold}${w.img ? "55" : "40"}`, background: a11y ? "rgba(139,106,48,0.06)" : "rgba(255,248,230,0.04)" }}>
+      border: `1px solid ${gold}${w.img ? "55" : "2E"}`, background: a11y ? "rgba(139,106,48,0.06)" : "rgba(255,248,230,0.04)" }}>
     {w.img ? <img src={w.img} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-      : <BottleGlyph color={gold + "80"} w={14} />}
+      : <img src={bottleUrl(w.kind === "spirit" ? "spirit" : "wine", w)} alt="" style={{ height: 46, width: "auto", display: "block" }} />}
   </div>);
 
 // v124: экран внутри экрана (карточка вина, форма, тренировка) открывается сверху, а список возвращается туда, где его
@@ -131,15 +142,24 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   React.useEffect(() => { if (menuLoaded && openId && !all.some((x) => x.id === openId)) setOpenId(null); }, [menuLoaded, all]);   // eslint-disable-line react-hooks/exhaustive-deps
   const colors = React.useMemo(() => K.groups(all).map(([k]) => k).filter((k) => k !== "other"), [all, K]);
   // v128: «Подобрать гостю» — бюджет (ступени по ценам своей карты; в «Бокалом» — цена бокала) и сладость вина
+  // v136: порядок и вид списка (телефон помнит у каждой вкладки); «Советуем» — отметка руководителя (как «☆ Первым» в «Сомелье»)
+  const { sort, setSort, short, setShort } = useListPref(K.kind);
+  const rules = React.useMemo(() => readSomRules(shared), [shared]);
+  const prio = React.useMemo(() => new Set(rules.prio), [rules]);
+  const isPrio = (x) => prio.has(K.kind + ":" + x.id);
+  const prioN = all.filter(isPrio).length;
+  const [photoBig, setPhotoBig] = React.useState(false);   // v136: фото бутылки крупно (касание фото в карточке)
+  React.useEffect(() => { setPhotoBig(false); }, [openId]);
   const [pick, setPick] = React.useState(k0.pick || { b: 0, s: "" });
   const [pickOpen, setPickOpen] = React.useState(false);
   const glassOnly = only === "glass" && K.kind === "wine";
   const steps = React.useMemo(() => budgetSteps(all.map((w) => budgetPrice(K, w, glassOnly))), [all, K, glassOnly]);
   const sweets = React.useMemo(() => (K.kind === "wine" ? SWEET.filter(([g]) => all.some((w) => sweetOf(w) === g)) : []), [all, K]);
   const pickN = (pick.b && steps ? 1 : 0) + (pick.s ? 1 : 0);
-  const shown = React.useMemo(() => K.find(all, q).filter((w) => (only === "all" ? true : only === "glass" ? K.pathTest(w) : K.groupKey(w) === only))
-    .filter((w) => inBudget(budgetPrice(K, w, glassOnly), pick.b, steps) && (!pick.s || sweetOf(w) === pick.s)), [all, q, only, K, pick, steps, glassOnly]);
-  const groups = K.groups(shown);
+  const shown = React.useMemo(() => K.find(all, q).filter((w) => (only === "all" ? true : only === "glass" ? K.pathTest(w) : only === "prio" ? prio.has(K.kind + ":" + w.id) : K.groupKey(w) === only))
+    .filter((w) => inBudget(budgetPrice(K, w, glassOnly), pick.b, steps) && (!pick.s || sweetOf(w) === pick.s)), [all, q, only, K, pick, steps, glassOnly, prio]);
+  // v136: по разделам — как было; по цене и по алфавиту — один список без заголовков разделов
+  const groups = sort === "sec" ? K.groups(shown) : [["", sortItems(shown, sort, { price: (x) => budgetPrice(K, x, glassOnly), title: (x) => titleParts(K, x).main })]];
   const glassN = all.filter(K.pathTest).length, uncheckedN = all.filter(unchecked).length;
   // v128: «Верно для раздела» — первое касание переспрашивает, второе подтверждает то, что в разделе видно (с поиском — найденное)
   const [secSure, setSecSure] = React.useState("");
@@ -172,6 +192,19 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
       else { setCheckMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
     }).catch(() => { setBusy(false); setCheckMsg("Нет связи"); vibrate("error"); });
   };
+  // v136: «Советуем» — руководитель отмечает в карточке; запись та же, что у «☆ Первым» в «Сомелье» (lib/sommelier.js)
+  // пока меню с сервера не пришло, в телефоне копия без фото data: — сохранять из неё нельзя (стёрла бы их у всех)
+  const togglePrio = (w) => {
+    if (busy || !setShared || !menuLoaded) return;
+    const k = K.kind + ":" + w.id, next = prio.has(k) ? rules.prio.filter((x) => x !== k) : [...rules.prio, k];
+    const arr = withSomRules(shared, { ...rules, prio: next, by: who, at: Date.now() });
+    setBusy(true); setCheckMsg("");
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(arr) }).then((res) => {
+      setBusy(false);
+      if (res && res.ok === true) { setShared(arr); rememberSharedMenu(restaurant, arr); vibrate("success"); }
+      else { setCheckMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
+    }).catch(() => { setBusy(false); setCheckMsg("Нет связи"); vibrate("error"); });
+  };
   // v128: шапка не уезжает — строка разделов ушла вверх, сверху её копия
   const frameRef = React.useRef(null), chipsRef = React.useRef(null), searchRef = React.useRef(null);
   const pinBox = usePin(chipsRef, frameRef, view === "list" && !openId && all.length > 0);
@@ -180,7 +213,6 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   React.useLayoutEffect(() => { showActiveChip(chipsRef.current); }, [only, view, openId]);   // eslint-disable-line react-hooks/exhaustive-deps
   const swipe = useSwipe();
   const [slide, setSlide] = React.useState("");   // карточка въезжает с той стороны, куда листаешь
-  const withPics = all.some((w) => w.img);
   const dishes = React.useMemo(() => { try { return dishesOf(restaurant) || []; } catch (e) { return []; } }, [restaurant, shared]);
   const dishName = (id) => (dishes.find((d) => d && d.id === id) || {}).name || "";
   const head = (title, back, kicker, withEdit = true) => (
@@ -241,28 +273,69 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
     const nav = stepsOf(w.id, groups.flatMap(([, l]) => l), K.groups(all).flatMap(([, l]) => l));
     // v129: листать и пальцем; карточка въезжает с той стороны, куда листаешь
     const goCard = (id, dir) => { setSlide(dir); setOpenId(id); };
+    // v136: похожие в нашей карте; у позиции «сегодня нет» — их же сверху: «Предложи вместо»
+    const sims = similarOf(K, w, all, { n: 3 });
+    const simRow = (x) => {
+      const go = () => { vibrate("light"); goCard(x.id, "r"); };
+      return (
+        <div key={x.id} role="button" tabIndex={0} data-wine-similar-go={x.id} data-lens-card="" onClick={go} {...onActivate(go)}
+          style={{ ...T.modCard, display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6 }}>
+          <WineThumb w={x} gold={gold} a11y={a11y} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.3 }}>{titleParts(K, x).main}</div>
+            {K.line(x) ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.4, marginTop: 1 }}>{K.line(x)}</div> : null}
+            {K.price(x) ? <div style={{ fontSize: 12.5, color: text, marginTop: 2 }}>{K.price(x)}</div> : null}
+          </div>
+          <Chevron gold={gold} />
+        </div>);
+    };
+    const prioOn = isPrio(w);
     return (
       <div style={T.screen} className="sa-screen" data-wine-card={w.id} {...swipe(nav.prev ? () => goCard(nav.prev.id, "l") : null, nav.next ? () => goCard(nav.next.id, "r") : null)}>
         {head(tp.main, cardBack || (() => setOpenId(null)), fromText || K.t.kicker)}
         <div key={w.id} className={slide === "l" ? "sa-cardpage-l" : slide === "r" ? "sa-cardpage-r" : undefined} style={{ padding: "4px 16px 140px" }}>
           {saved && w.id === startId ? <div role="status" data-wine-saved="" style={{ fontSize: 13.5, color: a11y ? "#2F6B45" : green, lineHeight: 1.45, margin: "0 2px 10px" }}>{saved}</div> : null}
-          {w.img ? (
-            <div data-wine-photo-big="" style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>
-              <img src={w.img} alt={"Бутылка: " + K.title(w)} decoding="async" style={{ display: "block", maxWidth: "100%", maxHeight: 300, borderRadius: 14, objectFit: "contain",
-                border: `1px solid ${gold}44`, boxShadow: a11y ? "0 6px 18px rgba(120,85,25,0.18)" : "0 10px 28px rgba(0,0,0,0.45)" }} />
-            </div>) : null}
-          <div data-lens-card="" style={{ ...T.modCard, display: "block", padding: "14px 16px", cursor: "default" }}>
-            {tp.orig ? <div data-wine-orig="" style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: sub, lineHeight: 1.4, marginBottom: 4 }}>{tp.orig}</div> : null}
-            {w.producer ? <div style={{ fontSize: 13.5, color: sub }}>{w.producer}</div> : null}
-            <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.45, marginTop: 4 }}>{K.line(w) || K.t.noDesc(w)}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-              {K.pathTest(w) ? badge(K.t.pathBadge, gold) : null}
-              {w.stop ? badge("сегодня нет", red) : null}
-              {w.abv && K.kind !== "spirit" ? badge(String(w.abv).replace(".", ",") + "%", sub) : null}
+          {/* v136: шапка карточки — бутылка слева (фото или нарисованная), справа откуда, сорт, цены: «Одной фразой гостю» видна сразу */}
+          <div data-lens-card="" data-wine-hero="" style={{ ...T.modCard, display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 14px 14px 12px", cursor: "default" }}>
+            {w.img ? (
+              <div data-wine-photo-big="" role="button" tabIndex={0} aria-label="Фото бутылки крупно" onClick={() => { vibrate("light"); setPhotoBig(true); }} {...onActivate(() => setPhotoBig(true))}
+                style={{ width: 86, flexShrink: 0, cursor: "zoom-in" }}>
+                <img src={w.img} alt={"Бутылка: " + K.title(w)} decoding="async" style={{ display: "block", width: "100%", maxHeight: 150, borderRadius: 10, objectFit: "contain",
+                  border: `1px solid ${gold}44`, boxShadow: a11y ? "0 4px 12px rgba(120,85,25,0.16)" : "0 8px 20px rgba(0,0,0,0.4)" }} />
+              </div>) : (
+              <div data-wine-art="" aria-hidden="true" style={{ width: 62, flexShrink: 0, display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                <img src={bottleUrl(K.kind, w)} alt="" style={{ height: 140, width: "auto", display: "block" }} />
+              </div>)}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {tp.orig ? <div data-wine-orig="" style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: sub, lineHeight: 1.4, marginBottom: 3 }}>{tp.orig}</div> : null}
+              {w.producer ? <div style={{ fontSize: 13.5, color: sub }}>{w.producer}</div> : null}
+              <div style={{ fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.45, marginTop: 3 }}>{K.line(w) || K.t.noDesc(w)}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
+                {prioOn && !(canEditWines(profile) && setShared) ? badge("★ советуем", gold) : null}{/* руководителю — переключатель ниже */}
+                {K.pathTest(w) ? badge(K.t.pathBadge, gold) : null}
+                {w.stop ? badge("сегодня нет", red) : null}
+                {w.abv && K.kind !== "spirit" ? badge(String(w.abv).replace(".", ",") + "%", sub) : null}
+              </div>
+              {K.price(w) ? <div data-wine-price="" style={{ fontSize: 14, color: text, marginTop: 8, lineHeight: 1.45 }}>{K.price(w)}</div> : null}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                {onShareChat ? <ShareChat id={K.kind + ":" + w.id} onClick={() => onShareChat(drinkShareItem(K, w))} gold={gold} text={text} /> : null}
+                {canEditWines(profile) && setShared ? <PrioToggle on={prioOn} busy={busy || !menuLoaded} onClick={() => togglePrio(w)} gold={gold} text={text} /> : null}
+              </div>
             </div>
-            {K.price(w) ? <div style={{ fontSize: 14, color: text, marginTop: 10 }}>{K.price(w)}</div> : null}
-            {onShareChat ? <div style={{ marginTop: 12 }}><ShareChat id={K.kind + ":" + w.id} onClick={() => onShareChat(drinkShareItem(K, w))} gold={gold} text={text} /></div> : null}
           </div>
+          {photoBig && w.img ? (
+            <div data-wine-photo-full="" role="button" tabIndex={0} aria-label="Закрыть фото" onClick={() => setPhotoBig(false)} {...onActivate(() => setPhotoBig(false))}
+              style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,7,3,0.86)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18, cursor: "zoom-out" }}>
+              <img src={w.img} alt={"Бутылка: " + K.title(w)} style={{ maxWidth: "100%", maxHeight: "86vh", borderRadius: 14, objectFit: "contain", boxShadow: "0 12px 40px rgba(0,0,0,0.6)" }} />
+            </div>) : null}
+          {checkMsg ? <div data-wine-check-msg="" style={{ fontSize: 13.5, lineHeight: 1.45, color: red, margin: "8px 2px 0" }}>{checkMsg}</div> : null}
+          {/* v136: сегодня нет — сразу, что предложить вместо */}
+          {w.stop ? (
+            <div data-wine-instead={sims.length} style={{ marginTop: 10, padding: "10px 13px", borderRadius: 14, border: `1px solid ${red}88`, background: a11y ? "rgba(160,56,40,0.06)" : "rgba(224,120,120,0.08)" }}>
+              <div style={{ fontSize: 14, color: text, lineHeight: 1.45 }}>{sims.length ? "Сегодня нет. Предложи вместо:" : "Сегодня нет, а похожих в карте не нашлось."}</div>
+              {sims.length ? <div style={{ marginTop: 8 }}>{sims.map(simRow)}</div> : null}
+            </div>) : null}
+          <HowToSay words={[tp.main, tp.orig, ...(w.grapes || []), w.region]} gold={gold} text={text} a11y={a11y} />
           {unchecked(w) ? <div data-wine-unchecked="" style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.5, color: amber }}>
             Не проверено: {w.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}. Это подсказал AI, руководитель ещё не подтвердил.</div> : null}
           {w.short ? <>{sec("Одной фразой гостю")}<div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, lineHeight: 1.5, color: text }}>«{w.short}»</div></> : null}
@@ -281,26 +354,37 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
           {pairs.length || w.pairNote ? <>{sec("К блюдам")}
             {pairs.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{pairs.map((n) => <span key={n} data-lens-tag="" style={{ ...chip(false), cursor: "default", color: text }}>{n}</span>)}</div> : null}
             {w.pairNote ? <div style={{ fontSize: 13.5, color: sub, lineHeight: 1.5, marginTop: 6 }}>{w.pairNote}</div> : null}</> : null}
+          {!w.stop && sims.length ? <>{sec("Похожие в нашей карте")}<div data-wine-similar={sims.length}>{sims.map(simRow)}</div></> : null}
           <PrevNext a11y={a11y} gold={gold} text={text} sub={sub} steps={nav} name={(x) => titleParts(K, x).main} onGo={(id) => goCard(id, nav.prev && id === nav.prev.id ? "l" : "r")} />
         </div>
       </div>
     );
   }
 
-  const chipList = (pin) => [["all", "Все"], ...(glassN ? [["glass", K.t.pathChip]] : []), ...colors.map((k) => [k, K.GROUP[k]])].map(([k, t]) => (
-    <button key={k} type="button" aria-pressed={only === k} data-wine-only={pin ? undefined : k} data-wine-pin-only={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
-      onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={chip(only === k)}>{t}</button>));
+  // v136: «★ Советуем» (если руководитель отметил) и цветная точка у раздела
+  const chipList = (pin) => [["all", "Все"], ...(prioN ? [["prio", "★ Советуем"]] : []), ...(glassN ? [["glass", K.t.pathChip]] : []), ...colors.map((k) => [k, K.GROUP[k]])].map(([k, t]) => {
+    const dot = dotOf(K.kind, k);
+    return <button key={k} type="button" aria-pressed={only === k} data-wine-only={pin ? undefined : k} data-wine-pin-only={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
+      onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={{ ...chip(only === k), ...(dot ? { display: "inline-flex", alignItems: "center", gap: 6 } : {}) }}>{dot ? <Dot c={dot} a11y={a11y} /> : null}{t}</button>;
+  });
   const okText = a11y ? "#2F6B45" : green;
+  // v136: цена для «Кратко»: вино — бутылка (в «Бокалом» — бокал), крепкое — порция («40 мл 700 ₽»)
+  const rubN = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + "\u00a0₽";
+  const shortPrice = (x) => {
+    if (K.kind === "spirit") return x.pricePortion ? (x.portion ? x.portion + "\u00a0мл " : "") + rubN(x.pricePortion) : x.priceBottle ? rubN(x.priceBottle) : "";
+    const g = Number(x.priceGlass) || 0, b = Number(x.priceBottle) || 0;
+    return glassOnly && g ? rubN(g) : b ? rubN(b) : g ? "бокал " + rubN(g) : "";
+  };
   // v129: что прячет часть карты — строкой под разделами и в копии шапки; «Показать все» сбрасывает раздел, поиск и подбор
   const qt = q.trim(), filtered = only !== "all" || !!qt || pickN > 0;
-  const onlyLabel = only === "all" ? "" : only === "glass" ? K.t.pathChip : K.GROUP[only] || "";
+  const onlyLabel = only === "all" ? "" : only === "glass" ? K.t.pathChip : only === "prio" ? "советуем" : K.GROUP[only] || "";
   const resetAll = () => { setQ(""); setOnly("all"); setPick({ b: 0, s: "" }); setPickOpen(false); vibrate("light"); };
-  const filterNote = (compact) => <FilterNote parts={[onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "подбор гостю" : ""].filter(Boolean)} n={shown.length} total={all.length}
+  const filterNote = (compact) => <FilterNote parts={[onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "фильтр" : ""].filter(Boolean)} n={shown.length} total={all.length}
     onReset={resetAll} gold={gold} text={text} sub={sub} a11y={a11y} compact={compact} />;
   const secList = secNow ? groups.find(([k]) => k === secNow) : null;
   const pinLine = filtered ? filterNote(true) : secList ? <div data-bar-pin-sec={secNow} style={{ ...labelStyle(13), color: a11y ? "#6B4E1A" : gold, marginTop: 5 }}>{K.GROUP[secNow] + " · " + secList[1].length}</div> : null;
   const elsewhere = others && onOther && qt.length >= 2 ? others(qt, K.kind) : [];   // v129: поиск смотрит всю карту
-  const firstId = groups.length ? groups[0][1][0].id : null;
+  const firstId = groups.length && groups[0][1].length ? groups[0][1][0].id : null;   // v136: в порядке «Цена» и «А–Я» список может быть пустым
   // v129: строка «Учить» — как у коктейлей: каждая кнопка сразу в дело; всё остальное — «Ещё» (прежняя «Тренировка»)
   const learnItems = (() => {
     if (!(trainN >= 2 || (edit && all.length))) return [];
@@ -332,7 +416,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
               : edit ? K.t.emptyEdit : K.t.empty}
           </div>
           {onPrint && all.length ? <PrintLink gold={gold} text={text} a11y={a11y}
-            onClick={() => { remember(); onPrint(filtered && shown.length ? { kind: K.kind, ids: shown.map((x) => x.id), label: [onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "подбор гостю" : ""].filter(Boolean).join(", ") } : { kind: K.kind }); }} /> : null}
+            onClick={() => { remember(); onPrint(filtered && shown.length ? { kind: K.kind, ids: shown.map((x) => x.id), label: [onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "фильтр" : ""].filter(Boolean).join(", ") } : { kind: K.kind }); }} /> : null}
         </div>
         {saved && startId && !all.some((x) => x.id === startId) ? <div role="status" data-wine-saved="" style={{ fontSize: 13.5, color: okText, lineHeight: 1.45, margin: "0 2px 10px" }}>{saved}</div> : null}
         {!all.length && edit ? <button type="button" className="sa-btn" data-lens-btn="main" onClick={() => onEdit(null)}
@@ -351,11 +435,12 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
           <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
             <SearchField inputRef={searchRef} value={q} onChange={setQ} placeholder={K.t.searchPh} aria={K.t.searchAria} a11y={a11y} gold={gold} text={text} />
             {steps || sweets.length ? <button type="button" className="sa-btn" data-wine-pick-open={pickN} aria-pressed={pickOpen} aria-expanded={pickOpen} data-lens-btn={pickOpen || pickN ? "tab" : "soft"} data-lens-ink=""
-              onClick={() => { setPickOpen((v) => !v); vibrate("light"); }} style={{ ...chip(pickOpen || pickN > 0), flexShrink: 0, padding: "0 14px", fontSize: 13.5 }}>{pickN ? "Подобрать · " + pickN : "Подобрать"}</button> : null}
+              onClick={() => { setPickOpen((v) => !v); vibrate("light"); }} style={{ ...chip(pickOpen || pickN > 0), flexShrink: 0, padding: "0 14px", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {FILTER_IC(a11y ? "#6B4E1A" : gold, 14)}{pickN ? "Фильтр · " + pickN : "Фильтр"}</button> : null}
           </div>
           {pickOpen ? (
             <div data-wine-pick="" data-lens-card="" style={{ ...T.modCard, display: "block", cursor: "default", margin: "10px 0 0", padding: "10px 13px 12px" }}>
-              <div style={{ fontFamily: SERIF, fontSize: 15, color: text, margin: "2px 0 2px" }}>Подобрать гостю</div>
+              <div style={{ fontFamily: SERIF, fontSize: 15, color: text, margin: "2px 0 2px" }}>Фильтр</div>
               {steps ? <>
                 <div style={{ ...labelStyle(13), color: gold, margin: "8px 0 6px" }}>{K.kind === "spirit" ? "Бюджет за порцию" : glassOnly ? "Бюджет за бокал" : "Бюджет за бутылку"}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{budgetLabels(steps).map((t, i) => (
@@ -375,43 +460,61 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
             {chipList(false)}
           </div>
           {filtered ? filterNote(false) : null}
+          {shown.length ? <ViewBar sorts={SORTS} sort={sort} onSort={setSort} short={short} onShort={setShort} gold={gold} text={text} sub={sub} a11y={a11y} /> : null}
           {!shown.length ? <div data-bar-none={elsewhere.length ? "here" : "all"} style={{ fontSize: 14, color: sub, padding: elsewhere.length ? "14px 2px 2px" : "18px 2px" }}>{elsewhere.length ? "Здесь не нашлось." : "Ничего не нашлось."}</div> : null}
           {groups.map(([k, list]) => {
-            const un = edit ? list.filter(unchecked).length : 0;
+            const un = edit && k ? list.filter(unchecked).length : 0;
+            const rows = list.map((x) => {
+              const open = () => { vibrate("light"); remember(); setSlide(""); setOpenId(x.id); };
+              const tp = titleParts(K, x);
+              const pr = isPrio(x);
+              // v136: «Кратко» — одна строка: точка раздела, название, отметки, цена
+              if (short) return (
+                <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-wine-row={x.id} data-wine-short="" data-lens-card="" onClick={open} {...onActivate(open)}
+                  style={{ ...T.modCard, display: "flex", gap: 9, alignItems: "center", padding: "9px 10px 9px 13px", marginBottom: 6, opacity: x.stop ? 0.6 : 1 }}>
+                  <Dot c={dotOf(K.kind, K.groupKey(x))} a11y={a11y} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tp.main}</span>
+                  {pr ? <span data-wine-prio="" aria-label="советуем" style={{ color: a11y ? "#6B4E1A" : gold, fontSize: 13, flexShrink: 0 }}>★</span> : null}
+                  {/* «бокалом» — значком бокала: в узкой строке слово съедало название; «ходовое» у крепкого — в разделе «Ходовое» */}
+                  {x.stop ? badge("сегодня нет", red) : K.kind === "wine" && K.pathTest(x) ? <span data-wine-short-glass="" role="img" aria-label="бокалом" title="бокалом" style={{ display: "inline-flex", flexShrink: 0 }}>{BUILD_SVG.wineglass(a11y ? "#6B4E1A" : gold, 15)}</span> : null}
+                  {shortPrice(x) ? <span data-wine-short-price="" style={{ flexShrink: 0, fontSize: 13, color: text, whiteSpace: "nowrap" }}>{shortPrice(x)}</span> : null}
+                  <Chevron gold={gold} />
+                </div>);
+              return (
+                <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
+                  style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "11px 12px 11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                  <WineThumb w={x} gold={gold} a11y={a11y} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{tp.main}</span>
+                      {tp.orig ? <span data-wine-orig="" style={{ display: "block", fontFamily: SERIF, fontStyle: "italic", fontSize: 12.5, color: sub, lineHeight: 1.35, marginTop: 1 }}>{tp.orig}</span> : null}
+                    </span>
+                    {K.pathTest(x) ? badge(K.t.pathBadge, gold) : null}
+                    {x.stop ? badge("сегодня нет", red) : null}
+                  </div>
+                  {K.line(x) ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{K.line(x)}</div> : null}
+                  {K.price(x) || unchecked(x) || pr ? <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+                    {K.price(x) ? <span style={{ fontSize: 12.5, color: text }}>{K.price(x)}</span> : null}
+                    {pr ? <span data-wine-prio="" style={{ fontSize: 11.5, lineHeight: 1.45, padding: "0 7px", borderRadius: 999, border: `1px solid ${gold}88`, color: a11y ? "#6B4E1A" : gold }}>★ советуем</span> : null}
+                    {unchecked(x) ? <span data-wine-ai-tag="" title="Это дописал AI, руководитель ещё не проверил" style={{ fontSize: 11, lineHeight: 1.45, padding: "0 6px", borderRadius: 999, border: `1px solid ${sub}88`, color: sub }}>AI</span> : null}
+                  </div> : null}
+                  </div>
+                  <Chevron gold={gold} />
+                </div>
+              );
+            });
+            // v136: в порядке «Цена» и «А–Я» — один список без заголовков разделов
+            if (!k) return <div key="flat" data-wine-flat={sort}>{rows}</div>;
             return (
             <div key={k} data-wine-group={k}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 2px 6px" }}>
-                <div style={{ ...labelStyle(13.5), color: gold, flex: 1, minWidth: 0 }}>{K.GROUP[k]} · {list.length}</div>
+                <div style={{ ...labelStyle(13.5), color: gold, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 7 }}><Dot c={dotOf(K.kind, k)} a11y={a11y} />{K.GROUP[k]} · {list.length}</div>
                 {un ? <button type="button" className="sa-btn" data-wine-sec-ok={k} data-wine-sec-sure={secSure === k ? "1" : undefined} data-lens-btn={secSure === k ? "main" : "soft"} data-lens-ink="" disabled={busy}
                   onClick={() => confirmSection(k, list)} style={{ ...chip(secSure === k), flexShrink: 0, padding: "4px 11px", fontSize: 12.5, ...(secSure === k ? { color: text, borderColor: gold } : {}) }}>
                   {secSure === k ? "Подтвердить " + un + "? Коснись ещё раз" : "Верно для раздела: " + un}</button> : null}
               </div>
-              {list.map((x) => {
-                const open = () => { vibrate("light"); remember(); setSlide(""); setOpenId(x.id); };
-                const tp = titleParts(K, x);
-                return (
-                  <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-wine-row={x.id} data-lens-card="" onClick={open} {...onActivate(open)}
-                    style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "11px 12px 11px 14px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
-                    {withPics ? <WineThumb w={x} gold={gold} a11y={a11y} /> : null}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{tp.main}</span>
-                        {tp.orig ? <span data-wine-orig="" style={{ display: "block", fontFamily: SERIF, fontStyle: "italic", fontSize: 12.5, color: sub, lineHeight: 1.35, marginTop: 1 }}>{tp.orig}</span> : null}
-                      </span>
-                      {K.pathTest(x) ? badge(K.t.pathBadge, gold) : null}
-                      {x.stop ? badge("сегодня нет", red) : null}
-                    </div>
-                    {K.line(x) ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{K.line(x)}</div> : null}
-                    {K.price(x) || unchecked(x) ? <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
-                      {K.price(x) ? <span style={{ fontSize: 12.5, color: text }}>{K.price(x)}</span> : null}
-                      {unchecked(x) ? <span data-wine-ai-tag="" title="Это дописал AI, руководитель ещё не проверил" style={{ fontSize: 11, lineHeight: 1.45, padding: "0 6px", borderRadius: 999, border: `1px solid ${sub}88`, color: sub }}>AI</span> : null}
-                    </div> : null}
-                    </div>
-                    <Chevron gold={gold} />
-                  </div>
-                );
-              })}
+              {rows}
             </div>);
           })}
           {filtered && shown.length ? <EndNote text={only !== "all" && !qt && !pickN ? "Это весь раздел «" + onlyLabel + "»" : "Это всё, что нашлось"} button={K.t.showAll} onClick={resetAll} gold={gold} sub={sub} a11y={a11y} /> : null}

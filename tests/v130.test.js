@@ -114,7 +114,7 @@ describe("v130: экран печати", () => {
   it("«Печать» в строке под вкладками у всех вкладок: вкладка и что на ней показано; «назад» — туда же", () => {
     const L = rd("ui/wine-list.jsx"), B = rd("ui/bar-card.jsx"), K = rd("ui/bar-kit.jsx");
     for (const s of ["export function PrintLink(", 'data-bar-print-open=""', "Печать</button>", "export function ShareChat(", "Поделиться в чат</button>", 'import { CHAT_SHARE_IC } from "./share-chat"']) expect(K, s).toContain(s);
-    expect(L).toContain('onPrint(filtered && shown.length ? { kind: K.kind, ids: shown.map((x) => x.id), label: [onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "подбор гостю" : ""].filter(Boolean).join(", ") } : { kind: K.kind });');
+    expect(L).toContain('onPrint(filtered && shown.length ? { kind: K.kind, ids: shown.map((x) => x.id), label: [onlyLabel, qt ? "по запросу «" + qt + "»" : "", pickN ? "фильтр" : ""].filter(Boolean).join(", ") } : { kind: K.kind });');   // v136: «Подобрать гостю» стало «Фильтр»
     expect(B).toContain('onPrint(filtered && shownN ? { kind: "cocktail", ids: shown.flatMap(([, l]) => l.map((x) => x.id)),');
     expect(B).toContain("if (print) return <BarPrint T={T} a11y={a11y} restaurant={restaurant} cocktails={cocktails} wines={wines} spirits={spirits} start={print} onBack={() => { vibrate(\"light\"); setPrint(null); }} />;");
     expect((B.match(/onPrint=\{setPrint\} onShareChat=\{onShareChat\}/g) || []).length).toBe(2);

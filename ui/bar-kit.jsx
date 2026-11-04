@@ -13,6 +13,8 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { scrollRoot } from "./bar-pin";
 import { CHAT_SHARE_IC } from "./share-chat";   // v130: «Поделиться в чат» — тот же значок, что в колодах
+import { findPronounce, stressText, plainText } from "../lib/pronounce";   // v136: «Как сказать» в карточке
+import { canSpeak, speakText } from "../lib/speech";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const rootTarget = (root) => (root === document.scrollingElement || root === document.documentElement ? window : root);
@@ -197,3 +199,67 @@ export function BarHint({ a11y, ready, has }) {
   return <HintBubble a11y={a11y} text={s.text} anchorId={s.id} step={at + 1} total={steps.length}
     onNext={at >= steps.length - 1 ? null : () => setI((v) => v + 1)} onClose={done} />;
 }
+
+// ── v136 (Доп. 449): «Барная карта» ещё удобнее и красивее. Владелец (04.11): «Как думаешь, ещё удобнее и красивее барную
+// карту можно сделать?» — на десять предложений «Давай все» (первый, «карта сразу на первом экране», пока отложен) ──
+
+/** Значок «Фильтр» (бюджет и сладость, был «Подобрать»: так же называлась кнопка «Сомелье»): две ручки на линиях. */
+export const FILTER_IC = (c, s = 15) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false">
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>);
+
+/** Цветная точка раздела: цвет вина, вид крепкого, основа коктейля (lib/bar-view.js, dotOf) — в кнопке раздела и в заголовке. */
+export const Dot = ({ c, a11y = false, s = 8 }) => (c ? <span aria-hidden="true" data-bar-dot={c} style={{ display: "inline-block", width: s, height: s, borderRadius: s, flexShrink: 0, background: c,
+  boxShadow: `0 0 0 1px ${a11y ? "rgba(60,40,10,0.45)" : "rgba(0,0,0,0.5)"}` }} /> : null);
+
+/** Порядок и вид списка вкладки — телефон помнит (у каждой вкладки свои): sort — "sec" | "price" | "az", short — «Кратко». */
+const prefKey = (what, kind) => "sa_bar_" + what + "_" + kind;
+const readPref = (what, kind, def) => { try { const v = localStorage.getItem(prefKey(what, kind)); return v == null ? def : what === "short" ? v === "1" : v; } catch (e) { return def; } };
+export function useListPref(kind) {
+  const [sort, setSort0] = React.useState(() => readPref("sort", kind, "sec"));
+  const [short, setShort0] = React.useState(() => readPref("short", kind, false));
+  const setSort = (v) => { setSort0(v); try { localStorage.setItem(prefKey("sort", kind), v); } catch (e) {} };
+  const setShort = (v) => { setShort0(v); try { localStorage.setItem(prefKey("short", kind), v ? "1" : "0"); } catch (e) {} };
+  return { sort, setSort, short, setShort };
+}
+
+/** Строка над списком: порядок («Разделы · Цена · А–Я») и вид («Подробно · Кратко»). */
+export function ViewBar({ sorts, sort, onSort, short, onShort, gold, text, sub, a11y }) {
+  const seg = (on) => ({ padding: "5px 11px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: SERIF, fontSize: 12.5, whiteSpace: "nowrap", lineHeight: 1.2,
+    background: on ? (a11y ? "rgba(139,106,48,0.16)" : "rgba(214,178,102,0.18)") : "transparent", color: on ? text : sub, fontWeight: on ? "bold" : "normal" });
+  const box = { display: "inline-flex", gap: 2, padding: 2, borderRadius: 999, border: `1px solid ${gold}44`, background: a11y ? "rgba(255,255,255,0.4)" : "rgba(255,248,230,0.03)" };
+  return (
+    <div data-bar-view={sort + (short ? ",short" : "")} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, margin: "10px 0 2px" }}>
+      {sorts.length > 1 ? <div role="group" aria-label="Порядок" data-lens-seg="flat" style={box}>
+        {sorts.map(([k, t]) => <button key={k} type="button" aria-pressed={sort === k} data-bar-sort={k} data-lens-btn={sort === k ? "tab" : undefined}
+          onClick={() => { if (sort !== k) { vibrate("light"); onSort(k); } }} style={seg(sort === k)}>{t}</button>)}</div> : null}
+      <span style={{ flex: 1 }} />
+      <div role="group" aria-label="Вид списка" data-lens-seg="flat" style={box}>
+        {[[false, "Подробно"], [true, "Кратко"]].map(([v, t]) => <button key={t} type="button" aria-pressed={short === v} data-bar-short={v ? "on" : "off"} data-lens-btn={short === v ? "tab" : undefined}
+          onClick={() => { if (short !== v) { vibrate("light"); onShort(v); } }} style={seg(short === v)}>{t}</button>)}</div>
+    </div>);
+}
+
+/** «Как сказать: Ри́слинг · Кабине́тт» и «Послушать» (как у позиции в «Сомелье»): словарь произношения знает название,
+ *  сорт или регион; не знает — строки нет. */
+export function HowToSay({ words, gold, text, a11y }) {
+  // по порядку: сначала название, потом оригинал, сорт и регион («Шабли́ · Шардоне́», а не как в словаре)
+  const found = [];
+  for (const w of [].concat(words || []).filter(Boolean)) for (const e of findPronounce(w, 3)) if (found.length < 3 && !found.includes(e)) found.push(e);
+  if (!found.length) return null;
+  return (
+    <div data-bar-say={found.map((e) => plainText(e.w)).join(",")} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 14, color: text, lineHeight: 1.5 }}>
+      <span><span style={{ ...labelStyle(13.5), color: gold }}>Как сказать: </span>{found.map((e) => stressText(e.w)).join(" · ")}</span>
+      {canSpeak() ? <button type="button" className="sa-btn" data-bar-listen="" data-lens-btn="soft" data-lens-ink="" onClick={() => { vibrate("light"); speakText(found.map((e) => plainText(e.w)).join(", "), { cancelBefore: true, rate: 0.9 }); }}
+        style={{ padding: "4px 11px", borderRadius: 999, border: `1px solid ${gold}66`, background: "transparent", color: a11y ? "#6B4E1A" : gold, fontFamily: SERIF, fontSize: 12.5, cursor: "pointer" }}>Послушать</button> : null}
+    </div>);
+}
+
+/** Руководителю в карточке: «☆ Советовать первым» / «★ Советуем первым» (та же отметка, что «☆ Первым» в подборе «Сомелье»). */
+export function PrioToggle({ on, busy, onClick, gold, text }) {
+  return <button type="button" className="sa-btn" data-bar-prio={on ? "on" : "off"} aria-pressed={on} data-lens-btn={on ? "tab" : "soft"} data-lens-ink="" disabled={busy}
+    onClick={(e) => { e.stopPropagation(); vibrate("light"); onClick(); }}
+    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, border: `1px solid ${on ? gold : gold + "55"}`, background: on ? "rgba(214,178,102,0.16)" : "transparent", color: text, fontFamily: SERIF, fontSize: 12.5, cursor: "pointer", lineHeight: 1.2 }}>
+    {on ? "★ Советуем первым" : "☆ Советовать первым"}</button>;
+}
+

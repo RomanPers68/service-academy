@@ -546,7 +546,8 @@ await run("FILTER", async () => {
   await o.page.locator("[data-wine-pick-open]").click(); await sleep(300);
   await o.page.locator('[data-wine-budget="1"]').click(); await sleep(400);
   const f2 = await listFilter(o.page);
-  ok("FILTER: поиск и подбор — «Показаны: по запросу «Wine», подбор гостю, N из 30»", /^Показаны: по запросу «Wine», подбор гостю, \d+ из 30 · Показать все$/.test(f2), f2);
+  // v136 (Доп. 449): «Подобрать гостю» стало «Фильтр» — и в строке «Показаны: …»
+  ok("FILTER: поиск и фильтр — «Показаны: по запросу «Wine», фильтр, N из 30»", /^Показаны: по запросу «Wine», фильтр, \d+ из 30 · Показать все$/.test(f2), f2);
   const e2 = await o.page.evaluate(() => ((document.querySelector("[data-bar-end]") || {}).innerText || "").replace(/\s+/g, " ").trim());
   ok("FILTER: с поиском в конце — «Это всё, что нашлось»", e2 === "Это всё, что нашлось Показать все вина", e2);
   await o.page.locator("[data-wine-list] [data-bar-filter-reset]").click(); await sleep(500);

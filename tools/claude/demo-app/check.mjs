@@ -19,6 +19,8 @@
 // v129 (Доп. 442): Мария — подсказка первого входа в «Барную карту», строка «Учить», «Показаны: …», «Нашлось во вкладке».
 // v131 (Доп. 444): Мария — «Сомелье»: к блюду и бокалом, ответ с «почему» и фразой гостю, карточка и «назад» к подбору.
 // v132 (Доп. 445): Мария — «Сомелье» умнее: ответ в режиме сервера, «Гость взял», «На стол», итог и вкус по шкалам через ИИ.
+// v136 (Доп. 449): Мария — «Барная карта» удобнее и красивее: «Цена» и «Кратко», «★ Советуем», нарисованные бутылки, карточка
+// вина («Сегодня нет. Предложи вместо», «Как сказать», «Похожие»), коктейли («стир · рокс · Hendrick's», «Как готовить» свёрнуто).
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -209,7 +211,8 @@ if (!ONLY || ONLY.includes("maria")) {
   await page.waitForSelector("#demo-tgchat", { timeout: 8000 }).catch(() => {});
   const mo = await page.locator("#demo-tgchat .t").innerText().catch(() => "");
   const btns = await page.locator("#demo-tgchat .kb button").allInnerTexts().catch(() => []);
-  ok("Марии: «Утро руководителя» в Telegram — смена, неделя, стоп-лист, вчера, кнопки", /^Доброе утро, Мария/.test(mo) && /Сегодня в смене \d/.test(mo) && /Стоп-лист: 2/.test(mo)
+  // v136: в стопе два блюда и «Совиньон блан» (в его карточке «Предложи вместо»)
+  ok("Марии: «Утро руководителя» в Telegram — смена, неделя, стоп-лист, вчера, кнопки", /^Доброе утро, Мария/.test(mo) && /Сегодня в смене \d/.test(mo) && /Стоп-лист: 3/.test(mo)
     && /Гости сказали спасибо 4 раза/.test(mo) && /Давно не занимались/.test(mo) && btns[0] === "Открыть утро", mo.replace(/\s+/g, " ").slice(0, 160) + " · " + btns.join("|"));
   await shot("m0-morning-tg");
   await page.locator('#demo-tgchat [data-demo-tgbtn="morning"]').click().catch(() => {}); await page.waitForTimeout(2200);
@@ -461,9 +464,12 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m32-cocktails-art");
   // затем владелец: «Делаешь лишние движения» — «Да, давай»: карточка коктейля здесь же, листать подряд, поиск находит вина
   await page.locator('[data-bar-ck="negroni"]').click().catch(() => {}); await page.waitForTimeout(700);
+  // v136: «Как готовить» в карточке свёрнуто (состав уже сверху) — раскрыть касанием
+  const howClosed = await page.evaluate(() => (document.querySelector("[data-bar-ck-how-toggle]") || { getAttribute: () => "" }).getAttribute("data-bar-ck-how-toggle") === "closed" && !document.querySelector("[data-bar-ck-how]"));
+  await page.locator("[data-bar-ck-how-toggle]").click().catch(() => {}); await page.waitForTimeout(300);
   const cc = await page.evaluate(() => { const c = document.querySelector("[data-bar-ck-card]"); return c ? { id: c.getAttribute("data-bar-ck-card"), ing: c.querySelectorAll("[data-bar-ck-ing] > div").length,
     how: c.querySelectorAll("[data-bar-ck-how] li").length, learn: !!c.querySelector("[data-bar-ck-learn]"), build: !!c.querySelector("[data-bar-ck-build]") } : null; });
-  ok("Карточка коктейля в «Барной карте»: состав с граммовкой, как готовить, «Учить в колоде», «Собрать руками»", !!cc && cc.id === "negroni" && cc.ing === 3 && cc.how === 7 && cc.learn && cc.build, JSON.stringify(cc));
+  ok("Карточка коктейля в «Барной карте»: состав с граммовкой, как готовить, «Учить в колоде», «Собрать руками»", !!cc && cc.id === "negroni" && cc.ing === 3 && howClosed && cc.how === 7 && cc.learn && cc.build, JSON.stringify({ howClosed, ...cc }));
   await shot("m33-cocktail-card");
   await page.evaluate(() => { const r = document.getElementById("root"); r.scrollTop = r.scrollHeight; }); await page.waitForTimeout(400);
   await shot("m34-card-steps");
@@ -584,6 +590,66 @@ if (!ONLY || ONLY.includes("maria")) {
   await page.locator("[data-wine-fill]").click().catch(() => {}); await page.waitForTimeout(1700);
   const ab2 = await page.evaluate(() => ((document.querySelector("[data-wine-ai-note]") || {}).textContent || ""));
   ok("Ещё раз: «AI не знает об этой позиции больше, чем уже вписано»", ab2 === "AI не знает об этой позиции больше, чем уже вписано", ab2);
+  // v136 (Доп. 449): «Барная карта» удобнее и красивее. Владелец (04.11): «Как думаешь, ещё удобнее и красивее барную карту
+  // можно сделать?» — «Давай все». Руководитель отметил «★ Советуем первым» Пино Нуар, Glenfiddich и Негрони; Совиньон блан сегодня закончился
+  await toBar("wine", 1500);
+  const v6vb = await page.evaluate(() => ({ view: (document.querySelector("[data-bar-view]") || { getAttribute: () => "" }).getAttribute("data-bar-view"),
+    sorts: [...document.querySelectorAll("[data-bar-sort]")].map((e) => e.getAttribute("data-bar-sort")).join(","),
+    art: [...document.querySelectorAll("[data-wine-row]")].filter((r) => (r.querySelector("[data-wine-thumb]") || { getAttribute: () => "" }).getAttribute("data-wine-thumb") === "art").map((r) => r.getAttribute("data-wine-row")).join(","),
+    thumbs: document.querySelectorAll("[data-wine-row] [data-wine-thumb]").length, rows: document.querySelectorAll("[data-wine-row]").length,
+    prio: [...document.querySelectorAll("[data-wine-row]")].filter((r) => r.querySelector("[data-wine-prio]")).map((r) => r.getAttribute("data-wine-row")).join(","),
+    chip: !!document.querySelector('[data-wine-only="prio"]'), filter: ((document.querySelector("[data-wine-pick-open]") || {}).textContent || "").trim() }));
+  ok("Вина: «Разделы · Цена · А–Я» и «Подробно · Кратко»; без фото — нарисованная бутылка; «★ советуем» у Пино Нуар; кнопка «Фильтр»",
+    v6vb.view === "sec" && v6vb.sorts === "sec,price,az" && /wn-demo-3/.test(v6vb.art) && /wn-demo-5/.test(v6vb.art) && v6vb.thumbs === v6vb.rows && v6vb.prio === "wn-demo-6" && v6vb.chip && /^Фильтр/.test(v6vb.filter), JSON.stringify(v6vb));
+  await page.locator('[data-bar-sort="price"]').click().catch(() => {}); await page.waitForTimeout(400);
+  const v6pz = await page.evaluate(() => ({ flat: (document.querySelector("[data-wine-flat]") || { getAttribute: () => "" }).getAttribute("data-wine-flat"),
+    rows: [...document.querySelectorAll("[data-wine-flat] [data-wine-row]")].map((r) => r.getAttribute("data-wine-row")) }));
+  ok("«Цена»: одним списком от недорогих, первым «Москато д’Асти»", v6pz.flat === "price" && v6pz.rows.length === 9 && v6pz.rows[0] === "wn-demo-8", JSON.stringify(v6pz));
+  await shot("m49-wines-price");
+  await page.locator('[data-bar-sort="sec"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator('[data-bar-short="on"]').click().catch(() => {}); await page.waitForTimeout(400);
+  const v6sr = await page.evaluate(() => ({ n: document.querySelectorAll("[data-wine-short]").length, price: ((document.querySelector('[data-wine-row="wn-demo-2"] [data-wine-short-price]') || {}).textContent || "").replace(/\u00a0/g, " "),
+    glass: !!document.querySelector('[data-wine-row="wn-demo-2"] [data-wine-short-glass]'), stop: ((document.querySelector('[data-wine-row="wn-demo-3"]') || {}).textContent || "").includes("сегодня нет") }));
+  ok("«Кратко»: строка в одну линию: название, значок «бокалом», цена бутылки; «сегодня нет» на месте", v6sr.n === 9 && v6sr.price === "5 200 ₽" && v6sr.glass && v6sr.stop, JSON.stringify(v6sr));
+  await shot("m50-wines-short");
+  await page.locator('[data-bar-short="off"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator('[data-wine-row="wn-demo-3"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const v6sv = await page.evaluate(() => { const b = document.querySelector("[data-wine-instead]"); return { t: b ? b.innerText.replace(/\s+/g, " ").slice(0, 40) : "",
+    go: [...document.querySelectorAll("[data-wine-instead] [data-wine-similar-go]")].map((e) => e.getAttribute("data-wine-similar-go")).join(","), art: !!document.querySelector("[data-wine-hero] [data-wine-art]") }; });
+  ok("«Совиньон блан» сегодня нет: «Предложи вместо» первыми Шабли и Рислинг; в шапке нарисованная бутылка", /^Сегодня нет\. Предложи вместо:/.test(v6sv.t) && /^wn-demo-2,wn-demo-4/.test(v6sv.go) && v6sv.art, JSON.stringify(v6sv));
+  await shot("m51-wine-instead");
+  await page.locator('[data-wine-instead] [data-wine-similar-go="wn-demo-2"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const v6ch = await page.evaluate(() => ({ title: (document.querySelector("h1, [data-wine-card] h2") || {}).textContent || "", say: (document.querySelector("[data-bar-say]") || { getAttribute: () => "" }).getAttribute("data-bar-say"),
+    photo: !!document.querySelector("[data-wine-hero] [data-wine-photo-big]"), sim: (document.querySelector("[data-wine-similar]") || { getAttribute: () => "" }).getAttribute("data-wine-similar") }));
+  ok("Касание — карточка Шабли: фото бутылки в шапке, «Как сказать: Шабли́ · Шардоне́», «Похожие в нашей карте»", v6ch.say === "Шабли,Шардоне" && v6ch.photo && Number(v6ch.sim) >= 2, JSON.stringify(v6ch));
+  await shot("m52-wine-chablis");
+  await page.locator("[data-wine-photo-big]").click().catch(() => {}); await page.waitForTimeout(400);
+  const v6big = await page.locator("[data-wine-photo-full] img").count();
+  await page.locator("[data-wine-photo-full]").click().catch(() => {}); await page.waitForTimeout(300);
+  ok("Фото бутылки крупно — касанием, второе касание закрывает", v6big === 1 && !(await page.locator("[data-wine-photo-full]").count()), String(v6big));
+  await page.locator('[data-lens="back"]').first().click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator('[data-wine-row="wn-demo-6"]').click().catch(() => {}); await page.waitForTimeout(900);
+  const v6p0 = await page.evaluate(() => (document.querySelector("[data-bar-prio]") || { getAttribute: () => "" }).getAttribute("data-bar-prio"));
+  await page.locator("[data-bar-prio]").click().catch(() => {}); await page.waitForTimeout(900);
+  const v6p1 = await page.evaluate(() => (document.querySelector("[data-bar-prio]") || { getAttribute: () => "" }).getAttribute("data-bar-prio"));
+  await page.locator("[data-bar-prio]").click().catch(() => {}); await page.waitForTimeout(900);
+  const v6p2 = await page.evaluate(() => (document.querySelector("[data-bar-prio]") || { getAttribute: () => "" }).getAttribute("data-bar-prio"));
+  ok("Руководителю в карточке: «★ Советуем первым» снимается и ставится (та же отметка, что в «Сомелье»)", v6p0 === "on" && v6p1 === "off" && v6p2 === "on", [v6p0, v6p1, v6p2].join(","));
+  await shot("m53-wine-prio");
+  await toBar("cocktail", 1500);
+  const v6ck = await page.evaluate(() => ({ neg: ((document.querySelector('[data-bar-ck="negroni"]') || {}).innerText || "").replace(/\s+/g, " "), chip: !!document.querySelector('[data-bar-ck-only="prio"]'),
+    dots: document.querySelectorAll("[data-bar-ck-group] [data-bar-dot]").length }));
+  ok("Коктейли: «Негрони ★ советуем», в одной строке «стир · рокс · Hendrick's, Campari»; у разделов цветные точки", /★ советуем/.test(v6ck.neg) && /стир · рокс · Hendrick's, Campari/.test(v6ck.neg) && v6ck.chip && v6ck.dots >= 5, JSON.stringify(v6ck));
+  await page.locator('[data-bar-ck-only="prio"]').click().catch(() => {}); await page.waitForTimeout(400);
+  const v6ckp = await page.evaluate(() => [...document.querySelectorAll("[data-bar-ck]")].map((e) => e.getAttribute("data-bar-ck")).join(","));
+  ok("Раздел «★ Советуем» — только отмеченные", v6ckp === "negroni", v6ckp);
+  await shot("m54-cocktails-prio");
+  await page.locator('[data-bar-ck-only="all"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await toBar("spirit", 1500);
+  const v6sp = await page.evaluate(() => ({ prio: [...document.querySelectorAll("[data-wine-row]")].filter((r) => r.querySelector("[data-wine-prio]")).map((r) => r.getAttribute("data-wine-row")).join(","),
+    art: [...document.querySelectorAll("[data-wine-row] [data-wine-thumb]")].filter((t) => t.getAttribute("data-wine-thumb") === "art").length }));
+  ok("Крепкое: «★ советуем» у Glenfiddich; без фото — бутылка по виду (виски, коньяк, джин…)", v6sp.prio === "sp-demo-1" && v6sp.art >= 6, JSON.stringify(v6sp));
+  await shot("m55-spirits-art");
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });

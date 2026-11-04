@@ -323,7 +323,9 @@ describe("v127: экраны", () => {
   it("вкладка запоминается; вина и крепкое — один экран с видом; коктейль — в «Колоду бармена»", () => {
     const BC = rd("ui/bar-card.jsx");
     for (const s of ['const TAB_KEY = "sa_bar_tab";', "React.useEffect(() => { saveTab(cur); }, [cur]);", 'data-bar-tab={pin ? undefined : k}', "<WineListScreen key={cur} kind={cur}",
-      "onEdit={onEdit ? (id) => onEdit(cur, id) : undefined}", "Из нашей карты: ", "В карте бара пока нет коктейлей."]) expect(BC, s).toContain(s);
+      "onEdit={onEdit ? (id) => onEdit(cur, id) : undefined}", "В карте бара пока нет коктейлей."]) expect(BC, s).toContain(s);
+    // v136 (Доп. 449): что из нашей карты — в той же строке, что метод и бокал («шейк · купе · Hendrick's»), без «Из нашей карты: »
+    expect(BC).toContain('{line}{line && ours.length ? " · " : ""}{ours.length ? <span data-bar-ck-spirits={ours.length}');
     const L = rd("ui/wine-list.jsx");
     for (const s of ["const K = drinkOf(kind);", "data-drink-kind={K.kind}", "В коктейлях нашего бара", "data-spirit-cocktail={c.id}", 'if (menuLoaded && K.kind === "wine") wineCatchUp(']) expect(L, s).toContain(s);
     const APP = rd("App.jsx");

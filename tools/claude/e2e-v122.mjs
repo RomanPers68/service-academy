@@ -352,7 +352,9 @@ await run("FORM", async () => {
   await toList(o.page); await sleep(1300);
   const rows = await o.page.evaluate(() => [...document.querySelectorAll("[data-wine-row]")].map((r) => ({ id: r.getAttribute("data-wine-row"), t: (r.querySelector("[data-wine-thumb]") || { getAttribute: () => "" }).getAttribute("data-wine-thumb") })));
   const loaded = await imgOk(o.page, "[data-wine-row] img");
-  ok("FORM: «Винная карта» — миниатюры у всех строк, фото загрузились", rows.length === 6 && rows.every((r) => r.t) && loaded.length === 2 && loaded.every((x) => x.ok), JSON.stringify({ rows, loaded }));
+  // v136 (Доп. 449): без фото — нарисованная бутылка (картинка SVG), а не силуэт: картинок шесть, из них два фото
+  ok("FORM: «Винная карта» — миниатюры у всех строк, фото загрузились", rows.length === 6 && rows.every((r) => r.t) && loaded.length === 6 && loaded.every((x) => x.ok)
+    && loaded.filter((x) => !x.src.startsWith("data:image/svg")).length === 2, JSON.stringify({ rows, loaded }));
   await shot(o.page, "list-thumbs");
   await o.page.locator(`[data-wine-row="${w.id}"]`).click(); await sleep(900);
   const big = await imgOk(o.page, "[data-wine-photo-big] img");

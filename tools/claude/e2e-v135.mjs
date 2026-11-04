@@ -580,8 +580,23 @@ await run("PRACTICE", async () => {
   await o.page.evaluate(() => { const W = document.documentElement.clientWidth; const e = [...document.querySelectorAll("div, span, button")].filter((x) => x.children.length === 0 && x.textContent.trim() === "Практика ситуаций")
     .find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= W; }); if (e) e.click(); });
   await until(() => o.page.locator("[data-lens-opt]").count(), 8000);
-  // «собери правило» — первая ситуация практики «Продукта»
-  const opts = await o.page.evaluate(() => [...document.querySelectorAll("[data-lens-opt]")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+  // «собери правило» — одна из семи ситуаций практики «Продукта»; раунд — шесть случайных в случайном порядке (v136: тест
+  // ждал её первой и падал, когда выпадала другая). Отвечаем и идём дальше, пока не встретится; конец раунда — «Сыграть ещё
+  // раз» (сначала то, чего ещё не было), так за два раунда видны все семь
+  const TARGET = "кислотный или танинный: он «разжижает» жир";
+  let opts = [];
+  for (let k = 0; k < 16; k++) {
+    await until(() => o.page.locator("[data-lens-opt]").count(), 5000);
+    opts = await o.page.evaluate(() => [...document.querySelectorAll("[data-lens-opt]")].map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+    if (opts.includes(TARGET)) break;
+    if (opts.length) { await o.page.locator("[data-lens-opt]").first().click().catch(() => {}); await sleep(500); }
+    const step = await o.page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /^(Дальше →|Финиш)/.test(x.textContent.trim())); if (b) { b.click(); return "next"; }
+      const r = [...document.querySelectorAll("button")].find((x) => /Сыграть ещё раз/.test(x.textContent)); if (r) { r.click(); return "again"; } return ""; });
+    await sleep(step === "again" ? 900 : 600);
+    if (await o.page.evaluate(() => [...document.querySelectorAll("button")].some((x) => /Сыграть ещё раз/.test(x.textContent)))) {
+      await o.page.evaluate(() => { const r = [...document.querySelectorAll("button")].find((x) => /Сыграть ещё раз/.test(x.textContent)); if (r) r.click(); }); await sleep(900);
+    }
+  }
   ok("PRACTICE: «собери правило» — «кислотный или танинный: он «разжижает» жир»", opts.includes("кислотный или танинный: он «разжижает» жир"), JSON.stringify(opts));
   await shot(o.page, "practice");
   const i = opts.indexOf("кислотный или танинный: он «разжижает» жир"), wrong = opts.findIndex((x, k) => k !== i);

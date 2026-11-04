@@ -19,11 +19,15 @@
 // v130 (Доп. 443), владелец: «Давай в барную карту добавим возможность распечатать информацию. Имею ввиду, как в меню» —
 // «Да, давай все». «Печать» в строке под вкладками открывает «Барную карту для печати» (ui/bar-print.jsx): вкладка, откуда
 // пришёл, и то, что на ней было показано. И «Поделиться в чат» в карточках: «вина и крепкие не имеют такой возможности».
+// v136 (Доп. 449), владелец (04.11): «Как думаешь, ещё удобнее и красивее барную карту можно сделать?» — «Давай все» (кроме
+// «карты сразу на первом экране»: «пока не будем делать»). Коктейли: что из нашей карты — в той же строке, что метод и бокал
+// («шейк · купе · Hendrick's»), строка вдвое короче; в карточке «Как готовить» свёрнуто (состав уже сверху); порядок
+// «Разделы · А–Я» и «Подробно · Кратко»; «★ советуем» и раздел «Советуем»; у основы — цветная точка.
 import React from "react";
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { WineListScreen, useTeamMenu, canEditWines, useInnerTop } from "./wine-list";
-import { ourCocktails, findCocktails, groupByBase, cocktailsWord, GLASS_SHORT } from "../lib/bar-card";
+import { ourCocktails, findCocktails, groupByBase, cocktailsWord, GLASS_SHORT, cocktailBase } from "../lib/bar-card";
 import { COCKTAILS } from "../data/cocktails";
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { isFullCocktail } from "../lib/deck-extras";
@@ -35,12 +39,16 @@ import { GAME_SVG, BUILD_SVG } from "./icons";
 import { CocktailArt } from "./cocktail-art";
 import { Sign } from "./signs";
 import { usePin, BarPin, scrollToEl, focusSearch, toTop, useBackToRow, stepsOf, PrevNext, showActiveChip } from "./bar-pin";
-import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat } from "./bar-kit";   // v129; v130 — печать и «в чат»
+import { SearchField, FilterNote, EndNote, Elsewhere, LearnStrip, Chevron, useSwipe, useSection, useKeepScroll, BarHint, PrintLink, ShareChat,
+  Dot, useListPref, ViewBar, PrioToggle } from "./bar-kit";   // v129; v130 — печать и «в чат»; v136 — точки, вид списка, «Советуем»
 import { BarPrint } from "./bar-print";   // v130
 import { BarSommelier, SomEntry } from "./bar-sommelier";   // v131: «Сомелье»
 import { cocktailShareItem } from "../lib/share-items";   // v130: «Поделиться в чат» и из карточки коктейля здесь
 import { WINE, SPIRIT, drinkOf } from "../lib/drinks";
-import { titleParts } from "../lib/bar-view";
+import { titleParts, dotOf, sortItems } from "../lib/bar-view";
+import { readSomRules, withSomRules } from "../lib/sommelier";   // v136: «Советуем» у коктейлей — та же отметка, что в «Сомелье»
+import { rpc, saToken } from "../api/supabase";
+import { rememberSharedMenu } from "../lib/reference-context";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const TAB_KEY = "sa_bar_tab";
@@ -143,26 +151,56 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   return <BarCocktails T={T} a11y={a11y} gold={gold} text={text} sub={sub} restaurant={restaurant} cocktails={cocktails} spirits={spirits} tabs={tabs} pinTabs={pinTabs} som={somRow} onBack={onBack}
     startId={startFor("cocktail")} cardBack={backFor("cocktail")} onOpenSpirit={avail.includes("spirit") ? jump("spirit") : null}
     keep={keepOf("cocktail")} onKeep={onKeepOf("cocktail")} others={others} onOther={onOther} onSearchIn={onSearchIn} fromText={fromFor("cocktail")} onPrint={setPrint} onShareChat={onShareChat}
-    onLearn={onOpenCocktail} onBuild={onBuildCocktail} onCocktailDeck={onCocktailDeck} onBarLab={onBarLab} onCocktailEdit={edit ? onCocktailEdit : null} />;
+    onLearn={onOpenCocktail} onBuild={onBuildCocktail} onCocktailDeck={onCocktailDeck} onBarLab={onBarLab} onCocktailEdit={edit ? onCocktailEdit : null}
+    team={team} lead={canEditWines(profile)} who={profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : ""} />;
 }
 
 // ─────────────────────────────── КОКТЕЙЛИ НАШЕГО БАРА
 const SR_KEY = "sa_cocktail_sr";   // «Знаю?» колоды бармена (ui/cocktails.jsx)
 const knownOf = (list) => { try { const sr = JSON.parse(localStorage.getItem(SR_KEY) || "{}"), now = Date.now(); return list.filter((c) => { const r = sr[c.id]; return r && r.stage > 0 && r.due > now; }).length; } catch (e) { return 0; } };
 const dots = (n) => "●".repeat(n) + "○".repeat(Math.max(0, 4 - n));
+// v136: «шаг, шага, шагов»
+const stepsWord = (n) => { const m10 = n % 10, m100 = n % 100; return n + " " + (m10 === 1 && m100 !== 11 ? "шаг" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "шага" : "шагов"); };
+const rubC = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + "\u00a0₽";
 // граммовка: число и единица неразрывно; «доверху» — без числа
 const amount = (i) => (i[1] === "" || i[1] == null ? "" : i[2] === "доверху" ? "доверху" : i[1] + " " + (i[2] || "мл"));
 
 function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits, tabs, pinTabs, som = null, onBack, startId, cardBack, onOpenSpirit, onLearn, onBuild, onCocktailDeck, onBarLab, onCocktailEdit,
-  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null }) {
+  keep = null, onKeep = null, others = null, onOther = null, onSearchIn = null, fromText = "", onPrint = null, onShareChat = null, team = null, lead = false, who = "" }) {
   const red = a11y ? "#A33A2A" : "#E07878";
   const k0 = keep || {};   // v129: вкладка помнит поиск, основу и место в списке
   const [q, setQ] = React.useState(k0.q || "");
   const [only, setOnly] = React.useState(k0.only || "all");
   const [openId, setOpenId] = React.useState(startId || null);   // v128: карточка коктейля — здесь же
+  // v136: «Советуем» (отметка руководителя, как «☆ Первым» в «Сомелье»), порядок и вид списка
+  const [shared, setShared, teamLoaded] = team || [[], null, false];
+  const rules = React.useMemo(() => readSomRules(shared), [shared]);
+  const prio = React.useMemo(() => new Set(rules.prio), [rules]);
+  const isPrio = (x) => prio.has("cocktail:" + x.id);
+  const prioN = cocktails.filter(isPrio).length;
+  const { sort, setSort, short, setShort } = useListPref("cocktail");
+  const priced = cocktails.some((x) => Number(x.price) > 0);
+  const sorts = [["sec", "Разделы"], ...(priced ? [["price", "Цена"]] : []), ["az", "А–Я"]];
+  const sortNow = sorts.some(([k]) => k === sort) ? sort : "sec";
+  const [howOpen, setHowOpen] = React.useState(false);   // v136: «Как готовить» в карточке — свёрнуто (состав уже сверху)
+  React.useEffect(() => { setHowOpen(false); }, [openId]);
+  const [busy, setBusy] = React.useState(false), [prioMsg, setPrioMsg] = React.useState("");
+  const togglePrio = (x) => {
+    if (busy || !setShared || !teamLoaded) return;   // меню с сервера ещё не пришло: в копии телефона нет фото data:
+    const k = "cocktail:" + x.id, next = prio.has(k) ? rules.prio.filter((y) => y !== k) : [...rules.prio, k];
+    const arr = withSomRules(shared, { ...rules, prio: next, by: who, at: Date.now() });
+    setBusy(true); setPrioMsg("");
+    rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(arr) }).then((res) => {
+      setBusy(false);
+      if (res && res.ok === true) { setShared(arr); rememberSharedMenu(restaurant, arr); vibrate("success"); }
+      else { setPrioMsg("Не сохранилось. Проверь связь и права"); vibrate("error"); }
+    }).catch(() => { setBusy(false); setPrioMsg("Нет связи"); vibrate("error"); });
+  };
   const found = findCocktails(cocktails, q);
   const groups = groupByBase(found);
-  const shown = only === "all" ? groups : groups.filter(([k]) => k === only);
+  const byOnly = only === "all" ? groups : only === "prio" ? groups.map(([k, l]) => [k, l.filter(isPrio)]).filter(([, l]) => l.length) : groups.filter(([k]) => k === only);
+  // v136: по разделам — как было; «Цена» и «А–Я» — один список без заголовков
+  const shown = sortNow === "sec" ? byOnly : [["", sortItems(byOnly.flatMap(([, l]) => l), sortNow, { price: (x) => Number(x.price) || 0, title: (x) => x.name })]];
   const houseN = cocktails.filter((c) => c.house).length;
   const known = React.useMemo(() => knownOf(cocktails), [cocktails]);
   const c = openId ? cocktails.find((x) => x.id === openId) || null : null;
@@ -224,8 +262,13 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
                 {c.strength && c.sweet ? " · " : null}
                 {c.sweet ? <span style={{ whiteSpace: "nowrap" }}>сладость <span style={{ color: gold, letterSpacing: 1 }}>{dots(c.sweet)}</span></span> : null}
               </div> : null}
-              {c.house || c.stop ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{c.house ? badge("свой", gold) : null}{c.stop ? badge("сегодня нет", red) : null}</div> : null}
-              {onShareChat ? <div style={{ marginTop: 10 }}><ShareChat id={"cocktail:" + c.id} onClick={() => onShareChat(cocktailShareItem(c))} gold={gold} text={text} /></div> : null}
+              {c.house || c.stop || (isPrio(c) && !(lead && setShared)) ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{isPrio(c) && !(lead && setShared) ? badge("★ советуем", gold) : null}{c.house ? badge("свой", gold) : null}{c.stop ? badge("сегодня нет", red) : null}</div> : null}
+              {Number(c.price) > 0 ? <div data-bar-ck-price="" style={{ fontSize: 14, color: text, marginTop: 6 }}>{rubC(c.price)}</div> : null}
+              {onShareChat || (lead && setShared) ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                {onShareChat ? <ShareChat id={"cocktail:" + c.id} onClick={() => onShareChat(cocktailShareItem(c))} gold={gold} text={text} /> : null}
+                {lead && setShared ? <PrioToggle on={isPrio(c)} busy={busy || !teamLoaded} onClick={() => togglePrio(c)} gold={gold} text={text} /> : null}
+              </div> : null}
+              {prioMsg ? <div style={{ fontSize: 13, color: red, marginTop: 6 }}>{prioMsg}</div> : null}
             </div>
           </div>
           {ing.length ? <>{sec("Состав")}
@@ -241,10 +284,14 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
               const go = () => { if (onOpenSpirit) { vibrate("light"); onOpenSpirit(x.id, c.id); } };
               return <span key={x.id} role="button" tabIndex={0} data-lens-tag="" data-bar-ck-spirit={x.id} onClick={go} {...onActivate(go)} style={{ ...chip(false), color: text, cursor: onOpenSpirit ? "pointer" : "default" }}>{spiritTitle(x)}</span>; })}
             </div></> : null}
-          {howTo.length ? <>{sec(seq ? "Как готовить · " + howTo.length + " шагов, как в лаборатории" : "Как готовить")}
-            <ol data-bar-ck-how={howTo.length} style={{ margin: 0, paddingLeft: 22, color: text, fontSize: 14.5, lineHeight: 1.55 }}>
+          {/* v136: «Как готовить» свёрнуто: состав с граммовкой уже сверху, официанту главное — состав, подача и фраза гостю */}
+          {howTo.length ? <>
+            <button type="button" data-bar-ck-how-toggle={howOpen ? "open" : "closed"} aria-expanded={howOpen} onClick={() => { vibrate("light"); setHowOpen((v) => !v); }}
+              style={{ ...labelStyle(13.5), color: gold, margin: "18px 0 6px", padding: "2px 0", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, textAlign: "left" }}>
+              <span>{"Как готовить · " + stepsWord(howTo.length) + (seq ? ", как в лаборатории" : "")}</span><span aria-hidden="true" style={{ fontStyle: "normal", fontSize: 15 }}>{howOpen ? "▾" : "›"}</span></button>
+            {howOpen ? <ol data-bar-ck-how={howTo.length} style={{ margin: 0, paddingLeft: 22, color: text, fontSize: 14.5, lineHeight: 1.55 }}>
               {howTo.map((s, k) => <li key={k} style={{ paddingLeft: 2, marginBottom: 2 }}>{s.glyph ? <span style={{ color: gold, marginRight: 6, fontSize: 11 }}>{s.glyph}</span> : null}{s.label}</li>)}
-            </ol></> : null}
+            </ol> : null}</> : null}
           {c.tip || c.pair || garnish || c.note ? <>{sec("Подача")}
             {garnish ? <div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>{"Гарниш: " + garnish.toLowerCase()}</div> : null}
             {c.tip ? <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 14.5, color: text, lineHeight: 1.55, marginTop: garnish ? 6 : 0 }}>{c.tip}</div> : null}
@@ -270,16 +317,18 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
   // v129: что показано («Показаны: Ром, 6 из 57 · Показать все»), конец списка, что нашлось в других вкладках
   const qt = q.trim(), filtered = only !== "all" || !!qt, shownN = shown.reduce((n, [, l]) => n + l.length, 0);
   const resetAll = () => { setQ(""); setOnly("all"); vibrate("light"); };
-  const filterNote = (compact) => <FilterNote parts={[only !== "all" ? only : "", qt ? "по запросу «" + qt + "»" : ""].filter(Boolean)} n={shownN} total={cocktails.length}
+  const filterNote = (compact) => <FilterNote parts={[only === "prio" ? "советуем" : only !== "all" ? only : "", qt ? "по запросу «" + qt + "»" : ""].filter(Boolean)} n={shownN} total={cocktails.length}
     onReset={resetAll} gold={gold} text={text} sub={sub} a11y={a11y} compact={compact} />;
   const secList = secNow ? shown.find(([k]) => k === secNow) : null;
   const pinLine = filtered ? filterNote(true) : secList ? <div data-bar-pin-sec={secNow} style={{ ...labelStyle(13), color: a11y ? "#6B4E1A" : gold, marginTop: 5 }}>{secNow + " · " + secList[1].length}</div> : null;
   const elsewhere = others && onOther && qt.length >= 2 ? others(qt, "cocktail") : [];
-  const firstId = shown.length ? shown[0][1][0].id : null;
+  const firstId = shown.length && shown[0][1].length ? shown[0][1][0].id : null;
   const open = (x) => () => { vibrate("light"); remember(); setSlide(""); setOpenId(x.id); };
-  const chipList = (pin) => [["all", "Все"], ...groups.map(([k]) => [k, k])].map(([k, t]) => (
-    <button key={k} type="button" aria-pressed={only === k} data-bar-ck-only={pin ? undefined : k} data-bar-pin-ck={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
-      onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={chip(only === k)}>{t}</button>));
+  const chipList = (pin) => [["all", "Все"], ...(prioN ? [["prio", "★ Советуем"]] : []), ...groups.map(([k]) => [k, k])].map(([k, t]) => {
+    const dot = dotOf("cocktail", k);
+    return <button key={k} type="button" aria-pressed={only === k} data-bar-ck-only={pin ? undefined : k} data-bar-pin-ck={pin ? k : undefined} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink=""
+      onClick={() => { setOnly(k); vibrate("light"); if (pin) scrollToEl(chipsRef.current); }} style={{ ...chip(only === k), ...(dot ? { display: "inline-flex", alignItems: "center", gap: 6 } : {}) }}>{dot ? <Dot c={dot} a11y={a11y} /> : null}{t}</button>;
+  });
   return (
     <div ref={frameRef} style={T.screen} className="sa-screen" data-bar-cocktails={cocktails.length}>
       {head("Справочник · " + restaurant, "Барная карта", onBack, onCocktailEdit ? editBtn(() => onCocktailEdit(null), { "data-bar-ck-edit": "" }, "Редактор") : null)}
@@ -298,31 +347,50 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
           {chipList(false)}
         </div>
         {filtered ? filterNote(false) : null}
+        {shownN ? <ViewBar sorts={sorts} sort={sortNow} onSort={setSort} short={short} onShort={setShort} gold={gold} text={text} sub={sub} a11y={a11y} /> : null}
         {!found.length || !shownN ? <div data-bar-ck-none={elsewhere.length ? "here" : "all"} style={{ fontSize: 14, color: sub, padding: elsewhere.length ? "14px 2px 2px" : "18px 2px" }}>{!cocktails.length ? "В карте бара пока нет коктейлей." : elsewhere.length ? "Здесь не нашлось." : "Ничего не нашлось."}</div> : null}
-        {shown.map(([k, list]) => (
-          <div key={k} data-bar-ck-group={k}>
-            <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 2px 6px" }}>{k} · {list.length}</div>
-            {list.map((x) => {
-              const go = open(x);
-              const ours = cocktailSpirits(x, spirits);
-              const line = [x.method, GLASS_SHORT[x.glass] || ""].filter(Boolean).join(" · ");
-              return (
-                <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-bar-ck={x.id} data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "9px 12px 9px 10px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
-                  {Array.isArray(x.color) ? <div data-bar-ck-art="" aria-hidden="true" style={{ width: 40, height: 52, flexShrink: 0, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><CocktailArt c={x} w={40} light={a11y} showIce={false} /></div> : null}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{x.name}</span>
-                      {x.house ? badge("свой", gold) : null}
-                      {x.stop ? badge("сегодня нет", red) : null}
-                    </div>
-                    {line ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{line}</div> : null}
-                    {ours.length ? <div data-bar-ck-spirits={ours.length} style={{ fontSize: 12.5, color: text, marginTop: 3, lineHeight: 1.4 }}>Из нашей карты: {ours.slice(0, 3).map(spiritTitle).join(", ")}{ours.length > 3 ? " и ещё " + (ours.length - 3) : ""}</div> : null}
+        {shown.map(([k, list]) => {
+          const rows = list.map((x) => {
+            const go = open(x);
+            const ours = cocktailSpirits(x, spirits);
+            const line = [x.method, GLASS_SHORT[x.glass] || ""].filter(Boolean).join(" · ");
+            const pr = isPrio(x);
+            // v136: «Кратко» — одна строка: точка основы, название, отметки, цена
+            if (short) return (
+              <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-bar-ck={x.id} data-bar-ck-short="" data-lens-card="" onClick={go} {...onActivate(go)}
+                style={{ ...T.modCard, display: "flex", gap: 9, alignItems: "center", padding: "9px 10px 9px 13px", marginBottom: 6, opacity: x.stop ? 0.6 : 1 }}>
+                <Dot c={dotOf("cocktail", cocktailBase(x))} a11y={a11y} />
+                <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15, color: text, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.name}</span>
+                {pr ? <span data-bar-ck-prio="" aria-label="советуем" style={{ color: a11y ? "#6B4E1A" : gold, fontSize: 13, flexShrink: 0 }}>★</span> : null}
+                {x.stop ? badge("сегодня нет", red) : x.house ? badge("свой", gold) : null}
+                {Number(x.price) > 0 ? <span style={{ flexShrink: 0, fontSize: 13, color: text, whiteSpace: "nowrap" }}>{rubC(x.price)}</span> : null}
+                <Chevron gold={gold} />
+              </div>);
+            return (
+              <div key={x.id} id={x.id === firstId ? "sa-bar-row1" : undefined} role="button" tabIndex={0} data-bar-ck={x.id} data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...T.modCard, display: "flex", gap: 12, alignItems: "center", padding: "9px 12px 9px 10px", marginBottom: 8, opacity: x.stop ? 0.6 : 1 }}>
+                {Array.isArray(x.color) ? <div data-bar-ck-art="" aria-hidden="true" style={{ width: 40, height: 52, flexShrink: 0, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><CocktailArt c={x} w={40} light={a11y} showIce={false} /></div> : null}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontSize: 15.5, color: text, lineHeight: 1.3 }}>{x.name}</span>
+                    {pr ? badge("★ советуем", gold) : null}
+                    {x.house ? badge("свой", gold) : null}
+                    {x.stop ? badge("сегодня нет", red) : null}
                   </div>
-                  <Chevron gold={gold} />
-                </div>);
-            })}
-          </div>))}
-        {filtered && shownN ? <EndNote text={only !== "all" && !qt ? "Это весь раздел «" + only + "»" : "Это всё, что нашлось"} button="Показать все коктейли" onClick={resetAll} gold={gold} sub={sub} a11y={a11y} /> : null}
+                  {/* v136: что из нашей карты — в той же строке, что метод и бокал */}
+                  {line || ours.length ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{line}{line && ours.length ? " · " : ""}{ours.length ? <span data-bar-ck-spirits={ours.length} style={{ color: text }}>{ours.slice(0, 3).map(spiritTitle).join(", ")}{ours.length > 3 ? " и ещё " + (ours.length - 3) : ""}</span> : null}</div> : null}
+                  {Number(x.price) > 0 ? <div style={{ fontSize: 12.5, color: text, marginTop: 3 }}>{rubC(x.price)}</div> : null}
+                </div>
+                <Chevron gold={gold} />
+              </div>);
+          });
+          if (!k) return <div key="flat" data-bar-ck-flat={sortNow}>{rows}</div>;
+          return (
+            <div key={k} data-bar-ck-group={k}>
+              <div style={{ ...labelStyle(13.5), color: gold, margin: "14px 2px 6px", display: "flex", alignItems: "center", gap: 7 }}><Dot c={dotOf("cocktail", k)} a11y={a11y} />{k} · {list.length}</div>
+              {rows}
+            </div>);
+        })}
+        {filtered && shownN ? <EndNote text={only !== "all" && only !== "prio" && !qt ? "Это весь раздел «" + only + "»" : "Это всё, что нашлось"} button="Показать все коктейли" onClick={resetAll} gold={gold} sub={sub} a11y={a11y} /> : null}
         <Elsewhere groups={elsewhere} none={!shownN} onOpen={(tab, id) => onOther(tab, id, qt)} onAll={(tab) => onSearchIn(tab, qt)} T={T} gold={gold} text={text} sub={sub} />
         <BarHint a11y={a11y} ready={shownN > 0} has={{ tabs: !!tabs, row: !!firstId, learn: learnItems.length > 0 }} />
       </div>

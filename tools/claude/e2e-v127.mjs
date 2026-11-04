@@ -489,9 +489,10 @@ await run("COCKTAILS", async () => {
   const own = await txt(o.page.locator('[data-bar-ck="ck-sea"]'));
   ok("COCKTAILS: у своего — «свой», метод и бокал", /^Морской бриз по-нашему свой билд · хайбол/.test(own), own);
   const neg = await txt(o.page.locator('[data-bar-ck="negroni"] [data-bar-ck-spirits]'));
-  ok("COCKTAILS: у «Негрони» — что из нашей карты в нём", neg === "Из нашей карты: Beefeater, Campari", neg);
+  // v136 (Доп. 449): что из нашей карты — в той же строке, что метод и бокал («стир · рокс · Beefeater, Campari»), без «Из нашей карты: »
+  ok("COCKTAILS: у «Негрони» — что из нашей карты в нём", neg === "Beefeater, Campari", neg);
   const of = await txt(o.page.locator('[data-bar-ck="old-fashioned"] [data-bar-ck-spirits]'));
-  ok("COCKTAILS: в «Олд фэшн» на бурбоне — бурбон, а не односолодовый", of === "Из нашей карты: Maker's Mark", of);
+  ok("COCKTAILS: в «Олд фэшн» на бурбоне — бурбон, а не односолодовый", of === "Maker's Mark", of);
   await shot(o.page, "cocktails");
   await o.page.locator('[data-bar-cocktails] input[type="search"]').fill("кампари"); await sleep(500);
   const found = await o.page.evaluate(() => [...document.querySelectorAll("[data-bar-ck]")].map((e) => e.getAttribute("data-bar-ck")));

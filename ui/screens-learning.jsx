@@ -50,6 +50,7 @@ import { canCredit, canGold, canRefresh } from "../lib/marks";
 import { QuizPlates, QuizBeads, QuizMeta, QuizRuleNote, OptLetter, quizTopic, ensureQuizCss } from "./quiz-bits";   // v71: тест с правилами на виду
 import { lessonShareItem } from "../lib/share-items";   // v97 (Доп. 410): пройденный урок — в чат команды
 import { CHAT_SHARE_IC } from "./share-chat";
+import { ConceptPhotos } from "./concept-photo";   // v139 (Доп. 454): фото блоков «О нас» в уроках раздела «Наш ресторан»
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
 // модуль, грузится фоном. Пока не приехал (или без сети не загрузился) —
@@ -1463,6 +1464,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           })}
             </div>{/* конец zIndex:1 */}
           </div>{/* конец стеклянной подложки */}
+          {/* v139 (Доп. 454): фото стандарта (дресс-код, сервировка) — под текстом, в карточках — на последней */}
+          {Array.isArray(lesson.photos) && lesson.photos.length && (!cardMode || cardIdx === cards.length - 1)
+            ? <div data-lesson-photos={lesson.photos.length} style={{ margin: "-4px 0 14px" }}><ConceptPhotos photos={lesson.photos} a11y={!!T.a11y} /></div> : null}
           {cardMode ? (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0 0 6px", userSelect: "none" }}>

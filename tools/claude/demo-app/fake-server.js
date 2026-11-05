@@ -17,6 +17,7 @@ import { cheersDue, joinedOf, cheerDm, thxPing, cutText, THX_MAX, THX_DAY_MAX, B
 import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня — как _sa_day_points этапа 24
 import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «Что дало обучение», как этап 43
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
+import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -548,6 +549,138 @@ export function makeServer(opts) {
     return { ok: true, restaurant: rest, rows };
   }
 
+  // ── v139 (Доп. 454, этап 49): «О нас» — концепция и стандарты сети и заведений (как supabase-stage49-concept.sql).
+  // opts.concept: { net: [блок], venues: { заведение: [блок] } }; блок — { kind, title, body, photos?: [{ id, cap }], tracks?,
+  // questions? }; opts.conceptPhotos: { id: { scope, thumb, full, w, h } } — фото для демо (data без префикса)
+  if (!S.cn) {
+    S.cn = { blocks: [], seq: 0, photos: {}, pseq: 0, reads: {}, sent: {} };
+    const add = (scope, list) => (list || []).forEach((x, i) => { S.cn.seq++; S.cn.blocks.push({ id: S.cn.seq, scope, kind: x.kind, title: x.title, body: x.body || "",
+      photos: x.photos || [], tracks: x.tracks || [], questions: x.questions || [], sort: i + 1, at: new Date(clock() - 3 * 864e5).toISOString(), by: x.by || "" }); });
+    add("", opts.concept && opts.concept.net);
+    for (const [v, list] of Object.entries((opts.concept && opts.concept.venues) || {})) add(v, list);
+    for (const [id, ph] of Object.entries(opts.conceptPhotos || {})) { S.cn.photos[id] = clone(ph); S.cn.pseq = Math.max(S.cn.pseq, Number(id)); }
+  }
+  const cnNet = (p) => !!p && (!!p.is_admin || p.position === "senior");
+  const cnCan = (p, sc) => !!p && (cnNet(p) || (sc !== "" && isLead(p) && sc === p.restaurant));
+  const cnVer = (sc) => {
+    const bs = S.cn.blocks.filter((x) => x.scope === sc).sort((a, b2) => a.id - b2.id);
+    if (!bs.length) return "";
+    const str = bs.map((x) => [x.id, x.kind, x.title, x.body, JSON.stringify(x.photos), x.tracks.join(",")].join("|")).join("#");
+    let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16).padStart(8, "0") + str.length.toString(16).padStart(4, "0").slice(-4);
+  };
+  const cnList = (sc, kinds) => clone(S.cn.blocks.filter((x) => x.scope === sc && (!kinds || kinds.includes(x.kind))).sort((a, b2) => (a.sort - b2.sort) || (a.id - b2.id)));
+  const cnStr = (v, n) => String(v == null ? "" : v).replace(/\r/g, "").trim().slice(0, n);
+  function concept(fn, p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    if (fn === "concept_get") {
+      const mine = p.restaurant || null;
+      let rest = String(b.p_restaurant || "").trim() || mine;
+      if (rest !== mine && !cnNet(p)) rest = mine;
+      const scopes = [...new Set(S.cn.blocks.filter((x) => x.scope !== "" && x.scope !== rest && CN_PUBLIC.includes(x.kind)).map((x) => x.scope))].sort();
+      const venues = cnNet(p) ? [...new Set([...PEOPLE.filter((e) => (e.status || "active") === "active" && e.restaurant).map((e) => e.restaurant), ...S.cn.blocks.filter((x) => x.scope).map((x) => x.scope)])].sort() : null;
+      return { ok: true, mine, restaurant: rest, net: { blocks: cnList(""), ver: cnVer("") },
+        venue: rest ? { name: rest, blocks: cnList(rest), ver: cnVer(rest) } : null,
+        others: scopes.map((sc) => ({ name: sc, blocks: cnList(sc, CN_PUBLIC) })),
+        read: { net: S.cn.reads[p.id + "|"] || null, venue: rest ? S.cn.reads[p.id + "|" + rest] || null : null },
+        can: { net: cnCan(p, ""), venue: !!rest && cnCan(p, rest) }, venues };
+    }
+    if (fn === "concept_save") {
+      const x = b.p_block;
+      if (!x || typeof x !== "object") return { ok: false, error: "bad_request" };
+      const sc = String(x.scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      if (!CN_KIND_IDS.includes(x.kind)) return { ok: false, error: "bad_kind" };
+      const title = cnStr(x.title, 80), body = cnStr(x.body, 6000);
+      if (!title) return { ok: false, error: "no_title" };
+      const photos = [];
+      for (const ph of (Array.isArray(x.photos) ? x.photos : []).slice(0, 8)) {
+        const id = Number(ph && ph.id);
+        if (Number.isInteger(id) && S.cn.photos[id] && S.cn.photos[id].scope === sc && !photos.some((y) => y.id === id)) photos.push({ id, cap: cnStr(ph.cap, 120) });
+      }
+      if (!body && !photos.length) return { ok: false, error: "empty" };
+      const tracks = [...new Set((Array.isArray(x.tracks) ? x.tracks : []).filter((t) => CN_TRACKS.includes(t)))].sort();
+      const questions = (Array.isArray(x.questions) ? x.questions : []).map(cleanQuestion).filter(Boolean).slice(0, 12);
+      const sort = Number.isInteger(x.sort) ? x.sort : null;
+      let blk;
+      if (x.id != null && /^\d{1,15}$/.test(String(x.id))) {
+        blk = S.cn.blocks.find((y) => y.id === Number(x.id) && y.scope === sc);
+        if (!blk) return { ok: false, error: "not_found" };
+        Object.assign(blk, { kind: x.kind, title, body, photos, tracks, questions, sort: sort == null ? blk.sort : sort, at: now(), by: full(p) });
+      } else {
+        if (S.cn.blocks.filter((y) => y.scope === sc).length >= 40) return { ok: false, error: "too_many" };
+        S.cn.seq++;
+        blk = { id: S.cn.seq, scope: sc, kind: x.kind, title, body, photos, tracks, questions,
+          sort: sort == null ? Math.max(0, ...S.cn.blocks.filter((y) => y.scope === sc).map((y) => y.sort)) + 1 : sort, at: now(), by: full(p) };
+        S.cn.blocks.push(blk);
+      }
+      return { ok: true, block: clone(blk), ver: cnVer(sc) };
+    }
+    if (fn === "concept_delete") {
+      const blk = S.cn.blocks.find((y) => y.id === Number(b.p_id));
+      if (!blk) return { ok: false, error: "not_found" };
+      if (!cnCan(p, blk.scope)) return { ok: false, error: "forbidden" };
+      S.cn.blocks = S.cn.blocks.filter((y) => y !== blk);
+      for (const ph of blk.photos) if (!S.cn.blocks.some((y) => y.scope === blk.scope && y.photos.some((z) => z.id === ph.id))) delete S.cn.photos[ph.id];
+      return { ok: true, ver: cnVer(blk.scope) };
+    }
+    if (fn === "concept_order") {
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      (Array.isArray(b.p_ids) ? b.p_ids : []).forEach((id, i) => { const blk = S.cn.blocks.find((y) => y.id === Number(id) && y.scope === sc); if (blk) blk.sort = i + 1; });
+      return { ok: true };
+    }
+    if (fn === "concept_photo_put") {
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      const ok64 = (v) => typeof v === "string" && /^[A-Za-z0-9+/]+={0,2}$/.test(v);
+      if (!ok64(b.p_full) || !ok64(b.p_thumb) || b.p_full.length > 640000 || b.p_thumb.length > 110000 || b.p_full.length < 100) return { ok: false, error: "bad_photo" };
+      S.cn.pseq++;
+      S.cn.photos[S.cn.pseq] = { scope: sc, full: b.p_full, thumb: b.p_thumb, w: b.p_w || null, h: b.p_h || null };
+      return { ok: true, id: S.cn.pseq };
+    }
+    if (fn === "concept_photo") {
+      const ph = S.cn.photos[Number(b.p_id)];
+      if (!ph) return { ok: false, error: "not_found" };
+      return { ok: true, data: b.p_full ? ph.full : ph.thumb, mime: ph.mime || "image/jpeg", w: ph.w || null, h: ph.h || null };
+    }
+    if (fn === "concept_read") {
+      const sc = String(b.p_scope || "").trim();
+      if (sc !== "" && sc !== p.restaurant) return { ok: false, error: "forbidden" };
+      const v = cnVer(sc);
+      if (v) S.cn.reads[p.id + "|" + sc] = v;
+      return { ok: true, ver: v };
+    }
+    if (fn === "concept_reads") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      const rest = String(b.p_restaurant || "").trim() || p.restaurant;
+      if (rest !== p.restaurant && !cnNet(p)) return { ok: false, error: "forbidden" };
+      const vn = cnVer(""), vv = cnVer(rest);
+      const rows = PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active" && e.id !== p.id).map((e) => {   // себя — нет
+        const net = vn === "" || S.cn.reads[e.id + "|"] === vn, venue = vv === "" || S.cn.reads[e.id + "|" + rest] === vv;
+        return { id: e.id, name: full(e), pos: String(e.position || "").toLowerCase(), net, venue, at: null };
+      }).sort((x, y) => (x.net && x.venue) - (y.net && y.venue) || x.name.localeCompare(y.name));
+      return { ok: true, restaurant: rest, net_ver: vn, venue_ver: vv, rows };
+    }
+    if (fn === "concept_notify") {
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      if (!cnVer(sc)) return { ok: false, error: "empty" };
+      const txt = "Обновили «О нас»: " + (sc === "" ? "концепция и стандарты сети." : "концепция и стандарты «" + sc + "».") + "\nОткрой и отметь «Прочитал(а)».";
+      let n = 0, m = 0;
+      for (const e of PEOPLE.filter((x) => (x.status || "active") === "active" && x.id !== p.id && (sc === "" || x.restaurant === sc))) {
+        m++;
+        if (!S.tgLinked.includes(e.id) || S.tgOff[e.id]) continue;
+        const k = e.id + "|" + TODAY;
+        if (S.cn.sent[k]) continue;
+        S.cn.sent[k] = true; n++;
+        ping(e.id, txt, null, null, null, { kind: "about", kb: [[{ text: "О нас", go: "about" }]] });
+      }
+      return { ok: true, sent: n, people: m, bot: true };
+    }
+    return undefined;
+  }
+
   function rpc(fn, b) {
     b = b || {};
     const p = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
@@ -555,6 +688,7 @@ export function makeServer(opts) {
     if (fn === "my_state") return p ? stateOf(p) : { ok: false, error: "auth" };
     if (fn === "my_reset_at") return { ok: true, reset_at: null };
     if (fn === "cms_list_lessons") return [];
+    if (/^concept_/.test(fn)) { if (opts.noStage49) return { code: "PGRST202", message: "Could not find the function" }; const r = concept(fn, p, b); if (r !== undefined) return r; }   // v139: этап 49
     if (fn === "team_scores") return { ok: true, rows: [] };
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };

@@ -2,6 +2,8 @@
 // Глобальный поиск: уроки текущей роли + глоссарий + меню ресторана + справочник.
 // Кейс: гость спросил про глютен — сотрудник вбивает слово и за 5 секунд видит
 // и определение, и блюда с этим аллергеном, и урок с протоколом.
+// v139 (Доп. 454): «О нас» — своя сеть и заведение находятся уроками раздела «Наш ресторан» (они в modules), а концепция
+// соседей по сети (гость спросил «А что за «Порт»?») — группой «Соседи по сети», касание открывает «О нас».
 // v128 (Доп. 441), владелец: «Как ещё проще и удобнее мы можем сделать?» — «Да, давай». Поиск находит всю «Барную карту»:
 // коктейли, вина и крепкое; касание открывает карточку там же, в «Барной карте» (onCocktail, onDrink).
 
@@ -16,6 +18,7 @@ import { GLASS_RU } from "../lib/bar-lab";
 import { labelStyle } from "./tokens";
 import { WINE, SPIRIT } from "../lib/drinks";
 import { titleParts } from "../lib/bar-view";
+import { conceptSearchItems } from "../lib/concept";   // v139 (Доп. 454): «О нас» — концепция соседей по сети
 
 const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
@@ -35,7 +38,7 @@ const dishesFor = (restaurant) => menuDishesFromStorage(restaurant);
 
 const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
 
-export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText, onCocktail, onDish, onDrink }) {
+export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText, onCocktail, onDish, onDrink, concept = null, onAbout = null }) {
   const [q, setQ] = React.useState("");
   // Недавние запросы: три последних чипами, пишутся с паузой 1.2с
   const [recent, setRecent] = React.useState(() => {
@@ -67,7 +70,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   const drinks = React.useMemo(() => { const sh = sharedOf(profile?.restaurant || ""); return [WINE, SPIRIT].map((K) => [K, K.records(sh).filter((w) => !w.archived)]); }, [profile?.restaurant]);
 
   const results = React.useMemo(() => {
-    if (query.length < 2) return { terms: [], lessons: [], menu: [], ref: [], bar: [], drink: [] };
+    if (query.length < 2) return { terms: [], lessons: [], menu: [], ref: [], bar: [], drink: [], about: [] };
     const terms = GLOSSARY.filter(g => norm(g.term).includes(query) || norm(g.def).includes(query)).slice(0, 8);
 
     const menu = dishes.filter(d => {
@@ -112,10 +115,13 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       }
     }
     lessons.sort((a, b) => (b.inTitle ? 1 : 0) - (a.inTitle ? 1 : 0));
-    return { terms, lessons, menu, ref, bar, drink };
-  }, [query, modules, dishes, cocktails, drinks]);   // eslint-disable-line react-hooks/exhaustive-deps
+    // v139: концепция соседей по сети (своё — уже в уроках раздела «Наш ресторан»)
+    const own = new Set(["Вся сеть", concept && concept.venue ? concept.venue.name : ""]);
+    const about = conceptSearchItems(concept, role && role.id).filter((it) => !own.has(it.where) && norm(it.title + " " + it.text + " " + it.where).includes(query)).slice(0, 6);
+    return { terms, lessons, menu, ref, bar, drink, about };
+  }, [query, modules, dishes, cocktails, drinks, concept]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const nothing = query.length >= 2 && !results.terms.length && !results.lessons.length && !results.menu.length && !results.ref.length && !results.bar.length && !results.drink.length;
+  const nothing = query.length >= 2 && !results.terms.length && !results.lessons.length && !results.menu.length && !results.ref.length && !results.bar.length && !results.drink.length && !results.about.length;
   const toggle = (key) => { vibrate("light"); setOpenKey(openKey === key ? null : key); };
 
   return (
@@ -268,6 +274,23 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
               <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 2 }}>{course.title}</div>
               <div style={T.modTitle}>{l.title}</div>
               <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{snippet(l.content, query)}</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        ))}
+      </div>
+
+      {results.about.length > 0 && <div style={secT}>Соседи по сети</div>}
+      <div style={{ padding: "0 14px" }}>
+        {results.about.map((it) => (
+          <div key={"cn" + it.id} className="sa-card" data-search-about={it.id}
+            style={{ ...T.modCard, margin: "0 0 10px", cursor: onAbout ? "pointer" : "default" }}
+            onClick={() => { if (onAbout) { vibrate("light"); onAbout(); } }}
+            {...onActivate(() => { if (onAbout) { vibrate("light"); onAbout(); } })}>
+            <div style={{ flex: 1, minWidth: 0, padding: "2px 0" }}>
+              <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 2 }}>{it.where}</div>
+              <div style={T.modTitle}>{it.title}</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal", lineHeight: 1.5 }}>{snippet(it.text, query)}</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>

@@ -610,7 +610,8 @@ describe("v137: экраны", () => {
     expect((a.match(/goTick\]\);/g) || []).length).toBe(3);
   });
   it("«Сервер»: этап 48, функция push-send, телефоны, доставка и ошибка", () => {
-    expect(STAGES[STAGES.length - 1]).toEqual({ n: "48", file: "supabase-stage48-push.sql", what: "Уведомления на телефон", fn: "push_subscribe" });
+    // v139 (Доп. 454): после 48 — этап 49 («О нас»)
+    expect(STAGES.find((x) => x.n === "48")).toEqual({ n: "48", file: "supabase-stage48-push.sql", what: "Уведомления на телефон", fn: "push_subscribe" });
     const r = pushReport({ srv: { subs: 3, people: 2, pseudo: 1, ok_at: "2026-11-05T09:00:00Z", err: "BadJwtToken (код 403)", err_at: "2026-11-05T10:00:00Z" } }, "ok", Date.parse("2026-11-05T10:30:00Z"));
     expect(r).toMatchObject({ fn: "ok", people: 2, subs: 3, pseudo: 1, okAgo: "2 часа назад", errNew: true, todo: 0 });
     expect(pushReport(null, "no_fn").todo).toBe(1);

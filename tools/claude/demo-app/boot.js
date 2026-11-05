@@ -18,6 +18,7 @@
 // «Прислать этот итог в Telegram» показывает сообщение бота, его кнопка «Открыть итог» ведёт на экран.
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
+import { CONCEPT_SEED, CONCEPT_PHOTOS } from "./concept-seed.js";   // v139 (Доп. 454): «О нас» — пример концепции и стандартов
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
 import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
@@ -468,6 +469,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   activity: ACTIVITY, quiz: QUIZ,   // v109: журнал занятий и ответы в тестах за два месяца («Что дало обучение»)
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
   tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
+  concept: CONCEPT_SEED, conceptPhotos: CONCEPT_PHOTOS,   // v139 (Доп. 454): «О нас» — сеть, «Океан» и сосед «Порт»
   pushSubs: ["e-petr", "e-olga", "e-vera"],   // v137: уведомления на телефоне уже включили Пётр, Ольга (без Telegram) и Вера
   // v125 (Доп. 438): тренировка по винам у команды (этап 44): Анна выучила новые вина («Совиньон Блан» и «Москато»), Вера
   // их учит, Илья выучил одно, Пётр учит карту, новые не открывал; остальные пока не занимались (смещения дней от сейчас)
@@ -713,6 +715,32 @@ function demoSom(b) {
 
 const json = (x, status = 200) => new Response(JSON.stringify(x === undefined ? null : x), { status, headers: { "Content-Type": "application/json" } });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// v139 (Доп. 454): помощник «О нас» в демо — без модели. «Из документа»: абзацы по словам раскладываются по видам блоков;
+// «Придумать вопросы»: строки текста становятся верными ответами; «Улучшить текст»: строки списком
+const CN_WORDS = [["dress", /форм|дресс|внешн|ногт|украшен|обувь/i], ["setting", /сервир|накрыт|прибор|бокал/i], ["check", /средн\S* чек|правильн\S* чек/i],
+  ["day", /распорядок|приход|брифинг в/i], ["numbers", /выручк|цифр|списани/i], ["structure", /отвечает|кто за что|управляющ/i], ["values", /ценност|верим/i],
+  ["guest", /гост\S* приход|наш гость|кто к нам/i], ["kitchen", /кухн|блюд|бар\b|пиво|вино/i], ["mood", /атмосфер|музык|интерьер|свет/i], ["idea", /концепц|истори|идея|открыл/i]];
+const CN_T = { idea: "Концепция и история", values: "Ценности", structure: "Структура: кто за что отвечает", guest: "Наш гость", kitchen: "Кухня и бар",
+  mood: "Атмосфера", pitch: "Рассказ гостю за 30 секунд", dress: "Внешний вид и дресс-код", setting: "Сервировка залов", check: "Правильный чек: к чему стремимся",
+  day: "Распорядок дня менеджера", numbers: "Цифры смены: на что смотрим", own: "Свой блок" };
+function demoLessonAssist(b) {
+  const text = String(b.text || "").trim();
+  if (b.mode === "concept") {
+    const paras = (text || "Наша концепция: свежая рыба каждый день и сервис, как дома.\n\nФорма: чёрный верх, фартук, закрытая обувь.").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    const by = {};
+    for (const p of paras) { const k = (CN_WORDS.find(([, re]) => re.test(p)) || ["own"])[0]; (by[k] = by[k] || []).push(p); }
+    const blocks = Object.entries(by).map(([k, ps]) => ({ kind: k, title: k === "own" ? "Разное" : CN_T[k], body: ps.join("\n\n") }));
+    return { ok: true, blocks, model: "demo" };
+  }
+  const lines = text.split("\n").map((x) => x.replace(/^•\s*/, "").replace(/\*\*/g, "").trim()).filter((x) => x.length > 12);
+  if (b.mode === "questions") {
+    const wrong = ["Как удобно, стандарта нет", "Решает гость", "Это только для руководителей"];
+    return { ok: true, model: "demo", questions: lines.slice(0, 3).map((l) => ({ q: "Что из этого наш стандарт («" + String(b.title || "блок") + "»)?", options: [l.slice(0, 190), ...wrong], correct: 0,
+      explanation: "Так написано в «О нас»: " + l.slice(0, 160) })) };
+  }
+  if (b.mode === "improve") return { ok: true, model: "demo", content: lines.length > 1 ? lines.map((l) => "• " + l).join("\n") : text };
+  return { ok: false, error: "В демо помощник умеет только «О нас»." };
+}
 const realFetch = window.fetch ? window.fetch.bind(window) : null;
 window.fetch = function (input, init) {
   const url = typeof input === "string" ? input : (input && input.url) || "";
@@ -737,6 +765,7 @@ window.fetch = function (input, init) {
   // v137: функция push-send на месте (ключи уведомлений созданы)
   if (/\/functions\/v1\/push-send\?init=1/.test(url)) return wait(300).then(() => json({ ok: true, key: srv.rpc("push_status", { p_token: tokOf(me.id) }).key || "" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
+  if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));

@@ -78,6 +78,7 @@ const ICON = {
   morning: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 8V5.5"/><path d="M5.3 11.3L3.6 9.6"/><path d="M18.7 11.3l1.7-1.7"/><path d="M8 21.5h8"/></svg>,
   server: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-6"/><path d="M8 9.6v.01M8 15.6v.01"/></svg>,
   gain: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 20h18"/><path d="M5 16l4.5-4.5 3.5 3 6-6.5"/><path d="M14.5 8h4.5v4.5"/></svg>,   // v109 (Доп. 422): «Что дало обучение»
+  about: (c) => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M10 21v-5h4v5"/><path d="M8.5 11.5h7"/></svg>,   // v139 (Доп. 454): «О нас», фасад с вывеской
 };
 
 // v110 (Доп. 423): какой значок у кнопки-группы

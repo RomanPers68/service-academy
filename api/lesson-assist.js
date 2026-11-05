@@ -13,6 +13,8 @@
 //                complete — start, options (продолжения), correct, question «Выбери правильное продолжение:»
 //   build      — «Сборка» напитка по рецепту (правка 160) →
 //                { build: { title, glass, tint, win, lose, steps: [{ label, q, cost, options: [{ t, ok, fb }] }] } }
+//   concept    — v139 (Доп. 454): «О нас», документ о сети или заведении (текст и/или PDF) → блоки
+//                { blocks: [{ kind, title, body }] }, kind — вид блока (lib/concept.js, CN_KINDS)
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //
@@ -48,7 +50,26 @@ const STYLE = [
   WHOLE,
 ].join("\n");
 
+// v139 (Доп. 454): виды блоков «О нас» — как CN_KINDS в lib/concept.js
+export const CONCEPT_KINDS = {
+  idea: "Концепция и история", values: "Ценности", structure: "Структура: кто за что отвечает", guest: "Наш гость",
+  kitchen: "Кухня и бар", mood: "Атмосфера", pitch: "Рассказ гостю за 30 секунд", dress: "Внешний вид и дресс-код",
+  setting: "Сервировка залов", check: "Правильный чек: к чему стремимся", day: "Распорядок дня менеджера",
+  numbers: "Цифры смены: на что смотрим", own: "Свой блок",
+};
+
 export const PROMPT = {
+  concept: (where, material) => [
+    `Разложи материал о ресторане (${where || "сеть ресторанов"}) по блокам раздела «О нас» приложения для сотрудников.`,
+    "Виды блоков (kind — название):",
+    Object.entries(CONCEPT_KINDS).map(([k, t]) => `• ${k} — ${t}`).join("\n"),
+    "pitch — готовая речь гостю: 3–5 предложений от «мы», без цен. own — всё важное, что не подошло к другим видам; заголовок — свой, 2–5 слов.",
+    "Бери только то, что есть в материале: о чём материал молчит, того блока не пиши. Один вид — один блок (own — сколько нужно, но не больше пяти).",
+    "Объём текста блока — до 300 слов. Цифры, имена, правила — как в материале, ничего не придумывай.",
+    STYLE,
+    'Ответ — строго JSON без пояснений и без ```: {"blocks": [{"kind": "idea", "title": "…", "body": "…"}]} (переносы строк в body — \\n).',
+    material ? "\nМАТЕРИАЛ:\n" + material : "\nМАТЕРИАЛ — во вложенном PDF.",
+  ].join("\n"),
   lesson: (role, material) => [
     `Сделай один урок для сотрудников ресторана — ${ROLE_RU[role] || "сотрудники зала"} — из материала ниже.`,
     "Объём текста урока — 150–450 слов. Название — коротко, 2–6 слов.",
@@ -182,6 +203,13 @@ function sanitizeSituation(x) {
 // Только известные поля и разумные длины — что бы модель ни прислала
 export function sanitize(mode, o) {
   if (!o) return null;
+  if (mode === "concept") {
+    const seen = new Set();
+    const blocks = (Array.isArray(o.blocks) ? o.blocks : []).filter((b) => b && typeof b === "object" && CONCEPT_KINDS[b.kind]).map((b) => ({
+      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], body: cut(b.body, 6000).trim() }))
+      .filter((b) => b.body && (b.kind === "own" || (!seen.has(b.kind) && seen.add(b.kind)))).slice(0, 17);
+    return blocks.length ? { blocks } : null;
+  }
   if (mode === "lesson") {
     const content = cut(o.content, 12000).trim();
     return content ? { title: cut(o.title, 120).trim(), content } : null;
@@ -285,7 +313,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
   const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
-  if (!["lesson", "improve", "questions", "situations", "dialogue", "build", "review"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  if (!["lesson", "improve", "questions", "situations", "dialogue", "build", "review", "concept"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -297,15 +325,16 @@ export default async function handler(req, res) {
   const material = cut(text, 30000).trim();
   const b64 = typeof pdfBase64 === "string" && pdfBase64 ? pdfBase64.replace(/^data:[^;]*;base64,/, "") : "";
   if (b64.length > 14_000_000) return res.status(413).json({ ok: false, error: "PDF слишком большой — до 10 МБ" });
-  if (mode === "lesson" && !material && !b64) return res.status(400).json({ ok: false, error: "Вставь текст или прикрепи PDF" });
-  if (mode !== "lesson" && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
+  const withPdf = mode === "lesson" || mode === "concept";   // v139: «Из документа» в «О нас» — тоже текст или PDF
+  if (withPdf && !material && !b64) return res.status(400).json({ ok: false, error: "Вставь текст или прикрепи PDF" });
+  if (!withPdf && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
 
-  const prompt = mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
+  const prompt = mode === "concept" ? PROMPT.concept(cut(title, 80).trim(), material) : mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
     : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120))
     : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim())
     : mode === "build" ? PROMPT.build(role, material) : mode === "review" ? PROMPT.review(role, material, cut(title, 120)) : PROMPT.questions(role, material, cut(title, 120));
   try {
-    const out = await ask(key, prompt, mode === "lesson" ? b64 : "");
+    const out = await ask(key, prompt, withPdf ? b64 : "");
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
     const result = sanitize(mode, parseObject(out.text));
     if (!result) return res.status(422).json({ ok: false, error: "Ассистент ответил не по формату — попробуй ещё раз" });

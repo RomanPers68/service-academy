@@ -413,6 +413,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     analytics: "Аналитика", report: "Отчёты по сотрудникам", candidate: "Собеседование", staff: "Сотрудники",
     // v40: значки, «Мастер роли», шаг дня, первые шаги
     mastery: "Путь мастера",
+    // v139 (Доп. 454): концепция и стандарты сети и заведения
+    about: "О нас",
   };
   // Разделы руководителей: сотруднику кнопку не показываем, даже если модель ошиблась
   const isBoss = !!(profile?.is_admin || ["manager", "senior"].includes(profile?.position));

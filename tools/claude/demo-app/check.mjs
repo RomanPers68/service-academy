@@ -23,7 +23,9 @@
 // вина («Сегодня нет. Предложи вместо», «Как сказать», «Похожие»), коктейли («стир · рокс · Hendrick's», «Как готовить» свёрнуто).
 // v137 (Доп. 450): Мария — уведомления на телефон (разрешение, пробное, «Только телефон», упоминание, касание — чат); Роман —
 // «Сервер» → «Уведомления на телефон».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
+// v139 (Доп. 454): «О нас» — Анна читает концепцию сети и «Океана» (фото, сосед «Порт», «Прочитал(а)», раздел «Наш
+// ресторан» в треке); Мария правит: новый блок, «Придумать вопросы», «Сообщить команде», «Кто прочитал», «Из документа».
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -778,6 +780,62 @@ if (!ONLY || ONLY.includes("ksenia")) {
   // v110 (Доп. 423): карточкой с прогрессом под сменой: «Первая неделя · сделано 1 из 12 · Первая смена: сегодня, 12:00»
   ok("«Смена»: первым — «Первая неделя» с прогрессом и первой сменой сегодня", /^Первая неделя сделано \d+ из \d+ Первая смена: сегодня, 12:00/.test(first), first);
   await shot("k4-shift");
+}
+if (!ONLY || ONLY.includes("about")) {
+  // v139 (Доп. 454): «О нас» — концепция и стандарты (пример: tools/claude/demo-app/concept-seed.js)
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; } };
+  const nav = async (x, ms = 1500) => { await page.evaluate((v) => window.__saNav && window.__saNav(v), x); await page.waitForTimeout(ms); };
+  const down = async () => { await page.evaluate(() => { const r = document.getElementById("root"); if (r) r.scrollTop = 99999; window.scrollTo(0, 99999); }); await page.waitForTimeout(500); };
+  const as = async (w) => { await page.evaluate((x) => { localStorage.setItem("__demo_who", x); localStorage.removeItem("__demo_me"); }, w);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1500); await closeDemo(); };
+  await as("anna");
+  await nav("teamHub"); await closeDemo(); await openGroups();
+  const item = await page.locator('[aria-label="О нас"]').first().innerText().catch(() => "");
+  ok("Анна: «Команда» → «О нас» с отметкой «новое»", /новое/.test(item), item.replace(/\s+/g, " "));
+  await page.locator('[aria-label="О нас"]').first().click().catch(() => {}); await page.waitForTimeout(1800);
+  const kinds = await page.locator("[data-cn-block]").evaluateAll((els) => els.map((e) => e.getAttribute("data-cn-block")).join(",")).catch(() => "");
+  ok("«О нас»: сеть и «Два моря, Океан» (распорядок менеджера официанту не виден), «Соседи по сети»", kinds === "idea,values,structure,dress,idea,pitch,setting,check" && /Соседи по сети/.test(await txt()), kinds);
+  await page.waitForFunction(() => [...document.querySelectorAll("[data-cn-photo] img")].filter((i) => i.complete && i.naturalWidth > 0).length === 2, null, { timeout: 8000 }).catch(() => {});
+  ok("фото формы и сервировки на месте", (await page.locator("[data-cn-photo] img").count()) === 2);
+  await shot("o1-about");
+  await page.locator('[data-cn-other="Порт"] button').click().catch(() => {}); await page.waitForTimeout(500);
+  ok("сосед «Порт»: его концепция", /Концепция «Порта»/.test(await page.locator('[data-cn-other="Порт"]').innerText().catch(() => "")));
+  await down(); await shot("o2-neighbors");
+  await page.locator("[data-cn-read]").click().catch(() => {}); await page.waitForTimeout(1200);
+  ok("«Прочитал(а)»: «Всё прочитано»", (await page.locator("[data-cn-readok]").count()) === 1);
+  await nav("home", 1800);
+  ok("трек Анны начинается с раздела «Наш ресторан»", /Наш ресторан/.test(await txt()));
+  await shot("o3-track");
+  await as("maria");
+  await nav("teamHub"); await closeDemo(); await openGroups();
+  await page.locator('[aria-label="Концепция и стандарты"]').first().click().catch(() => {}); await page.waitForTimeout(1800);
+  ok("Мария: «Управление» → «Концепция и стандарты» — правка «Два моря, Океан»", (await page.locator('[data-about="edit"][data-cn-scope="venue"]').count()) === 1 && (await page.locator("[data-cn-row]").count()) === 5);
+  await shot("o4-edit");
+  await page.locator("[data-cn-add]").click().catch(() => {}); await page.waitForTimeout(500);
+  await page.locator('[data-cn-kind="mood"]').click().catch(() => {}); await page.waitForTimeout(600);
+  await page.locator("[data-cn-body]").fill("Тёплый свет, тихий джаз до 21:00, потом чуть громче.\n• Свечи на столах после 19:00\n• Музыка не мешает разговору").catch(() => {});
+  await page.locator("[data-cn-qai]").click().catch(() => {}); await page.waitForTimeout(1600);
+  ok("«Придумать вопросы»: вопросы теста появились", (await page.locator("[data-cn-q]").count()) >= 1);
+  await down(); await shot("o5-block");
+  await page.locator("[data-cn-save]").click().catch(() => {}); await page.waitForTimeout(1500);
+  ok("«Сохранить»: блок «Атмосфера» в списке", (await page.locator('[data-cn-row="mood"]').count()) === 1);
+  await down();
+  await page.locator("[data-cn-notify]").click().catch(() => {}); await page.waitForTimeout(1200);
+  const nm = await page.locator("[data-cn-msg]").innerText().catch(() => "");
+  ok("«Сообщить команде»: «Сообщение ушло: N из M»", /Сообщение ушло: \d+ из \d+/.test(nm), nm);
+  await page.locator("[data-cn-reads]").click().catch(() => {}); await page.waitForTimeout(1200);
+  const rl = await page.locator("[data-cn-readlist]").getAttribute("data-cn-readlist").catch(() => "");
+  // блок добавлен после «Прочитал(а)» Анны: версия «Океана» новая, читать снова всем, Анне тоже
+  ok("«Кто прочитал»: после нового блока снова «Ещё нет» у всех, и у Анны", /^0\/\d+$/.test(rl || "") && /Ещё нет: [^.]*Анна Смирнова/.test(await txt()), rl);
+  await down(); await shot("o6-team");
+  await page.locator("[data-cn-doc]").click().catch(() => {}); await page.waitForTimeout(500);
+  await page.locator("[data-cn-doctext]").fill("Наша история: открылись в 2015 году на набережной, первым был зал на сорок мест.\n\nФорма: белая рубашка, синий фартук, бейдж слева.\n\nМузыка и атмосфера: джаз, свечи, тёплый свет.").catch(() => {});
+  await page.locator("[data-cn-docrun]").click().catch(() => {}); await page.waitForTimeout(2200);
+  const nd = await page.locator("[data-cn-docblock]").count();
+  ok("«Из документа»: помощник разложил текст по блокам", nd >= 2, "блоков: " + nd);
+  await shot("o7-doc");
+  await page.locator("[data-cn-docadd]").click().catch(() => {}); await page.waitForTimeout(1800);
+  ok("«Добавить выбранные»: «Добавлено блоков: N»", /Добавлено блоков: \d+/.test(await page.locator("[data-cn-msg]").innerText().catch(() => "")));
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

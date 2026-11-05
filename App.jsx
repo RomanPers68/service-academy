@@ -6,6 +6,7 @@ import React from "react";
 import { rpc, saToken, rpcSync, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
+import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread } from "./lib/concept";   // v139 (Доп. 454): «О нас»
 import { setCustomProgram } from "./data/modules";
 import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
@@ -58,6 +59,7 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 // Доп. 245: ленивый чанк на плохой связи — повторяем сами (3 попытки), а не роняем экран
 const retryImport = (loader, tries = 3, delay = 600) => loader().catch(err => { if (tries <= 1 || (typeof navigator !== "undefined" && navigator.onLine === false && tries <= 2)) throw err; return new Promise(r => setTimeout(r, delay)).then(() => retryImport(loader, tries - 1, delay * 2)); });
 const SearchScreen = lazy(() => retryImport(() => import("./ui/search")).then(m => ({ default: m.SearchScreen })));
+const AboutScreen = lazy(() => retryImport(() => import("./ui/concept")).then(m => ({ default: m.AboutScreen })));   // v139 (Доп. 454)
 const MenuTrainerScreen = lazy(() => retryImport(() => import("./ui/menu-trainer")).then(m => ({ default: m.MenuTrainerScreen })));
 const CocktailsScreen = lazy(() => retryImport(() => import("./ui/cocktails")).then(m => ({ default: m.CocktailsScreen })));
 const GuestBookScreen = lazy(() => retryImport(() => import("./ui/guestbook")).then(m => ({ default: m.GuestBookScreen })));
@@ -426,7 +428,8 @@ const PRACTICE_RESUME_KEY = "sa_practice_resume";   // Доп. 293
 // <сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота; v109: gain и gain_<месяц> — «Открыть итог». v137 (Доп. 450):
 // отдельной функцией — ею же проверяется касание уведомления на телефоне (сервис-воркер присылает sa-go, когда приложение
 // открыто); qday — «Вопрос дня» (главная), remind — пробное уведомление («Напоминания»). warmup и mentor — свои ссылки ниже.
-const goLinkOk = (v) => typeof v === "string" && (["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
+// v139 (Доп. 454): about — «О нас» («Обновили «О нас»» от бота и на телефоне).
+const goLinkOk = (v) => typeof v === "string" && (v === "about" || ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
   || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "qday" || v === "remind");
 
 function ServiceAcademy() {
@@ -530,6 +533,10 @@ function ServiceAcademy() {
   const [streak, setStreak] = useState({ count: 0, best: 0, last: "", days: [] });
   const [mistakeBank, setMistakeBank] = useState([]); // #5/#6 — заваленные вопросы для повтора
   const [customLessons, setCustomLessons] = useState([]);
+  // v139 (Доп. 454): «О нас» — концепция и стандарты сети и заведения (этап 49). Копия на телефоне: раздел «Наш ресторан»
+  // в программе и экран «О нас» есть с первого кадра и без сети
+  const [concept, setConcept] = useState(() => conceptFromStorage());
+  const [aboutEdit, setAboutEdit] = useState(false);
   const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166)
   // Сброс прогресса дочищает следы (этап 20): аналитика, выходы, ключи лазейки,
   // прогресс по меню и ачивки привязаны к «Имя Фамилия» и сбросом не убирались.
@@ -1013,16 +1020,32 @@ function ServiceAcademy() {
     try { const res = await rpc("cms_list_lessons", { p_token: t }); if (Array.isArray(res)) { setCustomLessons(res); setCustomLoaded(true); try { localStorage.setItem(ck, JSON.stringify(res)); } catch (e) {} } } catch(e) {}
   }, []);
   React.useEffect(() => { if (profile) loadCustomLessons(); }, [profile, loadCustomLessons]);
+  // v139 (Доп. 454): «О нас» с сервера; нет этапа 49 — молча как было
+  const onConceptRaw = useCallback((raw) => { const n = normConcept(raw); if (n) { conceptToStorage(raw); setConcept(n); } }, []);
+  const loadConcept = useCallback(() => {
+    if (!saToken()) return;
+    rpc("concept_get", { p_token: saToken() }).then((r) => { if (r && r.ok === true) onConceptRaw(r); }).catch(() => {});
+  }, [onConceptRaw]);
+  React.useEffect(() => { if (profile) loadConcept(); }, [profile, loadConcept]);
+  const conceptNew = useMemo(() => conceptUnread(concept).any, [concept]);
+  const aboutOn = !!(concept && (concept.net.blocks.length || (concept.venue && concept.venue.blocks.length) || concept.others.length));
   // Свои разделы: иконка и цвет трека — lib/tracks.js (общие с редактором контента)
   // Свои разделы для текущей роли: все уроки раздела подряд, потом общая практика,
   // диалоги, сборки и один тест раздела — lib/custom-modules.js (правка 161)
-  const customModules = useMemo(() => buildCustomModules(customLessons, role, { color: TRACK_COLOR[role] || GOLD, icon: customIcon }), [customLessons, role]);
+  // v139 (Доп. 454): раздел «Наш ресторан» из «О нас» — тоже свой раздел (его видят все, кто видит свои разделы:
+  // Наставник, поиск, аналитика, «Далее»), но в программе и на экране трека он первый
+  const conceptMods = useMemo(() => conceptModules(concept, role, TRACK_COLOR[role] || GOLD, customIcon), [concept, role]);
+  const customOwn = useMemo(() => buildCustomModules(customLessons, role, { color: TRACK_COLOR[role] || GOLD, icon: customIcon }), [customLessons, role]);
+  const customModules = useMemo(() => [...conceptMods, ...customOwn], [conceptMods, customOwn]);
   const customSkills = useMemo(() => customModules.flatMap(m => m.skills || []), [customModules]);   // Доп. 310
   // Программа роли — штатные модули и свои разделы вместе (правка 165): по ней считаются процент
   // трека, «пройдено N из M», завершение роли, «Задания дня» — свои уроки как родные
-  const programModules = useMemo(() => [...modules, ...customModules], [modules, customModules]);
+  const programModules = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);
+  const homeMods = useMemo(() => [...conceptMods, ...modules], [conceptMods, modules]);   // v139: экран трека — «Наш ресторан» первым
+  const reportCms = useMemo(() => [...customLessons, ...conceptRecordsAll(concept)], [customLessons, concept]);   // v139: отчёт видит и «Наш ресторан»
   // свои разделы по всем ролям — для «Учусь» (проценты треков) и экзамена
-  const customByRole = useMemo(() => Object.fromEntries(ROLES.map(r => [r.id, buildCustomModules(customLessons, r.id, { color: TRACK_COLOR[r.id] || GOLD, icon: customIcon })])), [customLessons]);
+  const customByRole = useMemo(() => Object.fromEntries(ROLES.map(r => [r.id, [...conceptModules(concept, r.id, TRACK_COLOR[r.id] || GOLD, customIcon),
+    ...buildCustomModules(customLessons, r.id, { color: TRACK_COLOR[r.id] || GOLD, icon: customIcon })]])), [customLessons, concept]);
   // книга отзывов видит свои разделы с отзывом (правка 166)
   useMemo(() => { setCustomBook(customByRole); setCustomProgram(customByRole); }, [customByRole]);
   // Живые свои шаги (правка 166): что удалено в редакторе — не видно нигде. Пока список своих
@@ -1690,6 +1713,7 @@ function ServiceAcademy() {
     else if (g === "gain" || /^gain_/.test(g)) { setGainMonth(g.slice(5)); navigate("gain"); }   // v109 (Доп. 422): «Открыть итог» 1-го числа
     else if (g === "qday") { navigate("roleSelect"); loadQday(true); }   // v137 (Доп. 450): уведомление «Вопрос дня» — карточка на главной
     else if (g === "remind") setRemindOpen("push");                    // v137: пробное уведомление — «Напоминания»
+    else if (g === "about") { setAboutEdit(false); navigate("about"); }   // v139 (Доп. 454): «Обновили «О нас»» — бот и телефон
   }, [profile, storageLoaded, programModules.length, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v137: приложение открыто, а человек коснулся уведомления — сервис-воркер присылает sa-go с той же ссылкой
   // (в демо — событие страницы sa-go от уведомления сверху)
@@ -2028,9 +2052,10 @@ function ServiceAcademy() {
         // Доп. 206: «Далее» в уроке — буквально следующий по порядку (после текущего), а не первый непройденный в роли
         // Свои разделы — в той же последовательности (правка 164): раньше урок своего раздела в
         // ней не находился, и «Дальше» уводило в штатную программу, в другую тему
-        const seq = [...(MODULES[role] || []), ...(customModules || [])].flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
+        // v139 (Доп. 454): в порядке программы — раздел «Наш ресторан» первым
+        const seq = programModules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
         const cur = seq.findIndex(x => x.lesson.id === activeLesson.id);
-        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf([...(MODULES[role] || []), ...(customModules || [])], newCompleted, newQuizDone);
+        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf(programModules, newCompleted, newQuizDone);
         if (activeLesson.type === "lesson") {
           // Доп. 207: подсказка, а не принуждение — первое непройденное ПОЗАДИ текущего
           const isDone = (l) => l.type === "quiz" ? !!newQuizDone[l.id] : !!newCompleted[l.id];
@@ -2048,7 +2073,7 @@ function ServiceAcademy() {
       console.error("completeLesson error:", e);
       setScreen("module");
     }
-  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements, customModules, touchStreak, logActivity]);
+  }, [activeLesson, profile, quizState.answers, role, practiceState, scores, practiceStars, completed, quizDone, completedRoles, checkAndShowAchievements, customModules, programModules, touchStreak, logActivity]);
   // ── v30 (Доп. 315): «Зачёт на опыт» сдан — шаги темы засчитаны (тест — без балла: рейтинг не трогаем) ──
   const creditModule = useCallback((mod, res) => {
     if (!mod || !profile) return;
@@ -2691,8 +2716,10 @@ function ServiceAcademy() {
   };
   // Что Наставник знает о сотруднике (роль, прогресс, ошибки, смена) — вынесено из экрана
   // «Наставник» без изменений: тот же контекст нужен чату поверх ситуации (Доп. 302)
-  const assistantLearner = () => ({ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title,
-    customLessons: (customModules || []).flatMap(m => m.lessons.filter(l => l.type === "lesson").map(l => ({ id: l.id, title: l.title, section: m.title }))),
+  const assistantLearner = () => ({ position: profile?.position, roleTitle: (ROLES.find(r => r.id === role) || {}).title, track: role || "",
+    // v139: только свои уроки из редактора; раздел «Наш ресторан» Наставник получает текстом «О нас» (conceptAssistantContext,
+    // кнопка [[go:about]]), а список его уроков съел бы место данных: сервер режет сообщение до 2000 знаков
+    customLessons: (customOwn || []).flatMap(m => m.lessons.filter(l => l.type === "lesson").map(l => ({ id: l.id, title: l.title, section: m.title }))),
     done: doneCount, total: totalLessons, dueMistakes,
     // Доп. 310: ритм дня — Наставник знает про свечу, стакан и разминку
     streak: (streak && streak.count) || 0, steps: todaySteps || 0, goal: goal || 0,
@@ -2798,6 +2825,7 @@ function ServiceAcademy() {
     if (k === "probe") { if (probeMods.length >= 2) { jump("cellar"); openProbe(); } else jump("cellar"); return; }
     // v40: «Путь мастера»
     if (k === "mastery") { if (!mState) { jump("me"); return; } setMasteryFocus(null); try { markSeen(ukP, "mastery"); } catch (e) {} setMasteryVer((v) => v + 1); jump("mastery"); return; }
+    if (k === "about") { setAboutEdit(false); jump("about"); return; }   // v139 (Доп. 454): «О нас»
     if (k === "report" || k === "myreport") {
       if (k === "report" && !boss) return;
       setReportSelf(k === "myreport"); jump("report"); return;
@@ -3131,7 +3159,7 @@ function ServiceAcademy() {
           onLegacy={() => navigate("onboarding")} /></Suspense></div>}
         {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
-        {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={customLessons} startSelf={reportSelf}
+        {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={reportCms} startSelf={reportSelf}
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
@@ -3340,7 +3368,11 @@ function ServiceAcademy() {
             staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
             staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Кто где ошибается и что не прошёл, в Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
             staff && { key:"ce", group:"Управление", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
+            // v139 (Доп. 454): концепция и стандарты сети и заведения — правка (сотрудник видит «О нас» ниже, в «Команде»)
+            staff && { key:"cn", group:"Управление", icon:"about", label:"Концепция и стандарты", sub:"О нас: сеть и заведение, дресс-код, сервировка, фото", onClick:() => { setAboutEdit(true); navigate("about"); } },
             staff && thanksOn && { key:"thanksTeam", group:"Команда", icon:"thanks", label:"Спасибо от гостей", sub:"Кого и за что благодарят гости по QR", onClick:() => openThanks("team") },   // v84
+            // v139 (Доп. 454): «О нас» — всем, когда руководители что-то написали; обновили и ещё не прочитано — «новое»
+            aboutOn && { key:"about", group:"Команда", icon:"about", label:"О нас", sub:"Концепция сети и заведения, наши стандарты", badge: conceptNew ? "новое" : null, onClick:() => { setAboutEdit(false); navigate("about"); } },
             { key:"lb", group:"Команда", icon:"trophy", label:"Рейтинг", sub:"Очки, звёзды, место в команде", onClick:() => navigate("leaderboard") },
             { key:"lg", group:"Команда", icon:"league", label:"Лига недели", sub: leagueSub(brief) || "Очки за занятия с понедельника",   /* v110: в одну строку */ onClick:() => navigate("league") },   // v30: Доп. 317; v31: место из сводки дня
             { key:"mt", group:"Команда", icon:"mentor", label:"Наставничество", sub: isLead && hallInbox ? `${hallInbox} ${hallInbox % 10 === 1 && hallInbox % 100 !== 11 ? "запрос ждёт" : "запроса ждут"} подтверждения в зале` : "Допуски и подтверждение навыков", badge: isLead && hallInbox ? String(hallInbox) : null, onClick:() => navigate("mentor") },
@@ -3420,12 +3452,13 @@ function ServiceAcademy() {
         {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
         {/* Доп. 307: трек и раздел — один экран: меню темы, темы листаются свайпом. Раздел из чужой
             роли (открыт через Наставника) — прежним отдельным экраном ниже */}
-        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={modules} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => { setTracksWanted(true); navigate("roleSelect"); }} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customModules} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
+        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={homeMods} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => { setTracksWanted(true); navigate("roleSelect"); }} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customOwn} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
           focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
-        {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
+        {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} /></Suspense></div>}
+        {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} concept={concept} onAbout={() => { setAboutEdit(false); navigate("about"); }} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} onShareChat={chatShare} /></Suspense></div>}
         {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} onShareChat={chatShare} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}

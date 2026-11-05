@@ -18,6 +18,7 @@ import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { programAll } from "../data/modules";
+import { withConceptPrograms, conceptFromStorage } from "../lib/concept";   // v139 (Доп. 454): вопрос команде и из «О нас»
 import { useAllModules } from "../lib/use-content";
 import { cachedShared } from "../lib/deck-extras";
 import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine, briefLines } from "../lib/briefing";
@@ -221,7 +222,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
   }, [restaurant]);
   const loading = Object.values(src).some((v) => v === null);
   const author = profile ? (profile.name + (profile.surname ? " " + profile.surname : "")).trim() : "";
-  const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: programAll(), sched: src.sched, league: src.league,
+  const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: withConceptPrograms(programAll(), conceptFromStorage()), sched: src.sched, league: src.league,
     caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, seat: src.seat || null, restaurant, author, note }),
     [src, restaurant, author, note, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const brief = { ...base, on: { ...base.on, ...on, note: on.note !== undefined ? on.note : !!note.trim() } };

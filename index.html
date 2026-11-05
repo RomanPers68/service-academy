@@ -14,19 +14,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SA" />
     <meta name="theme-color" content="#171208" />
-    <!-- v137 (Доп. 452): приложение с экрана «Домой» на iPhone (navigator.standalone). Без viewport-fit=cover iPhone в этом
-         режиме не сообщает приложению вырезы экрана (env(safe-area-inset-*) = 0): строка ввода чата с колокольчиком и
-         микрофоном и нижние панели уходили под скругление и полоску «Домой» (снимки владельца, 05.11). Только здесь:
-         в Telegram и в браузере всё как было. Верх под часами — lib/tg-screen.js (--sa-st), отступ под размытием iOS 26 —
-         ui/css.js (html.sa-pwa) -->
+    <!-- v137 (Доп. 452), v138 (Доп. 453): приложение с экрана «Домой» на iPhone (navigator.standalone): класс sa-pwa на <html>.
+         Окно — как было, без viewport-fit=cover: с ним iOS 26 держит окно на 62 точки (строка с часами) короче экрана, и
+         панель вкладок со строкой ввода чата висели на 100 точек над краем, а шапку переписки система размывала (v137,
+         запись владельца 05.11). Вырез под полоской «Домой» приложение берёт само (ui/viewport.js, homeBarPx), верхняя
+         строка опускается под размытие iOS 26 (ui/css.js). В Telegram и в браузере класса нет, всё как было. -->
     <script>
       (function () {
-        try {
-          if (navigator.standalone !== true) return;
-          document.documentElement.classList.add("sa-pwa");
-          var m = document.querySelector('meta[name="viewport"]'), c = m ? m.getAttribute("content") || "" : "";
-          if (m && c.indexOf("viewport-fit") < 0) m.setAttribute("content", c + ", viewport-fit=cover");
-        } catch (e) {}
+        try { if (navigator.standalone === true) document.documentElement.classList.add("sa-pwa"); } catch (e) {}
       })();
     </script>
     <!-- Доп. 363: без автоподгонки шрифта iOS — иначе после поворота телефона текст остаётся крупнее -->

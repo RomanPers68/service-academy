@@ -75,11 +75,31 @@ export function safeInsets() {
   } catch (er) {}
   const r = { t: Math.max(e.t, g.t), r: Math.max(e.r, g.r), b: Math.max(e.b, g.b), l: Math.max(e.l, g.l) };
   if (!r.l && !r.r && notchedFullWidth()) { r.l = 50; r.r = 50; }
+  r.b = Math.max(r.b, homeBarPx());   // v138 (Доп. 453): экран «Домой» на iPhone
   try {
     const tg = window.Telegram && window.Telegram.WebApp;
     r.b = keepSafeBottom(safeBottomKey(window.innerWidth, window.innerHeight, !!(tg && tg.isFullscreen)), r.b);
   } catch (er) {}
   return r;
+}
+
+// v138 (Доп. 453): приложение с экрана «Домой» на iPhone (класс sa-pwa, index.html). iOS кладёт его до самого низа экрана,
+// а про полоску «Домой» не говорит: без viewport-fit=cover env() снизу 0, а с ним iOS 26 укорачивает окно на 62 точки (v137:
+// панель вкладок и строка ввода висели над краем). Без выреза строка ввода чата с колокольчиком и микрофоном уходила под
+// скругление экрана (снимки владельца, 05.11: «на пару пикселей нужно было поднять, чтобы он не выглядел обрезанным»).
+// На iPhone с полоской (длинная сторона экрана от 812 pt; у SE её нет) вырез снизу берём сами: 20 px, сколько сообщает
+// Telegram на том же телефоне (там строка ввода на 28 px от низа, «в телеге всё норм»). Нижние строки окон поверх экрана
+// встают над полоской (--sa-sb); панель вкладок считает от env() и стоит, где стояла (16 px от низа). iPad — как было.
+export const HOME_BAR = 20;
+export function homeBarPx(nav, scr, root) {
+  try {
+    const el = root || (typeof document !== "undefined" ? document.documentElement : null);
+    if (!el || !el.classList || typeof el.classList.contains !== "function" || !el.classList.contains("sa-pwa")) return 0;
+    const ua = String((nav || navigator).userAgent || "");
+    const S = scr || screen;
+    const long = Math.max(Number(S.width) || 0, Number(S.height) || 0);
+    return /iPhone/.test(ua) && long >= 812 ? HOME_BAR : 0;
+  } catch (er) { return 0; }
 }
 
 // iPhone с вырезом (длинная сторона экрана от 812 pt; у SE её нет), лежит, окно — во всю длину экрана:

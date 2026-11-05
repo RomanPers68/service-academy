@@ -7,9 +7,8 @@
 // Telegram — бот пишет, запрещено в настройках), TAP (касание уведомления при открытом приложении: переписка на сообщении,
 // вопрос дня, график; ?go=remind при запуске), BADGE (число на иконке — непрочитанное в чатах), LOGOUT (вышел — подписка
 // снята), SERVER («Сервер»: функция push-send на месте или как развернуть, телефоны), MISSING (этапа 48 нет), NARROW (320 px,
-// светлая тема). REPLY (Доп. 451): уведомление о сообщении как в мессенджере, касание — сразу ответ (…_r). HOME (Доп. 452, снимки владельца 05.11): приложение с экрана «Домой» на iPhone — viewport-fit=cover, верх
-// под часами (--sa-st), верхняя строка ниже размытия iOS 26, строка ввода чата и панель вкладок над полоской «Домой»;
-// в Safari и в Telegram — как было.
+// светлая тема). REPLY (Доп. 451): уведомление о сообщении как в мессенджере, касание — сразу ответ (…_r). HOME (Доп. 452)
+// с v138 — в e2e-v138.mjs.
 // Запуск: E2E_SITE=<сборка> E2E_PORT=<порт> E2E_OUT=<папка снимков> [E2E_SRC=<исходники>] node e2e-v137.mjs [разделы]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -395,69 +394,8 @@ await run("REPLY", async () => {
   await o2.ctx.close(); await o3.ctx.close();
 });
 
-// v137 (Доп. 452): приложение с экрана «Домой» на iPhone (снимки владельца, 05.11): строка ввода чата уходила под
-// скругление и полоску «Домой», верхняя строка «SA · лупа · Для чтения» — в размытие iOS 26 под часами
-const geo = (page) => page.evaluate(() => {
-  const r = (s) => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom), h: Math.round(b.height) }; };
-  const cs = getComputedStyle(document.documentElement);
-  return { pwa: document.documentElement.classList.contains("sa-pwa"), meta: document.querySelector('meta[name="viewport"]').getAttribute("content"),
-    st: cs.getPropertyValue("--sa-st").trim(), sb: cs.getPropertyValue("--sa-sb").trim(), pwab: cs.getPropertyValue("--sa-pwab").trim(), body: getComputedStyle(document.body).paddingTop,
-    bar: r("[data-sa-topbar]"), search: r("[data-top-search]"), tab: r("#sa-tabbar"), root: r("#root"), vh: innerHeight,
-    chatBar: r(".ch-bar"), input: r(".ch-bar .ch-fieldwrap") || r(".ch-bar textarea"), head: r(".ch-head") };
-});
-const openChat = async (page, srv) => {
-  const m = srv.bot.say("u-maria", "Банкет на веранде в субботу, кто свободен?");
-  await page.evaluate((go) => window.__swGo(go), "chat_1_" + m.id);
-  return until(() => page.locator(".ch-bar").count(), 6000);
-};
-await run("HOME", async () => {
-  // iPhone 16 Pro (402 × 874), экран «Домой»: с viewport-fit=cover приложение лежит и под часами — вырез сверху 62, снизу 34
-  const srv = srvOf();
-  const o = await open({ who: ANNA, srv, w: 402, h: 874, ua: IPHONE("18_6"), push: { standalone: true, perm: "granted", sub: "https://web.push.apple.com/home" }, safe: { top: 62, bottom: 34 } });
-  const g = await geo(o.page);
-  ok("HOME: экран «Домой» узнан (класс sa-pwa), viewport-fit=cover добавлен к прежнему viewport", g.pwa && g.meta === "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover", JSON.stringify([g.pwa, g.meta]));
-  ok("HOME: приложение начинается под часами (--sa-st = 62px, отступ у body), #root — от 62", g.st === "62px" && g.body === "62px" && g.root && g.root.t === 62, JSON.stringify([g.st, g.body, g.root]));
-  ok("HOME: верхняя строка ниже размытия iOS 26: отступ 8 + 36, лупа с 106 px (было 70)", g.pwab === "36px" && g.bar && g.bar.t === 62 && g.search && g.search.t >= 104 && g.search.t <= 110, JSON.stringify([g.pwab, g.bar, g.search]));
-  ok("HOME: панель вкладок над полоской «Домой»: низ на 874 − 34 − 8 = 832", g.tab && g.tab.b === 832 && g.sb === "34px", JSON.stringify([g.tab, g.sb]));
-  const lastPad = await o.page.evaluate(() => { const e = document.querySelector(".sa-tabpad"); return e ? getComputedStyle(e).paddingBottom : ""; });
-  ok("HOME: отступ под панелью вкладок вырос на столько же (88 → 114)", lastPad === "114px", lastPad);
-  await shot(o.page, "home-iphone-top");
-  ok("HOME: открыли переписку", await openChat(o.page, srv));
-  await sleep(900);
-  const c = await geo(o.page);
-  ok("HOME: шапка переписки — под часами (как было)", c.head && c.head.t >= 0 && c.head.t <= 2 && c.head.h >= 62 + 40, JSON.stringify(c.head));
-  ok("HOME: строка ввода над полоской «Домой»: поле кончается на 874 − 34 − 8 = 832, панель — у края", c.input && c.input.b <= 832 && c.input.b >= 820 && c.chatBar && c.chatBar.b === 874, JSON.stringify([c.input, c.chatBar]));
-  await shot(o.page, "home-iphone-chat");
-  await o.ctx.close();
-
-  // iOS сама держит полосу под часами (WebKit 301994: окно 812 из 874, вырез сверху 0) — верх как был, низ и строка — как надо
-  const b = await open({ who: ANNA, srv, w: 402, h: 812, ua: IPHONE("18_6"), push: { standalone: true }, safe: { top: 0, bottom: 34 } });
-  const gb = await geo(b.page);
-  ok("HOME: полоса под часами от iOS — без --sa-st и отступа у body; верхняя строка всё равно ниже размытия", !gb.st && gb.body === "0px" && gb.search && gb.search.t >= 42 && gb.search.t <= 48, JSON.stringify([gb.st, gb.body, gb.search]));
-  ok("HOME: и тут панель вкладок над полоской «Домой» (812 − 42 = 770)", gb.tab && gb.tab.b === 770, JSON.stringify(gb.tab));
-  ok("HOME: открыли переписку (полоса от iOS)", await openChat(b.page, srv));
-  await sleep(900);
-  const cb = await geo(b.page);
-  ok("HOME: строка ввода над полоской «Домой» (812 − 34 − 8 = 770)", cb.input && cb.input.b <= 770 && cb.input.b >= 758, JSON.stringify(cb.input));
-  await b.ctx.close();
-
-  // лёжа: часов нет — отступа под размытие нет; вырез «острова» сбоку — меню слева от него
-  const l = await open({ who: ANNA, srv, w: 874, h: 402, ua: IPHONE("18_6"), push: { standalone: true }, safe: { top: 0, bottom: 21, left: 62, right: 62 } });
-  const gl = await geo(l.page);
-  ok("HOME: лёжа — без отступа под размытие и без --sa-st", !gl.pwab && !gl.st && gl.body === "0px", JSON.stringify([gl.pwab, gl.st, gl.body]));
-  await shot(l.page, "home-iphone-land");
-  await l.ctx.close();
-
-  // тот же iPhone в Safari и в Telegram: ничего не меняется (без класса, viewport прежний, верхняя строка с 0)
-  const s1 = await open({ who: ANNA, srv, w: 402, h: 874, ua: IPHONE("18_6") });
-  const g1 = await geo(s1.page);
-  ok("HOME: Safari (не экран «Домой») — как было: viewport без cover, нет sa-pwa, строка с 0, лупа с 8", !g1.pwa && !/viewport-fit/.test(g1.meta) && g1.bar && g1.bar.t === 0 && g1.search && g1.search.t >= 6 && g1.search.t <= 10, JSON.stringify([g1.pwa, g1.meta, g1.bar, g1.search]));
-  const t1 = await open({ who: ANNA, srv, w: 402, h: 874, ua: IPHONE("18_6"), push: { tg: true } });
-  const gt = await geo(t1.page);
-  ok("HOME: Telegram — как было", !gt.pwa && !/viewport-fit/.test(gt.meta) && !gt.st && gt.search && gt.search.t >= 6 && gt.search.t <= 10, JSON.stringify([gt.pwa, gt.meta, gt.st, gt.search]));
-  const [e1, e2] = noErr(o, b, l, s1, t1); ok("HOME: без ошибок", e1, e2);
-  await s1.ctx.close(); await t1.ctx.close();
-});
+// v138 (Доп. 453): раздел HOME (приложение с экрана «Домой» на iPhone, Доп. 452) — в e2e-v138.mjs: v138 убрал
+// viewport-fit=cover, и вид там другой
 
 await run("NARROW", async () => {
   for (const light of [false, true]) {

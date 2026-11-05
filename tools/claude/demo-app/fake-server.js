@@ -16,6 +16,7 @@ import { focusFromPayload, memoOf, NB_KEEP_DAYS, NB_STEP_IDS, NB_BUDDY_STEPS } f
 import { cheersDue, joinedOf, cheerDm, thxPing, cutText, THX_MAX, THX_DAY_MAX, BOT_NAME } from "../../../lib/team-warm.js";   // v108: как этап 42
 import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня — как _sa_day_points этапа 24
 import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «Что дало обучение», как этап 43
+import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -26,6 +27,10 @@ const dayN = (iso) => String(Number(iso.slice(8)));
 const hh = (v) => String(v > 24 ? v - 24 : v).padStart(2, "0") + ":00";
 const toks = (s) => String(s || "").toLowerCase().replace(/ё/g, "е").split(/\s+/).filter(Boolean).sort().join(" ");
 const nm = (s) => { const w = String(s || "").trim().split(/\s+/); return w[1] ? w[0] + " " + w[1][0] + "." : w[0] || ""; };
+// «суббота, 8 ноября» (как _sa_chat_dlong)
+const WD_L = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+const MON_G = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const dLong = (iso) => { const d = new Date(iso + "T12:00:00Z"); return WD_L[d.getUTCDay()] + ", " + d.getUTCDate() + " " + MON_G[d.getUTCMonth()]; };
 const cut = (s, n) => { const t = String(s == null ? "" : s).replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t; };
 const ID_RE = /^[A-Za-z0-9_.:-]{1,80}$/;
 const lowE = (s) => String(s || "").toLowerCase().replace(/ё/g, "е");
@@ -49,7 +54,17 @@ export function makeServer(opts) {
   const PEOPLE = opts.people, TOK = opts.tok || {}, SSTAFF = opts.sstaff, CFG = opts.cfg;
   const SH = (CFG && CFG.shifts) || SHIFTS;
   const clock = opts.clock || (() => Date.now());
-  const ping = opts.ping || (() => {});   // v99: «бот пишет в Telegram»: (кому, текст, кнопки, чат, сообщение)
+  const pingRaw = opts.ping || (() => {});   // v99: «бот пишет в Telegram»: (кому, текст, кнопки, чат, сообщение)
+  const pushOut = opts.push || (() => {});   // v137: уведомление на телефон: (кому, { t, b, go, badge, c, a, k })
+  // v137 (этап 48): сообщение бота — и на телефон; «только телефон» и «чат» без Telegram — Telegram молчит. Доп. 451: бот
+  // написал в Telegram о переписке — просто текст боту в ближайшие 30 минут уйдёт туда (tg.quick, как sa_push_tglast);
+  // написал о другом — забыть
+  function ping(to, text, acts, chat, msg, o) {
+    if (!pushRoute(to, text, acts, chat, msg, o)) return;
+    if (chat != null) S.push.tglast[to] = { chat, msg: msg == null ? null : msg, at: clock() };
+    else delete S.push.tglast[to];   // последнее сообщение бота — не о переписке: просто текст снова не уходит в чат
+    pingRaw(to, text, acts, chat, msg, o);
+  }
   const now = () => new Date(clock()).toISOString();
   const S = opts.state || {
     chats: [{ id: 1, kind: "team", rest: R0, pin: null }, { id: 2, kind: "leads", rest: R0, pin: null }, { id: 3, kind: "net", rest: "", pin: null }],
@@ -81,6 +96,73 @@ export function makeServer(opts) {
   // сегодня), прочтения брифинга прошлых дней, чек-листы по дням. Состояние прошлых версий демо — из opts.
   S.morning = S.morning || {}; S.morningNow = S.morningNow || {}; S.nudged = S.nudged || {};
   S.tgLinked = S.tgLinked || (opts.tgLinked || []).slice();
+  // v137 (Доп. 450, этап 48): уведомления на телефон — подписки (до пяти на человека), «куда присылать», «чат» без Telegram
+  // (pseudo: человек в tgLinked, но Telegram у него нет), выключенные напоминания в Telegram (tgOff), пробные, время доставки
+  S.push = S.push || { subs: {}, ch: {}, pseudo: {}, tgWasOff: {}, test: {}, okAt: null };
+  S.push.acts = S.push.acts || {}; S.push.tglast = S.push.tglast || {};   // Доп. 451: кнопки уведомлений (ключ → что), Telegram
+  S.tgOff = S.tgOff || {};
+  // уже включили на телефоне (opts.pushSubs: id сотрудника); без Telegram — «чат» без Telegram
+  if (!S.push.seeded) {
+    S.push.seeded = 1;
+    for (const id of opts.pushSubs || []) {
+      S.push.subs[id] = [{ endpoint: "https://web.push.apple.com/demo-" + id, ua: "iPhone", at: new Date(clock() - 2 * 864e5).toISOString() }];
+      if (!S.tgLinked.includes(id)) { S.tgLinked.push(id); S.push.pseudo[id] = true; }
+    }
+  }
+  S.nprefs = S.nprefs || {}; S.nquiet = S.nquiet || {};
+  const pushHas = (id) => !!(S.push.subs[id] && S.push.subs[id].length);
+  const tokId = (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null;
+  function pushGo(chat, msg, o) {
+    const k = o && Array.isArray(o.kb) && o.kb[0] && o.kb[0][0];
+    if (k && k.go) return String(k.go);
+    if (o && o.go) return String(o.go);
+    return chat != null ? "chat_" + chat + (msg != null ? "_" + msg : "") : "";
+  }
+  // кнопки бота демо ({ text, late } — «Принято», { text, take } — «Забрать» / «Выйду», { text, go } — «Иду») → ряд кнопок Telegram
+  const rowsOf = (acts) => (Array.isArray(acts) && acts.length ? [acts.map((a) => ({ text: a.text,
+    callback_data: a.late ? "cl:" + a.late : a.take ? "ct:" + a.take : a.go ? "cg:" + a.go : "" }))] : null);
+  const hex64 = () => Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+  // Доп. 451 (как _sa_push_send): сообщение из переписки — заголовок с числом новых, c — чат, касание — к ответу (…_r);
+  // кнопки — с ключом (S.push.acts, нажатие — pushAct)
+  function pushSend(id, text, go, acts) {
+    const x = pushTextOf(text); if (!x) return;
+    const tk = tokId(id), u = tk ? rpc("chat_unread", { p_token: tk }) : null;
+    let g = go || "", c = null, t = x.t;
+    if (x.m && /^chat_\d{1,12}(_\d{1,15})?$/.test(g)) c = Number(g.split("_")[1]);
+    if (x.m && /^chat_\d{1,12}_\d{1,15}$/.test(g)) g += "_r";
+    if (c != null) {
+      const n = S.msgs.filter((m) => m.chat === c && !m.del && m.emp !== id && m.id > ((S.reads[c] || {})[id] || 0)).length;
+      if (n > 1) t = pushCut(t, 64) + " · " + pushNew(n);
+    }
+    const out = { t, b: x.b, go: g, badge: u && u.ok ? u.unread : 0 };
+    if (c != null) out.c = c;
+    const a = pushActsOf(rowsOf(acts), go || "", x.m);
+    if (a) { const k = hex64(); S.push.acts[k] = { emp: id, acts: a, at: clock(), used: false }; out.a = a.map((v) => ({ a: v.a, t: v.t })); out.k = k; }
+    S.push.okAt = now();
+    pushOut(id, out);
+  }
+  function pushRoute(to, text, acts, chat, msg, o) {   // → писать ли в Telegram
+    if (!pushHas(to)) return !S.tgOff[to];
+    const ch = S.push.ch[to] || "both", pseudo = !!S.push.pseudo[to];
+    if (pseudo || ch !== "tg") pushSend(to, text, pushGo(chat, msg, o), acts);
+    return !pseudo && ch !== "push";
+  }
+  function pushUnlink(id) {
+    if (pushHas(id)) return;
+    if (S.push.pseudo[id]) { S.tgLinked = S.tgLinked.filter((x) => x !== id); delete S.push.pseudo[id]; }
+    if (S.push.tgWasOff[id] && S.push.ch[id] === "push") S.tgOff[id] = true;
+    delete S.push.tgWasOff[id]; S.push.ch[id] = "both";
+  }
+  function pushState(p, ep) {
+    const subs = S.push.subs[p.id] || [], pseudo = !!S.push.pseudo[p.id], linked = S.tgLinked.includes(p.id) && !pseudo;
+    const r = { ok: true, key: "BDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoDemoD", bot: true, n: subs.length,
+      here: !!ep && subs.some((x) => x.endpoint === ep), channel: S.push.ch[p.id] || "both", tg: linked && !S.tgOff[p.id], tg_linked: linked, pseudo };
+    if (p.is_admin) {
+      const all = Object.values(S.push.subs).reduce((a, l) => a + l.length, 0);
+      r.srv = { subs: all, people: Object.values(S.push.subs).filter((l) => l.length).length, pseudo: Object.keys(S.push.pseudo).length, ok_at: S.push.okAt, err: null, err_at: null, url: true };
+    }
+    return r;
+  }
   S.thanks = S.thanks || (opts.thanks || []).map((t, i) => ({ id: i + 1, emp: t.emp, day: D(t.at), text: t.text || "", hidden: !!t.hidden, at: D(t.at) + "T" + (t.time || "19:00") + ":00" }));
   S.learn = S.learn || Object.fromEntries(Object.entries(opts.learn || {}).map(([id, offs]) => [id, offs.map((n) => D(n))]));
   S.briefDays = S.briefDays || Object.fromEntries(Object.entries(opts.briefDays || {}).map(([n, reads]) => [D(Number(n)), { reads }]));
@@ -124,7 +206,7 @@ export function makeServer(opts) {
     at: m.at, edited: !!m.edited && !m.del, del: m.del, card: ["card", "ai", "sys"].includes(m.kind) && !m.del && m.card ? clone(m.card) : null });
   const put = (c, p, body, extra = {}) => { const t = now(); const m = { id: ++S.seq, chat: c.id, emp: p.id, name: full(p), rest: p.restaurant, body, kind: "text", call: null, photo: null, reply: null, reacts: [], edited: false, del: false, at: t, upd: t, ...extra };
     if (m.kind === "text" || m.kind === "photo") m.ment = mentionsOf(c, p, body);
-    S.msgs.push(m); setRead(c, p.id, m.id); seenNow(c, p.id); if (m.ment) mentionPings(c, p, m); return m; };
+    S.msgs.push(m); setRead(c, p.id, m.id); seenNow(c, p.id); if (m.ment) mentionPings(c, p, m); notifyK(c, p, m); return m; };
   // v99: упоминания — как _sa_chat_ment_parse: участники чата (кроме автора) и «all» — «@все» руководителя; в личной — никого
   function mentionsOf(c, p, body) {
     if (!c || c.kind === "dm" || String(body || "").indexOf("@") < 0) return null;
@@ -140,6 +222,20 @@ export function makeServer(opts) {
   function seenNow(c, id) { S.seen[c.id + "|" + id] = clock(); }
   function pingK(c, to, text, acts, msg) { if (!to || clock() - (S.seen[c.id + "|" + to] || 0) < 60000) return false; ping(to, text, acts || null, c.id, msg || null); return true; }
   const placeOf = (c) => ({ team: "Вся команда", leads: "Старшие", net: "Руководители сети" }[c.kind] || c.title || "Чат");
+  // v137 (Доп. 451): как _sa_chat_notify этапа 38 — собеседнику в личной, в группе — автору сообщения, на которое ответили
+  // (кого упомянули, тем уже написали)
+  function notifyK(c, p, m) {
+    if (m.kind !== "text" && m.kind !== "photo") return;
+    const what = m.kind === "photo" ? "Фото" + (m.body ? ": " + cut(m.body, 280) : "") : cut(m.body, 300), ment = m.ment || [];
+    if (c.kind === "dm") {
+      const peer = (c.members || []).find((x) => x !== p.id);
+      if (peer && !ment.includes(peer)) pingK(c, peer, full(p) + " пишет тебе:\n" + what, null, m.id);
+      return;
+    }
+    const q = m.reply ? msgOf(m.reply) : null;
+    if (q && q.emp !== p.id && ["text", "photo", "call"].includes(q.kind) && members(c).some((e) => e.id === q.emp) && !ment.includes(q.emp) && !ment.includes("all"))
+      pingK(c, q.emp, full(p) + " отвечает тебе в «" + placeOf(c) + "»:\n" + what, null, m.id);
+  }
   function mentionPings(c, p, m) {
     const what = m.kind === "photo" ? "Фото" + (m.body ? ": " + cut(m.body, 280) : "") : cut(m.body, 300);
     const ids = m.ment.filter((x) => x !== "all" && x !== p.id);
@@ -551,6 +647,64 @@ export function makeServer(opts) {
       if (!b.p_page) S.cal[id].used = now();   // страница «Подписаться» — ещё не календарь
       return { ok: true, id: e.id, name: full(e), rest: e.restaurant, tz: "Europe/Moscow", schedule: true, shifts: empShifts(e, -31, 62) || [], app: S.srv.app };
     }
+    // ── v137 (Доп. 450): этап 48 — уведомления на телефон (как supabase-stage48-push.sql: tools/claude/sql/test48.sh);
+    // opts.noStage48 — этапа нет. И «Напоминания»: Telegram (tg_status, tg_set), что ещё присылать и тихие часы (этапы 25, 36)
+    if (/^push_/.test(fn)) {
+      if (opts.noStage48) return { code: "PGRST202", message: "Could not find the function" };
+      if (!p) return { ok: false, error: "auth" };
+      if (fn === "push_status") return pushState(p, b.p_endpoint);
+      if (fn === "push_subscribe") {
+        const sb = b.p_sub || {}, ep = String(sb.endpoint || ""), k = sb.keys || {};
+        if (!/^https:\/\/\S{8,}$/.test(ep) || !k.p256dh || !k.auth) return { ok: false, error: "bad_sub" };
+        for (const [id, list] of Object.entries(S.push.subs)) if (id !== p.id && list.some((x) => x.endpoint === ep)) { S.push.subs[id] = list.filter((x) => x.endpoint !== ep); pushUnlink(id); }
+        S.push.subs[p.id] = [{ endpoint: ep, ua: String(b.p_ua || "").slice(0, 200), at: now() }, ...(S.push.subs[p.id] || []).filter((x) => x.endpoint !== ep)].slice(0, 5);
+        if (!S.tgLinked.includes(p.id)) { S.tgLinked.push(p.id); S.push.pseudo[p.id] = true; }
+        else if (S.tgOff[p.id] && !S.push.pseudo[p.id]) { delete S.tgOff[p.id]; S.push.ch[p.id] = "push"; S.push.tgWasOff[p.id] = true; }
+        return pushState(p, ep);
+      }
+      if (fn === "push_unsubscribe") { S.push.subs[p.id] = (S.push.subs[p.id] || []).filter((x) => x.endpoint !== String(b.p_endpoint || "")); pushUnlink(p.id); return pushState(p, null); }
+      if (fn === "push_channel") {
+        const ch = String(b.p_channel || "");
+        if (!["both", "push", "tg"].includes(ch)) return { ok: false, error: "bad_channel" };
+        if (ch === "push" && !pushHas(p.id)) return { ok: false, error: "no_subs" };
+        if (ch !== "push") { delete S.tgOff[p.id]; delete S.push.tgWasOff[p.id]; }
+        S.push.ch[p.id] = ch;
+        return pushState(p, null);
+      }
+      if (fn === "push_test") {
+        if (!pushHas(p.id)) return { ok: false, error: "no_subs" };
+        if (clock() - (S.push.test[p.id] || 0) < 15000) return { ok: false, error: "often" };
+        S.push.test[p.id] = clock();
+        pushSend(p.id, "Уведомления работают\nТак будут приходить сообщения: чат, смены, вопрос дня.", "remind");
+        return { ok: true, n: S.push.subs[p.id].length };
+      }
+      return { code: "PGRST202", message: "demo: " + fn };
+    }
+    if (fn === "tg_status") {
+      if (!p) return { ok: false, error: "auth" };
+      const linked = S.tgLinked.includes(p.id);   // как этап 22б: «чат» без Telegram — тоже строка (приложение узнаёт по push_status)
+      return { ok: true, bot: true, linked, remind: linked && !S.tgOff[p.id], minutes: 60 };
+    }
+    if (fn === "tg_set") {
+      if (!p) return { ok: false, error: "auth" };
+      if (!S.tgLinked.includes(p.id)) return { ok: false, error: "not_linked" };
+      if (b.p_remind) delete S.tgOff[p.id]; else S.tgOff[p.id] = true;
+      return { ok: true, remind: !!b.p_remind };
+    }
+    if (fn === "notify_prefs" || fn === "notify_set" || fn === "notify_qday_hour_set") {
+      if (!p) return { ok: false, error: "auth" };
+      const np = S.nprefs[p.id] || (S.nprefs[p.id] = { pair: true, quest: true, league: true, fresh: true, month: true, master: true, qday: true, brief: true, cases: true, thanks: true, seat: true, chat: true, qday_hour: null });
+      if (fn === "notify_set") { if (!(String(b.p_kind || "") in np) || b.p_kind === "qday_hour") return { ok: false, error: "kind" }; np[b.p_kind] = !!b.p_on; }
+      if (fn === "notify_qday_hour_set") np.qday_hour = b.p_hour == null ? null : Math.round(Number(b.p_hour));
+      const { qday_hour, ...rest } = np;
+      return { ok: true, ...rest, qday_hour: qday_hour == null ? 12 : qday_hour, qday_hour_default: 12 };
+    }
+    if (fn === "notify_quiet" || fn === "notify_quiet_set") {
+      if (!p) return { ok: false, error: "auth" };
+      if (fn === "notify_quiet_set") S.nquiet[p.id] = b.p_from == null || b.p_to == null ? null : { from: Number(b.p_from), to: Number(b.p_to) };
+      const q = S.nquiet[p.id] || null;
+      return { ok: true, from: q ? q.from : null, to: q ? q.to : null };
+    }
     if (fn === "server_check" || fn === "owner_tg_setup") {
       if (!p) return { ok: false, error: "auth" };
       if (!p.is_admin) return { ok: false, error: "forbidden" };
@@ -559,7 +713,7 @@ export function makeServer(opts) {
         S.srv.code = hex32().slice(0, 12);
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
-      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds") && !(opts.noStage47 && f === "som_log_add")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
+      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds") && !(opts.noStage47 && f === "som_log_add") && !(opts.noStage48 && f === "push_subscribe")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
         cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }, { name: "sa-newbie", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };
@@ -848,7 +1002,11 @@ export function makeServer(opts) {
       if (S.msgs.some((m) => m.emp === p.id && m.kind === "card" && !m.del && m.card.t === "shift" && m.card.st === "open" && m.card.date === b.p_date)) return { ok: false, error: "already" };
       const want = b.p_mode === "swap" ? [...new Set((b.p_want || []).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && x >= TODAY && x !== b.p_date))].sort().slice(0, 14) : [];
       const card = { t: "shift", mode: b.p_mode, ...shiftCard(s, b.p_date, k), from: p.id, fromName: full(p), sid: String(s.id), want, note: cut(b.p_note, 120), st: "open" };
-      return { ok: true, msg: smart(cardMsg(c, p, card), p) };
+      const m = cardMsg(c, p, card);
+      // v137 (Доп. 451): отдаю — тем, кто может забрать, бот с кнопкой «Забрать» (как этап 38)
+      if (b.p_mode === "give" && c.kind !== "dm") members(c).filter((e) => e.id !== p.id && check(card, e.id).can).forEach((e) =>
+        pingK(c, e.id, nm(full(p)) + " отдаёт смену: " + dLong(b.p_date) + " · " + String(card.label).toLowerCase() + " " + card.time + ". Забрать можно прямо здесь.", [{ text: "Забрать", take: m.id }], m.id));
+      return { ok: true, msg: smart(m, p) };
     }
     if (fn === "chat_shift_need") {
       if (!isLead(p)) return { ok: false, error: "forbidden" };
@@ -1250,6 +1408,62 @@ export function makeServer(opts) {
 
   // ── то, что «делают коллеги» в демо: пишут, забирают смену, выходят по «Ищем в смену» ──
   const as = (id) => who(id);
+  // ── v137 (Доп. 451): кнопка под уведомлением (как sa_push_act: функция push-send, ?act=1) ──
+  const placeTo = (c) => (c.kind === "dm" ? "личную переписку" : "«" + placeOf(c) + "»");
+  function pushAct(k, a, r) {
+    if (!/^[0-9a-f]{64}$/.test(String(k || ""))) return { ok: false, error: "bad_key" };
+    const x = S.push.acts[k];
+    if (!x || clock() - x.at > 3 * 864e5) return { ok: false, error: "gone" };
+    if (x.used) return { ok: false, error: "used" };
+    const v = x.acts.find((y) => y.a === a); if (!v) return { ok: false, error: "bad_action" };
+    const p = who(x.emp), tk = tokId(x.emp); if (!p || !tk) return { ok: false, error: "auth" };
+    let text = null;
+    if (a === "reply" || a === "read") {
+      const c = chatOf(v.c); if (!c || !visible(c, p)) return { ok: false, error: "not_found" };
+      if (a === "reply") {
+        const body = String(r || "").trim().slice(0, 1000); if (!body) return { ok: false, error: "empty" };
+        const q = msgOf(v.id), reply = c.kind !== "dm" && q && q.chat === c.id && !q.del && q.emp !== p.id ? q.id : null;
+        const res = rpc("chat_send", { p_token: tk, p_chat: c.id, p_body: body, p_reply: reply });
+        if (!res || !res.ok) return { ok: false, error: (res && res.error) || "send" };
+        text = "Ушло в " + placeTo(c) + ".";
+      } else setRead(c, p.id, Math.max(0, ...S.msgs.filter((m) => m.chat === c.id).map((m) => m.id)));
+    } else {
+      const m = msgOf(v.id); if (!m || m.del || !visible(chatOf(m.chat), p)) return { ok: false, error: "not_found", text: "Этого сообщения в чате уже нет." };
+      if (a === "cl") {
+        if (!isLead(p) || !m.card || m.card.t !== "late") return { ok: false, error: "not_allowed" };
+        const res = rpc("chat_late_ok", { p_token: tk, p_msg: m.id }); if (!res || !res.ok) return { ok: false, error: (res && res.error) || "not_allowed" };
+        text = "Принято.";
+      } else if (a === "ct") {
+        const need = m.card && m.card.mode === "need", res = rpc("chat_shift_take", { p_token: tk, p_msg: m.id });
+        text = res && res.ok ? (need ? "Ты выходишь в эту смену. График обновлён." : "Смена твоя. График обновлён.")
+          : res && res.error === "taken" ? (need ? "Уже нашли, кто выйдет." : "Смену уже забрали.")
+          : res && res.error === "not_allowed" ? String(res.why || "Эту смену взять нельзя").replace(/\.?$/, ".") : "Не получилось. Открой чат.";
+      } else {
+        if (m.kind !== "call" || m.emp === p.id) return { ok: false, error: "not_allowed" };
+        rpc("chat_go", { p_token: tk, p_msg: m.id }); text = "Ты идёшь.";
+      }
+    }
+    x.used = true;
+    const u = rpc("chat_unread", { p_token: tk });
+    return { ok: true, text, badge: u && u.ok ? u.unread : 0 };
+  }
+  // ── v137 (Доп. 451): Telegram — просто текст в ближайшие 30 минут после сообщения о переписке уходит туда; «Отменить» ──
+  function tgQuick(id, text) {
+    const l = S.push.tglast[id], p = who(id), tk = tokId(id);
+    if (!l || clock() - l.at > 30 * 60000 || !p || !tk) return { ok: false, error: "none" };
+    const c = chatOf(l.chat); if (!c || !visible(c, p)) return { ok: false, error: "not_found" };
+    const q = l.msg != null ? msgOf(l.msg) : null, reply = c.kind !== "dm" && q && q.chat === c.id && !q.del && q.emp !== p.id ? q.id : null;
+    const res = rpc("chat_send", { p_token: tk, p_chat: c.id, p_body: String(text || ""), p_reply: reply });
+    if (!res || !res.ok) return { ok: false, error: (res && res.error) || "send" };
+    S.push.tglast[id] = { chat: c.id, msg: res.msg.id, at: clock() };
+    return { ok: true, id: res.msg.id, chat: c.id, text: "Ушло в " + placeTo(c) + "." };
+  }
+  function tgUndo(id, msgId) {
+    const m = msgOf(msgId), tk = tokId(id);
+    if (!m || m.del || m.emp !== id || clock() - Date.parse(m.at) > 600000 || !tk) return { ok: false };
+    const r = rpc("chat_delete", { p_token: tk, p_msg: m.id });
+    return { ok: !!(r && r.ok) };
+  }
   const bot = {
     say: (id, text, chatId = null) => { const e = as(id); const c = chatId != null ? chatOf(chatId) : teamOf(e.restaurant); return c && e ? J(put(c, e, text)) : null; },
     offer: (id, iso, mode = "give", note = "") => rpc("chat_shift_offer", { p_token: Object.keys(TOK).find((k) => TOK[k] === id), p_chat: teamOf(as(id).restaurant).id, p_date: iso, p_mode: mode, p_want: [], p_note: note }),
@@ -1258,5 +1472,6 @@ export function makeServer(opts) {
     // кто из коллег (не я) может забрать или выйти по карточке
     taker: (m, notId) => PEOPLE.find((e) => e.id !== notId && e.id !== m.card.from && e.restaurant === R0 && (m.card.mode === "need" ? needCheck(m.card, e.id).can : check(m.card, e.id).can)) || null,
   };
-  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, cheerDue, gainOf, actOf, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null };
+  return { S, rpc, D, TODAY, bot, staffOf, code, monOf, msgOf, teamOf, chatOf, cheerDue, gainOf, actOf, tokOf: (id) => Object.keys(TOK).find((k) => TOK[k] === id) || null,
+    pushAct, tg: { quick: tgQuick, undo: tgUndo, last: (id) => S.push.tglast[id] || null } };
 }

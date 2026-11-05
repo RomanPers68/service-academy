@@ -575,7 +575,7 @@ if (want("RM")) {
   };
   const { ctx, page, errors } = await open({ rpcs, calls, telegram: true });
   await page.evaluate(() => window.__saNav("shift")); await sleep(1000);
-  await page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1200);
+  await page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1200);
   const t = await text(page);
   ok(tag + ": включено — и «Что ещё присылать» с пятью переключателями", /Включено: за час до смены/.test(t) && /Что ещё присылать/i.test(t) && (await page.locator('[data-notify-prefs] [role="switch"]').count()) === 5, t.slice(0, 200));
   const lg = page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Лига недели" });

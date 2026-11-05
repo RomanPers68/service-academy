@@ -546,7 +546,7 @@ const baseStorage = {
   ok(tag + ": в Telegram под разминкой — «Напоминать за час до смены»", /Напоминать в Telegram за час до смены/.test(t));
   await page.getByRole("button", { name: "Напоминать в Telegram за час до смены ›", exact: true }).click(); await sleep(700);
   t = await text(page);
-  ok(tag + ": окно напоминаний с примером сообщения", /Напоминания в Telegram/.test(t) && /Через час смена: Вечер · 16:00–24:00/.test(t) && (await page.locator('[role="dialog"] button', { hasText: "Включить" }).count()) === 1);
+  ok(tag + ": окно напоминаний с примером сообщения", /Напоминания/.test(t) && /Через час смена: Вечер · 16:00–24:00/.test(t) && (await page.locator('[role="dialog"] button', { hasText: "Включить" }).count()) === 1);
   ok(tag + ": «Назад» Telegram виден над окном", await page.evaluate(() => window.__bb.visible));
   await shot(page, "H1-remind");
   await page.locator('[role="dialog"] button', { hasText: "Включить" }).click(); await sleep(900);
@@ -561,7 +561,8 @@ const baseStorage = {
   linked = false;
   ({ ctx, page, errors } = await open({ storage: baseStorage, rpcs }));
   await page.evaluate(() => window.__saNav("shift")); await sleep(900);
-  await page.locator(".sa-card", { hasText: "Напоминания в Telegram" }).click(); await sleep(700);
+  await page.locator('.sa-card[aria-label="Напоминания"]').first().click();   // v137: «Напоминания» (Telegram и телефон)
+  await sleep(700);
   ok(tag + ": вне Telegram — объясняем, где включить", /Открой Service Academy через бота и включи их здесь/.test(await text(page)) && (await page.locator('[role="dialog"] button', { hasText: "Включить" }).count()) === 0);
   ok(tag + ": без ошибок (браузер)", errors.length === 0, errors.slice(0, 3).join(" | "));
   await ctx.close();

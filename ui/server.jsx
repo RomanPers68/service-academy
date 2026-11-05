@@ -6,7 +6,8 @@ import React from "react";
 import { rpc, saToken, rpcMissing, SUPABASE_URL } from "../api/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { serverReport, stageFns, stageBuckets, REPO_URL } from "../lib/server-check";
+import { serverReport, stageFns, stageBuckets, REPO_URL, pushReport, pushErrText } from "../lib/server-check";
+import { pushStatus, pushServerCheck } from "../lib/push";   // v137 (Доп. 450): уведомления на телефон
 
 const openOut = (url) => {
   try { const tg = window.Telegram && window.Telegram.WebApp; if (tg && tg.initData && typeof tg.openLink === "function") { tg.openLink(url); return; } } catch (e) { /* */ }
@@ -32,7 +33,15 @@ export function ServerScreen({ T, a11y, profile, onBack }) {
     rpc("server_check", { p_token: saToken(), p_fns: stageFns().concat(["server_check"]), p_buckets: stageBuckets(), p_url: SUPABASE_URL }).then((r) => {
       if (rpcMissing(r)) { setSt({ phase: "missing" }); return; }
       if (!r || !r.ok) { setSt({ phase: "error", text: r && r.error === "forbidden" ? "Этот экран только у владельца." : r && r.error === "auth" ? "Сессия устарела. Войди заново." : "Сервер не ответил. Попробуй ещё раз." }); return; }
-      setSt({ phase: "ready", rep: serverReport(r), at: Date.now() });
+      const rep = serverReport(r);
+      setSt({ phase: "ready", rep, at: Date.now() });
+      // v137: этап 48 на месте — push_status (заодно записывает адрес сервера и ключ anon) и функция push-send
+      if (rep.stages.some((x) => x.n === "48" && x.ok)) {
+        Promise.all([pushStatus({ admin: true }), pushServerCheck()]).then(([ps, pf]) => {
+          const push = pushReport(ps && ps.ok ? ps : null, pf.fn);
+          setSt((x) => (x.rep === rep ? { ...x, push, rep: { ...rep, todo: rep.todo + push.todo } } : x));   // функции нет — ещё одно дело
+        }).catch(() => {});
+      }
     }).catch(() => setSt({ phase: "error", text: "Нет связи. Попробуй ещё раз." }));
   }, []);
   React.useEffect(() => { check(); }, [check]);
@@ -62,6 +71,8 @@ export function ServerScreen({ T, a11y, profile, onBack }) {
   const btn = { marginTop: 10, width: "100%", padding: "12px", borderRadius: 999, border: 0, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" };
   const ghost = { marginTop: 6, padding: "6px 12px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, color: T.modTitle.color, fontSize: 12.5, fontFamily: "Georgia, serif", cursor: "pointer" };
   const rep = st.rep;
+  const push = st.push || null;   // v137: уведомления на телефон (pushReport) или null — ещё проверяю / этапа 48 нет
+  const has48 = !!(rep && rep.stages.some((x) => x.n === "48" && x.ok));
   return (
     <div style={T.screen} className="sa-screen" data-server={st.phase}>
       <div style={T.lessHead}>
@@ -98,10 +109,32 @@ export function ServerScreen({ T, a11y, profile, onBack }) {
             {rep.tg.bot ? row("hook", rep.tg.hook && !!rep.tg.last, rep.tg.hook ? "Кнопки и ответы в чат: подключены" : "Кнопки и ответы в чат: не подключены",
               rep.tg.last ? "Последнее событие от Telegram: " + rep.tg.ago + "." : rep.tg.hook ? "Событий от Telegram ещё не было: нажми кнопку под сообщением бота или напиши ему /start." : "Нажми «Подключить бота»: вебхук, кнопка «Академия» у поля ввода и команды /smena, /start.",
               null, rep.tg.hook && !rep.tg.last) : null}
-            {rep.tg.bot ? row("linked", rep.tg.linked > 0, "Напоминания в Telegram включили: " + rep.tg.linked + (rep.tg.staff ? " из " + rep.tg.staff : ""), "Включает каждый сам: «Смена» → «Напоминания в Telegram».", null, rep.tg.linked === 0) : null}
+            {rep.tg.bot ? (() => { const n = Math.max(0, rep.tg.linked - (push ? push.pseudo : 0));   /* v137: без тех, у кого только телефон */
+              return row("linked", n > 0, "Напоминания в Telegram включили: " + n + (rep.tg.staff ? " из " + rep.tg.staff : ""), "Включает каждый сам: «Смена» → «Напоминания».", null, n === 0); })() : null}
             {rep.tg.bot ? row("auth", true, "Входят без кода через Telegram: " + rep.tg.auth, "Кто хоть раз вошёл по коду в Telegram или включил напоминания. Остальных Telegram узнает после первого входа.") : null}
             {rep.tg.bot ? <button type="button" data-lens-btn="main" style={btn} data-srv-tgsetup="" disabled={tgBusy} onClick={tgSetup}>{tgBusy ? "Минуту…" : rep.tg.hook ? "Подключить бота заново" : "Подключить бота"}</button> : null}
             {tgMsg ? <div role="status" style={{ fontSize: 12.5, color: T.modTitle.color, lineHeight: 1.5, marginTop: 8 }}>{tgMsg}</div> : null}
+          </div>
+
+          {/* v137 (Доп. 450): уведомления на телефон — этап 48 и функция push-send */}
+          {h("Уведомления на телефон")}
+          <div data-lens-card="" style={card} data-srv-push={!has48 ? "nostage" : push ? push.fn : "load"}>
+            {!has48 ? row("push-db", false, "Сначала этап 48", "Запусти в SQL Editor: supabase-stage48-push.sql. Потом функция push-send.",
+              <button type="button" data-lens-btn="soft" style={ghost} onClick={() => openOut(REPO_URL + "supabase-stage48-push.sql")}>Файл на GitHub</button>) : null}
+            {has48 && !push ? <div style={{ fontSize: 12.5, color: T.modSub.color, padding: "6px 0" }}>Проверяю функцию push-send…</div> : null}
+            {has48 && push ? <>
+              {push.fn === "ok" ? row("push-fn", true, "Функция push-send: на месте", "Ключи для уведомлений созданы, отправитель в подписи: адрес приложения.")
+                : row("push-fn", false, push.fn === "jwt" ? "Функция push-send не пускает" : push.fn === "no_fn" ? "Функции push-send нет" : "Функция push-send не ответила",
+                  push.fn === "jwt" ? "Выключи у неё проверку JWT: Edge Functions, push-send, Details, «Verify JWT»."
+                    : push.fn === "no_fn" ? "Edge Functions, Deploy a new function, Via Editor: имя push-send, вставь код, Deploy. Проверку JWT выключи, как у tg-bot."
+                    : push.fn === "no_stage" ? "Функция есть, но сервер ещё не видит этап 48: в SQL Editor выполни notify pgrst, 'reload schema'; и проверь ещё раз."
+                    : "Проверь, что функция развёрнута, и нажми «Проверить ещё раз».",
+                  push.fn === "no_fn" || push.fn === "jwt" ? <button type="button" data-lens-btn="soft" style={ghost} onClick={() => openOut(REPO_URL + "functions/push-send/index.ts")}>Код на GitHub</button> : null)}
+              {row("push-subs", push.subs > 0, "Уведомления включили: " + push.people + " " + (push.people % 10 >= 2 && push.people % 10 <= 4 && (push.people % 100 < 12 || push.people % 100 > 14) ? "человека" : "человек") + ", телефонов: " + push.subs,
+                "Включает каждый сам с академией на экране «Домой»: «Смена», «Напоминания» или «Я», «Уведомления на телефон».", null, push.subs === 0)}
+              {push.ok ? row("push-ok", true, "Последняя доставка: " + (push.okAgo || "была")) : null}
+              {push.errNew ? row("push-err", false, "Последняя ошибка: " + pushErrText(push.err), push.errAgo ? push.errAgo.replace(/^./, (x) => x.toUpperCase()) + "." : null, null, true) : null}
+            </> : null}
           </div>
 
           {h("Расписания")}

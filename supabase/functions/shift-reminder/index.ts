@@ -1,5 +1,6 @@
 // Service Academy - shift-reminder: "Завтра смена" в Telegram
 // Секреты: TG_BOT_TOKEN, APP_URL, TZ_OFFSET_HOURS (по умолчанию 3 = Москва)
+// v137 (Доп. 450): и уведомлением на телефон (этап 48, sa_push_tg): кому выбрано «только телефон», Telegram молчит
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 function norm(x) {
@@ -93,6 +94,16 @@ Deno.serve(async (req) => {
   if (!dry) {
     for (const o of out) {
       try {
+        // v137 (Доп. 450): этап 48 — сначала уведомление на телефон (sa_push_tg), он же отвечает, писать ли в Telegram
+        // («только телефон» и «чат» без Telegram — нет). Этапа 48 нет — как раньше, только Telegram.
+        let toTg = true;
+        try {
+          const pr = await sb.rpc("sa_push_tg", { p_chat: o.chat_id, p_text: o.text, p_go: "schedule" });
+          if (!pr.error && pr.data && pr.data.tg === false) toTg = false;
+        } catch (_e) {
+          // нет этапа 48
+        }
+        if (!toTg) { sent++; continue; }
         const body = { chat_id: o.chat_id, text: o.text };
         if (appUrl) {
           // web_app — кнопка открывает мини-апп внутри Telegram, а не браузер

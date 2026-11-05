@@ -221,7 +221,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                         fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{hourLabel(x)}</button>; })}
                 </div>) : null}
               {!prefs.bot ? row("nobot", "warn", "Бот на сервере не подключён", { icon: "plane", sub: "Пока сводка только здесь. Подключает владелец: «Команда» → «Сервер»." })
-                : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { icon: "plane", sub: "Включи «Напоминания в Telegram», и сводка начнёт приходить каждое утро.",
+                : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { icon: "plane", sub: "Включи «Напоминания» в Telegram или на телефоне, и сводка начнёт приходить каждое утро.",
                     act: onRemind ? <button type="button" style={ghost} data-lens-btn="soft" data-mo-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
                 : <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginTop: 2 }} data-lens-btn="soft" data-mo-send="" disabled={busy === "send"} onClick={sendNow}>{busy === "send" ? "Отправляю…" : "Прислать сейчас"}</button>}
             </>) : row("prefs", "info", "Настройки появятся вместе с этапом 40 на сервере", { first: true, icon: "server" })}

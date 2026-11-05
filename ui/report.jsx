@@ -511,7 +511,7 @@ function PersonView({ m }) {
         ) : <div className="rp-empty">Телефон сотрудника ещё не прислал дни занятий.</div>}
       </section>
       {info.map((f) => <p className="rp-foot" key={f.text}>{f.text}</p>)}
-      <p className="rp-foot">{m.phoneAt ? "Данные с телефона: " + shortDate(m.phoneAt) + ". " : ""}Ответы в тестах учтены за последние полгода.{m.tg ? " Напоминания в Telegram включены." : ""}</p>
+      <p className="rp-foot">{m.phoneAt ? "Данные с телефона: " + shortDate(m.phoneAt) + ". " : ""}Ответы в тестах учтены за последние полгода.{m.tg ? " Напоминания включены." : ""}</p>
     </>
   );
 }

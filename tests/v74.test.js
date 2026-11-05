@@ -80,7 +80,9 @@ describe("v74: главная, «Я», приветствие", () => {
   it("«Я» и «Смена»: подписи пунктов — фразами", () => {
     const app = rd("App.jsx");
     expect(app).toContain('sub:"Что сделано за 7 дней",');   // v110: подпись в одну строку
-    expect(app).toContain('sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены"');
+    // v137 (Доп. 450): «Напоминания» — Telegram и телефон; подпись фразой — remindSub (lib/push.js), с Telegram — как была
+    expect(app).toContain('label:"Напоминания", sub: remindSub({ push: pushHere, tg: tgRemind })');
+    expect(rd("lib/push.js")).toContain('if (tg) return "Включено: за час до смены зовёт на разминку";');
     expect(app).toContain('sub:"Что пройдено и что повторить, PDF"');   // v110
   });
   it("лента «Жизнь команды»: «Аня К. поставила рекорд…» — глаголом, без «Аня К. — рекорд»", async () => {

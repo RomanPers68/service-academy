@@ -486,7 +486,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   React.useEffect(() => {
     const it = intent;
     if (!it || !it.kind) return;
-    if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg } : null); setCurId(it.id); return; }
+    if (it.kind === "chat" && it.id != null) { setInit(it.msg ? { msg: it.msg, reply: !!it.reply } : null); setCurId(it.id); return; }
     if (it.kind === "share" && it.item) { setCurId(null); setPicker(false); setShareItem(it.item); return; }
     if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
     if (it.kind === "give" || it.kind === "swap" || it.kind === "late" || it.kind === "team" || it.kind === "thx") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной; v107: «Вся команда» (карточка новичка); v108: «Спасибо коллеге»
@@ -1181,7 +1181,17 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   };
   // v97: ссылка из Telegram на сообщение (?go=chat_<чат>_<сообщение>) — к нему, когда переписка загрузилась
   const jumped = React.useRef(false);
-  React.useEffect(() => { if (loaded && init && init.msg && !jumped.current) { jumped.current = true; jumpTo(init.msg, !!init.deep); } }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    if (!loaded || !init || !init.msg || jumped.current) return;
+    jumped.current = true; jumpTo(init.msg, !!init.deep);
+    // v137 (Доп. 451): касание уведомления о сообщении — сразу ответ на него: в группе цитата над строкой ввода, в личной —
+    // просто строка ввода
+    if (init.reply) {
+      const q = msgsRef.current.find((x) => String(x.id) === String(init.msg));
+      if (group && q && !q.del && String(q.emp) !== String(meId)) startReply(q);
+      else setTimeout(() => { if (inputRef.current) inputRef.current.focus(); }, 30);
+    }
+  }, [loaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v99 (Доп. 412): черновик: на что отвечал — когда переписка загрузилась; текст пишется по ходу (не во время правки) и
   // при выходе из переписки; после отправки — стирается
   React.useEffect(() => {

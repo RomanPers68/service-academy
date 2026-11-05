@@ -178,11 +178,11 @@ if (want("REMIND")) {
   for (const light of [false, true]) {
     const o = await open({ light, tg: true, extra });
     await nav(o.page, "shift");
-    const clicked = await o.page.evaluate(() => { const el = [...document.querySelectorAll("[role=button], button")].find((x) => /Напоминания в Telegram/.test(x.textContent)); if (el) { el.click(); return true; } return false; });
+    const clicked = await o.page.evaluate(() => { const el = [...document.querySelectorAll("[role=button], button")].find((x) => /^Напоминания/.test(x.textContent));   /* v137: «Напоминания» */ if (el) { el.click(); return true; } return false; });
     await sleep(1200);
     const tag = light ? "REMIND LIGHT" : "REMIND";
     ok(tag + ": окно открылось из «Смены»", clicked);
-    const sheet = await o.page.evaluate(() => { const d = document.querySelector('[role=dialog][aria-label="Напоминания в Telegram"]'); return d ? d.innerText : null; });
+    const sheet = await o.page.evaluate(() => { const d = document.querySelector('[role=dialog][aria-label="Напоминания"]'); return d ? d.innerText : null; });
     if (!light) await shot(o.page, "remind-sheet");
     ok(tag + ": служебной пометки «/* v58 (Доп. 371) */» на экране нет", !!sheet && !sheet.includes("/*") && !sheet.includes("Доп. 371"), (sheet || "").slice(0, 200));
     ok(tag + ": пример — без «✦ SERVICE ACADEMY» и звёздочек", !!sheet && !sheet.includes("SERVICE ACADEMY") && !sheet.includes("✦"));

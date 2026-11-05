@@ -21,6 +21,8 @@
 // v132 (Доп. 445): Мария — «Сомелье» умнее: ответ в режиме сервера, «Гость взял», «На стол», итог и вкус по шкалам через ИИ.
 // v136 (Доп. 449): Мария — «Барная карта» удобнее и красивее: «Цена» и «Кратко», «★ Советуем», нарисованные бутылки, карточка
 // вина («Сегодня нет. Предложи вместо», «Как сказать», «Похожие»), коктейли («стир · рокс · Hendrick's», «Как готовить» свёрнуто).
+// v137 (Доп. 450): Мария — уведомления на телефон (разрешение, пробное, «Только телефон», упоминание, касание — чат); Роман —
+// «Сервер» → «Уведомления на телефон».
 // Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -72,6 +74,19 @@ if (!ONLY || ONLY.includes("anna")) {
   const tg = await page.locator("#demo-tg").count() ? await page.locator("#demo-tg").innerText() : "";
   ok("уведомление: Мария упоминает Анну", /Мария К\. упоминает тебя в «Вся команда»/.test(tg), tg.replace(/\s+/g, " ").slice(0, 120));
   await shot("a2-toast");
+  // v137 (Доп. 451): просто текст боту после сообщения о переписке — в эту переписку; «Ушло в «Вся команда».», «Отменить»
+  await page.locator("[data-demo-tg-reply]").click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator("[data-demo-tg-input]").fill("Возьму, буду к 18:00").catch(() => {});
+  await page.locator("[data-demo-tg-send]").click().catch(() => {}); await page.waitForTimeout(400);
+  const tq = (await page.locator("#demo-tg").innerText().catch(() => "")).replace(/\s+/g, " ");
+  const sent = await page.evaluate(() => { const D = window.__demo, id = Number(document.getElementById("demo-tg").getAttribute("data-demo-tg-sent")), m = D.srv.msgOf(id), q = m && m.reply ? D.srv.msgOf(m.reply) : null;
+    return m ? { body: m.body, emp: m.emp, chat: m.chat, quote: q ? q.emp : null } : null; }).catch(() => null);
+  ok("Telegram: ответил боту просто текстом — ушло в «Вся команда» ответом на Марию; бот: «Ушло…», «Отменить», «Открыть чат»",
+    /Ушло в «Вся команда»\. Отменить Открыть чат/.test(tq) && sent && sent.body === "Возьму, буду к 18:00" && sent.emp === "e-anna" && sent.quote === "u-maria", tq + " " + JSON.stringify(sent));
+  await shot("a2b-tg-quick");
+  await page.locator("[data-demo-tg-undo]").click().catch(() => {}); await page.waitForTimeout(300);
+  ok("«Отменить»: «Отменено: в чат не ушло.», сообщения в чате нет", /Отменено: в чат не ушло\./.test(await page.locator("#demo-tg").innerText().catch(() => ""))
+    && await page.evaluate(() => { const D = window.__demo, id = Number(document.getElementById("demo-tg").getAttribute("data-demo-tg-sent")); return !!D.srv.msgOf(id).del; }).catch(() => false));
   await page.locator("#demo-tg").click().catch(() => {});
   // «Опаздываю?» → чат с листом
   await page.getByText("Опаздываю?").first().click(); await page.waitForTimeout(1500);
@@ -228,7 +243,7 @@ if (!ONLY || ONLY.includes("maria")) {
   const tg = await page.locator("#demo-tg").innerText().catch(() => "");
   ok("Марии: уведомление «Дарья Л. опаздывает» с «Принято»", /Дарья Л\. опаздывает на 20 минут: будет в 12:20 \(смена с 12:00\)/.test(tg) && /Принято/.test(tg), tg.replace(/\s+/g, " ").slice(0, 160));
   await shot("m2-toast-late");
-  await page.locator("#demo-tg button").click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800);
+  await page.locator("#demo-tg .a button").first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800);
   ok("«Принято» из уведомления", /Принято: на карточке/.test(await page.locator("#demo-tg").innerText().catch(() => "")));
   await page.evaluate(() => window.__saNav && window.__saNav("schedule")); await page.waitForTimeout(2500);
   await shot("m3-schedule");
@@ -650,6 +665,61 @@ if (!ONLY || ONLY.includes("maria")) {
     art: [...document.querySelectorAll("[data-wine-row] [data-wine-thumb]")].filter((t) => t.getAttribute("data-wine-thumb") === "art").length }));
   ok("Крепкое: «★ советуем» у Glenfiddich; без фото — бутылка по виду (виски, коньяк, джин…)", v6sp.prio === "sp-demo-1" && v6sp.art >= 6, JSON.stringify(v6sp));
   await shot("m55-spirits-art");
+  // v137 (Доп. 450): уведомления на телефон — как на iPhone с экрана «Домой»: разрешение, пробное, «Только телефон», касание
+  await page.evaluate(() => window.__saNav && window.__saNav("me")); await page.waitForTimeout(1200);
+  await openGroups("Помощь и настройки");
+  await page.locator('.sa-card[aria-label="Уведомления на телефон"]').first().click().catch(() => {}); await page.waitForTimeout(1600);
+  ok("«Я» → «Уведомления на телефон»: окно «Напоминания», «Включить уведомления»", await page.locator('[role="dialog"][aria-label="Напоминания"] [data-push-enable]').count() === 1);
+  await page.locator("[data-push-enable]").click().catch(() => {}); await page.waitForTimeout(700);
+  ok("телефон спрашивает разрешение: «Не разрешать» · «Разрешить»", /«Service Academy» хочет присылать уведомления/.test(await page.locator("#demo-perm").innerText().catch(() => "")));
+  await shot("m56-push-permission");
+  await page.locator('[data-demo-perm="yes"]').click().catch(() => {}); await page.waitForTimeout(1300);
+  ok("включено: «✓ Включено на этом телефоне», «Куда присылать»", await page.locator('[data-push-block="on"]').count() === 1 && await page.locator("[data-push-channel]").count() === 1);
+  await page.locator("[data-push-test]").click().catch(() => {}); await page.waitForTimeout(900);
+  const pb = (await page.locator("#demo-push").innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("«Проверить» — баннер сверху: «Уведомления работают»", /SERVICE ACADEMY сейчас Уведомления работают Так будут приходить сообщения: чат, смены, вопрос дня\./.test(pb), pb);
+  await shot("m57-push-test");
+  await page.locator('[data-push-ch="push"]').click().catch(() => {}); await page.waitForTimeout(700);
+  ok("«Только телефон» выбран", await page.locator('[data-push-ch="push"][aria-pressed="true"]').count() === 1);
+  await page.locator('[role="dialog"] [data-sa-back]').click().catch(() => {}); await page.waitForTimeout(500);
+  await page.evaluate(() => { const D = window.__demo; D.srv.S.seen = {}; D.srv.bot.say("e-petr", "@Мария, на банкет нужен ещё один стол. Ставим к окну?"); D.save(); });
+  await page.waitForTimeout(1000);
+  const mp = (await page.locator("#demo-push").innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("упоминание — уведомлением на телефон, как в мессенджере (Доп. 451): «Вся команда», «Пётр О.: …»; Telegram молчит", /^SERVICE ACADEMY сейчас Вся команда( · \d+ нов(ых|ое))? Пётр О\.: @Мария, на банкет нужен ещё один стол/.test(mp) && await page.locator("#demo-tg").count() === 0, mp);
+  await shot("m58-push-mention");
+  await page.locator("#demo-push").click().catch(() => {}); await page.waitForTimeout(2200);
+  ok("касание уведомления — чат на этом сообщении", await page.locator("[data-chat]").count() > 0 && /на банкет нужен ещё один стол/.test(await page.locator("[data-chat]").innerText().catch(() => "")));
+  ok("Доп. 451: касание — сразу ответ на это сообщение (цитата над строкой ввода)", await page.locator("[data-chat-noreply]").count() === 1
+    && /на банкет нужен ещё один стол/.test(await page.locator(".ch-bar").innerText().catch(() => "")));
+  await shot("m59-push-tap-chat");
+  for (let i = 0; i < 5 && await page.locator("[data-chat]").count(); i++) { await page.evaluate(() => { const b = document.querySelector("[data-chat] [data-sa-back]"); if (b) b.click(); }); await page.waitForTimeout(450); }
+  // v137 (Доп. 451): Android — кнопки под уведомлением: «Ответить» (поле прямо в уведомлении) и «Прочитано»; «Принято»
+  await page.evaluate(() => { localStorage.setItem("__demo_android", "1"); const D = window.__demo, S = D.srv.S; S.seen = {};
+    const dm = D.srv.rpc("chat_dm", { p_token: D.srv.tokOf("e-anna"), p_emp: "u-maria" }).chat.id;
+    D.srv.rpc("chat_send", { p_token: D.srv.tokOf("e-anna"), p_chat: dm, p_body: "Мария, можно поменяться сменой в субботу? Мне к врачу." }); D.save(); });
+  await page.waitForTimeout(900);
+  const ad = (await page.locator("#demo-push").innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("Android: личное — «Анна Смирнова» и текст, кнопки «Ответить» и «Прочитано»", /Анна Смирнова Мария, можно поменяться сменой в субботу\? Мне к врачу\. Ответить Прочитано/.test(ad), ad);
+  await shot("m60-push-android-dm");
+  await page.locator('[data-demo-push-act="reply"]').click().catch(() => {}); await page.waitForTimeout(300);
+  await page.locator("[data-demo-push-reply]").fill("Да, давай. Возьму твою субботу").catch(() => {});
+  await shot("m61-push-android-reply");
+  await page.locator("[data-demo-push-send]").click().catch(() => {}); await page.waitForTimeout(300);
+  const ar = (await page.locator("#demo-push").innerText().catch(() => "")).replace(/\s+/g, " ");
+  const dmLast = await page.evaluate(() => { const D = window.__demo, m = D.srv.S.msgs.filter((x) => x.emp === "u-maria").at(-1); return m ? m.body : ""; });
+  ok("«Ответить» прямо в уведомлении: ушло в личную переписку", /Ушло в личную переписку\./.test(ar) && dmLast === "Да, давай. Возьму твою субботу", ar + " · " + dmLast);
+  await shot("m62-push-android-sent");
+  await page.waitForTimeout(2600);
+  await page.evaluate(() => { const D = window.__demo; D.srv.S.seen = {}; D.srv.rpc("chat_late", { p_token: D.srv.tokOf("e-vera"), p_chat: null, p_min: 15, p_note: "пробка на мосту" }); D.save(); });
+  await page.waitForTimeout(900);
+  const al = (await page.locator("#demo-push").innerText().catch(() => "")).replace(/\s+/g, " ");
+  ok("Android: опоздание — «Вера … опаздывает на 15 минут», ниже подробности, кнопка «Принято»", /Вера [А-ЯЁ]\. опаздывает на 15 минут Будет в \d\d:\d\d.* · «пробка на мосту» Принято$/.test(al), al);
+  await shot("m63-push-android-late");
+  await page.locator('[data-demo-push-act="cl"]').click().catch(() => {}); await page.waitForTimeout(300);
+  ok("«Принято» под уведомлением: «Принято.», на карточке опоздания — принято", /Принято\./.test(await page.locator("#demo-push").innerText().catch(() => ""))
+    && await page.evaluate(() => { const D = window.__demo, m = D.srv.S.msgs.filter((x) => x.kind === "card" && x.card && x.card.t === "late" && x.emp === "e-vera").at(-1); return !!(m && m.card.ok); }));
+  await page.evaluate(() => localStorage.removeItem("__demo_android"));
+  await page.waitForTimeout(2600);
 }
 if (!ONLY || ONLY.includes("roman")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "roman"); localStorage.removeItem("__demo_me"); });
@@ -673,6 +743,12 @@ if (!ONLY || ONLY.includes("roman")) {
   await page.locator("#demo-page .bar button").click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(4800);
   ok("после подключения: «Кнопки и ответы в чат: подключены»", /Кнопки и ответы в чат: подключены/.test(await txt()));
   await shot("r4-server-after");
+  // v137: «Уведомления на телефон» — функция на месте, включили Пётр, Ольга и Вера
+  const sp = (await page.locator("[data-srv-push]").innerText().catch(() => "")).replace(/\s+/g, " ");
+  // Пётр, Ольга и Вера — сразу; Мария — если её раздел шёл раньше (сервер демо общий)
+  ok("«Сервер» → «Уведомления на телефон»: функция push-send на месте, 3–4 человека с телефонами", /Функция push-send: на месте/.test(sp) && /Уведомления включили: [34] человека, телефонов: [34]/.test(sp), sp.slice(0, 160));
+  await page.evaluate(() => { const e = document.querySelector("[data-srv-push]"); if (e) e.scrollIntoView({ block: "center" }); }); await page.waitForTimeout(300);
+  await shot("r5-server-push");
 }
 if (!ONLY || ONLY.includes("ksenia")) {
   // v107 (Доп. 420): Ксения — новичок: вчера бот прислал памятку, сегодня первая смена, её представили команде

@@ -350,11 +350,11 @@ await run("NOLINK", async () => {
   const r = await open({ who: ROMAN, srv });
   await toGain(r.page);
   ok("NOLINK: у владельца Telegram не подключён — «Включи «Напоминания в Telegram», и 1-го числа итог прошлого месяца придёт туда.», «Подключить»",
-    /Telegram не подключён Включи «Напоминания в Telegram», и 1-го числа итог прошлого месяца придёт туда\./.test(await txt(r.page.locator('[data-gain-sec="tg"]')))
+    /Telegram не подключён Включи «Напоминания» в Telegram или на телефоне, и 1-го числа итог прошлого месяца придёт туда\./.test(await txt(r.page.locator('[data-gain-sec="tg"]')))
     && (await r.page.locator("[data-gain-link]").count()) === 1 && !(await r.page.locator("[data-gain-send]").count()), await txt(r.page.locator('[data-gain-sec="tg"]')));
   ok("NOLINK: владельца в команде нет — «занимались 7 из 9»", /^7 из 9 занимались/.test(await txt(r.page.locator('[data-gain-stat="people"]'))), await txt(r.page.locator('[data-gain-stat="people"]')));
   await r.page.locator("[data-gain-link]").click();
-  ok("NOLINK: «Подключить» — «Напоминания в Telegram»", await until(() => r.page.locator('[role="dialog"][aria-label="Напоминания в Telegram"]').count(), 5000));
+  ok("NOLINK: «Подключить» — «Напоминания в Telegram»", await until(() => r.page.locator('[role="dialog"][aria-label="Напоминания"]').count(), 5000));
   await shot(r.page, "nolink");
   const [e1, e2] = noErr(r); ok("NOLINK: без ошибок", e1, e2);
   await r.ctx.close();

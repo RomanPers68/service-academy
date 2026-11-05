@@ -219,6 +219,14 @@ export const injectStyles = () => {
     /* v72 (Доп. 385): в v71 верхняя строка «SA · поиск · тема» стояла в середине строки кнопок Telegram. На iPhone Telegram
        накрывает эту полосу своей подложкой, как только показывает кнопки «Закрыть» и «⌄ ⋯» (запись владельца: строка видна,
        пока кнопок нет, и пропадает вместе с их появлением). Своё туда положить нельзя — строка снова под кнопками, как в v70. */
+    /* v137 (Доп. 452): приложение с экрана «Домой» на iPhone (html.sa-pwa, index.html). Начинается под часами (--sa-st ставит
+       lib/tg-screen.js по вырезу сверху, как под кнопками Telegram). С iOS 26 система сама размывает верх таких приложений,
+       полосу в 30–40 точек под часами, и выключить это нельзя (снимок владельца, 05.11: «SA», лупа и «Для чтения» мутные).
+       Верхняя строка опускается под эту полосу; окна поверх экрана (чат и другие) система не размывает, их шапки как были.
+       Лёжа часов нет, и отступа нет. */
+    html.sa-pwa body { padding-top: var(--sa-st, 0px); box-sizing: border-box; }
+    @media (orientation: portrait) { html.sa-pwa { --sa-pwab: 36px; } }
+    html.sa-pwa [data-sa-topbar] { padding-top: calc(8px + var(--sa-pwab, 0px)) !important; }
     /* Доп. 363: iPhone при повороте сам «подгоняет» шрифт (text autosizing) и после возврата
        в портрет оставляет его крупнее — запись владельца. Размер текста задаём только мы. */
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -1099,6 +1107,10 @@ export const injectStyles = () => {
     /* в портрете на экранах без панели вкладок (Аналитика, SOS, Меню…) 88 px внизу были пустым хвостом */
     html:not(.sa-wide):not(.sa-navon) .sa-tabpad { padding-bottom: 24px; --sa-padb: 24px; }
     .sa-tabpad.sa-tabpad-w { padding-bottom: 24px; --sa-padb: 24px; }
+    /* v137 (Доп. 452): на экране «Домой» iPhone панель вкладок стоит над полоской «Домой» (вырез снизу), и отступ под ней
+       вырастает на столько же: 88 px = 8 + 8 + 58 (панель) + 14 */
+    html.sa-pwa.sa-navon:not(.sa-wide) .sa-tabpad:not(.sa-tabpad-w) { padding-bottom: calc(80px + max(env(safe-area-inset-bottom, 0px), 8px));
+      --sa-padb: calc(80px + max(env(safe-area-inset-bottom, 0px), 8px)); }
     /* Кнопка AI остаётся, где была (низ справа, над панелью вкладок); снизу экрана — запас под неё:
        последние карточки поднимаются выше кнопки и не прячутся под ней. */
     html.sa-fabon { --sa-fab: calc(104px + env(safe-area-inset-bottom, 0px)); }

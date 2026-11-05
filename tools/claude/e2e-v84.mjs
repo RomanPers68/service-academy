@@ -282,7 +282,7 @@ if (want("PREFS")) {
     return undefined;
   } });
   await sleep(1500); await toTab(o.page, "shift");
-  await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+  await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Спасибо от гостей" });
   // v86: строки группами — «Спасибо от гостей» последней в группе «Команда»
   ok("PREFS: строка «Спасибо от гостей» — в группе «Команда», включена", /Спасибо от гостей когда гость сказал тебе спасибо по QR \(первые три за день\)/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"

@@ -308,7 +308,7 @@ if (want("PREFS")) {
     return undefined;
   } });
   await sleep(1500); await nav(o.page, "shift");
-  await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+  await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Рассадка" });
   // v86: строки группами — «Рассадка» в группе «Смена»
   ok("PREFS: строка «Рассадка» — в группе «Смена», включена", /Рассадка когда тебе посадили гостей за стол/.test(await txt(row)) && (await row.getAttribute("aria-checked")) === "true"

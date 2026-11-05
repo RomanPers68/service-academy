@@ -360,8 +360,93 @@ const who = ME[whoKey] ? whoKey : "anna";
 const me = PEOPLE.find((p) => p.id === ME[who]);
 const newPhone = lsGet(K_NEW) === "1";
 
+// ── v137 (Доп. 450): уведомления на телефон. Демо — как академия на экране «Домой» iPhone: разрешение спрашивает окно, как
+// у iPhone, подписка живёт на этом «телефоне» (до смены человека), уведомление — баннером сверху, касание открывает экран
+// (событие sa-go, как у сервис-воркера). «Новый телефон» — в Telegram: там уведомления не включаются, пишет бот.
+const K_PUSH = "__demo_push";
+const pushSt = (() => { try { return JSON.parse(lsGet(K_PUSH) || "null") || {}; } catch (e) { return {}; } })();
+const pushSave = () => lsSet(K_PUSH, JSON.stringify(pushSt));
+const DEMO_P256 = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4", DEMO_AUTH = "BTBZMqHH6r4Tts7J_aSIgg";
+const mkSub = (ep) => ({ endpoint: ep, options: { applicationServerKey: null },
+  toJSON: () => ({ endpoint: ep, keys: { p256dh: DEMO_P256, auth: DEMO_AUTH } }),
+  unsubscribe: async () => { pushSt.sub = null; pushSave(); return true; } });
+function pushAsk() {
+  return new Promise((res) => {
+    const old = document.getElementById("demo-perm"); if (old) old.remove();
+    const v = document.createElement("div"); v.id = "demo-perm";
+    v.innerHTML = '<div class="box" role="alertdialog" aria-label="Разрешение на уведомления"><b>«Service Academy» хочет присылать уведомления</b>' +
+      '<p>В уведомлениях бывают оповещения, звуки и число на значке. Их можно настроить в «Настройках».</p>' +
+      '<div class="row"><button type="button" data-demo-perm="no">Не разрешать</button><button type="button" data-demo-perm="yes">Разрешить</button></div></div>';
+    v.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { v.remove(); res(b.getAttribute("data-demo-perm") === "yes"); }));
+    document.body.appendChild(v);
+  });
+}
+window.__saPushShim = {
+  get env() { return newPhone ? "telegram" : pushSt.perm === "denied" ? "denied" : pushSt.perm === "granted" ? "granted" : "ok"; },
+  get permission() { return pushSt.perm || "default"; },
+  reg: { pushManager: {
+    getSubscription: async () => (pushSt.sub ? mkSub(pushSt.sub) : null),
+    subscribe: async () => {
+      if (pushSt.perm !== "granted") {
+        const yes = pushSt.perm === "denied" ? false : await pushAsk();
+        pushSt.perm = yes ? "granted" : "denied"; pushSave();
+        if (!yes) { const e = new Error("Нет разрешения"); e.name = "NotAllowedError"; throw e; }
+      }
+      if (!pushSt.sub) { pushSt.sub = "https://web.push.apple.com/demo-" + me.id + "-" + Date.now().toString(36); pushSave(); }
+      return mkSub(pushSt.sub);
+    },
+  } },
+};
+// уведомление на телефоне: баннер сверху, касание — экран из уведомления. v137 (Доп. 451): на Android под ним кнопки
+// («Ответить» — поле прямо в уведомлении, «Прочитано», «Принято», «Забрать», «Иду»; нажатие — как функция push-send:
+// srv.pushAct), ответ — коротко в том же баннере. iPhone кнопок не показывает — и демо на iPhone тоже (__demo_android —
+// вид Android для снимков проверки).
+const isAndroid = () => /Android/i.test(navigator.userAgent || "") || lsGet("__demo_android") === "1";
+const goApp = (go) => { try { window.dispatchEvent(new CustomEvent("sa-go", { detail: { go: go || "" } })); } catch (e) {} };
+function pushBanner(n) {
+  const old = document.getElementById("demo-push"); if (old) old.remove();
+  const v = document.createElement("div"); v.id = "demo-push"; v.setAttribute("role", "status"); v.setAttribute("data-demo-push", n.go || "");
+  v.innerHTML = '<img alt="" src="icons/icon-192.png"><div class="c"><div class="h"><span>SERVICE ACADEMY</span><i>сейчас</i></div><b></b><div class="t"></div></div>';
+  v.querySelector("b").textContent = n.t || "";
+  v.querySelector(".t").textContent = n.b || "";
+  if (!n.b) v.querySelector(".t").remove();
+  let timer = setTimeout(() => v.remove(), 8000);
+  v.addEventListener("click", () => { clearTimeout(timer); v.remove(); goApp(n.go); });
+  if (isAndroid() && Array.isArray(n.a) && n.a.length && n.k) {
+    const c = v.querySelector(".c"), row = document.createElement("div"); row.className = "a";
+    const done = (r) => {
+      save();
+      if (!r || !r.ok) { v.remove(); goApp(n.go); return; }   // не вышло — открыть приложение на этом месте
+      if (!r.text) { v.remove(); return; }                     // «Прочитано» — тихо
+      c.querySelector("b").textContent = r.text;
+      for (const x of c.querySelectorAll(".t, .a, .r")) x.remove();
+      v.setAttribute("data-demo-push-done", "");
+      timer = setTimeout(() => v.remove(), 2400);
+    };
+    const reply = () => {
+      row.remove();
+      const f = document.createElement("div"); f.className = "r";
+      f.innerHTML = '<input type="text" data-demo-push-reply="" placeholder="Ответ…" maxlength="1000"><button type="button" data-demo-push-send="" aria-label="Отправить">➤</button>';
+      f.addEventListener("click", (e) => e.stopPropagation());
+      const inp = f.querySelector("input");
+      const send = () => { const r = srv.pushAct(n.k, "reply", inp.value); if (r && !r.ok && r.error === "empty") { v.remove(); goApp(n.go); return; } done(r); };
+      f.querySelector("button").addEventListener("click", send);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+      c.appendChild(f);
+      setTimeout(() => { try { inp.focus(); } catch (e) {} }, 30);
+    };
+    for (const x of n.a) {
+      const btn = document.createElement("button"); btn.type = "button"; btn.textContent = x.t; btn.setAttribute("data-demo-push-act", x.a);
+      btn.addEventListener("click", (e) => { e.stopPropagation(); clearTimeout(timer); if (x.a === "reply") reply(); else done(srv.pushAct(n.k, x.a)); });
+      row.appendChild(btn);
+    }
+    c.appendChild(row);
+  }
+  document.body.appendChild(v);
+}
+
 // ── состояние сервера: в localStorage, чтобы пережить смену человека и перезагрузку ──
-let saved = null;
+let saved = null, seeding = false;
 try { saved = lsGet(K_DAY) === TODAY ? JSON.parse(lsGet(K_SRV) || "null") : null; } catch (e) { saved = null; }
 // пройденное: Анна и Мария не новички (инструменты открыты), коллеги — для заданий «кто прошёл»
 const DONE = ["s0-1", "s0-2", "s0-3", "s0-4", "s1-1", "s1-2"];
@@ -383,6 +468,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   activity: ACTIVITY, quiz: QUIZ,   // v109: журнал занятий и ответы в тестах за два месяца («Что дало обучение»)
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
   tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
+  pushSubs: ["e-petr", "e-olga", "e-vera"],   // v137: уведомления на телефоне уже включили Пётр, Ольга (без Telegram) и Вера
   // v125 (Доп. 438): тренировка по винам у команды (этап 44): Анна выучила новые вина («Совиньон Блан» и «Москато»), Вера
   // их учит, Илья выучил одно, Пётр учит карту, новые не открывал; остальные пока не занимались (смещения дней от сейчас)
   wineProg: {
@@ -421,11 +507,13 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: iso(new Date(Date.now() - 86400000)) + "T09:52:00", by_name: "Ольга Л." },
     preshift: { checked: ["p1", "p2", "p3", "p4", "p5"], done_at: iso(new Date(Date.now() - 86400000)) + "T11:40:00", by_name: "Мария К." },
     close: { checked: ["c1", "c2", "c3", "c4"], done_at: null, by_name: null } } },
+  // v137: уведомление на телефон — мне баннером сверху (как у iPhone), чуть раньше сообщения Telegram
+  push: (to, n) => { if (to === me.id && !seeding) setTimeout(() => pushBanner(n), 350); },
   // бот пишет в Telegram: мне — уведомлением сверху, остальным — никак (их телефонов в демо нет)
-  ping: (to, text, acts, chat, msg, o) => { if (to !== me.id) return;
+  ping: (to, text, acts, chat, msg, o) => { if (to !== me.id || seeding) return;
     if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400);
     else if (o && o.kind === "gain") setTimeout(() => tgChat(text, o.kb, nowHM(), { note: "Так 1-го числа в 10:00 приходит итог прошлого месяца. Кнопка открывает его в приложении." }), 400);   // v109
-    else setTimeout(() => tgToast(text, acts), 500); } });
+    else setTimeout(() => tgToast(text, acts, chat), 500); } });
 // v127: демо, открытое сегодня ещё до этой сборки, — крепкое приходит в меню команды один раз (дальше — как правил руководитель)
 if (!srv.S.spiritSeeded) { srv.S.spiritSeeded = 1; if (Array.isArray(srv.S.menu) && !srv.S.menu.some((d) => d && d.kind === "spirit")) srv.S.menu.push(...MENU.filter((d) => d && d.kind === "spirit")); }
 const save = () => { lsSet(K_SRV, JSON.stringify(srv.S)); lsSet(K_DAY, TODAY); };
@@ -433,8 +521,9 @@ const D = srv.D;
 // приложение только что открыли: сейчас я ни в одном чате (бот пишет мне в Telegram, как в жизни)
 for (const k of Object.keys(srv.S.seen || {})) if (k.endsWith("|" + me.id)) delete srv.S.seen[k];
 
-// ── утро в заведении: что уже есть в чате, когда демо открывают впервые ──
+// ── утро в заведении: что уже есть в чате, когда демо открывают впервые (это было утром — бот об этом сейчас не пишет) ──
 if (!saved) {
+  seeding = true;
   srv.bot.say("u-maria", "Доброе утро! Сегодня банкет на 12 человек в 19:00 на веранде. Зал готовим к 18:30.");
   srv.bot.offer("e-vera", D(2), "give", "Нужно к врачу, выручите");
   srv.bot.need("u-maria", D(6), "waiter", "В", 1);
@@ -442,6 +531,7 @@ if (!saved) {
   srv.bot.say("e-ilya", "На баре закончился тоник, до обеда привезут. Пока предлагаем содовую.");
   srv.bot.say("e-olga", "Бронь на 20:00 перенесли на 20:30, стол 7.");
   save();
+  seeding = false;
 }
 
 // ── то, что приложение ждёт на устройстве: вход, подсказки уже показаны ──
@@ -449,6 +539,7 @@ function seed() {
   const uk = "_" + me.name + "_" + me.surname;
   const keep = new Set([K_SRV, K_WHO, K_DAY, K_T, LOOK_KEY]);
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
+  for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}
   const s = { sa_welcome_seen_v11: "1", sa_hint_mistakes: "1", sa_mode_hint: "1", sa_sfx: "0", sa_guest_voice: "0",
     sa_ai_fab: "1", ["sa_last_role" + uk]: JSON.stringify("seasonal"), ["sa_ach_pioneer" + uk]: "1", ["sa_mastery" + uk]: JSON.stringify({ tiers: {}, fw: false, master: {} }),
@@ -643,6 +734,8 @@ window.fetch = function (input, init) {
   // v122: фото бутылки — в демо хранилища нет, снимок остаётся в записи (в приложении — ссылка хранилища, photo-upload)
   if (/\/functions\/v1\/photo-upload/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(600).then(() => json(/^data:image\/(jpeg|png|webp);base64,/.test(String(b.image || "")) ? { ok: true, url: b.image } : { ok: false, error: "bad_request" })); }
   if (/\/functions\/v1\/ai-hr/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "assess" ? 1400 : 900).then(() => json(demoHr(b))); }   // v121
+  // v137: функция push-send на месте (ключи уведомлений созданы)
+  if (/\/functions\/v1\/push-send\?init=1/.test(url)) return wait(300).then(() => json({ ok: true, key: srv.rpc("push_status", { p_token: tokOf(me.id) }).key || "" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
@@ -705,7 +798,7 @@ window.open = function (url, ...rest) {
 };
 
 // ── v99: сообщение бота в Telegram — уведомлением сверху; «Принято» под сообщением об опоздании работает ──
-function tgToast(text, acts) {
+function tgToast(text, acts, chat = null) {
   const old = document.getElementById("demo-tg"); if (old) old.remove();
   const t = document.createElement("div"); t.id = "demo-tg"; t.setAttribute("role", "status");
   t.innerHTML = '<div class="h"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M21.5 4.2 2.9 11.4c-.9.4-.9 1.6.1 1.9l4.6 1.4 1.8 5.5c.3.8 1.3 1 1.9.4l2.6-2.5 4.7 3.5c.7.5 1.7.1 1.9-.8l3.1-14.9c.2-1-.8-1.8-1.7-1.3z" fill="currentColor"/></svg>' +
@@ -716,13 +809,57 @@ function tgToast(text, acts) {
     const btn = document.createElement("button"); btn.type = "button"; btn.textContent = a.text;
     btn.addEventListener("click", (e) => {
       e.stopPropagation(); clearTimeout(timer);
-      const r = a.late ? srv.rpc("chat_late_ok", { p_token: tokOf(me.id), p_msg: a.late }) : null; save();
-      btn.textContent = r && r.ok ? "Принято: на карточке в чате видно" : "Не получилось"; btn.disabled = true;
+      const r = a.late ? srv.rpc("chat_late_ok", { p_token: tokOf(me.id), p_msg: a.late })
+        : a.take ? srv.rpc("chat_shift_take", { p_token: tokOf(me.id), p_msg: a.take }) : null;   // v137: «Забрать» / «Выйду»
+      save();
+      btn.textContent = r && r.ok ? (a.take ? "Смена твоя: в графике уже видно" : "Принято: на карточке в чате видно")
+        : r && r.error === "taken" ? "Смену уже забрали" : "Не получилось"; btn.disabled = true;
       timer = setTimeout(() => t.remove(), 2200);
     });
     t.querySelector(".a").appendChild(btn);
   }
+  // v137 (Доп. 451): сообщение о переписке — «Ответить»: просто текст боту в ближайшие 30 минут уходит в эту переписку
+  // (srv.tg.quick, как этап 48); бот отвечает «Ушло в «…».» с кнопками «Отменить» и «Открыть чат»
+  if (chat != null) {
+    const btn = document.createElement("button"); btn.type = "button"; btn.textContent = "Ответить"; btn.setAttribute("data-demo-tg-reply", "");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation(); clearTimeout(timer);
+      t.querySelector(".a").remove();
+      const f = document.createElement("div"); f.className = "r";
+      f.innerHTML = '<input type="text" data-demo-tg-input="" placeholder="Сообщение боту" maxlength="1000"><button type="button" data-demo-tg-send="" aria-label="Отправить">➤</button>';
+      f.addEventListener("click", (ev) => ev.stopPropagation());
+      const inp = f.querySelector("input");
+      const send = () => {
+        const r = srv.tg.quick(me.id, inp.value.trim()); save();
+        f.remove();
+        t.querySelector(".h span").textContent = "бот Академии · ответ";
+        t.querySelector(".t").textContent = r && r.ok ? r.text : "Не получилось: открой чат в приложении.";
+        if (!(r && r.ok)) { timer = setTimeout(() => t.remove(), 2400); return; }
+        t.setAttribute("data-demo-tg-sent", String(r.id));
+        const a = document.createElement("div"); a.className = "a";
+        const undo = document.createElement("button"); undo.type = "button"; undo.textContent = "Отменить"; undo.setAttribute("data-demo-tg-undo", "");
+        const open = document.createElement("button"); open.type = "button"; open.textContent = "Открыть чат"; open.setAttribute("data-demo-tg-open", "");
+        undo.addEventListener("click", (ev) => {
+          ev.stopPropagation(); clearTimeout(timer);
+          const u = srv.tg.undo(me.id, r.id); save();
+          t.querySelector(".t").textContent = u && u.ok ? "Отменено: в чат не ушло." : "Отменить уже нельзя: прошло больше 10 минут";
+          a.remove(); timer = setTimeout(() => t.remove(), 2200);
+        });
+        open.addEventListener("click", (ev) => { ev.stopPropagation(); t.remove(); goApp("chat_" + r.chat + "_" + r.id); });
+        a.appendChild(undo); a.appendChild(open); t.appendChild(a);
+        timer = setTimeout(() => t.remove(), 9000);
+      };
+      f.querySelector("button").addEventListener("click", send);
+      inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter") send(); });
+      t.appendChild(f);
+      setTimeout(() => { try { inp.focus(); } catch (er) {} }, 30);
+    });
+    t.querySelector(".a").appendChild(btn);
+  }
   t.addEventListener("click", () => t.remove());
+  // v137: уведомление на телефоне уже сверху — сообщение Telegram под ним
+  const pb = document.getElementById("demo-push");
+  if (pb) t.style.top = (STRIP + 16 + pb.offsetHeight) + "px";
   document.body.appendChild(t);
 }
 
@@ -816,6 +953,31 @@ html.sa-tgfs body{padding-top:var(--sa-st,0px)}
 #demo-tgchat .kb .row{display:flex;gap:4px}
 #demo-tgchat .kb button{flex:1;min-width:0;padding:10px 8px;border:0;border-radius:10px;background:rgba(43,82,120,0.55);color:#F5F7FA;font:500 14.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer}
 @media (prefers-reduced-motion: reduce){#demo-tg{animation:none}}
+#demo-push{position:fixed;top:${STRIP + 8}px;left:8px;right:8px;margin:0 auto;max-width:420px;z-index:2147483004;box-sizing:border-box;display:flex;gap:10px;align-items:flex-start;padding:11px 13px 12px;border-radius:22px;cursor:pointer;
+  font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#F4F4F6;background:rgba(44,44,48,0.86);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  box-shadow:0 10px 32px rgba(0,0,0,0.45);animation:demoTgIn .3s ease-out}
+#demo-push img{flex:0 0 auto;width:38px;height:38px;border-radius:9px}
+#demo-push .c{flex:1;min-width:0}
+#demo-push .h{display:flex;gap:8px;font-size:12px;letter-spacing:.3px;color:rgba(235,235,245,0.62)}
+#demo-push .h span{flex:1}
+#demo-push .h i{font-style:normal}
+#demo-push b{display:block;font-weight:600;margin-top:1px}
+#demo-push .t{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;color:rgba(244,244,246,0.92)}
+#demo-push .a{display:flex;gap:6px;margin-top:9px}
+#demo-push .a button{flex:1;min-width:0;padding:8px 6px;border:0;border-radius:12px;background:rgba(255,255,255,0.12);color:#F4F4F6;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer}
+#demo-push .r,#demo-tg .r{display:flex;gap:6px;margin-top:9px}
+#demo-push .r input,#demo-tg .r input{flex:1;min-width:0;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.25);color:inherit;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;outline:none}
+#demo-push .r button,#demo-tg .r button{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;background:#C8A96E;color:#1C150A;font-size:15px;cursor:pointer}
+@media (prefers-color-scheme: light){#demo-push{color:#111;background:rgba(246,246,248,0.9);box-shadow:0 10px 30px rgba(0,0,0,0.18)}#demo-push .h{color:rgba(60,60,67,0.6)}#demo-push .t{color:rgba(17,17,17,0.88)}
+  #demo-push .a button{background:rgba(0,0,0,0.07);color:#111}#demo-push .r input{border-color:rgba(0,0,0,0.18);background:rgba(255,255,255,0.7)}}
+#demo-perm{position:fixed;inset:0;z-index:2147483005;display:grid;place-items:center;background:rgba(0,0,0,0.35)}
+#demo-perm .box{width:270px;border-radius:14px;overflow:hidden;text-align:center;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#F4F4F6;background:rgba(40,40,44,0.94);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+#demo-perm b{display:block;padding:18px 16px 4px;font-size:16px;font-weight:600;line-height:1.3}
+#demo-perm p{margin:0;padding:0 16px 16px;color:rgba(244,244,246,0.85)}
+#demo-perm .row{display:flex;border-top:1px solid rgba(255,255,255,0.14)}
+#demo-perm .row button{flex:1;padding:11px 6px;border:0;background:none;color:#0A84FF;font:17px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer}
+#demo-perm .row button+button{border-left:1px solid rgba(255,255,255,0.14);font-weight:600}
+@media (prefers-color-scheme: light){#demo-perm .box{color:#111;background:rgba(242,242,247,0.96)}#demo-perm p{color:rgba(17,17,17,0.82)}#demo-perm .row{border-top-color:rgba(60,60,67,0.2)}#demo-perm .row button+button{border-left-color:rgba(60,60,67,0.2)}}
 #demo-page{position:fixed;inset:0;z-index:2147483003;display:flex;flex-direction:column;background:#14110A}
 #demo-page .bar{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#2A2F36;color:#C9D2DB;font:12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 #demo-page .addr{flex:1;min-width:0;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,0.08);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

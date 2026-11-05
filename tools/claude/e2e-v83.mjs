@@ -334,7 +334,7 @@ if (want("PREFS")) {
     return undefined;
   } });
   await sleep(1500); await toShift(o.page);
-  await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+  await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Случаи из зала" });
   const t = await txt(row);
   // v86: строки группами — «Случаи из зала» в группе «Смена»

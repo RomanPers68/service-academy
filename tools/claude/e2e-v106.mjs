@@ -290,7 +290,7 @@ await run("LINK", async () => {
   await toMorning(a.page);
   ok("LINK: Telegram не подключён — подсказка и «Подключить», «Прислать сейчас» нет", (await a.page.locator('[data-mo-row="nolink"]').count()) === 1 && (await a.page.locator("[data-mo-send]").count()) === 0);
   await a.page.locator("[data-mo-link]").click(); await sleep(1000);
-  ok("LINK: «Подключить» — «Напоминания в Telegram»", (await a.page.locator('[role="dialog"][aria-label="Напоминания в Telegram"]').count()) === 1);
+  ok("LINK: «Подключить» — «Напоминания в Telegram»", (await a.page.locator('[role="dialog"][aria-label="Напоминания"]').count()) === 1);
   await shot(a.page, "link");
   await a.ctx.close();
 });

@@ -189,7 +189,7 @@ if (want("PREFS")) {
     } });
     await sleep(1500);
     await o.page.evaluate(() => window.__saNav("shift")); await sleep(1000);
-    await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+    await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
     const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Вопрос дня" });
     const t = (await row.count()) ? (await row.innerText()).replace(/\s+/g, " ") : "";
     ok(tag + ": строка «Вопрос дня» — час от сервера и откуда вопросы", /Вопрос дня в 11:00 вопрос с кнопками ответа: из твоих ошибок и пройденных тем/.test(t), t);

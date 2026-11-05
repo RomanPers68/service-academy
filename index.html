@@ -14,6 +14,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SA" />
     <meta name="theme-color" content="#171208" />
+    <!-- v137 (Доп. 452): приложение с экрана «Домой» на iPhone (navigator.standalone). Без viewport-fit=cover iPhone в этом
+         режиме не сообщает приложению вырезы экрана (env(safe-area-inset-*) = 0): строка ввода чата с колокольчиком и
+         микрофоном и нижние панели уходили под скругление и полоску «Домой» (снимки владельца, 05.11). Только здесь:
+         в Telegram и в браузере всё как было. Верх под часами — lib/tg-screen.js (--sa-st), отступ под размытием iOS 26 —
+         ui/css.js (html.sa-pwa) -->
+    <script>
+      (function () {
+        try {
+          if (navigator.standalone !== true) return;
+          document.documentElement.classList.add("sa-pwa");
+          var m = document.querySelector('meta[name="viewport"]'), c = m ? m.getAttribute("content") || "" : "";
+          if (m && c.indexOf("viewport-fit") < 0) m.setAttribute("content", c + ", viewport-fit=cover");
+        } catch (e) {}
+      })();
+    </script>
     <!-- Доп. 363: без автоподгонки шрифта iOS — иначе после поворота телефона текст остаётся крупнее -->
     <style>html{-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
     <!-- v55 (Доп. 368): соединение с сервером открываем заранее, пока грузится приложение, —

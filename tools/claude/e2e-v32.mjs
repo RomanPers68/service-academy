@@ -375,7 +375,7 @@ if (want("FROST")) {
     await page.evaluate(() => window.__saNav("shift")); await sleep(1200);
     if (await page.locator('.sa-card[aria-label="Свеча на двоих"]').count()) { await page.locator('.sa-card[aria-label="Свеча на двоих"]').first().click(); await sleep(1200); await grab("09-pair"); await page.evaluate(() => window.__bb && window.__bb.press()); await sleep(600); }
     if (await page.locator('.sa-card[aria-label="Живой гость"]').count()) { await page.locator('.sa-card[aria-label="Живой гость"]').first().click(); await sleep(1500); await grab("10-guest"); await page.evaluate(() => window.__bb && window.__bb.press()); await sleep(600); }
-    if (await page.locator('.sa-card[aria-label="Напоминания в Telegram"]').count()) { await page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1200); await grab("11-remind"); await page.evaluate(() => window.__bb && window.__bb.press()); await sleep(600); }
+    if (await page.locator('.sa-card[aria-label="Напоминания"]').count()) { await page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1200); await grab("11-remind"); await page.evaluate(() => window.__bb && window.__bb.press()); await sleep(600); }
     await page.evaluate(() => window.__saNav("roleSelect")); await sleep(1000);
     if (await page.locator('[aria-label^="Цель дня:"]').count()) { await page.locator('[aria-label^="Цель дня:"]').first().click(); await sleep(600); await grab("12-goal"); await page.mouse.click(30, 60); await sleep(400); }
     await ctx.close();

@@ -202,7 +202,8 @@ describe("v58: надписи «для разработчика» — по-че�
     expect(bad).toEqual([]);
     expect(rd("ui/screens-admin.jsx")).toContain('import { serverMissing, serverError } from "../lib/server-text";');
     expect(rd("ui/report.jsx")).toContain("const problem = (st) => st === \"missing\" ? serverMissing({ what: \"отчёты\", many: true, admin: !!(profile && profile.is_admin), sql: \"supabase-stage23-reports.sql\" })");
-    expect(rd("ui/day-cards.jsx")).toContain('export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange }) {');
+    // v137 (Доп. 450): + focus (окно открыто из «Я» → «Уведомления на телефон») — последним
+    expect(rd("ui/day-cards.jsx")).toContain('export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null }) {');
     expect(rd("App.jsx")).toContain("<RemindSheet a11y={a11y} uk={ukP} lead={isLead} admin={!!profile?.is_admin}");
   });
 });

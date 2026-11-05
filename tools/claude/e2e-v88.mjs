@@ -376,7 +376,7 @@ if (want("QDAY")) {
   const Q4 = qdayServer({});
   const o4 = await open({ who: STAFF, rpcs: Q4.rpc });
   await sleep(1500); await nav(o4.page, "shift");
-  await o4.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+  await o4.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
   const hr = o4.page.locator("[data-qday-hour]");
   ok("QDAY: «Вопрос дня» → «Во сколько»: 8:00…20:00, выбран час заведения 12:00", /^Во сколько: 8:00 10:00 12:00 14:00 16:00 18:00 20:00 Час заведения: 12:00\./.test(await txt(hr)) && (await hr.locator('[data-qday-h="12"]').getAttribute("aria-pressed")) === "true", await txt(hr));
   const qrow = o4.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Вопрос дня" });

@@ -405,7 +405,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     mentor: "Наставничество", shift: "Вкладка «Смена»", team: "Вкладка «Команда»", me: "Вкладка «Я»",
     cocktails: "Открыть колоду", barlab: "Сборка руками", wines: "Открыть барную карту",   // v130: вина и крепкое
     // Доп. 310: разделы v28–v29
-    track: "Мой трек", warmup: "Разминка", week: "Чек недели", remind: "Напоминания в Telegram", myreport: "Мой отчёт",
+    track: "Мой трек", warmup: "Разминка", week: "Чек недели", remind: "Напоминания", myreport: "Мой отчёт",
     // v30
     guest: "Живой гость", radio: "Радио в дорогу", quest: "Квест смены", league: "Лига недели", pair: "Свеча на двоих", month: "Итоги месяца",
     // v31

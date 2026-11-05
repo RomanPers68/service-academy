@@ -207,7 +207,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           <div style={card} data-lens-card="" data-gain-sec="tg">
             {!st.tg ? row("tg", "Итог прошлого месяца бот присылает 1-го числа", { first: true })
               : !st.tg.bot ? row("nobot", "Бот на сервере не подключён", { first: true, sub: "Итог пока только здесь. Подключает владелец: «Команда» → «Сервер»." })
-              : !st.tg.linked ? row("nolink", "Telegram не подключён", { first: true, sub: "Включи «Напоминания в Telegram», и 1-го числа итог прошлого месяца придёт туда.",
+              : !st.tg.linked ? row("nolink", "Telegram не подключён", { first: true, sub: "Включи «Напоминания» в Telegram или на телефоне, и 1-го числа итог прошлого месяца придёт туда.",
                   act: onRemind ? <button type="button" style={ghost} data-lens-btn="soft" data-gain-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })
               : (<>
                 {row("tg", "Итог прошлого месяца бот присылает 1-го числа в 10:00", { first: true, sub: "С кнопкой «Открыть итог»: она ведёт сюда." })}

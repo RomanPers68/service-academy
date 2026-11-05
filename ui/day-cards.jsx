@@ -5,7 +5,7 @@
 //   WarmupCard  — «Разминка до смены» в день смены по графику (compact — тонкая строка
 //                 под главной карточкой, после разминки пропадает);
 //   WeekCard    — «Чек недели готов» (по понедельникам);
-//   RemindSheet — «Напоминания в Telegram» за час до смены (этап 22б).
+//   RemindSheet — «Напоминания» за час до смены (этап 22б); v137 — и уведомления на телефон (этап 48).
 import React from "react";
 import { createPortal } from "react-dom";
 import { ensureTableCss } from "./table-css";
@@ -15,6 +15,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle, LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи курсивом вместо моноширинного капса
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
+import { PushBlock, ChannelPick } from "./push-block";   // v137 (Доп. 450)
 
 const C = (a11y) => (a11y
   ? { text: "#2A1F0E", sub: "#6B5B40", gold: "#7A5D2A", line: "rgba(150,112,40,0.30)", bg: "rgba(250,242,222,0.62)", card: "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))", top: "rgba(175,135,50,0.58)" }
@@ -410,7 +411,10 @@ export function RemindExample({ c = C(false), when = "час", shift = "", step 
   );
 }
 
-export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange }) {
+// v137 (Доп. 450): «Напоминания» — Telegram и уведомления на телефон (ui/push-block.jsx, этап 48). В Telegram первым
+// идёт Telegram, вне его — телефон; «Куда присылать» — когда есть и то, и другое; «Что ещё присылать» и тихие часы —
+// для обоих. focus="push" — окно открыто из «Я» → «Уведомления на телефон»: сразу к телефону.
+export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null }) {
   ensureTableCss();
   const c = C(a11y);
   const tg = typeof window !== "undefined" && window.Telegram ? window.Telegram.WebApp : null;
@@ -419,6 +423,7 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const [has26, setHas26] = React.useState(false);   // v40: сервер знает «Путь мастера» (этап 26)
+  const [ps, setPs] = React.useState(null);           // v137: уведомления на телефон (push_status) или null
   const apply = (remind) => { saveRemindFlag(uk, remind); if (onChange) onChange(remind); };
   React.useEffect(() => {
     let alive = true;
@@ -431,12 +436,14 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
     }).catch(() => { if (alive) setSt({ phase: "offline" }); });
     return () => { alive = false; };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  // «чат» без Telegram (только телефон) — это не Telegram: напоминаний в Telegram нет
+  const onPs = (r) => { setPs(r && r.ok ? r : null); if (r && r.ok && r.pseudo) apply(false); };
   const enable = () => {
     if (!inTg || busy || !tg) return;
     setBusy(true); setMsg("");
     const link = () => rpc("tg_link", { p_token: saToken(), p_init_data: tg.initData, p_remind: true }).then((res) => {
       setBusy(false);
-      if (res && res.ok) { setSt((x) => ({ ...x, linked: true, remind: true })); apply(true); setMsg("Готово, бот прислал сообщение в чат."); vibrate("success"); return; }
+      if (res && res.ok) { setSt((x) => ({ ...x, linked: true, remind: true })); setPs((x) => (x ? { ...x, pseudo: false, tg_linked: true, tg: true } : x)); apply(true); setMsg("Готово, бот прислал сообщение в чат."); vibrate("success"); return; }
       const e = res && res.error;
       setMsg(e === "no_bot" ? "Бот ещё не подключён на сервере. Скажи руководителю." : (e === "bad_init" || e === "stale") ? "Telegram не подтвердил вход. Закрой приложение и открой заново через бота." : e === "auth" ? "Сессия устарела. Перезайди по коду." : rpcMissing(res) ? "Сервер ещё не обновлён. Скажи руководителю." : "Не получилось включить. Попробуй ещё раз.");
       vibrate("error");
@@ -456,42 +463,55 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
       else setMsg("Не получилось выключить. Попробуй ещё раз.");
     }).catch(() => { setBusy(false); setMsg("Нет связи. Попробуй ещё раз."); });
   };
-  const on = st.phase === "ready" && st.linked && st.remind;
+  const linked = st.phase === "ready" && st.linked && !(ps && ps.pseudo);   // настоящий Telegram
+  const on = linked && st.remind;
+  const phones = ps ? Number(ps.n) || 0 : 0;
   const mins = st.minutes || 60;
   const when = mins === 60 ? "час" : mins + " мин";
   const note = (t) => <p style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.5, color: c.sub }}>{t}</p>;
   const mainBtn = { display: "block", width: "100%", marginTop: 12, padding: 13, borderRadius: 999, border: 0, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: "#1A1008", background: "linear-gradient(180deg,#E4C88C,#C8A96E)" };
+  const prefs = <NotifyPrefs a11y={a11y} c={c} onLoad={(p) => setHas26(!!p && p.master !== undefined)} />;
+  const tgPart = (
+    <div data-remind-tg={on ? "on" : linked ? "linked" : "off"} style={{ marginTop: inTg ? 12 : 18 }}>
+      <div style={{ ...labelStyle(13.5), color: c.gold, margin: "0 0 2px" }}>Telegram</div>
+      {st.phase === "load" ? note("Проверяю…") : null}
+      {st.phase === "missing" ? note(serverMissing({ what: "напоминания", many: true, admin, sql: "supabase-stage22b-telegram-reminders.sql" })) : null}{/* v58 (Доп. 371); v74: комментарий был снаружи фигурных скобок и показывался на экране */}
+      {st.phase === "offline" ? note("Нет связи. Открой это окно, когда появится сеть.") : null}
+      {st.phase === "error" ? note(st.text) : null}
+      {st.phase === "ready" && !st.bot ? note(admin ? "Бот ещё не подключён: нужен токен бота в настройках Supabase (этап 22б)." : "Бот ещё не подключён на сервере. Скажи владельцу.") : null}
+      {st.phase === "ready" && st.bot ? (linked && phones > 0 ? (
+        <div data-remind-tglinked="" style={{ marginTop: 8, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Telegram подключён</div>
+      ) : on ? (
+        <>
+          <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено: за {when} до смены</div>
+          {prefs}
+          <button type="button" className="sa-btn" onClick={disable} disabled={busy}
+            style={{ display: "block", width: "100%", marginTop: 10, padding: 12, borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${c.line}`, color: c.text, fontSize: 14, fontWeight: "bold" }}>{busy ? "Минуту…" : "Выключить"}</button>
+        </>
+      ) : inTg ? (
+        <button type="button" className="sa-btn" onClick={enable} disabled={busy} style={mainBtn}>{busy ? "Минуту…" : "Включить"}</button>
+      ) : note("Напоминания приходят от бота в Telegram. Открой Service Academy через бота и включи их здесь.")) : null}
+      {st.phase !== "ready" && st.phase !== "load" && !inTg ? note("Включить можно в приложении внутри Telegram.") : null}
+      {msg ? <p role="status" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.45, color: c.text }}>{msg}</p> : null}
+    </div>);
+  const pushPart = <PushBlock a11y={a11y} c={c} uk={uk} admin={admin} focus={focus === "push"} first={!inTg} onState={onPs} />;
   return createPortal(
     <div className="tbv" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)", display: "flex", alignItems: "flex-end" }}>
-      <div role="dialog" aria-modal="true" aria-label="Напоминания в Telegram" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label="Напоминания" onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto", boxSizing: "border-box", margin: "0 auto", padding: "18px 18px calc(18px + env(safe-area-inset-bottom,0px))", borderRadius: "22px 22px 0 0", backgroundColor: a11y ? "#F6EEDC" : "#1E170C", backgroundImage: "var(--sheet-bg,none)", border: "1px solid var(--sheet-edge," + c.line + ")", borderTop: "1px solid var(--sheet-top," + c.line + ")", borderBottom: 0, boxShadow: "var(--sheet-shadow,none)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <span style={{ color: c.gold, display: "inline-flex" }}><Ic n="bell" s={24} /></span>
-          <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Напоминания в Telegram</h3>
+          <h3 style={{ margin: 0, fontFamily: "'Piazzolla', Georgia, serif", fontSize: 20, color: c.text }}>Напоминания</h3>
         </div>
         <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5, color: c.sub }}>
-          За {when} до смены по графику бот пришлёт сообщение с кнопкой разминки: 2 минуты, 3 задания из пройденного.{lead ? " Старшим ещё приходят запросы на подтверждение навыков в зале." : ""}
+          За {when} до смены по графику бот пришлёт сообщение с кнопкой разминки: 2 минуты, 3 задания из пройденного.{lead ? " Старшим ещё приходят запросы на подтверждение навыков в зале." : ""} Сообщения приходят в Telegram или уведомлением на телефон.
         </p>
         {/* так выглядит сообщение (v40: со строкой «Шаг дня», если App его передал) */}
         {/* v40: строку «Шаг дня» бот добавляет только с этапом 26 — его видно по виду «master» в настройках */}
         <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} />
-        {st.phase === "load" ? note("Проверяю…") : null}
-        {st.phase === "missing" ? note(serverMissing({ what: "напоминания", many: true, admin, sql: "supabase-stage22b-telegram-reminders.sql" })) : null}{/* v58 (Доп. 371); v74: комментарий был снаружи фигурных скобок и показывался на экране */}
-        {st.phase === "offline" ? note("Нет связи. Открой это окно, когда появится сеть.") : null}
-        {st.phase === "error" ? note(st.text) : null}
-        {st.phase === "ready" && !st.bot ? note(admin ? "Бот ещё не подключён: нужен токен бота в настройках Supabase (этап 22б)." : "Бот ещё не подключён на сервере. Скажи владельцу.") : null}
-        {st.phase === "ready" && st.bot ? (on ? (
-          <>
-            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(93,187,138,0.5)", color: a11y ? "#2C6B48" : "#8AD8AF", fontSize: 14, fontFamily: "Georgia, serif" }}>✓ Включено: за {when} до смены</div>
-            <NotifyPrefs a11y={a11y} c={c} onLoad={(p) => setHas26(!!p && p.master !== undefined)} />
-            <button type="button" className="sa-btn" onClick={disable} disabled={busy}
-              style={{ display: "block", width: "100%", marginTop: 10, padding: 12, borderRadius: 999, cursor: "pointer", background: "transparent", border: `1px solid ${c.line}`, color: c.text, fontSize: 14, fontWeight: "bold" }}>{busy ? "Минуту…" : "Выключить"}</button>
-          </>
-        ) : inTg ? (
-          <button type="button" className="sa-btn" onClick={enable} disabled={busy} style={mainBtn}>{busy ? "Минуту…" : "Включить"}</button>
-        ) : note("Напоминания приходят от бота в Telegram. Открой Service Academy через бота и включи их здесь.")) : null}
-        {st.phase !== "ready" && st.phase !== "load" && !inTg ? note("Включить можно в приложении внутри Telegram.") : null}
-        {msg ? <p role="status" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.45, color: c.text }}>{msg}</p> : null}
+        {inTg ? <>{tgPart}{pushPart}</> : <>{pushPart}{tgPart}</>}
+        {linked && phones > 0 ? <ChannelPick a11y={a11y} c={c} ps={ps} onState={onPs} /> : null}
+        {phones > 0 ? prefs : null}{/* с телефоном «Что ещё присылать» — одно на оба канала, под выбором */}
         <button type="button" data-sa-back="" onClick={onClose} className="sa-btn"
           style={{ display: "block", width: "100%", marginTop: 8, padding: 12, border: 0, background: "none", color: c.sub, fontSize: 14, fontWeight: "bold", cursor: "pointer" }}>Закрыть</button>
       </div>

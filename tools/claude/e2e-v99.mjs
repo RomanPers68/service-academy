@@ -418,10 +418,11 @@ await run("SERVER", async () => {
   ok("SERVER: кнопка — «Подключить бота заново»", /Подключить бота заново/.test(await txt(r.page.locator("[data-srv-tgsetup]"))));
   await shot(r.page, "server-hook");
   // этапов нет — по пунктам
-  const b = await open({ who: ROMAN, srv, rpcs: (fn, x) => (fn === "server_check" ? { ...srv.rpc(fn, x), fns: x.p_fns.filter((f) => !["chat_person", "cal_feed", "brief_today"].includes(f)), cron: null } : undefined) });
+  // v137: этап 48 (уведомления на телефон) без этапов 38 и 39 не ставится — в такой базе его тоже нет
+  const b = await open({ who: ROMAN, srv, rpcs: (fn, x) => (fn === "server_check" ? { ...srv.rpc(fn, x), fns: x.p_fns.filter((f) => !["chat_person", "cal_feed", "brief_today", "push_subscribe"].includes(f)), cron: null } : undefined) });
   await nav(b.page, "server", 2500);
   const t = await body(b.page);
-  ok("SERVER: нет этапов 32, 38, 39 и pg_cron — «Нужно сделать: 4», строки с файлами", /Нужно сделать: 4/.test(t) && /Этап 32/.test(t) && /Этап 38/.test(t) && /Этап 39/.test(t) && /pg_cron не включён/.test(t), t.slice(0, 300));
+  ok("SERVER: нет этапов 32, 38, 39, 48 и pg_cron — «Нужно сделать: 5», строки с файлами", /Нужно сделать: 5/.test(t) && /Этап 32/.test(t) && /Этап 38/.test(t) && /Этап 39/.test(t) && /Этап 48/.test(t) && /pg_cron не включён/.test(t), t.slice(0, 300));
   const gh = b.page.getByRole("button", { name: "Файл на GitHub" });
   for (let i = 0, n = await gh.count(); i < n; i++) { await gh.nth(i).click(); await sleep(150); }
   const hrefs = await opened(b.page);

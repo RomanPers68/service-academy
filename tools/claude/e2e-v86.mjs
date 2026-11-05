@@ -428,7 +428,7 @@ if (want("PREFS")) {
       return undefined;
     } });
     await sleep(1500); await nav(o.page, "shift");
-    await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+    await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
     const groups = await o.page.locator("[data-notify-group]").evaluateAll((gs) => gs.map((g) => g.getAttribute("data-notify-group") + ":" + [...g.querySelectorAll('[role="switch"]')].map((s) => s.innerText.split("\n")[0].trim()).join(",")));
     if (has36) {
       ok("PREFS: группами — Учёба, Смена, Команда", groups.join(" | ") === "study:Свеча на двоих,Вопрос дня,Свежесть тем,Итоги месяца | shift:Квест смены,Брифинг смены,Рассадка,Случаи из зала | team:Лига недели,Мастера заведения,Спасибо от гостей", groups.join(" | "));

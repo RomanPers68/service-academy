@@ -77,8 +77,9 @@ describe("v117: разметка «Команды и Я»", () => {
   it("сервер: карточки, «нужно сделать» — warn или ok; «Подключить бота» — плашка, остальное — стекло", () => {
     const S = rd("ui/server.jsx");
     expect(S).toContain('<div data-lens-card={rep.todo ? "warn" : "ok"} style={{ ...card, borderColor: rep.todo ? c.warn : c.ok }}');
-    expect(count(S, '<div data-lens-card="" style={card}')).toBe(5);
-    expect(count(S, 'data-lens-btn="soft"')).toBe(4);
+    // v137 (Доп. 450): + карточка «Уведомления на телефон» и её «Файл на GitHub», «Код на GitHub» — тем же стеклом
+    expect(count(S, '<div data-lens-card="" style={card}')).toBe(6);
+    expect(count(S, 'data-lens-btn="soft"')).toBe(6);
     expect(S).toContain('<button type="button" data-lens-btn="main" style={btn} data-srv-tgsetup=""');
   });
   it("аналитика: карточки со своим градиентом — кромка; резервная копия — кромка, «Скачать копию» — стекло", () => {

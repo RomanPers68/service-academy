@@ -355,6 +355,7 @@ import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои с
 import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
 import { ShiftRoleCard } from "./ui/shift-role";
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
+import { readPushFlag, PUSH_EVENT, pushEnv, pushRefresh, pushUnsubscribe, setAppBadge, remindSub, pushRowSub } from "./lib/push";   // v137 (Доп. 450): уведомления на телефон
 import { lateWindow } from "./lib/late";   // v99: «Опаздываю» — за 3 часа до смены и 2 часа после начала
 import { newbieModel, firstLine as nbFirstLine, dayDiff as nbDayDiff, doneCount as nbDoneCount, totalCount as nbTotalCount } from "./lib/newbie";   // v107 (Доп. 420): новичок; v110: прогресс в «Смене»
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
@@ -419,6 +420,14 @@ const CERTIFICATES_ENABLED = true;
 // Этап 1 — интервальное повторение: через сколько дней вопрос возвращается после верного ответа
 const SR_DAYS = [1, 3, 7, 30];
 const PRACTICE_RESUME_KEY = "sa_practice_resume";   // Доп. 293
+
+// v31: ссылки из подталкиваний бота: ?go=pair|league|cellar|month|shift|radio|guest|probe (или startapp=go_…). v40: mastery — бот
+// «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_
+// <сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота; v109: gain и gain_<месяц> — «Открыть итог». v137 (Доп. 450):
+// отдельной функцией — ею же проверяется касание уведомления на телефоне (сервис-воркер присылает sa-go, когда приложение
+// открыто); qday — «Вопрос дня» (главная), remind — пробное уведомление («Напоминания»). warmup и mentor — свои ссылки ниже.
+const goLinkOk = (v) => typeof v === "string" && (["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
+  || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "qday" || v === "remind");
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
@@ -1265,6 +1274,8 @@ function ServiceAcademy() {
   const nowCard = nowCtx ? { ...nowCtx, ...nowCardText(nowCtx, { warmN: warmSits.length, warmWhat: warmSits.some((x) => x.genre !== "quiz") ? "ситуации" : "вопроса" }) } : null;
   // обработчики — отдельно: ответ «как прошла смена» показывается и после того, как карточка «сейчас» уже ушла
   const nowOn = { warmup: openWarmup, mistakes: () => navigate("mistakes"), sos: () => navigate("sos"), mood: saveShiftMood, ask: (q) => askMentor(q) };   // askMentor и navigate объявлены ниже — зовём при нажатии
+  // v137 (Доп. 450): касание уведомления на телефоне, когда приложение уже открыто (сервис-воркер: sa-go) — та же ссылка
+  const [goTick, setGoTick] = useState(0);
   // Доп. 304: напоминание из Telegram (?go=warmup или startapp=go_warmup) открывает разминку сразу
   const warmLinkRef = useRef(null);
   if (warmLinkRef.current === null) {
@@ -1289,7 +1300,7 @@ function ServiceAcademy() {
     }
     warmLinkRef.current = false;
     setWarmupOpen(true);
-  }, [profile, tbMod, warmSits.length, role, storageLoaded, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, tbMod, warmSits.length, role, storageLoaded, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
   const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"
@@ -1347,7 +1358,7 @@ function ServiceAcademy() {
     if (!mentorLinkRef.current || !profile || !storageLoaded) return;
     mentorLinkRef.current = false;
     navigate("mentor");
-  }, [profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, storageLoaded, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = useCallback((to, opts) => {
     const cur = screenRef.current;
     if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
@@ -1586,6 +1597,17 @@ function ServiceAcademy() {
   const chatMe = useMemo(() => (profile ? { id: profile.id, name: [profile.name, profile.surname].filter(Boolean).join(" "), pos: profile.position || "", lead: isLead,
     network: !!profile.is_admin || profile.position === "senior", restaurant: profile.restaurant || "" } : null), [profile, isLead]);
   const chatUnread = chatOn && chatInfo ? chatInfo.unread : 0;
+  useEffect(() => { if (profile) setAppBadge(chatUnread); }, [chatUnread, profile]);   // v137 (Доп. 450): число на иконке — непрочитанное в чатах
+  // v137: уведомления на этом телефоне включены? (lib/push.js; окно «Напоминания» сообщает, когда меняется)
+  const [pushHere, setPushHere] = useState(false);
+  useEffect(() => {
+    setPushHere(readPushFlag(ukP));
+    const on = () => setPushHere(readPushFlag(ukP));
+    window.addEventListener(PUSH_EVENT, on);
+    return () => window.removeEventListener(PUSH_EVENT, on);
+  }, [ukP]);
+  // v137: при запуске — тихо вернуть подписку, если сервер её не знает (Apple сменил адрес, телефоном пользовался другой)
+  useEffect(() => { if (storageLoaded && profile && profile.id) pushRefresh(ukP).catch(() => {}); }, [storageLoaded, profile && profile.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const myCall = chatOn && chatOpen == null && chatInfo ? (chatInfo.calls || []).find((c) => c && c.id != null && !callGone[c.id]) || null : null;
   useEffect(() => { if (myCall && !chatAskRef.current.seen.has(myCall.id)) { chatAskRef.current.seen.add(myCall.id); vibrate("heavy"); } }, [myCall]);
   const callGo = () => {
@@ -1632,8 +1654,7 @@ function ServiceAcademy() {
       const q = new URLSearchParams(location.search).get("go");
       const sp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param;
       const v = q || (sp && /^go_/.test(sp) ? String(sp).slice(3) : "");
-      goLinkRef.current = ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
-        || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) ? v : "";   // v109: gain и gain_<месяц> — «Открыть итог»   // v40: mastery — бот «… стал мастером роли»; v81: mistakes — «Разобрать ошибку» под вопросом дня; v82: brief — «Брифинг смены»; v97: chat_<чат>_<сообщение>, lesson_<урок>, schedule — кнопки в сообщениях бота
+      goLinkRef.current = goLinkOk(v) ? v : "";   // список — goLinkOk вверху файла (v137: им же проверяется касание уведомления)
     } catch (e) { goLinkRef.current = ""; }
   }
   React.useEffect(() => {
@@ -1658,7 +1679,8 @@ function ServiceAcademy() {
     else if (g === "seat") navigate("seat");   // v85: «Стол 6: посадили…»
     else if (g === "chat") setChatOpen(true);   // v90: «Анна пишет тебе…», «Ольга зовёт тебя…» — «Открыть чат»
     // v97: «Открыть чат» ведёт в этот чат к этому сообщению; «Открыть урок» из задания; «Открыть график»
-    else if (/^chat_/.test(g)) { const [, cid, mid] = g.split("_"); setChatOpen({ intent: { kind: "chat", id: Number(cid), msg: mid ? Number(mid) : null, at: Date.now() } }); }
+    // v137 (Доп. 451): …_r — из уведомления о сообщении: переписка сразу с ответом на него
+    else if (/^chat_/.test(g)) { const [, cid, mid, r] = g.split("_"); setChatOpen({ intent: { kind: "chat", id: Number(cid), msg: mid ? Number(mid) : null, reply: r === "r" && !!mid, at: Date.now() } }); }
     else if (/^lesson_/.test(g)) { if (chatOpenItemRef.current) chatOpenItemRef.current({ kind: "lesson", id: g.slice(7) }); }
     else if (g === "schedule") navigate("schedule");
     else if (g === "morning") navigate("morning");     // v106 (Доп. 419): «Открыть утро» под сводкой руководителя
@@ -1666,7 +1688,31 @@ function ServiceAcademy() {
     else if (g === "newbie") navigate("newbie");       // v107 (Доп. 420): «Первая неделя» — бот накануне первой смены
     else if (g === "newbies") navigate("newbies");     // v107: «Новички» — наставнику накануне первой смены новичка
     else if (g === "gain" || /^gain_/.test(g)) { setGainMonth(g.slice(5)); navigate("gain"); }   // v109 (Доп. 422): «Открыть итог» 1-го числа
-  }, [profile, storageLoaded, programModules.length, modules.length]);   // eslint-disable-line react-hooks/exhaustive-deps
+    else if (g === "qday") { navigate("roleSelect"); loadQday(true); }   // v137 (Доп. 450): уведомление «Вопрос дня» — карточка на главной
+    else if (g === "remind") setRemindOpen("push");                    // v137: пробное уведомление — «Напоминания»
+  }, [profile, storageLoaded, programModules.length, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v137: приложение открыто, а человек коснулся уведомления — сервис-воркер присылает sa-go с той же ссылкой
+  // (в демо — событие страницы sa-go от уведомления сверху)
+  useEffect(() => {
+    const run = (v) => {
+      if (typeof v !== "string") return;
+      if (v === "warmup") warmLinkRef.current = true;
+      else if (v === "mentor") mentorLinkRef.current = true;
+      else if (goLinkOk(v)) goLinkRef.current = v;
+      else return;
+      setGoTick((x) => x + 1);
+    };
+    const onSw = (e) => { const d = e && e.data; if (d && d.type === "sa-go") run(d.go); };
+    const onWin = (e) => run(e && e.detail ? e.detail.go : null);
+    let sw = null;
+    try { sw = navigator.serviceWorker || null; } catch (e) { sw = null; }
+    if (sw && typeof sw.addEventListener === "function") sw.addEventListener("message", onSw);
+    window.addEventListener("sa-go", onWin);
+    return () => {
+      if (sw && typeof sw.removeEventListener === "function") sw.removeEventListener("message", onSw);
+      window.removeEventListener("sa-go", onWin);
+    };
+  }, []);
   // Кнопка «Назад» Telegram в шапке мини-приложения: на вкладках и на входе её нет, на
   // остальных экранах она делает то же, что стрелка «‹» на самом экране (включая запись
   // выхода из теста). Стрелки нет — шаг назад по истории переходов.
@@ -1742,6 +1788,9 @@ function ServiceAcademy() {
     cancelDayPush();   // v31: отметка дня прошлого человека не уходит после выхода
     // v99 (Доп. 412): вышел сам — этот Telegram больше не входит без кода (и экран входа сразу не пробует)
     tgOff(saToken()).catch(() => {});
+    // v137 (Доп. 450): уведомления прошлого человека на этом телефоне больше не приходят
+    try { const p = JSON.parse(localStorage.getItem("sa_profile") || "null"); const uk = p && p.name ? `_${p.name}_${p.surname || ""}` : "";
+      if (readPushFlag(uk)) pushUnsubscribe({ uk, token: saToken() }).catch(() => {}); } catch (e) {}
     try {
       localStorage.removeItem("sa_session_token");
       localStorage.removeItem("sa_profile");
@@ -2991,7 +3040,8 @@ function ServiceAcademy() {
         {/* v82: брифинг смены, который отправил руководитель */}
         {briefView && teamBrief ? <Suspense fallback={null}><BriefView a11y={a11y} brief={teamBrief} onClose={() => setBriefView(null)} /></Suspense> : null}
         {/* Доп. 304: напоминания в Telegram */}
-        {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} admin={!!profile?.is_admin} shift={shiftText} step={mStep && !mStep.done ? stepLineText(mStep) : ""} onChange={setTgRemind} onClose={() => setRemindOpen(false)} /> : null}
+        {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} admin={!!profile?.is_admin} shift={shiftText} step={mStep && !mStep.done ? stepLineText(mStep) : ""} onChange={setTgRemind} onClose={() => setRemindOpen(false)}
+          focus={layerData(layers, "remind") === "push" ? "push" : null} /* v137: из «Я» → «Уведомления на телефон» */ /> : null}
         {calOpen ? <Suspense fallback={null}><CalSheet a11y={a11y} admin={!!profile?.is_admin} onClose={() => setCalOpen(false)} /></Suspense> : null}
         {/* Доп. 302: «Разобрать с Наставником» — чат поверх ситуации (выше слоёв «у стола») */}
         {mentorAsk != null ? (
@@ -3262,7 +3312,7 @@ function ServiceAcademy() {
             badge: chatUnread ? chatBadge(chatUnread) : null, onClick:() => openChat(null) },   // v90 (Доп. 403): после брифинга и рассадки
           { key:"sch", group:"На смене", icon:"schedule", label:"График", sub:"Смены, обмены, публикации", onClick:() => navigate("schedule") },
           { key:"cl", group:"На смене", icon:"checklist", label:"Чек-листы", sub:"Открытие, предсменка, закрытие", onClick:() => navigate("checklist") },
-          { key:"remind", group:"На смене", icon:"bell", label:"Напоминания в Telegram", sub: tgRemind ? "Включено: за час до смены зовёт на разминку" : "Разминка в 2 минуты за час до смены", onClick:() => setRemindOpen(true) },
+          { key:"remind", group:"На смене", icon:"bell", label:"Напоминания", sub: remindSub({ push: pushHere, tg: tgRemind }), onClick:() => setRemindOpen(true) },   // v137 (Доп. 450): Telegram и телефон
           profile.restaurant && { key:"cal", group:"На смене", icon:"calendar", label:"Смены в календаре телефона", sub:"Подписка: смены обновляются сами", onClick:() => setCalOpen(true) },   // v99
           { key:"daily", group:"Потренироваться", icon:"daily", label:"Задание дня", sub:"Короткая практика на сегодня", onClick:() => navigate("daily") },
           casesOn && { key:"cases", group:"Потренироваться", icon:"cases", label:"Случаи из нашего зала", sub: casesSub(caseCounts, isLead),   // v83
@@ -3333,6 +3383,7 @@ function ServiceAcademy() {
               : mShown.bronze + " из " + mShown.total + " значков, до мастера " + mShown.master.have + " из " + mShown.master.need,   // v110: в одну строку
             badge: !mSeen.mastery ? "новое" : null, onClick:() => openMastery() },
           { key:"guide", group:"Помощь и настройки", icon:"book", label:"Гид по приложению", sub:"Что где и зачем, с кнопками «Открыть»", onClick:() => navigate("guide") },
+          { key:"push", group:"Помощь и настройки", icon:"bell", label:"Уведомления на телефон", sub: pushRowSub(pushEnv(), pushHere), onClick:() => setRemindOpen("push") },   // v137 (Доп. 450)
           { key:"st", group:"Мой путь", icon:"stats", label:"Мой прогресс", sub:"Роли, уроки, экзамены", onClick:() => navigate("stats") },
           // Доп. 306: по понедельникам — чек прошлой недели (с главной сюда, чтобы главная была лёгкой)
           weekCardShow

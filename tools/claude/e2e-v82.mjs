@@ -344,7 +344,7 @@ if (want("PREFS")) {
   } });
   await sleep(1500);
   await toShift(o.page);
-  await o.page.locator('.sa-card[aria-label="Напоминания в Telegram"]').first().click(); await sleep(1400);
+  await o.page.locator('.sa-card[aria-label="Напоминания"]').first().click(); await sleep(1400);
   const row = o.page.locator('[data-notify-prefs] [role="switch"]', { hasText: "Брифинг смены" });
   const t = await txt(row);
   // v86: строки группами — «Брифинг смены» в группе «Смена» (раньше была последней в общем списке)

@@ -26,7 +26,10 @@
 // v139 (Доп. 454): «О нас» — Анна читает концепцию сети и «Океана» (фото, сосед «Порт», «Прочитал(а)», раздел «Наш
 // ресторан» в треке); Мария правит: новый блок, «Придумать вопросы», «Сообщить команде», «Кто прочитал», «Из документа».
 // v140 (Доп. 455): новые темы треков — у Анны «Ядро» (алкоголь), «Бар» и «Хостес» (конфликты), у Марии «Менеджер» (алкоголь).
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,phone]
+// v141 (Доп. 457–459): Мария — «Распорядок смены» в «Смене» (шаги открывают чек-лист и брифинг), брифинг с гоу-листом «Как вчера»,
+// итог за сегодня, «Утро руководителя» со вчерашним гоу-листом, «График» с напоминанием по ТК РФ, ст. 103; Анна — метка
+// «гоу-лист» в меню и гоу-лист в брифинге; у Марии в треке «Менеджер» последняя тема — «Админ на смене».
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -861,9 +864,72 @@ if (!ONLY || ONLY.includes("lessons")) {
   tp = await track("anna", "_Анна_Смирнова", "spg");
   ok("«Хостес»: последняя тема — «Хостес и команда: конфликты внутри»", tp.length === 12 && /Хостес и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   tp = await track("maria", "_Мария_Ким", "manager");
-  ok("Мария, «Менеджер»: последняя тема — «Алкоголь в заведении: продукт, деньги, закон»", tp.length === 8 && /Алкоголь в заведении/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  // v141 (Доп. 457): за алкоголем — «Админ на смене»
+  ok("Мария, «Менеджер»: предпоследняя — «Алкоголь в заведении», последняя — «Админ на смене: от открытия до планёрки»", tp.length === 9 && /Алкоголь в заведении/.test(tp[tp.length - 2] || "")
+    && /Админ на смене/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   await shot("l2-manager");
   await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); });
+}
+if (!ONLY || ONLY.includes("routine")) {
+  // v141 (Доп. 457–459): «Распорядок смены», гоу-лист в брифинге и его итог, «Утро руководителя», «График», метка в меню
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; }
+    await page.locator("#demo-tg").click().catch(() => {}); };
+  const nav = async (x, ms = 1500) => { await page.evaluate((v) => window.__saNav && window.__saNav(v), x); await page.waitForTimeout(ms); };
+  const down = async (sel) => { await page.evaluate((q) => { const el = q && document.querySelector(q); if (el) el.scrollIntoView({ block: "center" }); else { const r = document.getElementById("root"); if (r) r.scrollTop = 99999; } }, sel); await page.waitForTimeout(500); };
+  const as = async (w) => { await page.evaluate((x) => { localStorage.setItem("__demo_who", x); localStorage.removeItem("__demo_me"); }, w);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1500); await closeDemo(); };
+  const steps = () => page.locator("[data-routine-step]").evaluateAll((els) => els.map((e) => e.getAttribute("data-routine-step") + ":" + e.getAttribute("data-done") + e.getAttribute("data-skip"))).catch(() => []);
+  await page.evaluate(() => localStorage.clear());   // демо с утра: брифинг дня ещё не отправлен
+  await as("maria");
+  await nav("shift", 2200); await closeDemo();
+  ok("Мария: в «Смене» «Распорядок смены» — четыре шага, итог пропущен (брифинга с гоу-листом ещё нет)", (await page.locator("[data-routine]").count()) === 1
+    && (await steps()).join(",") === "open:00,brief:00,close:00,go:01", (await steps()).join(","));
+  ok("«Дальше: чек-лист открытия»", /Дальше: чек-лист открытия/.test(await page.locator("[data-routine-next]").innerText().catch(() => "")));
+  await down("[data-routine]"); await shot("r1-routine");
+  await page.locator('[data-routine-step="close"]').click().catch(() => {}); await page.waitForTimeout(1500);
+  ok("шаг «Закрытие» — чек-лист закрытия", /Касса сведена/.test(await txt()) && !/Свет, музыка, климат включены/.test(await txt()));
+  await nav("shift", 1500);
+  await page.locator('[data-routine-step="brief"]').click().catch(() => {}); await page.waitForTimeout(2500);
+  const again = page.locator("[data-go-again]");
+  ok("брифинг: блок «Гоу-лист», кнопка «Как вчера»", (await page.locator('[data-brief-block="go"]').count()) === 1 && /Как вчера/.test(await again.innerText().catch(() => "")));
+  await again.click().catch(() => {}); await page.waitForTimeout(700);
+  ok("«Как вчера»: салат с крабом и «Негрони», три строки на месте", (await page.locator("[data-go-edit]").count()) === 2
+    && /страчателлу делаем сами/.test(await page.locator('[data-go-field="say"]').first().inputValue().catch(() => "")));
+  await down('[data-brief-block="go"]'); await shot("r2-golist");
+  await page.locator("[data-go-add]").click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator("[data-go-search]").fill("тыкв").catch(() => {}); await page.waitForTimeout(500);
+  ok("«Из меню»: поиск находит суп, третья позиция", (await page.locator("[data-go-opt]").count()) >= 1);
+  await page.locator("[data-go-opt]").first().click().catch(() => {}); await page.waitForTimeout(400);
+  ok("счётчик «3 из 3»", /3 из 3/.test(await page.locator("[data-go-count]").innerText().catch(() => "")));
+  await shot("r3-picker");
+  await page.locator("[data-go-done]").click().catch(() => {}); await page.waitForTimeout(600);
+  await page.locator("[data-go-ai]").last().click().catch(() => {}); await page.waitForTimeout(1800);
+  ok("«Подсказать фразы» (в демо без нейросети): у супа фраза гостю", /шеф очень рекомендует/.test(await page.locator('[data-go-field="say"]').last().inputValue().catch(() => "")));
+  await page.locator("[data-brief-publish]").click().catch(() => {}); await page.waitForTimeout(2200);
+  ok("отправлен: под брифингом «Итог гоу-листа» за сегодня", (await page.locator("[data-go-result]").count()) >= 1);
+  const inputs = page.locator("[data-go-sold-input]");
+  for (let i = 0; i < await inputs.count(); i++) await inputs.nth(i).fill(String(12 - i * 3)).catch(() => {});
+  await page.locator("[data-go-save]").first().click().catch(() => {}); await page.waitForTimeout(1500);
+  ok("«Записать итог»: «Записано», сколько продано", /Записано/.test(await page.locator("[data-go-saved]").first().innerText().catch(() => "")));
+  await down("[data-go-result]"); await shot("r4-result");
+  await nav("shift", 2000);
+  ok("«Распорядок»: брифинг и итог отмечены сами", (await steps()).join(",") === "open:00,brief:10,close:00,go:10", (await steps()).join(","));
+  await nav("morning", 2500); await closeDemo();
+  const mo = await page.locator('[data-mo-row="go"]').innerText().catch(() => "");
+  ok("«Утро руководителя»: «Гоу-лист: итог не записан» за вчера", /Гоу-лист: итог не записан/.test(mo), mo.replace(/\s+/g, " "));
+  await down('[data-mo-row="go"]'); await shot("r5-morning");
+  await page.locator('[data-mo-row="go"]').click().catch(() => {}); await page.waitForTimeout(2500);
+  ok("касание — брифинг, «Итог гоу-листа» за вчера", (await page.locator("[data-go-result]").count()) >= 1);
+  await nav("schedule", 3000); await closeDemo();
+  const tk = await page.locator('[data-attn-row="tk103"]').innerText().catch(() => "");
+  // в демо график — до конца месяца и не меньше двух недель вперёд: в конце месяца следующий уже начат, строки нет
+  const lateInMonth = await page.evaluate(() => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate() - t.getDate() < 14; });
+  ok("«График»: «… пока пустой», ТК РФ, ст. 103 (в конце месяца следующий уже начат — строки нет)", lateInMonth ? !tk : /пока пустой/.test(tk) && /ст\. 103/.test(tk), tk.replace(/\s+/g, " "));
+  await down('[data-attn-row="tk103"]'); await shot("r6-schedule");
+  await as("anna");
+  await toBar("cocktail", 2200); await closeDemo();
+  ok("Анна: «Барная карта» → «Коктейли»: у «Негрони» метка «гоу-лист»", (await page.locator("[data-go-badge]").count()) >= 1);
+  await shot("r7-badge");
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

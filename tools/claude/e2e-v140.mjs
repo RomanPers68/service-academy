@@ -214,7 +214,8 @@ await run("MANAGER", async () => {
   const o = await open({ who: MARIA, srv, role: "manager" });
   await nav(o.page, "home", 1600);
   const tp = await topics(o.page);
-  ok("MANAGER: трек «Менеджер» — семь тем, последняя «Алкоголь в заведении: продукт, деньги, закон»", tp.length === 7 && /Алкоголь в заведении/.test(tp[6]), JSON.stringify(tp.slice(-1)));
+  // v141: дальше восьмая тема «Урок 7 · Админ на смене», поэтому «Алкоголь в заведении» — седьмая, но уже не последняя
+  ok("MANAGER: трек «Менеджер» — седьмая тема «Алкоголь в заведении: продукт, деньги, закон»", tp.length >= 7 && /Алкоголь в заведении/.test(tp[6]), JSON.stringify(tp.slice(6)));
   await toLesson(o.page, "Алкоголь в заведении", "Закон: возраст, документы, ответственность");
   await feed(o.page); await sleep(700);
   const t = await body(o.page);

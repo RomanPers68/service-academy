@@ -483,7 +483,8 @@ export function BuildRunner({ buildId, inline, mod, role = "bar", T = {}, color,
     </div>
   );
 
-  const SIDE = { vessel: Vessel, station: Station, ice: IcePath, cleanup: Cleanup, guest: Guest, pass: Pass, shelf: Shelf };
+  // v141 (Доп. 457): «Открытие смены» менеджера — цепочка стадий (flow) и в итоге, а не схема барной станции
+  const SIDE = { vessel: Vessel, station: Station, ice: IcePath, cleanup: Cleanup, guest: Guest, pass: Pass, shelf: Shelf, flow: Flow };
   // Носители вызываем как функции ({Carrier()}), а не как <Carrier />:
   // компоненты объявлены внутри BuildRunner и на каждый рендер получают новую
   // идентичность — React пересоздавал бы их DOM целиком, перезапуская анимации

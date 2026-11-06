@@ -24,7 +24,7 @@ import { ShiftHero, NoShiftHero, MonthMedals, nextShift, staffMonthCells, person
 import { CalendarPage } from "./schedule-tile";
 import { palette } from "./day-emblems";
 import { ACCENT_SERIF } from "./styles";
-import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText } from "../lib/schedule-attn";
+import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText, nextMonthOf, planEmpty, needNextPlan } from "../lib/schedule-attn";
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardErr } from "../lib/schedule-chat";   // v97: смены в чате
@@ -883,6 +883,21 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   }, [mkey, profile?.restaurant]);
 
   React.useEffect(() => { flushRef.current(); load(); }, [load]);
+  // v141 (Доп. 459): ТК РФ, ст. 103 — следующий месяц пустой? Только руководителю и только на текущем месяце; тихо, в фоне
+  const [nextPlan, setNextPlan] = React.useState(null);   // { key, empty } | null: ещё не знаем
+  React.useEffect(() => {
+    setNextPlan(null);
+    const t0 = new Date();
+    if (!isAdmin || state !== "ok" || !(t0.getFullYear() === Y && t0.getMonth() === M)) return undefined;
+    const nx = nextMonthOf(Y, M);
+    let alive = true;
+    rpc("schedule_load", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: nx.key }).then((r) => {
+      if (!alive || !r || r.ok !== true) return;
+      const m2 = (r.months || []).find((x) => x.venue_key === venueKey);
+      setNextPlan({ key: nx.key, empty: planEmpty((m2 && m2.payload && m2.payload.plan) || {}) });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [isAdmin, state, mkey]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v97: смены в чате команды на этот месяц — после загрузки графика (нет чата или функции — null, обмен как раньше)
   const chatApi = chat && chat.api ? chat.api : null;
   const loadBoard = React.useCallback(() => {
@@ -4114,7 +4129,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const shName = (k) => { const q = shiftOf(k); return q ? `${q.name} ${q.from}:00–${q.to > 24 ? q.to - 24 : q.to}:00` : k; };
       const toAudit = () => { setAnOpen("audit"); vibrate("light");
         setTimeout(() => { try { const el = document.querySelector("[data-sec-audit]"); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 80); };
-      const calm = !confl.length && !holes.length && !waiting.length;
+      const tk103 = needNextPlan({ Y, M, now, admin: isAdmin, next: nextPlan });   // v141: ТК РФ, ст. 103
+      const calm = !confl.length && !holes.length && !waiting.length && !tk103;
       return (
         <div data-attn="" data-lens-edge="" style={{ ...card, flexShrink:0 }}>
           <div style={{ ...eyebrow, marginBottom:2 }}><span>Требует внимания</span>
@@ -4171,6 +4187,16 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => toChat(r)}>В чат ›</button>
             </div>
           ))}
+          {tk103 ? (
+            <div data-attn-row="tk103" style={{ ...row(false), alignItems:"flex-start" }}>
+              <span style={{ paddingTop:2 }}><IcoWarn size={16} color={P.acc} /></span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13.5, color:P.text }}>{MONTHS_N[nextMonthOf(Y, M).m]} пока пустой</div>
+                <div style={{ fontSize:11.5, color:P.sub, marginTop:1, lineHeight:1.35 }}>ТК РФ, ст. 103: график сменности доводят до сотрудников не позже чем за месяц до начала</div>
+              </div>
+              <button className="sa-btn" data-lens-btn="soft" data-attn-next="" style={chipBtn} onClick={() => { goMonth(1); vibrate("light"); }}>Открыть ›</button>
+            </div>
+          ) : null}
           {calm ? (
             <div data-attn-row="calm" style={{ fontSize:12.5, color: a11y ? "#2C6B48" : "#8AD8AF", marginTop:8 }}>
               ✓ {isCur ? "На ближайшие 7 дней всё закрыто" : "Месяц закрыт: людей хватает каждый день"}

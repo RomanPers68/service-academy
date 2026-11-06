@@ -11,8 +11,9 @@ import { vibrate } from "../lib/utils";
 import { lateMinText } from "../lib/late";
 import { GOLD, labelStyle } from "./tokens";
 import { GlyphMark } from "./glyphs";   // v110 (Доп. 423): значки строк по смыслу
-import { DEFAULT_CHECKLISTS, CL_KINDS } from "./screens-admin";
+import { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";   // v141: прямо из lib — экран чек-листов сюда больше не тянется
 import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
+import { goNormalize, goSoldLine } from "../lib/golist-day";   // v141 (Доп. 458): вчерашний гоу-лист и его итог
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
@@ -32,6 +33,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
   const c = P(a11y);
   const [st, setSt] = React.useState({ phase: "load" });
   const [cl, setCl] = React.useState(null);           // вчерашние чек-листы: { kind: { log, total } } или null
+  const [goY, setGoY] = React.useState(null);         // v141: вчерашний гоу-лист и итог (этап 50, brief_go_get) или null
   const [prefs, setPrefs] = React.useState(null);
   const [busy, setBusy] = React.useState("");
   const [note, setNote] = React.useState("");         // ответ на «Прислать сейчас» и настройки
@@ -54,6 +56,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
           });
           setCl(out);
         }).catch(() => setCl(null));
+        rpc("brief_go_get", { p_token: saToken(), p_day: isoAdd(b.day, -1) }).then((r) => setGoY(r && r.ok && r.go ? r : null)).catch(() => setGoY(null));
       }
     }).catch(() => setSt({ phase: "error", text: "Нет связи. Попробуй ещё раз." }));
   }, []);
@@ -175,6 +178,11 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
             if (b.thanks) rows.push(row("thanks", "info", b.thanks.n === 1 ? "Гость сказал спасибо: " + thanksPeople(b.thanks) : "Гости сказали спасибо " + b.thanks.n + " " + plural(b.thanks.n, "раз", "раза", "раз") + ": " + thanksPeople(b.thanks),
               { first: !rows.length, icon: "heart", go: () => onGo("thanks"), extra: b.thanks.quote ? <div style={{ fontSize: 13, color: sub, fontStyle: "italic", lineHeight: 1.45, marginTop: 4 }}>«{b.thanks.quote}»{b.thanks.by ? " · " + b.thanks.by : ""}</div> : null }));
             if (b.ybrief) rows.push(row("yreads", "info", "Брифинг прочитали " + b.ybrief.reads + (b.ybrief.of ? " из " + b.ybrief.of + " в смене" : ""), { first: !rows.length, icon: "eye" }));
+            // v141 (Доп. 458): вчерашний гоу-лист — сколько продано; не записали — «Итог гоу-листа» за вчера в брифинге
+            const gl = goY ? goNormalize(goY.go) : [];
+            if (gl.length) rows.push(row("go", goY.saved ? "ok" : "warn", goY.saved ? "Гоу-лист: " + goSoldLine(gl, goY.sold) : "Гоу-лист: итог не записан",
+              { first: !rows.length, icon: "brief", sub: goY.saved ? (goY.by ? "Записал(а): " + goY.by : null) : gl.map((g) => g.name).join(", ") + ". Сколько продано, видно в отчёте iiko по блюдам",
+                go: () => onGo("brief", { focus: "go" }) }));
             if (b.learn) rows.push(row("learn", b.learn.done ? "info" : "warn", "Занимались " + b.learn.done + " из " + b.learn.of + ", кто был в смене", { first: !rows.length, icon: "book", go: () => onGo("report") }));
             if (cl) CL_KINDS.forEach(([k, t]) => {
               const x = cl[k], ch = (x.log.checked || []).filter((id) => x.ids.includes(id)).length;

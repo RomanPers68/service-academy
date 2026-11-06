@@ -6,6 +6,7 @@
 // Плюс редактор блюд для менеджеров (localStorage: sa_menu_custom).
 
 import React from "react";
+import { useGoToday } from "../lib/use-go-today";   // v141
 import { hintsFor, hintKey } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import { rememberSharedMenu } from "../lib/reference-context";
@@ -441,6 +442,7 @@ function TeamProgress({ T, gold, green, Head, restaurant }) {
 
 // ── Доп. 156: «Меню по разделам» — поиск, разделы, список, карточка блюда ───────
 function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
+  const inGo = useGoToday(restaurant);   // v141 (Доп. 458): метка «гоу-лист» у позиций, которые смена советует сегодня
   const [q, setQ] = React.useState("");
   const [cat, setCat] = React.useState("");
   const [open, setOpen] = React.useState(null); // блюдо в карточке
@@ -500,7 +502,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
                   ? <img src={d.img} alt="" loading="lazy" decoding="async" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
                   : <div style={{ width: 54, height: 54, borderRadius: 12, flexShrink: 0, border: `1px dashed ${gold}55`, display: "flex", alignItems: "center", justifyContent: "center", color: gold }}><Sign n="cloche" s={24} /></div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
+                  <div style={{ ...T.modTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}{!d.stop && inGo(d) ? <span data-go-badge="" style={{ color: gold, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>ГОУ-ЛИСТ</span> : null}</div>
                   <div style={{ fontSize: 12.5, color: sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(d.ingredients || []).slice(0, 4).join(", ") || "состав не указан"}</div>
                   {(d.allergens || []).length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>{d.allergens.slice(0, 4).map((a, i) => <span key={i} style={{ fontSize: 10.5, padding: "1px 6px", borderRadius: 999, border: `1px solid ${red}77`, color: red }}>{allergenLabel(a)}</span>)}</div>}
                 </div>

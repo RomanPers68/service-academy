@@ -24,6 +24,9 @@ import { cachedShared } from "../lib/deck-extras";
 import { BRIEF_ORDER, BRIEF_TITLE, buildBrief, briefShown, briefText, briefHours, voiceLabel, briefPreview, readStats, readLine, briefLines } from "../lib/briefing";
 import { VoicePill } from "./voice-note";
 import { ensureTableCss } from "./table-css";   // v87: рукописный Marck Script для подписи рассказчика живёт в стилях стола
+// v141 (Доп. 458): гоу-лист — выбор из меню, три строки, «Как вчера», итог смены (этап 50)
+import { GoEditor, GoBody, GoResult } from "./golist";
+import { goNormalize, goBlocked, rememberGoLast, goLast, goAgainLabel, dayBefore } from "../lib/golist";
 
 const LETTERS = ["А", "Б", "В", "Г"];
 const HIDDEN = { ask: true, case: true };   // в показе и у сотрудника ответ открывается кнопкой «Показать ответ»
@@ -65,7 +68,7 @@ function RealPlaque({ real, author, c, small }) {
 }
 
 // ── Содержимое блока (одно и то же — в списке, в показе и у сотрудника) ──────────
-function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
+function BlockBody({ k, b, c, big = false, reveal = true, onReveal, goSold = null }) {
   // данные приходят и с сервера (брифинг дня): чужой формат не роняет экран, блок просто пустой
   if (k === "note" ? typeof b !== "string" : k === "ask" || k === "case" ? !(b && typeof b === "object" && Array.isArray(b.options)) : !Array.isArray(b)) return null;
   const fs = big ? 21 : 14.5, small = big ? 15 : 12.5;
@@ -82,6 +85,7 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal }) {
     <div>{b.map((r, i) => (
       <div key={i} style={{ ...row, marginBottom: 4 }}><span style={{ color: c.gold }}>{r.t}</span> {r.name || "Без имени"} <span style={{ fontSize: small, color: c.sub }}>· {r.cnt} {r.cnt % 10 === 1 && r.cnt % 100 !== 11 ? "гость" : r.cnt % 10 >= 2 && r.cnt % 10 <= 4 && (r.cnt % 100 < 10 || r.cnt % 100 >= 20) ? "гостя" : "гостей"} · стол {r.n}</span></div>))}</div>);
   if (k === "stop") return <div style={row}>{b.join(", ")}</div>;
+  if (k === "go") return <GoBody b={b} c={c} big={big} sold={goSold} />;   // v141
   if (k === "fresh") return (
     <div>{b.map((d) => (
       <div key={d.id} style={{ marginBottom: 6 }}>
@@ -176,7 +180,8 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
 // ── Руководителю: собрать, провести, отправить ───────────────────────────────────
 /* v97 (Доп. 410): toChat — у заведения есть чат: отправленный брифинг ещё и карточкой в «Вся команда» (правка обновляет
  * ту же карточку, второй не будет; chat_card_send с p_chat null, этап 38) */
-export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }) {
+/* v141 (Доп. 458): focus "go" — открыть сразу на «Итоге гоу-листа» (из «Распорядка смены» и «Утра руководителя») */
+export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, focus = "" }) {
   const c = C(a11y);
   const contentVer = useAllModules();   // фокус и вопрос ищутся по программе всех ролей
   const [src, setSrc] = React.useState({ menu: null, hard: null, sched: null, league: null, cases: null, guests: null, seat: null });
@@ -188,7 +193,14 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
   const [msg, setMsg] = React.useState(null);   // { ok, text }
   const [typing, setTyping] = React.useState(false);
   const [reads, setReads] = React.useState(null);   // v86: brief_reads (этап 36) — кто отметил «Прочитал(а)»
+  // v141 (Доп. 458): гоу-лист — выбор руководителя; «Как вчера» — вчерашний с сервера (этап 50), без этапа — последний,
+  // отправленный с этого телефона; итог — за сегодня (после отправки) и за вчера (закрытие после полуночи)
+  const [go, setGo] = React.useState([]);
+  const [goPrev, setGoPrev] = React.useState(null);
+  const [goRes, setGoRes] = React.useState({});
+  const todayYmd = React.useMemo(() => { const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }, []);
   const restaurant = (profile && profile.restaurant) || "";
+  const resOf = (r) => ({ day: r.day, go: r.go, sold: r.sold || {}, saved: !!r.saved, at: r.at || null, by: r.by || null });
   const loadReads = React.useCallback(() => {
     rpc("brief_reads", { p_token: saToken() }).then((r) => setReads(r && r.ok && r.brief ? r : null)).catch(() => {});
   }, []);
@@ -217,14 +229,40 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
       const d0 = r.brief.data, n = d0.blocks && d0.blocks.note;
       if (n && typeof n === "string") setNote(n);
       if (d0.on && typeof d0.on === "object") { const o = {}; BRIEF_ORDER.forEach((k) => { if (typeof d0.on[k] === "boolean") o[k] = d0.on[k]; }); setOn(o); }
+      const g0 = d0.blocks && d0.blocks.go;   // v141: гоу-лист отправленного — для правки
+      if (Array.isArray(g0) && g0.length) {
+        setGo(goNormalize(g0));
+        // итог: с сервера (этап 50); без этапа — карточка всё равно есть и честно скажет, что нужно
+        const own = () => { if (alive && d0.on && d0.on.go) setGoRes((s) => (s[todayYmd] ? s : { ...s, [todayYmd]: { day: todayYmd, go: g0, sold: {}, saved: false, at: null, by: null } })); };
+        rpc("brief_go_get", { p_token: tok }).then((x) => { if (alive && x && x.ok && x.go) setGoRes((s) => ({ ...s, [x.day]: resOf(x) })); else own(); }).catch(own);
+      }
     }).catch(() => {});
+    // v141: вчерашний гоу-лист и его итог (этап 50); нет на сервере — последний с этого телефона
+    const yd = dayBefore(todayYmd);
+    const local = () => { const l = goLast(restaurant, todayYmd); if (alive && l) setGoPrev({ ...l, label: goAgainLabel(l.day, todayYmd) }); };
+    rpc("brief_go_get", { p_token: tok, p_day: yd }).then((r) => {
+      if (!alive) return;
+      if (r && r.ok && r.go) {
+        setGoPrev({ day: yd, items: goNormalize(r.go), label: goAgainLabel(yd, todayYmd) });
+        setGoRes((s) => ({ ...s, [yd]: resOf(r) }));
+      } else local();
+    }).catch(local);
     return () => { alive = false; };
   }, [restaurant]);
   const loading = Object.values(src).some((v) => v === null);
+  // v141: открыли на итоге гоу-листа — прокрутить к нему один раз, когда он появится
+  const focused = React.useRef(false);
+  React.useEffect(() => {
+    if (focus !== "go" || focused.current) return undefined;
+    const t = setTimeout(() => {
+      try { const el = document.querySelector("[data-go-result]") || document.querySelector('[data-brief-block="go"]'); if (el) { focused.current = true; el.scrollIntoView({ block: "center", behavior: "smooth" }); } } catch (e) { /* без прокрутки */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [focus, goRes, loading]);
   const author = profile ? (profile.name + (profile.surname ? " " + profile.surname : "")).trim() : "";
   const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: withConceptPrograms(programAll(), conceptFromStorage()), sched: src.sched, league: src.league,
-    caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, seat: src.seat || null, restaurant, author, note }),
-    [src, restaurant, author, note, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+    caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, seat: src.seat || null, restaurant, author, note, go }),
+    [src, restaurant, author, note, go, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const brief = { ...base, on: { ...base.on, ...on, note: on.note !== undefined ? on.note : !!note.trim() } };
   const toggle = (k) => { vibrate("light"); setOn((o) => ({ ...o, [k]: !(o[k] !== undefined ? o[k] : brief.on[k]) })); };
   const count = BRIEF_ORDER.filter((k) => briefShown(brief, k)).length;
@@ -239,6 +277,11 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
         setToday({ data, author, mine: true, sent: (today ? today.sent : 0) + (r.sent || 0), at: new Date().toISOString() });
         if (onSent) onSent();
         loadReads();
+        // v141: гоу-лист — для «Как вчера» завтра и итог смены сразу под брифингом
+        if (briefShown(data, "go")) {
+          rememberGoLast(restaurant, data.day, data.blocks.go);
+          setGoRes((s) => ({ ...s, [data.day]: { ...(s[data.day] || { sold: {}, saved: false, at: null, by: null }), day: data.day, go: data.blocks.go } }));
+        }
         const tg = r.sent ? ` В Telegram ушло ${r.sent} ${plural(r.sent, "сотруднику", "сотрудникам", "сотрудникам")}.` : "";
         const text = r.again
           ? "Брифинг обновлён: команда увидит правку в «Смене»." + (tg ? tg.replace("ушло", "ушло тем, кто ещё не получал:") : " Второй раз в Telegram не пишем.")
@@ -276,6 +319,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
           const b = brief.blocks[k];
           const has = Array.isArray(b) ? b.length > 0 : !!b;
           const isOn = !!brief.on[k];
+          if (k === "go") return <GoEditor key={k} a11y={a11y} c={c} menu={src.menu || []} go={go} setGo={setGo} isOn={!!brief.on.go} onToggle={() => toggle("go")}
+            prev={goPrev} blocked={goBlocked(go, src.menu || [])} restaurant={restaurant} onTyping={setTyping} />;   // v141 (Доп. 458)
           if (k === "note") return (
             <div key={k} data-brief-block={k} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
               <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 6 }}>{BRIEF_TITLE[k]}</div>
@@ -295,6 +340,13 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false }
             </div>);
         })}
         {msg ? <div role="status" style={{ fontSize: 13, color: msg.ok ? c.text : c.red, lineHeight: 1.5, margin: "4px 2px 10px" }}>{msg.text}</div> : null}
+        {/* v141 (Доп. 458): итог гоу-листа — за сегодня (брифинг с гоу-листом отправлен) и за вчера, пока его не записали */}
+        {[todayYmd, dayBefore(todayYmd)].map((d) => {
+          const r = goRes[d];
+          // вчерашний, записанный раньше, не показываем; записанный сейчас — остаётся с «Записано …»
+          if (!r || !goNormalize(r.go).length || (d !== todayYmd && r.saved && !r.here)) return null;
+          return <GoResult key={d + "|" + (r.at || "")} c={c} r={r} today={todayYmd} onSaved={(x) => setGoRes((s) => ({ ...s, [d]: { ...x, here: true } }))} onTyping={setTyping} />;
+        })}
       </div>
       {/* полоса кнопок — порталом: внутри .sa-screen (анимация с transform) position: fixed прилипает к концу экрана,
           а не к низу окна; пока печатаешь «Своё» — уезжает вниз, чтобы не закрывать поле (как в редакторе меню) */}
@@ -342,7 +394,15 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
   const [me, setMe] = React.useState(null);   // v86: null — этапа 36 нет или не знаем; false — ещё не отметил; true — отметил
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
+  const [goSold, setGoSold] = React.useState(null);   // v141: итог гоу-листа, если записан (этап 50)
   const mine = !!(brief && brief.mine);
+  React.useEffect(() => {
+    const dd = brief && brief.data;
+    if (!dd || !briefShown(dd, "go")) return undefined;
+    let alive = true;
+    rpc("brief_go_get", { p_token: saToken() }).then((r) => { if (alive && r && r.ok && r.go && r.saved) setGoSold(r.sold || {}); }).catch(() => {});
+    return () => { alive = false; };
+  }, [brief && brief.at]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (mine) return undefined;
     let alive = true;
@@ -374,7 +434,7 @@ export function BriefView({ a11y, brief, onClose, onRead }) {
         {pages.map((k) => (
           <div key={k} data-brief-block={k} data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 10 }}>
             <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 8 }}>{BRIEF_TITLE[k]}</div>
-            <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
+            <BlockBody k={k} b={d.blocks[k]} c={c} reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} goSold={k === "go" ? goSold : null} />
           </div>))}
         <LineArt kind="bell" color={c.gold} size={110} style={{ margin: "14px auto 6px", opacity: 0.45 }} />
         {me === true ? <div data-brief-read-done="" style={{ fontSize: 12.5, color: c.sub, textAlign: "center", margin: "4px 0 2px" }}>Отметка «Прочитал(а)» уже стоит.</div> : null}

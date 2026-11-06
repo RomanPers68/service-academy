@@ -95,7 +95,10 @@ const NEAR = {
 };
 function planOf() {
   const out = {};
-  for (let i = -30; i <= 45; i++) {
+  // v141 (Доп. 459): вперёд — до конца месяца, но не меньше двух недель: в начале месяца следующий ещё не составлен, и в
+  // «Графике» у Марии видно напоминание по ТК РФ, ст. 103 (раньше — на 45 дней вперёд)
+  const t0 = new Date(), left = new Date(t0.getFullYear(), t0.getMonth() + 1, 0).getDate() - t0.getDate();
+  for (let i = -30; i <= Math.max(14, left); i++) {
     const set = (sid, k) => { if (k && k !== "-") (out[sid] = out[sid] || {})[i] = k; };
     const c2 = ((i % 4) + 4) % 4;
     set(1, c2 < 2 ? "Д" : ""); set(2, c2 >= 2 ? "Д" : ""); set(7, c2 === 1 || c2 === 2 ? "В" : "");
@@ -516,6 +519,16 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
     if (o && o.kind === "morning") setTimeout(() => tgChat(text, o.kb, nowHM()), 400);
     else if (o && o.kind === "gain") setTimeout(() => tgChat(text, o.kb, nowHM(), { note: "Так 1-го числа в 10:00 приходит итог прошлого месяца. Кнопка открывает его в приложении." }), 400);   // v109
     else setTimeout(() => tgToast(text, acts, chat), 500); } });
+// v141 (Доп. 458): вчерашний брифинг Марии с гоу-листом (салат с крабом и «Негрони»), итог ещё не записан: «Как вчера» в
+// брифинге, «Гоу-лист: итог не записан» в «Утре руководителя». Демо, открытое сегодня до этой сборки, получает его один раз
+if (!srv.S.goSeeded) {
+  srv.S.goSeeded = 1;
+  const yd = srv.D(-1), was = srv.S.briefDays[yd] || {};
+  if (!was.data) srv.S.briefDays[yd] = { ...was, reads: was.reads || [], author: "Мария Ким", go_sold: null, go_at: null, go_by: null,
+    data: { v: 1, day: yd, restaurant: R0, author: "Мария Ким", on: { go: true }, blocks: { go: [
+      { id: dish("Салат с крабом"), name: "Салат с крабом и страчателлой", kind: "dish", why: "Краб-стригун и домашняя страчателла", pair: "С бокалом совиньон блан", say: "Сегодня советую салат с крабом: страчателлу делаем сами" },
+      { id: "negroni", name: "Негрони", kind: "cocktail", why: "Три равные части, горьковатый и честный", pair: "К закускам из морепродуктов", say: "Аперитив, который открыл сто лет назад итальянский граф" }] } } };
+}
 // v127: демо, открытое сегодня ещё до этой сборки, — крепкое приходит в меню команды один раз (дальше — как правил руководитель)
 if (!srv.S.spiritSeeded) { srv.S.spiritSeeded = 1; if (Array.isArray(srv.S.menu) && !srv.S.menu.some((d) => d && d.kind === "spirit")) srv.S.menu.push(...MENU.filter((d) => d && d.kind === "spirit")); }
 const save = () => { lsSet(K_SRV, JSON.stringify(srv.S)); lsSet(K_DAY, TODAY); };
@@ -669,6 +682,22 @@ function demoHr(b) {
 
 // ── сервер вместо Supabase: те же адреса, ответы из памяти ──
 const AI_REPLY = "Это демо: Наставник здесь не подключён к ИИ. В приложении он отвечает по меню, стандартам и урокам вашего заведения.";
+// v141 (Доп. 458): «Подсказать фразы» в гоу-листе — в демо без нейросети: три строки по тому, что пришло из карточки
+function demoGoLines(q) {
+  const m = /: (блюдо|коктейль|вино|крепкое|позиция) «([^»]+)»/.exec(q) || [], kind = m[1] || "позиция", name = m[2] || "эту позицию";
+  const facts = ((/Из карточки: ([^\n]+)/.exec(q) || [])[1] || "").replace(/\.$/, "").split(/;\s*/).map((x) => x.trim()).filter(Boolean);
+  const cut = (t, n) => (t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : t);
+  const desc = facts.find((x) => !/^(состав|сочетание|к столу|ноты):/i.test(x)) || "";
+  const pairF = (facts.find((x) => /^(сочетание|к столу):/i.test(x)) || "").replace(/^[^:]+:\s*/, "");
+  const notes = (facts.find((x) => /^ноты:/i.test(x)) || "").replace(/^ноты:\s*/i, "");
+  const GEN = { блюдо: "Свежая подача, порция на одного", коктейль: "Яркий вкус, готовим за пару минут", вино: "Хорошо раскрывается с нашей кухней", крепкое: "Мягкое, хорошо идёт чистым" };
+  const why = cut(kind === "блюдо" && desc ? desc.split(/[.!?]/)[0] : notes ? "Ноты: " + notes : GEN[kind] || "Гости его любят", 70);
+  const pair = cut(pairF || { блюдо: "С бокалом белого вина или нашим лимонадом", коктейль: "К закускам и морепродуктам", вино: "К рыбе и морепродуктам", крепкое: "После ужина, с кофе или десертом" }[kind] || "К основному блюду", 70);
+  const nm = kind === "блюдо" ? name.charAt(0).toLowerCase() + name.slice(1) : name;
+  const say = cut({ блюдо: "Сегодня советую " + nm + ", шеф очень рекомендует", коктейль: "Попробуйте " + nm + ", бармен приготовит за пару минут",
+    вино: "К вашему блюду советую " + nm + ", можно бокалом", крепкое: "После ужина советую " + nm + ", подадим как вы любите" }[kind] || "Сегодня советую " + nm, 140);
+  return "Чем хорошо: " + why + "\nС чем предложить: " + pair + "\nФраза гостю: " + say;
+}
 
 // v131 (Доп. 444): «Сомелье» в демо без ИИ. Из присланного списка (строки «1. Вино · Шабли · … · ноты: … · к блюдам: …»)
 // берёт первые три и пишет «почему» и фразу гостю по их же строкам, в том формате, который просит приложение.
@@ -757,6 +786,8 @@ window.fetch = function (input, init) {
     let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     if (b.mode === "sommelier" && b.som) return wait(1200).then(() => json({ ok: true, reply: demoSomJson(b.som), model: "demo", remaining: 17, som: 1 }));   // v132
     if (b.mode === "sommelier") return wait(1100).then(() => json({ ok: true, reply: demoSom(b), model: "demo", remaining: 17 }));   // v131
+    const q0 = String(((b.messages || []).slice(-1)[0] || {}).content || "");
+    if (/^Гоу-лист смены ресторана/.test(q0)) return wait(1000).then(() => json({ ok: true, reply: demoGoLines(q0), model: "demo" }));   // v141
     return wait(700).then(() => json({ ok: true, reply: AI_REPLY, model: "demo" }));
   }
   // v122: фото бутылки — в демо хранилища нет, снимок остаётся в записи (в приложении — ссылка хранилища, photo-upload)

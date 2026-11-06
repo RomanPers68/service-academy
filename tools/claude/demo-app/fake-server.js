@@ -75,6 +75,16 @@ export function makeServer(opts) {
   };
   // v99: этап 39 (состояние из прошлых версий демо — без этих полей)
   S.late = S.late || {}; S.cal = S.cal || {}; S.seen = S.seen || {}; S.tgAuth = S.tgAuth || {}; S.allAt = S.allAt || {};
+  // v141 (Доп. 458): брифинги по дням и итог гоу-листа (этап 50). opts.briefDays: { "ГГГГ-ММ-ДД" или смещение дня ("-1"): { data, author,
+  // go_sold, reads } } — вчерашний брифинг с гоу-листом для «Как вчера» и «Утра руководителя». Прежний вид (v106) — массив
+  // прочитавших: { "-1": [id, …] } — остаётся как был
+  if (!S.briefDays) {
+    S.briefDays = {};
+    for (const [k, v] of Object.entries(opts.briefDays || {})) {
+      const key = /^-?\d+$/.test(k) ? D(Number(k)) : k;
+      S.briefDays[key] = Array.isArray(v) ? { reads: v } : { ...clone(v), reads: Array.isArray(v && v.reads) ? v.reads : [], go_at: (v && v.go_at) || (v && v.go_sold ? now() : null) };
+    }
+  }
   // v125 (Доп. 438): этап 44 — тренировка по винам на сервере. opts.wineProg: { id сотрудника: { passed, opened, известное…,
   // passedAt / openedAt / statsAt / quizAt — смещение в днях от сейчас } }
   // v127 (Доп. 440): этап 45 — то же для крепкого (S.spirit, opts.spiritProg)
@@ -737,10 +747,41 @@ export function makeServer(opts) {
     if (fn === "swap_list") return { ok: true, swaps: [] };
     if (fn === "brief_today") return { ok: true, brief: S.brief && S.brief.data && S.brief.data.day === TODAY ? clone(S.brief) : null };
     if (fn === "brief_reads") return { ok: true, brief: null, rows: [], n: 0 };
+    // ── v141 (этап 50): итог гоу-листа ──
+    if (fn === "brief_go_get" || fn === "brief_go_save") {
+      if (opts.noStage50) return { code: "PGRST202", message: "Could not find the function" };
+      if (!p) return { ok: false, error: "auth" };
+      const day = b.p_day == null || String(b.p_day).trim() === "" ? TODAY : String(b.p_day).trim();
+      const goIds = (data) => (data && data.on && data.on.go && data.blocks && Array.isArray(data.blocks.go) ? data.blocks.go.filter((x) => x && x.id).map((x) => String(x.id)) : []);
+      if (fn === "brief_go_get") {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > TODAY || day < D(-31)) return { ok: false, error: "bad_day" };
+        const br = S.briefDays[day];
+        if (!br || !goIds(br.data).length) return { ok: true, day, go: null };
+        return { ok: true, day, go: clone(br.data.blocks.go), sold: clone(br.go_sold || {}), saved: !!br.go_at, at: br.go_at || null, by: br.go_by || null, author: br.author || null };
+      }
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > TODAY || day < D(-1)) return { ok: false, error: "bad_day" };
+      const sold = b.p_sold;
+      if (!sold || typeof sold !== "object" || Array.isArray(sold)) return { ok: false, error: "bad_request" };
+      const br = S.briefDays[day];
+      if (!br) return { ok: false, error: "no_brief" };
+      const ids = goIds(br.data);
+      if (!ids.length) return { ok: false, error: "no_go" };
+      const out = {};
+      for (const [k, v] of Object.entries(sold)) {
+        if (!ids.includes(k)) continue;
+        if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 99999) return { ok: false, error: "bad_request" };
+        out[k] = v;
+      }
+      br.go_sold = out; br.go_at = now(); br.go_by = full(p);
+      return { ok: true, day, sold: clone(out), at: br.go_at, by: br.go_by };
+    }
     if (fn === "brief_publish") {
       if (!isLead(p)) return { ok: false, error: "forbidden" };
       const again = !!(S.brief && S.brief.data && S.brief.data.day === TODAY);
       S.brief = { data: b.p_data, author: full(p), mine: true, sent: 0, at: now() };
+      const was = S.briefDays[TODAY] || {};   // v141: итог гоу-листа правка брифинга не стирает (как этап 50)
+      S.briefDays[TODAY] = { data: clone(b.p_data), author: full(p), reads: was.reads || [], go_sold: was.go_sold || null, go_at: was.go_at || null, go_by: was.go_by || null };
       return { ok: true, again, sent: 0, bot: false };
     }
     // ── v99 (этап 39): вход через Telegram, отметки «Опаздываю» в графике, календарь, «Сервер» ──
@@ -1455,7 +1496,7 @@ export function makeServer(opts) {
     }
     const yon = onShift(Y);
     const yr = S.briefDays[Y];
-    const yreads = yr ? yr.reads.filter((id) => !yon.length || yon.includes(id)).length : 0;
+    const yreads = yr && Array.isArray(yr.reads) ? yr.reads.filter((id) => !yon.length || yon.includes(id)).length : 0;   // v141: и брифинг без отметок
     const ybrief = yreads ? { reads: yreads, of: yon.length } : null;
     const learn = yon.length ? { done: yon.filter((id) => (S.learn[id] || []).includes(Y)).length, of: yon.length } : null;
     const week = [...new Set([0, 1, 2, 3, 4, 5, 6].flatMap((i) => onShift(D(i))))];

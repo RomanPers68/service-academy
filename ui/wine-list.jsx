@@ -27,6 +27,7 @@
 // бутылка в цвете вина или форме вида крепкого (lib/bottle-art.js); шапка карточки компактнее: бутылка слева, справа — откуда,
 // сорт, цены, и «Одной фразой гостю» видна сразу; у разделов — цветная точка.
 import React from "react";
+import { useGoToday } from "../lib/use-go-today";   // v141
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { rpc, saToken } from "../api/supabase";
@@ -118,6 +119,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   const edit = canEditWines(profile) && onEdit;
   // v127: «Барная карта» отдаёт меню команды готовым (один запрос на все вкладки); сам — только без неё
   const own = useTeamMenu(team ? "" : restaurant);
+  const inGo = useGoToday(restaurant);   // v141
   const [shared, setShared, menuLoaded] = team || own;
   const who = profile ? [profile.name, profile.surname].filter(Boolean).join(" ") : "";
   const k0 = keep || {};
@@ -231,6 +233,8 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   const chip = (on) => ({ flexShrink: 0, padding: "6px 12px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", whiteSpace: "nowrap",
     border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub });
   const badge = (t, c) => <span style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${c}88`, color: c, whiteSpace: "nowrap" }}>{t}</span>;
+  // v141 (Доп. 458): «гоу-лист» — смена советует это сегодня (брифинг дня)
+  const goBadge = (x) => (!x.stop && inGo(x) ? <span data-go-badge="" style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${gold}88`, color: gold, whiteSpace: "nowrap" }}>гоу-лист</span> : null);
 
   // ── v123: тренировка ──
   const fresh = React.useMemo(() => newWines(all), [all]);
@@ -314,6 +318,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
                 {prioOn && !(canEditWines(profile) && setShared) ? badge("★ советуем", gold) : null}{/* руководителю — переключатель ниже */}
                 {K.pathTest(w) ? badge(K.t.pathBadge, gold) : null}
                 {w.stop ? badge("сегодня нет", red) : null}
+                {goBadge(w)}
                 {w.abv && K.kind !== "spirit" ? badge(String(w.abv).replace(".", ",") + "%", sub) : null}
               </div>
               {K.price(w) ? <div data-wine-price="" style={{ fontSize: 14, color: text, marginTop: 8, lineHeight: 1.45 }}>{K.price(w)}</div> : null}
@@ -492,6 +497,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
                     </span>
                     {K.pathTest(x) ? badge(K.t.pathBadge, gold) : null}
                     {x.stop ? badge("сегодня нет", red) : null}
+                    {goBadge(x)}
                   </div>
                   {K.line(x) ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{K.line(x)}</div> : null}
                   {K.price(x) || unchecked(x) || pr ? <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>

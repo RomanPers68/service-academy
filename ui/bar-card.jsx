@@ -24,6 +24,7 @@
 // («шейк · купе · Hendrick's»), строка вдвое короче; в карточке «Как готовить» свёрнуто (состав уже сверху); порядок
 // «Разделы · А–Я» и «Подробно · Кратко»; «★ советуем» и раздел «Советуем»; у основы — цветная точка.
 import React from "react";
+import { useGoToday } from "../lib/use-go-today";   // v141
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { WineListScreen, useTeamMenu, canEditWines, useInnerTop } from "./wine-list";
@@ -217,6 +218,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
   const chip = (on) => ({ flexShrink: 0, padding: "6px 12px", borderRadius: 999, fontSize: 13, fontFamily: SERIF, cursor: "pointer", whiteSpace: "nowrap",
     border: `1px solid ${on ? gold : gold + "44"}`, background: on ? (a11y ? "rgba(139,106,48,0.14)" : "rgba(214,178,102,0.16)") : "transparent", color: on ? text : sub });
   const badge = (t, col) => <span style={{ fontSize: 11.5, padding: "1px 7px", borderRadius: 999, border: `1px solid ${col}88`, color: col, whiteSpace: "nowrap" }}>{t}</span>;
+  const inGo = useGoToday(restaurant);   // v141 (Доп. 458): «гоу-лист» — смена советует это сегодня
   const head = (kicker, title, back, right) => (
     <div style={{ padding: "16px 16px 6px", display: "flex", alignItems: "center", gap: 10 }}>
       <button className="sa-btn" data-lens="back" onClick={back} {...onActivate(back)} aria-label="Назад" style={{ border: "none", background: "transparent", color: gold, fontSize: 21, cursor: "pointer", padding: "4px 8px 4px 0" }}>‹</button>
@@ -375,6 +377,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
                     {pr ? badge("★ советуем", gold) : null}
                     {x.house ? badge("свой", gold) : null}
                     {x.stop ? badge("сегодня нет", red) : null}
+                    {!x.stop && inGo(x) ? <span data-go-badge="">{badge("гоу-лист", gold)}</span> : null}
                   </div>
                   {/* v136: что из нашей карты — в той же строке, что метод и бокал */}
                   {line || ours.length ? <div style={{ fontSize: 12.5, color: sub, marginTop: 3, lineHeight: 1.4 }}>{line}{line && ours.length ? " · " : ""}{ours.length ? <span data-bar-ck-spirits={ours.length} style={{ color: text }}>{ours.slice(0, 3).map(spiritTitle).join(", ")}{ours.length > 3 ? " и ещё " + (ours.length - 3) : ""}</span> : null}</div> : null}

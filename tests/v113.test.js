@@ -121,7 +121,7 @@ describe("v113: «График»", () => {
   it("карточки — кромка без света (15), кнопки — плашки и стекло; поля настроек — стекло", () => {
     expect(count(S, 'data-lens-edge=""')).toBe(15);
     expect(count(S, 'data-lens-btn="main"')).toBe(10);
-    expect(count(S, 'data-lens-btn="soft"')).toBe(53);
+    expect(count(S, 'data-lens-btn="soft"')).toBe(54);   // v141: + «Открыть ›» у строки «ТК РФ, ст. 103» в «Требует внимания»
     expect(count(S, 'data-lens-field=""')).toBe(3);
     expect(count(S, 'data-lens="disc"')).toBe(4);
   });

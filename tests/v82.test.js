@@ -157,13 +157,14 @@ describe("v82: брифинг целиком и текст для Telegram", () 
     // v83: после «Вопроса команде» — «Случай из зала» (этап 33); v84: после «Спасибо» — «Спасибо от гостей» (этап 34);
     // без данных эти блоки выключены, остальное как было
     // v85: после «Кто сегодня» — «Брони сегодня» (этап 35)
-    expect(BRIEF_ORDER).toEqual(["roster", "res", "stop", "fresh", "focus", "ask", "case", "thanks", "guests", "note"]);
-    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Брони сегодня", "Стоп-лист", "Новинки меню", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Спасибо от гостей", "Своё"]);
+    // v141 (Доп. 458): после «Новинок меню» — «Гоу-лист» (две-три позиции, которые смена продаёт сегодня); его выбирает руководитель
+    expect(BRIEF_ORDER).toEqual(["roster", "res", "stop", "fresh", "go", "focus", "ask", "case", "thanks", "guests", "note"]);
+    expect(BRIEF_ORDER.map((k) => BRIEF_TITLE[k])).toEqual(["Кто сегодня", "Брони сегодня", "Стоп-лист", "Новинки меню", "Гоу-лист", "Фокус смены", "Вопрос команде", "Случай из зала", "Спасибо", "Спасибо от гостей", "Своё"]);
     expect(b).toMatchObject({ v: 1, day: "2026-10-25", dayLabel: "25 октября", restaurant: REST, author: "Глеб Гусев" });
-    expect(b.on).toEqual({ roster: true, res: false, stop: true, fresh: true, focus: true, ask: true, case: false, thanks: true, guests: false, note: true });
+    expect(b.on).toEqual({ roster: true, res: false, stop: true, fresh: true, go: false, focus: true, ask: true, case: false, thanks: true, guests: false, note: true });   // v141: гоу-лист — пока не выбран
     expect(b.blocks.note).toBe("Банкет на 12 в 19:00");
     const empty = buildBrief({ now: NOW });
-    expect(empty.on).toEqual({ roster: false, res: false, stop: false, fresh: false, focus: false, ask: false, case: false, thanks: false, guests: false, note: false });
+    expect(empty.on).toEqual({ roster: false, res: false, stop: false, fresh: false, go: false, focus: false, ask: false, case: false, thanks: false, guests: false, note: false });
     expect(BRIEF_ORDER.filter((k) => briefShown(empty, k))).toEqual([]);
     expect(briefDayLabel(new Date(2026, 0, 1))).toBe("1 января");
   });
@@ -247,7 +248,8 @@ describe("v82: в приложении", () => {
   it("брифинг дня — при входе в «Смену», не чаще раза в пять минут; без этапа 32 больше не спрашиваем", () => {
     expect(app).toContain('rpc("brief_today", { p_token: saToken() })');
     expect(app).toContain("if (rpcMissing(r)) { st.off = true; return; }");
-    expect(app).toContain('useEffect(() => { if (screen === "shift" && storageLoaded) loadTeamBrief(false); }, [screen, storageLoaded, loadTeamBrief]);');
+    // v141: и в меню, «Барной карте» и колоде коктейлей (оттуда метка «гоу-лист»)
+    expect(app).toContain('useEffect(() => { if (["shift", "menuTrainer", "wines", "cocktails"].includes(screen) && storageLoaded) loadTeamBrief(false); }, [screen, storageLoaded, loadTeamBrief]);');
     expect(app).toContain("Date.now() - st.at < 5 * 60e3");
   });
   it("кнопка «Брифинг смены» из Telegram (?go=brief): «Смена» и сразу чтение; «Назад» закрывает слой", () => {

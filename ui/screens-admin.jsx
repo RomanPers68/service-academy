@@ -30,44 +30,20 @@ import { crownIcon, flameIcon, trophyIcon, faceIcon } from "./icons-extra";
 import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-cards";
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 
-export const DEFAULT_CHECKLISTS = {
-  open: [
-    { id:"o1", text:"Свет, музыка, климат включены" },
-    { id:"o2", text:"Столы протёрты и сервированы" },
-    { id:"o3", text:"Зал и санзона проверены" },
-    { id:"o4", text:"Меню и спецпредложения на местах" },
-    { id:"o5", text:"Кофемашина и бар готовы" },
-    { id:"o6", text:"Касса открыта, разменка есть" },
-  ],
-  preshift: [
-    { id:"p1", text:"Стоп-лист озвучен команде" },
-    { id:"p2", text:"Спецпредложения дня названы" },
-    { id:"p3", text:"Брони и крупные столы разобраны" },
-    { id:"p4", text:"Зоны распределены" },
-    { id:"p5", text:"Внешний вид команды проверен" },
-  ],
-  close: [
-    { id:"c1", text:"Столы убраны, зал готов на завтра" },
-    { id:"c2", text:"Касса сведена" },
-    { id:"c3", text:"Техника и свет выключены" },
-    { id:"c4", text:"Стоп-лист обновлён" },
-    { id:"c5", text:"Уборка завершена" },
-    { id:"c6", text:"Закрытие и сигнализация" },
-  ],
-};
-
-export const CL_KINDS = [["open","Открытие"],["preshift","Предсменка"],["close","Закрытие"]];
+// v141 (Доп. 459): чек-листы по умолчанию — в lib/checklists.js (их считает и «Распорядок смены»); здесь — те же имена
+export { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
+import { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
 
 export const _clYmd = (d) => { const z = new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
 
 export const _clId = () => Math.random().toString(36).slice(2,8);
 
-export function ChecklistScreen({ T, a11y, profile, onBack }) {
+export function ChecklistScreen({ T, a11y, profile, onBack, initialTab = "open" }) {   // v141: «Распорядок смены» открывает нужный список
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const today = _clYmd(new Date());
   const canEdit = !!(profile && (profile.is_admin || ["manager","senior"].includes(profile.position)));
-  const [tab, setTab] = React.useState("open");
+  const [tab, setTab] = React.useState(() => (CL_KINDS.some(([k]) => k === initialTab) ? initialTab : "open"));
   const [tpls, setTpls] = React.useState({});
   const [todayLog, setTodayLog] = React.useState({});
   const [edit, setEdit] = React.useState(false);

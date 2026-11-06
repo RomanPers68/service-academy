@@ -1,4 +1,5 @@
 import React from "react";
+import { useGoToday } from "../lib/use-go-today";   // v141
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { Sign } from "./signs";   // v75 (Доп. 388): блюдо без фото — значком вместо 🍽
@@ -21,6 +22,7 @@ const srKey = (restaurant) => "sa_menu_sr_" + (restaurant || "x");
 const loadSR = (restaurant) => { try { return JSON.parse(localStorage.getItem(srKey(restaurant)) || "{}"); } catch (e) { return {}; } };
 
 export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant, Head, DishPhoto, DishBack, glass, onLearned, startId, uk, onOpenCocktail, initialMode, onShareChat = null }) {
+  const inGo = useGoToday(restaurant);   // v141 (Доп. 458): метка «гоу-лист» у позиций, которые смена советует сегодня
   const [reverse, setReverse] = React.useState(initialMode === "reverse"); // Доп. 210: «наоборот» — фото и состав без названия
   const [faqOpen, setFaqOpen] = React.useState(null);
   const [q, setQ] = React.useState("");
@@ -200,7 +202,8 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                     {d.img && <span onClick={(e) => { e.stopPropagation(); setZoom(d.img); vibrate("light"); }} aria-label="Фото на весь экран"
                       style={{ position: "absolute", right: 10, top: 10, width: 34, height: 34, borderRadius: 18, background: "rgba(0,0,0,0.55)", color: "#EFE4C8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer" }}>⤢</span>}
                   </div>
-                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>{reverse ? "Что это? · " : ""}{d.cat || "Блюдо"}</div>
+                  <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}><span>{reverse ? "Что это? · " : ""}{d.cat || "Блюдо"}</span>
+                    {!reverse && !d.stop && inGo(d) ? <span data-go-badge="front" style={{ fontStyle: "normal", fontSize: 11, padding: "1px 8px", borderRadius: 999, border: `1px solid ${gold}88`, letterSpacing: 0.3 }}>гоу-лист</span> : null}</div>
                   {reverse
                     ? <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, lineHeight: 1.4 }}>{(d.ingredients || []).slice(0, 6).join(" · ") || "состав не указан"}</div>
                     : <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, lineHeight: 1.2 }}>{d.name}</div>}
@@ -209,7 +212,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                 </div>
                 <div className="sa-ck-face sa-ck-back" data-lens-edge="" style={{ ...glass(T), padding: "16px 18px", boxSizing: "border-box" }}>
                   <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 4 }}>{d.cat || "Блюдо"}</div>
-                  <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
+                  <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, marginBottom: 8 }}>{d.name}{d.stop ? <span style={{ color: red || "#B8352A", fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}{!d.stop && inGo(d) ? <span data-go-badge="" style={{ color: gold, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>ГОУ-ЛИСТ</span> : null}</div>
                   {String(d.short || "").trim() && <div style={{ fontSize: 14, color: T.para?.color || text, lineHeight: 1.5, fontStyle: "italic", marginBottom: 8 }}>«{d.short.trim()}»</div>}
                   <DishBack d={d} T={T} gold={gold} />
                   {/* Доп. 210: гость спрашивает — пузыри; мост к Колоде бармена по сочетанию */}

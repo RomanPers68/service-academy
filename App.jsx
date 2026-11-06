@@ -356,6 +356,7 @@ import { peerSub } from "./lib/team-warm";   // v108 (Доп. 421): «Спаси
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
 import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
 import { ShiftRoleCard } from "./ui/shift-role";
+import { rememberGoToday, goToday } from "./lib/golist-day";   // v141 (Доп. 458): гоу-лист дня — метка в меню и Наставник
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 import { readPushFlag, PUSH_EVENT, pushEnv, pushRefresh, pushUnsubscribe, setAppBadge, remindSub, pushRowSub } from "./lib/push";   // v137 (Доп. 450): уведомления на телефон
 import { lateWindow } from "./lib/late";   // v99: «Опаздываю» — за 3 часа до смены и 2 часа после начала
@@ -394,6 +395,7 @@ const CalSheet = lazyOf(() => import("./ui/cal-sheet"), "CalSheet");
 const BriefScreen = lazyOf(loadBriefing, "BriefScreen");
 const BriefCard = lazyOf(loadBriefing, "BriefCard");
 const BriefView = lazyOf(loadBriefing, "BriefView");
+const RoutineCard = lazyOf(() => import("./ui/routine"), "RoutineCard");   // v141 (Доп. 459): «Распорядок смены» руководителю
 const CasesScreen = lazyOf(() => import("./ui/cases"), "CasesScreen");   // v83 (Доп. 396): случаи из нашего зала
 const ThanksScreen = lazyOf(() => import("./ui/thanks"), "ThanksScreen");   // v84 (Доп. 397): спасибо от гостей по QR
 const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScreen");   // v108 (Доп. 421): спасибо от коллег
@@ -1483,7 +1485,17 @@ function ServiceAcademy() {
       }
     }).catch(() => { st.at = 0; });
   }, [profile]);
-  useEffect(() => { if (screen === "shift" && storageLoaded) loadTeamBrief(false); }, [screen, storageLoaded, loadTeamBrief]);
+  // v141 (Доп. 458): и в меню, «Барной карте» и колоде коктейлей: оттуда гоу-лист дня (метка «гоу-лист»)
+  useEffect(() => { if (["shift", "menuTrainer", "wines", "cocktails"].includes(screen) && storageLoaded) loadTeamBrief(false); }, [screen, storageLoaded, loadTeamBrief]);
+  useEffect(() => { if (briefKnown && profile && profile.restaurant) rememberGoToday(teamBrief, profile.restaurant); }, [briefKnown, teamBrief, profile && profile.restaurant]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v141 (Доп. 459): «Распорядок смены» открывает нужный чек-лист и итог гоу-листа в брифинге; уходим с экрана — как обычно
+  const [checklistTab, setChecklistTab] = useState("open");
+  const [briefFocus, setBriefFocus] = useState("");
+  useEffect(() => { if (screen !== "checklist") setChecklistTab("open"); if (screen !== "brief") setBriefFocus(""); }, [screen]);
+  const openRoutine = (k) => {
+    if (k === "open" || k === "close") { setChecklistTab(k); navigate("checklist"); }
+    else { setBriefFocus(k === "go" ? "go" : ""); navigate("brief"); }
+  };
   const openTeamBrief = useCallback(() => {
     if (!teamBrief) return;
     vibrate("light");
@@ -2728,6 +2740,7 @@ function ServiceAcademy() {
     // v40: «Путь мастера» — Наставник знает значки, шаг дня и первую неделю, ведёт кнопкой [[go:mastery]]
     mastery: mShown ? { bronze: mShown.bronze, total: mShown.total, have: mShown.master.have, need: mShown.master.need, master: !!mShown.master.ok,
       step: mStep && !mStep.done ? mStep.text : "", fw: { done: mShown.firstWeek.done, total: mShown.firstWeek.total, active: !!mShown.firstWeek.active } } : null,
+    golist: goToday(profile?.restaurant),   // v141 (Доп. 458): гоу-лист смены сегодня
     todayShift: (() => { try {
       const r = JSON.parse(localStorage.getItem("sa_today_shift") || "null");
       const t = new Date();
@@ -3138,7 +3151,7 @@ function ServiceAcademy() {
         {screen === "morning" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MorningScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("shift")}
           onRemind={() => setRemindOpen(true)} onGo={(dest, x) => {
             if (dest === "schedule") navigate("schedule");
-            else if (dest === "brief") navigate("brief");
+            else if (dest === "brief") { setBriefFocus(x && x.focus === "go" ? "go" : ""); navigate("brief"); }   // v141: «Вчера» → итог гоу-листа
             else if (dest === "menu") navigate("menuTrainer");
             else if (dest === "thanks") openThanks("team");
             else if (dest === "report") { setReportSelf(false); navigate("report"); }
@@ -3157,7 +3170,7 @@ function ServiceAcademy() {
           onBack={() => goBack("teamHub")} onChat={() => setChatOpen({ intent: { kind: "team", at: Date.now() } })}
           onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
           onLegacy={() => navigate("onboarding")} /></Suspense></div>}
-        {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} onBack={() => navigate("roleSelect")} /></Suspense></div>}
+        {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} initialTab={checklistTab} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={reportCms} startSelf={reportSelf}
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
@@ -3302,7 +3315,7 @@ function ServiceAcademy() {
           onSay={() => setChatOpen({ intent: { kind: "thx", at: Date.now() } })} /></Suspense></div>}
         {screen === "cases" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CasesScreen T={T} a11y={a11y} profile={profile} uk={ukP} playedVer={casesPlayed}
           onPlay={openCases} onOpened={casesOpened} onBack={() => { caseAskRef.current.at = 0; goBack("shift"); }} /></Suspense></div>}
-        {screen === "brief" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BriefScreen T={T} a11y={a11y} profile={profile}
+        {screen === "brief" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BriefScreen T={T} a11y={a11y} profile={profile} focus={briefFocus}
           onSent={() => loadTeamBrief(true)} onBack={() => goBack("shift")} toChat={!!(chatOn && profile.restaurant)} /></Suspense></div>}
         {screen === "league" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeagueScreen T={T} a11y={a11y} profile={profile} activity={activity} masters={mastersIdx} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {/* v31: «Погреб тем» — свежесть, золото и зачёты всех тем трека */}
@@ -3324,6 +3337,8 @@ function ServiceAcademy() {
             {nbOn && nbInfo.newbie ? <NewbieHero a11y={a11y} done={nbDoneCount(nbInfo)} total={nbTotalCount(nbInfo)} onOpen={() => navigate("newbie")}
               line={nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования"} /> : null}
             <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} />
+            {/* v141 (Доп. 459): «Распорядок смены» — открытие, брифинг с гоу-листом, закрытие, итог; в выходной не показываем */}
+            {isLead && profile.restaurant && !(shiftToday && shiftToday.off) ? <Suspense fallback={null}><RoutineCard a11y={a11y} brief={teamBrief} briefKnown={briefKnown} onOpen={openRoutine} /></Suspense> : null}
             {/* v82 (Доп. 395): брифинг смены от руководителя */}
             {teamBrief ? <Suspense fallback={null}><BriefCard a11y={a11y} brief={teamBrief} seen={!!teamBrief.mine || briefSeen === briefKeyOf(teamBrief)} reads={isLead ? briefReads : null} onOpen={openTeamBrief} /></Suspense> : null}
             {/* v30 (Доп. 314): квест смены и твоя часть */}

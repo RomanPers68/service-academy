@@ -23,9 +23,9 @@ const noticeablyShortest = (it) => { const L = lens(it); return Math.min(...L.fi
 const text = (s) => String(s || "");
 
 describe("тесты и практики: верный не угадывается по длине (Доп. 351)", () => {
-  it("всё на месте: 917 вопросов тестов и 219 ситуаций практики с вариантами", () => {
-    expect(quiz.length).toBe(917);
-    expect(practice.length).toBe(219);
+  it("всё на месте: 997 вопросов тестов и 233 ситуации практики с вариантами", () => {
+    expect(quiz.length).toBe(997);   // v140: + четыре теста по 20 (алкоголь у ядра и менеджера, конфликты у бара и хостес)
+    expect(practice.length).toBe(233);   // v140: + практики ядра и менеджера, по 7 ситуаций с вариантами (и по одной «правда или миф»)
     for (const it of [...quiz, ...practice]) {
       expect(it.options.length, it.tag).toBe(4);
       expect(it.correct >= 0 && it.correct < 4, it.tag).toBe(true);

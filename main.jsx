@@ -3,19 +3,31 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { loadRoleModules } from "./data/modules";
 import { thanksCode, isThanksLink } from "./lib/guest-thanks";
+import { afterLoad, pageIsReady } from "./lib/page-ready";
 
 // v84 (Доп. 397): страница гостя «Сказать спасибо» по QR сотрудника (?thanks=код) — без входа, без приложения и без
 // сервис-воркера: гость в зале открывает её с мобильного интернета, ждать загрузки всего приложения ему незачем.
 const GUEST_THANKS = typeof location !== "undefined" && isThanksLink(location.search);
 
+// v140 (Доп. 456): App и ранние загрузки — после загрузки страницы (lib/page-ready.js). Иначе Telegram на iPhone держит внизу
+// свою полоску загрузки, пока не затихнут стартовые запросы. До старта на месте приложения пусто, видна заставка из index.html
+function AfterLoad({ children }) {
+  const [ready, setReady] = React.useState(pageIsReady);
+  React.useEffect(() => { if (!ready) afterLoad(() => setReady(true)); }, [ready]);
+  return ready ? children : null;
+}
+
 // v79 (Доп. 392): уроки своей роли просим сразу, параллельно с запуском React. Главной карточке нужно название урока,
 // а раньше запрос уходил, только когда App дочитает профиль из хранилища. Повторный вызов из App — тот же промис.
-try {
-  const p = JSON.parse(localStorage.getItem("sa_profile") || "null");
-  const uk = p && p.name ? `_${p.name}_${p.surname || ""}` : "";
-  const r = uk ? JSON.parse(localStorage.getItem("sa_last_role" + uk) || "null") : null;
-  if (typeof r === "string" && r) loadRoleModules(r).catch(() => {});
-} catch (e) {}
+// v140 (Доп. 456): «сразу» — после загрузки страницы (afterLoad), вместе с запуском App
+afterLoad(() => {
+  try {
+    const p = JSON.parse(localStorage.getItem("sa_profile") || "null");
+    const uk = p && p.name ? `_${p.name}_${p.surname || ""}` : "";
+    const r = uk ? JSON.parse(localStorage.getItem("sa_last_role" + uk) || "null") : null;
+    if (typeof r === "string" && r) loadRoleModules(r).catch(() => {});
+  } catch (e) {}
+});
 
 // Внешний рубеж: внутренний ErrorBoundary живёт ВНУТРИ App и не ловит
 // краш самого верхнего уровня App — тогда #root пустел молча, а заставка
@@ -62,7 +74,7 @@ if (GUEST_THANKS) {
   ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
       <BootBoundary>
-        <App />
+        <AfterLoad><App /></AfterLoad>
       </BootBoundary>
     </React.StrictMode>
   );

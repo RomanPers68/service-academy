@@ -259,7 +259,9 @@ describe("v108: демо-сервер — то же, что этап 42", () => 
     { id: "e-x", name: "Иван", surname: "Петров", restaurant: "R2", position: "waiter" }];
   const TOK = { tm: "u-m", ta: "e-a", ti: "e-i", tv: "e-v", tx: "e-x" };
   const SST = [{ id: 1, name: "Белов Илья", pos: "bar", bday: "29.10" }, { id: 2, name: "Соколова Вера", pos: "waiter", joined: "29.10.2024" }, { id: 3, name: "Смирнова Анна", pos: "waiter", bday: "01.01" }];
-  const mk = (o = {}) => makeServer({ today: "2026-10-29", rest: "R", people: P, tok: TOK, sstaff: SST, cfg: { shifts: [], staff: SST }, plan: {}, menu: [], tgLinked: ["e-i", "e-v"],
+  // v140: часы демо-сервера — в тот же день, что today: иначе «спасибо за неделю» (8 дней от часов) с 05.11.2026 теряло
+  // карточки 29.10 и тест падал по календарю, а не из-за кода
+  const mk = (o = {}) => makeServer({ today: "2026-10-29", clock: () => new Date("2026-10-29T15:00:00").getTime(), rest: "R", people: P, tok: TOK, sstaff: SST, cfg: { shifts: [], staff: SST }, plan: {}, menu: [], tgLinked: ["e-i", "e-v"],
     peerThanks: [{ from: "u-m", to: "e-a", text: "выручила с банкетом", at: -1, time: "21:50", plus: ["e-v"] }], ...o });
   it("при запуске — «спасибо» прошлых дней и праздники дня по времени: карточки от «Академии»", () => {
     const s = mk(), team = s.teamOf("R"), msgs = s.S.msgs.filter((m) => m.chat === team.id);

@@ -25,7 +25,8 @@
 // «Сервер» → «Уведомления на телефон».
 // v139 (Доп. 454): «О нас» — Анна читает концепцию сети и «Океана» (фото, сосед «Порт», «Прочитал(а)», раздел «Наш
 // ресторан» в треке); Мария правит: новый блок, «Придумать вопросы», «Сообщить команде», «Кто прочитал», «Из документа».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,phone]
+// v140 (Доп. 455): новые темы треков — у Анны «Ядро» (алкоголь), «Бар» и «Хостес» (конфликты), у Марии «Менеджер» (алкоголь).
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -836,6 +837,33 @@ if (!ONLY || ONLY.includes("about")) {
   await shot("o7-doc");
   await page.locator("[data-cn-docadd]").click().catch(() => {}); await page.waitForTimeout(1800);
   ok("«Добавить выбранные»: «Добавлено блоков: N»", /Добавлено блоков: \d+/.test(await page.locator("[data-cn-msg]").innerText().catch(() => "")));
+}
+if (!ONLY || ONLY.includes("lessons")) {
+  // v140 (Доп. 455): трек выбирается в «Сменить» (ключ sa_last_role_<имя>_<фамилия>); здесь — сразу ключом и перезапуском
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; } };
+  // смена человека в демо стирает телефон (трек — «Новичок»), поэтому сначала человек, потом трек тем же человеком
+  const track = async (who, uk, role) => {
+    if (await page.evaluate((w) => localStorage.getItem("__demo_who") !== w, who)) {
+      await page.evaluate((w) => { localStorage.setItem("__demo_who", w); localStorage.removeItem("__demo_me"); }, who);
+      await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(800); await closeDemo();
+    }
+    await page.evaluate(([k, r]) => localStorage.setItem("sa_last_role" + k, JSON.stringify(r)), [uk, role]);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1200); await closeDemo();
+    await page.evaluate(() => window.__saNav && window.__saNav("home")); await page.waitForTimeout(1600); await closeDemo();
+    return page.evaluate(() => [...document.querySelectorAll(".tbp-num")].map((e) => e.getAttribute("aria-label") || "")); };
+  let tp = await track("anna", "_Анна_Смирнова", "core");
+  // в демо первым идёт «Наш ресторан» (О нас, v139): тем на одну больше, новая — последней
+  const lastOf = (a) => a[a.length - 1] || "";
+  ok("«Ядро»: последняя тема — «Алкоголь: вино, крепкое, пиво» (после «Наш ресторан» и шести прежних)", tp.length === 8 && /Алкоголь: вино, крепкое, пиво/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  await shot("l1-core");
+  tp = await track("anna", "_Анна_Смирнова", "bar");
+  ok("«Бар»: последняя тема — «Конфликты: гость у стойки и команда»", tp.length === 8 && /Конфликты: гость у стойки и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  tp = await track("anna", "_Анна_Смирнова", "spg");
+  ok("«Хостес»: последняя тема — «Хостес и команда: конфликты внутри»", tp.length === 12 && /Хостес и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  tp = await track("maria", "_Мария_Ким", "manager");
+  ok("Мария, «Менеджер»: последняя тема — «Алкоголь в заведении: продукт, деньги, закон»", tp.length === 8 && /Алкоголь в заведении/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  await shot("l2-manager");
+  await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); });
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

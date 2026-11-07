@@ -165,7 +165,8 @@ await run("BAR", async () => {
   const o = await open({ who: PETR, srv, role: "bar" });
   await nav(o.page, "home", 1600);
   const tp = await topics(o.page);
-  ok("BAR: трек «Бар» — восемь тем, последняя «Приём и хранение: ЕГАИС, «Честный знак», марки»", tp.length === 8 && /Приём и хранение: ЕГАИС, «Честный знак», марки/.test(tp[7] || ""), JSON.stringify(tp.slice(6)));
+  // v143: дальше — девятая «Инвентарь и оборудование бара»
+  ok("BAR: трек «Бар» — восьмая тема «Приём и хранение: ЕГАИС, «Честный знак», марки»", tp.length >= 8 && /Приём и хранение: ЕГАИС, «Честный знак», марки/.test(tp[7] || ""), JSON.stringify(tp.slice(6)));
   await o.page.locator('.tbp-num[aria-label*="' + TOPIC + '"]').first().click(); await sleep(1100);
   // значок темы — рисунок приложения (коробка с отметкой «принято», ui/icons.jsx), не эмодзи
   ok("BAR: у темы значок приложения — коробка с отметкой, эмодзи на экране нет", (await o.page.locator('svg path[d="M14.4 15.3l1.6 1.5 2.7-3.1"]').count()) >= 1
@@ -226,7 +227,8 @@ await run("MANAGER", async () => {
   const o = await open({ who: MARIA, srv, role: "manager" });
   await nav(o.page, "home", 1600);
   const tp = await topics(o.page);
-  ok("MANAGER: трек «Менеджер» — девять тем: восьмая «Админ на смене», девятая «Приём и хранение»", tp.length === 9 && /Админ на смене/.test(tp[7] || "") && /Приём и хранение/.test(tp[8] || ""), JSON.stringify(tp.slice(7)));
+  // v143: дальше — десятая «Инвентарь и оборудование бара»
+  ok("MANAGER: трек «Менеджер»: восьмая «Админ на смене», девятая «Приём и хранение»", tp.length >= 9 && /Админ на смене/.test(tp[7] || "") && /Приём и хранение/.test(tp[8] || ""), JSON.stringify(tp.slice(7)));
   await toLesson(o.page, TOPIC, "Контроль: смена, месяц, документы");
   await feed(o.page); await sleep(600);
   const t = await body(o.page);
@@ -268,13 +270,14 @@ await run("CHECK", async () => {
   await shot(o.page, "check-open");
   await o.page.getByText("Закрытие", { exact: true }).first().click(); await sleep(900);
   t = await body(o.page);
-  ok("CHECK: «Закрытие» — «ЕГАИС и ЭДО: накладные, УПД, акты за день» после кассы", /Касса сведена ЕГАИС и ЭДО: накладные, УПД, акты за день Техника и свет выключены/.test(t) && /0\/7/.test(t), t.slice(0, 240));
-  for (const s of ["Столы убраны, зал готов на завтра", "Касса сведена", "ЕГАИС и ЭДО: накладные, УПД, акты за день", "Техника и свет выключены", "Стоп-лист обновлён", "Уборка завершена", "Закрытие и сигнализация"]) {
+  // v143 (Доп. 463): за ЕГАИС — «Бар: кофемашина, стаканомойка, краны, блендер», пунктов восемь
+  ok("CHECK: «Закрытие» — «ЕГАИС и ЭДО: накладные, УПД, акты за день» после кассы", /Касса сведена ЕГАИС и ЭДО: накладные, УПД, акты за день Бар: кофемашина, стаканомойка, краны, блендер Техника и свет выключены/.test(t) && /0\/8/.test(t), t.slice(0, 240));
+  for (const s of ["Столы убраны, зал готов на завтра", "Касса сведена", "ЕГАИС и ЭДО: накладные, УПД, акты за день", "Бар: кофемашина, стаканомойка, краны, блендер", "Техника и свет выключены", "Стоп-лист обновлён", "Уборка завершена", "Закрытие и сигнализация"]) {
     await o.page.getByText(s, { exact: true }).first().click(); await sleep(350);
   }
   await sleep(900);
   const ck = [...srv.calls].reverse().find((c) => c.fn === "checklist_check" && c.body.p_kind === "close");
-  ok("CHECK: семь из семи — «Закрытие: всё готово», на сервер ушло p_total 7 и c7", /«Закрытие»: всё готово/.test(await body(o.page)) && !!ck && ck.body.p_total === 7 && ck.body.p_checked.includes("c7"), JSON.stringify(ck && ck.body));
+  ok("CHECK: восемь из восьми — «Закрытие: всё готово», на сервер ушло p_total 8 и c7", /«Закрытие»: всё готово/.test(await body(o.page)) && !!ck && ck.body.p_total === 8 && ck.body.p_checked.includes("c7"), JSON.stringify(ck && ck.body));
   await shot(o.page, "check-close");
   await nav(o.page, "shift", 2200);
   const st = await o.page.locator('[data-routine-sub="close"]').innerText().catch(() => "");
@@ -285,11 +288,11 @@ await run("CHECK", async () => {
 
 await run("MORNING", async () => {
   const srv = srvOf({ checklists: { "-1": { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o7", "o6"], done_at: TODAY + "T09:52:00", by_name: "Ольга Л." },
-    close: { checked: ["c1", "c2", "c3", "c4"], done_at: null } } } });
+    close: { checked: ["c1", "c2", "c3", "c4", "c8"], done_at: null } } } });   // v143: c8 «Бар: …» отмечен
   const o = await open({ who: MARIA, srv, role: "manager" });
   await nav(o.page, "morning", 2800);
   const cl = await txt(o.page.locator('[data-mo-row="cl-close"]'));
-  ok("MORNING: «Закрытие: отмечено 4 из 7» и что не отмечено: «ЕГАИС и ЭДО…», «Уборка завершена» и ещё 1", /Закрытие: отмечено 4 из 7/.test(cl)
+  ok("MORNING: «Закрытие: отмечено 5 из 8» и что не отмечено: «ЕГАИС и ЭДО…», «Уборка завершена» и ещё 1", /Закрытие: отмечено 5 из 8/.test(cl)
     && /Не отмечено: «ЕГАИС и ЭДО: накладные, УПД, акты за день», «Уборка завершена» и ещё 1/.test(cl), cl);
   ok("MORNING: у законченного «Открытия» строки «Не отмечено» нет, у неначатой «Предсменки» — тоже", !/Не отмечено/.test(await txt(o.page.locator('[data-mo-row="cl-open"]')))
     && !/Не отмечено/.test(await txt(o.page.locator('[data-mo-row="cl-preshift"]'))));

@@ -47,7 +47,7 @@ describe("v141 (Доп. 457): урок 7 менеджера — в конце т
     expect(M7).toMatchObject({ tag: "Урок 7", title: "Админ на смене: от открытия до планёрки", subtitle: "Распорядок, касса, гоу-лист, цифры и планирование" });
     expect(typeof MOD_SVG[M7.icon]).toBe("function");
     expect(M7.color).toBe(MANAGER_MODULES[0].color);
-    expect([CORE_MODULES.length, BAR_MODULES.length, SPG_MODULES.length, SEASONAL_MODULES.length, SERVICE_MANAGER_MODULES.length]).toEqual([7, 8, 11, 14, 7]);   // v142: у бара bar7
+    expect([CORE_MODULES.length, BAR_MODULES.length, SPG_MODULES.length, SEASONAL_MODULES.length, SERVICE_MANAGER_MODULES.length]).toEqual([7, 9, 11, 14, 7]);   // v142: у бара bar7; v143: bar8
   });
   it("семь уроков, сборка, живой диалог, практика на 8 ситуаций, тест на 20", () => {
     expect(M7.lessons.map((l) => l.type)).toEqual(["lesson", "lesson", "lesson", "lesson", "lesson", "lesson", "lesson", "build", "dialogue", "practice", "quiz"]);
@@ -324,7 +324,7 @@ describe("v141 (Доп. 459): «Распорядок смены»", () => {
     const cl = { ok: true, templates: {}, today: { open: { checked: ["o1", "o2", "o3", "o4", "o5", "o6"], done_at: T0 }, close: { checked: ["c1", "c2", "zz"] } } };
     const s = routineSteps({ cl, brief, go: { ok: true, saved: false, sold: {} } });
     expect(s.map((x) => [x.k, x.title, x.done, x.skip, x.sub])).toEqual([["open", "Открытие", true, false, "готово в 09:05"], ["brief", "Брифинг", true, false, "гоу-лист: 2"],
-      ["close", "Закрытие", false, false, "2 из 7"], ["go", "Итог", false, false, "не записан"]]);   // v142: в «Закрытии» + «ЕГАИС и ЭДО»
+      ["close", "Закрытие", false, false, "2 из 8"], ["go", "Итог", false, false, "не записан"]]);   // v142: в «Закрытии» + «ЕГАИС и ЭДО»; v143: + «Бар: …»
     expect(routineNext(s).k).toBe("close");
     expect(routineLine(s)).toBe("Дальше: чек-лист закрытия");
     const done = routineSteps({ cl: { ok: true, today: { open: { done_at: T0 }, close: { done_at: T1 } } }, brief, go: { ok: true, saved: true, sold: { d1: 12, negroni: 7 } } });

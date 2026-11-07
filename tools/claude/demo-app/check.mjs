@@ -31,7 +31,11 @@
 // «гоу-лист» в меню и гоу-лист в брифинге; у Марии в треке «Менеджер» последняя тема — «Админ на смене».
 // v142 (Доп. 460–461): «Приём и хранение» — у Анны в «Баре» тема и урок, «Хранение» на карточке вина, Наставник по стандарту;
 // у Марии — новые пункты чек-листов, «Утро» с тем, что не отмечено, «Урок 8» и «Сборка: приёмка поставки».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,receive,phone]
+// v143 (Доп. 462–463): «Инвентарь и оборудование бара» — у Анны в «Баре» тема (значок-кубик льда), урок «Лёд», «Сборка: бой
+// стекла у льда», живой диалог «Тут точно 50?», Наставник по стандарту, «Справочник» → «Кофе» → «Чистота машины»; у Марии —
+// пункт «Бар: …» в «Закрытии», «Урок 9» и «Сборка: поломка на смене», «Утро руководителя» в понедельник (демо переводит
+// часы на ближайший понедельник) — строка «Раз в неделю» ведёт в урок «Контроль».
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,receive,equip,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -862,15 +866,16 @@ if (!ONLY || ONLY.includes("lessons")) {
   ok("«Ядро»: последняя тема — «Алкоголь: вино, крепкое, пиво» (после «Наш ресторан» и шести прежних)", tp.length === 8 && /Алкоголь: вино, крепкое, пиво/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   await shot("l1-core");
   tp = await track("anna", "_Анна_Смирнова", "bar");
-  // v142 (Доп. 460): за конфликтами — «Приём и хранение»
-  ok("«Бар»: предпоследняя — «Конфликты: гость у стойки и команда», последняя — «Приём и хранение»", tp.length === 9 && /Конфликты: гость у стойки и команда/.test(tp[7] || "")
-    && /Приём и хранение/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  // v142 (Доп. 460): за конфликтами — «Приём и хранение»; v143 (Доп. 462): за ним — «Инвентарь и оборудование бара»
+  ok("«Бар»: «Конфликты: гость у стойки и команда», «Приём и хранение», последняя — «Инвентарь и оборудование бара»", tp.length === 10
+    && /Конфликты: гость у стойки и команда/.test(tp[tp.length - 3] || "") && /Приём и хранение/.test(tp[tp.length - 2] || "") && /Инвентарь и оборудование бара/.test(lastOf(tp)),
+    tp.length + " · " + lastOf(tp));
   tp = await track("anna", "_Анна_Смирнова", "spg");
   ok("«Хостес»: последняя тема — «Хостес и команда: конфликты внутри»", tp.length === 12 && /Хостес и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   tp = await track("maria", "_Мария_Ким", "manager");
-  // v141 (Доп. 457): за алкоголем — «Админ на смене»; v142 (Доп. 460): за ним — «Приём и хранение»
-  ok("Мария, «Менеджер»: «Алкоголь в заведении», «Админ на смене», последняя — «Приём и хранение»", tp.length === 10 && /Алкоголь в заведении/.test(tp[tp.length - 3] || "")
-    && /Админ на смене/.test(tp[tp.length - 2] || "") && /Приём и хранение/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  // v141 (Доп. 457): за алкоголем — «Админ на смене»; v142 (Доп. 460): за ним — «Приём и хранение»; v143 — «Инвентарь и оборудование»
+  ok("Мария, «Менеджер»: «Админ на смене», «Приём и хранение», последняя — «Инвентарь и оборудование бара»", tp.length === 11
+    && /Админ на смене/.test(tp[tp.length - 3] || "") && /Приём и хранение/.test(tp[tp.length - 2] || "") && /Инвентарь и оборудование бара/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   await shot("l2-manager");
   await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); });
 }
@@ -981,7 +986,7 @@ if (!ONLY || ONLY.includes("receive")) {
   await shot("v5-checklist");
   await nav("morning", 2600); await closeDemo();
   const mo = await page.locator('[data-mo-row="cl-close"]').innerText().catch(() => "");
-  ok("«Утро руководителя»: «Закрытие: отмечено 4 из 7» и «Не отмечено: «ЕГАИС и ЭДО…»»", /отмечено 4 из 7/.test(mo) && /Не отмечено: «ЕГАИС и ЭДО/.test(mo), mo.replace(/\s+/g, " "));
+  ok("«Утро руководителя»: «Закрытие: отмечено 4 из 8» и «Не отмечено: «ЕГАИС и ЭДО…»» (v143: в «Закрытии» восемь)", /отмечено 4 из 8/.test(mo) && /Не отмечено: «ЕГАИС и ЭДО/.test(mo), mo.replace(/\s+/g, " "));
   await down('[data-mo-row="cl-close"]'); await shot("v6-morning");
   await topic();
   ok("«Менеджер»: тема «Урок 8 · Приём и хранение» — 11 шагов (с уроком «Контроль»)", /Урок 8 · 11 шагов/.test(await txt()));
@@ -989,6 +994,79 @@ if (!ONLY || ONLY.includes("receive")) {
   ok("«Сборка: приёмка поставки» — Накладная, Марки, ЕГАИС, УПД, Хранение", (await page.locator(".sa-bld-fnm").allInnerTexts().catch(() => [])).join(",") === "Накладная,Марки,ЕГАИС,УПД,Хранение");
   await shot("v7-build");
   await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); localStorage.setItem("sa_last_role_Анна_Смирнова", JSON.stringify("seasonal")); });
+}
+if (!ONLY || ONLY.includes("equip")) {
+  // v143 (Доп. 462–463): «Инвентарь и оборудование бара»
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; }
+    await page.locator("#demo-tg").click().catch(() => {}); };
+  const nav = async (x, ms = 1500) => { await page.evaluate((v) => window.__saNav && window.__saNav(v), x); await page.waitForTimeout(ms); };
+  const down = async (sel) => { await page.evaluate((q) => { const el = q && document.querySelector(q); if (el) el.scrollIntoView({ block: "center" }); }, sel); await page.waitForTimeout(500); };
+  const who = async (w, uk, role) => {
+    await page.evaluate((x) => { localStorage.setItem("__demo_who", x); localStorage.removeItem("__demo_me"); }, w);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(800); await closeDemo();
+    await page.evaluate(([k, r]) => localStorage.setItem("sa_last_role" + k, JSON.stringify(r)), [uk, role]);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1200); await closeDemo(); };
+  const TOPIC = "Инвентарь и оборудование бара";
+  const topic = async () => { await nav("home", 1600); await closeDemo(); await page.locator('.tbp-num[aria-label*="' + TOPIC + '"]').first().click().catch(() => {}); await page.waitForTimeout(1100); };
+  const step = async (t) => { await page.locator(".tbm-node:not(.tbp-side *)", { hasText: t }).first().click().catch(() => {}); await page.waitForTimeout(1500); };
+  const feed = async () => { await page.evaluate(() => { const b = document.querySelector('[aria-label="Читать лентой"]'); if (b) b.click(); }); await page.waitForTimeout(600); };
+  await page.evaluate(() => localStorage.clear());
+  await who("anna", "_Анна_Смирнова", "bar");
+  await topic();
+  ok("Анна, «Бар»: тема «Урок 8 · Инвентарь и оборудование бара» — 10 шагов, значок-кубик льда", /Урок 8 · 10 шагов/.test(await txt())
+    && (await page.locator('svg path[d="M12 2.8l7.2 4.1v8.2L12 21.2l-7.2-4.1V6.9L12 2.8z"]').count()) > 0);
+  await shot("e1-topic");
+  await step("Лёд: питьевая вода, совок, бой стекла"); await feed();
+  ok("урок «Лёд»: только совком, бой стекла по шагам, весь лёд в утиль", /Набираем только совком/.test(await txt()) && /Весь лёд из ванны или бункера утилизируем/.test(await txt()));
+  await shot("e2-lesson");
+  await topic(); await step("Сборка: бой стекла у льда");
+  ok("«Сборка: бой стекла у льда» — Стоп, Лёд, Осколки, Ёмкость, Свежий лёд", (await page.locator(".sa-bld-fnm").allInnerTexts().catch(() => [])).join(",") === "Стоп,Лёд,Осколки,Ёмкость,Свежий лёд");
+  await shot("e3-build");
+  await topic(); await step("Живой диалог");
+  await page.waitForSelector(".sa-dlg[data-dlg]", { timeout: 8000 }).catch(() => {});
+  ok("живой диалог «Тут точно 50?» (bar-b8-1)", (await page.locator(".sa-dlg[data-dlg]").getAttribute("data-dlg").catch(() => "")) === "bar-b8-1");
+  await page.waitForTimeout(2500); await shot("e4-dialog");
+  await nav("assistant", 1600); await closeDemo();
+  await page.locator(".sa-layer textarea").fill("Как часто мыть кофемашину?").catch(() => {});
+  await page.locator('.sa-layer button:has(path[d="M22 2L11 13"])').click().catch(() => {});
+  await page.waitForTimeout(2600);
+  ok("Наставник: «… в конце каждой смены», трубка после каждого вспенивания (по стандарту, в демо без нейросети)", /в конце каждой смены/.test(await txt()) && /после каждого вспенивания/.test(await txt()));
+  await shot("e5-mentor");
+  await nav("reference", 1600); await closeDemo();
+  await page.getByText("Кофе", { exact: true }).first().click().catch(() => {}); await page.waitForTimeout(1000);
+  await page.locator('[aria-label="Чистота машины = вкус в чашке"]').first().click().catch(() => {}); await page.waitForTimeout(1300);
+  ok("«Справочник» → «Кофе» → «Чистота машины»: «По стандарту холдинга» — группы в конце каждой смены, кофемолка раз в неделю", /По стандарту холдинга/.test(await txt())
+    && /Кофемолка: бункер и жернова — раз в неделю/.test(await txt()));
+  await page.evaluate(() => { const el = [...document.querySelectorAll("*")].find((e) => e.children.length === 0 && /По стандарту холдинга/.test(e.textContent || "")); if (el) el.scrollIntoView({ block: "center" }); }); await page.waitForTimeout(500);
+  await shot("e6-reference");
+  // Мария в понедельник: смещение часов демо (boot.js, «__demo_t») — на ближайший понедельник, 11:00, от настоящего времени
+  await page.evaluate(() => {
+    const t = JSON.parse(localStorage.getItem("__demo_t") || "null") || { off: 0 };
+    const real = Date.now() - (Number(t.off) || 0);
+    const d = new Date(real); const add = ((8 - d.getDay()) % 7) || 7;
+    const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + add, 11, 0, 0);
+    localStorage.clear(); localStorage.setItem("__demo_t", JSON.stringify({ off: mon.getTime() - real, at: real }));
+  });
+  await who("maria", "_Мария_Ким", "manager");
+  const dow = await page.evaluate(() => new Date().getDay());
+  ok("демо: у Марии понедельник", dow === 1, String(dow));
+  await nav("checklist", 2000); await closeDemo();
+  await page.getByText("Закрытие", { exact: true }).first().click().catch(() => {}); await page.waitForTimeout(900);
+  ok("Мария, «Чек-листы» → «Закрытие»: «Бар: кофемашина, стаканомойка, краны, блендер»", /Бар: кофемашина, стаканомойка, краны, блендер/.test(await txt()));
+  await shot("e7-checklist");
+  await nav("morning", 2600); await closeDemo();
+  const wk = await page.locator('[data-mo-row="eqp-week"]').innerText().catch(() => "");
+  ok("«Утро руководителя» в понедельник: «Раз в неделю: график мойки льдогенератора и пивных линий»", /Раз в неделю: график мойки льдогенератора и пивных линий/.test(wk), wk.replace(/\s+/g, " "));
+  await down('[data-mo-row="eqp-week"]'); await shot("e8-morning");
+  await page.locator('[data-mo-row="eqp-week"]').click().catch(() => {}); await page.waitForTimeout(2000);
+  ok("касание — урок «Контроль: смена, неделя, месяц» (первая карточка)", /Контроль: смена, неделя, месяц/.test(await txt()) && /Администратор не моет кофемашину за бармена/.test(await txt()));
+  await shot("e9-control");
+  await topic();
+  ok("«Менеджер»: тема «Урок 9 · Инвентарь и оборудование бара» — 11 шагов", /Урок 9 · 11 шагов/.test(await txt()));
+  await step("Сборка: поломка на смене");
+  ok("«Сборка: поломка на смене» — Отключить, Табличка, Заявка, Посуда, Передача", (await page.locator(".sa-bld-fnm").allInnerTexts().catch(() => [])).join(",") === "Отключить,Табличка,Заявка,Посуда,Передача");
+  await shot("e10-build");
+  await page.evaluate(() => { localStorage.clear(); });
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

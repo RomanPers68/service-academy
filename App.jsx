@@ -3157,7 +3157,11 @@ function ServiceAcademy() {
             else if (dest === "report") { setReportSelf(false); navigate("report"); }
             else if (dest === "checklist") navigate("checklist");
             else if (dest === "chat" && x && x.chat) setChatOpen({ intent: { kind: "chat", id: Number(x.chat), msg: x.msg ? Number(x.msg) : null, at: Date.now() } });
-          }} /></Suspense></div>}
+            else if (dest === "lesson" && x && x.mod) {   // v143 (Доп. 463): проверки оборудования → урок «Контроль»
+              const m = (programModules || []).find((mm) => mm.id === x.mod), l = m && (m.lessons || []).find((ll) => ll.id === x.id);
+              if (m && l) { setActiveModule(m); openLesson(l); } else if (m) openModule(m);
+            }
+          }} lessonOn={!!(programModules || []).find((mm) => mm.id === "m9")} /></Suspense></div>}
         {/* v107 (Доп. 420): новичок — «Первая неделя» (первая смена с памяткой, наставник, план и темы с собеседования) и
             «Новички» (руководитель: наставники, собеседования, памятка, «Представить команде»; наставник — свои новички) */}
         {screen === "newbie" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbieScreen T={T} a11y={a11y} profile={profile}

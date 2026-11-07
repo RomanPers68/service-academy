@@ -36,8 +36,8 @@ const TITLES = ["Приёмка: накладная, марки, ответ в �
 
 describe("v142 (Доп. 460): тема в конце треков бара и менеджера, прежнее не тронуто", () => {
   it("бар — восьмая тема «Урок 7», менеджер — девятая «Урок 8»; остальные треки как были", () => {
-    expect(BAR_MODULES.map((m) => m.id)).toEqual(["bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7"]);
-    expect(MANAGER_MODULES.map((m) => m.id)).toEqual(["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"]);
+    expect(BAR_MODULES.map((m) => m.id).slice(0, 8)).toEqual(["bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7"]);   // v143: дальше bar8 «Инвентарь и оборудование бара»
+    expect(MANAGER_MODULES.map((m) => m.id).slice(0, 9)).toEqual(["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"]);   // v143: дальше m9
     expect([CORE_MODULES.length, SPG_MODULES.length, SEASONAL_MODULES.length, SERVICE_MANAGER_MODULES.length]).toEqual([7, 11, 14, 7]);
     for (const [m, tag, sub, first] of [[B7, "Урок 7", "Накладные, марки, кеги, касса, лицензия и сроки", BAR_MODULES[0]], [M8, "Урок 8", "Приёмка, касса, кеги, лицензия и контроль смены", MANAGER_MODULES[0]]]) {
       expect(m).toMatchObject({ tag, title: "Приём и хранение: ЕГАИС, «Честный знак», марки", subtitle: sub, icon: "📦" });
@@ -227,7 +227,7 @@ describe("v142 (Доп. 461): «Хранение» на карточке «Ба�
 describe("v142 (Доп. 461): чек-листы по умолчанию и «Утро руководителя»", () => {
   it("«Открытие» — семь пунктов (вскрытые бутылки после бара), «Закрытие» — семь (ЕГАИС и ЭДО после кассы), «Предсменка» как была", () => {
     expect(DEFAULT_CHECKLISTS.open.map((x) => x.id)).toEqual(["o1", "o2", "o3", "o4", "o5", "o7", "o6"]);
-    expect(DEFAULT_CHECKLISTS.close.map((x) => x.id)).toEqual(["c1", "c2", "c7", "c3", "c4", "c5", "c6"]);
+    expect(DEFAULT_CHECKLISTS.close.map((x) => x.id)).toEqual(["c1", "c2", "c7", "c8", "c3", "c4", "c5", "c6"]);   // v143: + c8 «Бар: …» после ЕГАИС
     expect(DEFAULT_CHECKLISTS.preshift.length).toBe(5);
     expect(CL_KINDS.map(([k]) => k)).toEqual(["open", "preshift", "close"]);
     const ids = Object.values(DEFAULT_CHECKLISTS).flat().map((x) => x.id);
@@ -235,8 +235,8 @@ describe("v142 (Доп. 461): чек-листы по умолчанию и «У�
   });
   it("что не отмечено: по порядку списка, две позиции и «и ещё N»", () => {
     const items = DEFAULT_CHECKLISTS.close;
-    expect(clLeft(items, ["c1", "c2", "c3", "c4"])).toEqual(["ЕГАИС и ЭДО: накладные, УПД, акты за день", "Уборка завершена", "Закрытие и сигнализация"]);
-    expect(clLeftLine(clLeft(items, ["c1", "c2", "c3", "c4"]))).toBe("Не отмечено: «ЕГАИС и ЭДО: накладные, УПД, акты за день», «Уборка завершена» и ещё 1");
+    expect(clLeft(items, ["c1", "c2", "c3", "c4", "c8"])).toEqual(["ЕГАИС и ЭДО: накладные, УПД, акты за день", "Уборка завершена", "Закрытие и сигнализация"]);   // v143: c8 отмечен
+    expect(clLeftLine(clLeft(items, ["c1", "c2", "c3", "c4", "c8"]))).toBe("Не отмечено: «ЕГАИС и ЭДО: накладные, УПД, акты за день», «Уборка завершена» и ещё 1");
     expect(clLeftLine(["Касса сведена"])).toBe("Не отмечено: «Касса сведена»");
     expect(clLeftLine(clLeft(items, items.map((x) => x.id)))).toBe(null);
     expect(clLeft(null, null)).toEqual([]);
@@ -272,7 +272,8 @@ describe("v142 (Доп. 461): Наставник по стандарту при�
     expect(pair[0].content).not.toContain("[Стандарт холдинга, приём и хранение");
   });
   it("«О нас» → «Структура»: подсказка — кто принимает поставки (ЕГАИС и ЭДО)", () => {
-    expect(CN_KINDS.find((k) => k.kind === "structure").hint).toBe("Руководители, к кому с каким вопросом, кто принимает поставки (ЕГАИС и ЭДО)");
+    // v143 (Доп. 463): подсказка дополнена баллонами CO2 и ремонтом техники (tests/v143)
+    expect(CN_KINDS.find((k) => k.kind === "structure").hint).toContain("поставки (ЕГАИС и ЭДО)");
   });
   it("демо: Наставник отвечает по стандарту без нейросети", () => {
     const s = rd("tools/claude/demo-app/boot.js");

@@ -529,6 +529,14 @@ export const BUILD_SVG = {
       <path d="M3.4 7.6L12 11.8l8.6-4.2M12 11.8v9" />
     </svg>
   ),
+  // v143 (Доп. 462): вилка — «Отключить» в «Сборке: поломка на смене»
+  plug: (c, s=20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3.2v4.2M15 3.2v4.2" />
+      <path d="M6.4 7.4h11.2v3.4a5.6 5.6 0 0 1-11.2 0V7.4z" />
+      <path d="M12 16.4v4.4" />
+    </svg>
+  ),
   mint: (c, s=26) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 21.4V9.6" />

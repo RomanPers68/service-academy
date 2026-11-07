@@ -14,6 +14,7 @@ import { GlyphMark } from "./glyphs";   // v110 (Доп. 423): значки ст
 import { DEFAULT_CHECKLISTS, CL_KINDS, clLeft, clLeftLine } from "../lib/checklists";   // v141: прямо из lib — экран чек-листов сюда больше не тянется; v142 — что не отмечено
 import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
 import { goNormalize, goSoldLine } from "../lib/golist-day";   // v141 (Доп. 458): вчерашний гоу-лист и его итог
+import { eqpChecks, EQP_LESSON } from "../lib/equip-checks";   // v143 (Доп. 463): по понедельникам — проверки оборудования бара
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
@@ -28,8 +29,9 @@ const openOut = (url) => {
 };
 const errText = (r) => (r && r.error === "auth" ? "Сессия устарела. Войди заново." : r && r.error === "forbidden" ? "Этот экран только у руководителей." : "Нет связи. Попробуй ещё раз.");
 
-/** onGo(куда, что): schedule | brief | menu | thanks | report | checklist | chat ({ chat, msg }); onRemind — подключить Telegram. */
-export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRemind = null }) {
+/** onGo(куда, что): schedule | brief | menu | thanks | report | checklist | chat ({ chat, msg }) | lesson ({ mod, id }); onRemind — подключить
+ * Telegram; lessonOn — тема «Инвентарь и оборудование бара» менеджера есть в программе (строки проверок оборудования ведут в «Контроль»). */
+export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRemind = null, lessonOn = false }) {
   const c = P(a11y);
   const [st, setSt] = React.useState({ phase: "load" });
   const [cl, setCl] = React.useState(null);           // вчерашние чек-листы: { kind: { log, total } } или null
@@ -154,6 +156,8 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
             {b.brief.done ? row("brief", "ok", "Брифинг отправлен" + (b.brief.at ? " в " + b.brief.at : ""), { icon: "brief", go: () => onGo("brief") })
               : row("brief", "warn", "Брифинг на сегодня ещё не собран", { icon: "brief", sub: "Стоп-лист, акценты дня, брони: соберёшь за пару минут, команда получит в Telegram.",
                 extra: <button type="button" style={main} data-lens-btn="main" data-mo-brief="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onGo("brief"); }}>Собрать брифинг</button> })}
+            {/* v143 (Доп. 463): по понедельникам — недельная проверка оборудования бара, в первый понедельник месяца — и месячная */}
+            {eqpChecks(b.day).map((x) => row(x.k, "info", x.title, { icon: "calendar", sub: x.sub, go: lessonOn ? () => onGo("lesson", EQP_LESSON) : null }))}
           </div>
 
           {b.sched || b.open.length ? (<>

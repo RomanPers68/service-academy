@@ -382,6 +382,14 @@ export const MOD_SVG = {
   "⭐": (c, s=30) => ROLE_SVG.core(c, s),
   "🏛️": (c, s=30) => ROLE_SVG.service_manager(c, s),
   "🎓": (c, s=30) => UI_SVG.gradcap(c, s),
+  // v142 (Доп. 460): «Приём и хранение» у бара и менеджера — коробка поставки с отметкой «принято»
+  "📦": (c, s=30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 7.8L12 3.6l8.5 4.2v8.6L12 20.6l-8.5-4.2V7.8z" />
+      <path d="M3.5 7.8L12 12l8.5-4.2M12 12v8.6" />
+      <path d="M14.4 15.3l1.6 1.5 2.7-3.1" />
+    </svg>
+  ),
 };
 
 // Эмодзи-маркеры строк урока — убираются из текста и заменяются SVG при рендере

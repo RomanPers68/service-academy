@@ -28,7 +28,7 @@ describe("v140: новые темы — в конце треков, прежни
   it("ядро, менеджер, бар — седьмая тема «Урок 6», хостес — одиннадцатая «Урок 10»", () => {
     expect(CORE_MODULES.map((m) => m.id)).toEqual(["c0", "c1", "c2", "c3", "c4", "c5", "c6"]);
     expect(MANAGER_MODULES.map((m) => m.id).slice(0, 7)).toEqual(["m0", "m1", "m2", "m3", "m4", "m5", "m6"]);   // v141: дальше m7 «Админ на смене»
-    expect(BAR_MODULES.map((m) => m.id)).toEqual(["bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6"]);
+    expect(BAR_MODULES.map((m) => m.id).slice(0, 7)).toEqual(["bar0", "bar1", "bar2", "bar3", "bar4", "bar5", "bar6"]);   // v142: дальше bar7 «Приём и хранение»
     expect(last(SPG_MODULES).id).toBe("spg-m10");
     expect(SPG_MODULES.length).toBe(11);
     expect([mod("core").tag, mod("manager").tag, mod("bar").tag, mod("spg").tag]).toEqual(["Урок 6", "Урок 6", "Урок 6", "Урок 10"]);

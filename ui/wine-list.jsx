@@ -52,6 +52,7 @@ import { TasteBars } from "./taste";   // v132: вкус по шкалам
 import { tasteConfirmed } from "../lib/taste";
 import { bottleUrl } from "../lib/bottle-art";   // v136: нарисованная бутылка вместо пустой рамки
 import { readSomRules, withSomRules } from "../lib/sommelier";   // v136: «Советуем» — та же отметка, что «☆ Первым» в «Сомелье»
+import { storeOf } from "../lib/bar-storage";   // v142 (Доп. 461): «Хранение» по стандарту холдинга
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
@@ -270,6 +271,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   if (w) {
     const pairs = (w.pair || []).map(dishName).filter(Boolean);
     const serve = K.cardServe(w);
+    const store = storeOf(K.kind, w);   // v142: условия хранения и срок вскрытой бутылки
     const inCocktails = K.kind === "spirit" ? spiritCocktails(w, cocktails) : [];   // v127: в каких коктейлях нашего бара
     const tp = titleParts(K, w);   // v128: «Русское / Original» — заголовок и строка оригинала
     const sec = (t) => <div style={{ ...labelStyle(13.5), color: gold, margin: "16px 0 6px" }}>{t}</div>;
@@ -352,6 +354,9 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
               {edit ? <button type="button" className="sa-btn" data-taste-ok="" data-lens-btn="soft" data-lens-ink="" onClick={() => confirmTaste(w)} disabled={busy}
                 style={{ ...chip(false), color: text, padding: "5px 11px" }}>Верно</button> : null}</div> : null}</> : null}
           {serve ? <>{sec("Подача")}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.5 }}>{serve}</div></> : null}
+          {store ? <>{sec("Хранение")}<div data-wine-store={K.kind} style={{ fontSize: 14.5, color: text, lineHeight: 1.5 }}>{store.keep}</div>
+            {store.open ? <div data-wine-open="" style={{ fontSize: 13.5, color: sub, lineHeight: 1.5, marginTop: 4 }}>Вскрытая: {store.open}</div> : null}
+            {store.sticker ? <div data-wine-sticker="" style={{ fontSize: 13.5, color: sub, lineHeight: 1.5, marginTop: 2 }}>{store.sticker}</div> : null}</> : null}
           {w.story ? <>{sec(K.t.about)}<div style={{ fontSize: 14.5, color: text, lineHeight: 1.6 }}>{w.story}</div></> : null}
           {inCocktails.length ? <>{sec("В коктейлях нашего бара")}<div data-spirit-cocktails={inCocktails.length} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{inCocktails.map((c) => {
             const go = () => { if (onOpenCocktail) { vibrate("light"); onOpenCocktail(c.id, w.id); } };   // v128: карточка коктейля здесь же, «назад» вернёт сюда

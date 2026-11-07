@@ -23,7 +23,7 @@ describe("v75: эмодзи в коде остались только ключа
     // файл → сколько эмодзи осталось после v75 (ключи MOD_SVG, маркеры ✅/❌/📌 в шпаргалках SOS и уроках,
     // карта «эмодзи → значок», правила значков своих разделов, иконки ролей и семейств в данных)
     const ALLOWED = {
-      "ui/ReferenceSection.jsx": 9, "ui/candidate.jsx": 3, "ui/content-editor.jsx": 21, "ui/icons.jsx": 38, "ui/radio.jsx": 1,
+      "ui/ReferenceSection.jsx": 9, "ui/candidate.jsx": 3, "ui/content-editor.jsx": 21, "ui/icons.jsx": 39, "ui/radio.jsx": 1,   // v142: + ключ «📦» (значок темы «Приём и хранение»)
       "ui/screens-dialogue.jsx": 7, "ui/screens-learning.jsx": 13, "ui/sos.jsx": 38, "ui/table.jsx": 11, "ui/widgets.jsx": 1,
       "lib/custom-modules.js": 3, "lib/mastery.js": 14, "lib/pdf.js": 2, "lib/practice-mistake.js": 1, "lib/radio.js": 1,
       "lib/reference-context.js": 1, "lib/situation-icons.js": 82, "lib/table-pick.js": 1, "lib/tracks.js": 20, "data/roles.js": 6,

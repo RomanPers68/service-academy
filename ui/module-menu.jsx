@@ -27,6 +27,7 @@ function detail(l, est) {
   if (l.type === "quiz") return q ? q + " " + plural(q, "вопрос", "вопроса", "вопросов") : "тест раздела";
   if (l.type === "practice") return s ? s + " " + plural(s, "ситуация", "ситуации", "ситуаций") : "игра";
   if (l.type === "dialogue") return "разговор с гостем";
+  if (l.type === "build" && l.flow) return "собери по шагам";   // v142: «Приёмка поставки» у бара — по шагам, а не у стойки
   if (l.type === "build") return l.role && l.role !== "bar" ? "собери по шагам" : "собери у стойки";   // v141: «Сборка» менеджера — не у стойки
   return "≈ " + est + " мин";
 }

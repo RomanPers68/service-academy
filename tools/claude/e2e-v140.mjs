@@ -233,7 +233,8 @@ await run("BAR", async () => {
   const o = await open({ who: PETR, srv, role: "bar" });
   await nav(o.page, "home", 1600);
   const tp = await topics(o.page);
-  ok("BAR: трек «Бар» — семь тем, последняя «Конфликты: гость у стойки и команда»", tp.length === 7 && /Конфликты: гость у стойки и команда/.test(tp[6]), JSON.stringify(tp.slice(-1)));
+  // v142: дальше восьмая тема «Урок 7 · Приём и хранение», поэтому «Конфликты» — седьмая, но уже не последняя
+  ok("BAR: трек «Бар» — седьмая тема «Конфликты: гость у стойки и команда»", tp.length >= 7 && /Конфликты: гость у стойки и команда/.test(tp[6]), JSON.stringify(tp.slice(6)));
   await toLesson(o.page, "Конфликты: гость у стойки и команда", "Бар и зал: очередь, ошибки, стоп-лист");
   await feed(o.page); await sleep(500);
   ok("BAR: урок «Бар и зал» — «Горит» по договорённости, стоп-лист в чат смены", /«Горит»/.test(await body(o.page)) && /в чат смены/.test(await body(o.page)));

@@ -11,7 +11,7 @@ import { vibrate } from "../lib/utils";
 import { lateMinText } from "../lib/late";
 import { GOLD, labelStyle } from "./tokens";
 import { GlyphMark } from "./glyphs";   // v110 (Доп. 423): значки строк по смыслу
-import { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";   // v141: прямо из lib — экран чек-листов сюда больше не тянется
+import { DEFAULT_CHECKLISTS, CL_KINDS, clLeft, clLeftLine } from "../lib/checklists";   // v141: прямо из lib — экран чек-листов сюда больше не тянется; v142 — что не отмечено
 import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
 import { goNormalize, goSoldLine } from "../lib/golist-day";   // v141 (Доп. 458): вчерашний гоу-лист и его итог
 
@@ -52,7 +52,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
           const out = {};
           CL_KINDS.forEach(([k]) => {
             const t = d.templates && Array.isArray(d.templates[k]) && d.templates[k].length ? d.templates[k] : DEFAULT_CHECKLISTS[k] || [];
-            out[k] = { log: (d.today && d.today[k]) || {}, total: t.length, ids: t.map((x) => x.id) };
+            out[k] = { log: (d.today && d.today[k]) || {}, total: t.length, ids: t.map((x) => x.id), items: t };
           });
           setCl(out);
         }).catch(() => setCl(null));
@@ -188,8 +188,10 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
               const x = cl[k], ch = (x.log.checked || []).filter((id) => x.ids.includes(id)).length;
               const at = x.log.done_at ? new Date(x.log.done_at) : null;
               const done = !!(at && !isNaN(at));
+              // v142 (Доп. 461): начатый и не закрытый чек-лист называет, что не отмечено (например, «ЕГАИС и ЭДО…» в «Закрытии»)
+              const left = !done && ch ? clLeftLine(clLeft(x.items, x.log.checked)) : null;
               rows.push(row("cl-" + k, done ? "ok" : "warn", t + ": " + (done ? String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0") + (x.log.by_name ? " · " + x.log.by_name : "")
-                : ch ? "отмечено " + ch + " из " + x.total : "не отмечено"), { first: !rows.length, icon: "checklist", go: () => onGo("checklist") }));
+                : ch ? "отмечено " + ch + " из " + x.total : "не отмечено"), { first: !rows.length, icon: "checklist", sub: left, go: () => onGo("checklist") }));
             });
             return rows.length ? (<>{h("Вчера", null, "yday")}<div style={card} data-lens-card="" data-mo-sec="yday">{rows}</div></>) : null;
           })()}

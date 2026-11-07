@@ -215,9 +215,10 @@ await run("SCREEN", async () => {
     && /Дарья Л\. опаздывает на 20 минут/.test(await textOf(a.page, "late-e-darya")) && /ещё не собран/.test(await textOf(a.page, "brief")), rows.join(","));
   ok("SCREEN: неделя — заявки Веры и «Ищем в смену»", rows.includes("open-" + srv.give.id) && rows.includes("open-" + srv.need.id) && /Вера С\. отдаёт смену/.test(await textOf(a.page, "open-" + srv.give.id)), rows.join(","));
   ok("SCREEN: стоп-лист — два блюда", (await a.page.locator('[data-mo-h="stop"]').innerText()).includes("2") && /,/.test(await textOf(a.page, "stop")));
-  ok("SCREEN: вчера — «спасибо» с цитатой, брифинг, занятия, чек-листы (открытие 09:52, закрытие 2 из 6)",
+  // v142: в «Закрытии» по умолчанию семь пунктов (+ «ЕГАИС и ЭДО»)
+  ok("SCREEN: вчера — «спасибо» с цитатой, брифинг, занятия, чек-листы (открытие 09:52, закрытие 2 из 7)",
     /Гости сказали спасибо 3 раза: Анна С\. \(2\), Пётр О\./.test(await textOf(a.page, "thanks")) && /«Анна подсказала с вином, всё было идеально»/.test(await textOf(a.page, "thanks"))
-    && rows.includes("yreads") && rows.includes("learn") && /Открытие: 09:52 · Ольга Л\./.test(await textOf(a.page, "cl-open")) && /Закрытие: отмечено 2 из 6/.test(await textOf(a.page, "cl-close"))
+    && rows.includes("yreads") && rows.includes("learn") && /Открытие: 09:52 · Ольга Л\./.test(await textOf(a.page, "cl-open")) && /Закрытие: отмечено 2 из 7/.test(await textOf(a.page, "cl-close"))
     && /Предсменка: не отмечено/.test(await textOf(a.page, "cl-preshift")), rows.join(","));
   ok("SCREEN: давно не занимались — Пётр (9 дней) с «Напомнить», Дарья (ни разу) без Telegram", /9 дней без занятий/.test(await textOf(a.page, "idle-e-petr"))
     && (await a.page.locator('[data-mo-nudge="e-petr"]').count()) === 1 && /нет Telegram/.test(await textOf(a.page, "idle-e-darya")), rows.join(","));

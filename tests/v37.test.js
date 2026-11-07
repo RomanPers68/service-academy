@@ -103,9 +103,9 @@ describe("переписка: слова, ритм, реакции (Доп. 348)
 
 describe("ответы с подвохом: верный не угадывается по длине (Доп. 349)", () => {
   const choices = DIALOGUES_DATA.flatMap((d) => d.steps.filter((s) => s.type === "choice").map((s) => ({ d, s })));
-  it("55 сценариев, 212 выборов, в каждом — ровно один верный, у каждого варианта есть разбор", () => {
-    expect(DIALOGUES_DATA.length).toBe(55);   // v140: + «Опять ко мне?» (хостес, урок 10); v141: + «Касса не сходится» (менеджер, урок 7)
-    expect(choices.length).toBe(212);
+  it("56 сценариев, 216 выборов, в каждом — ровно один верный, у каждого варианта есть разбор", () => {
+    expect(DIALOGUES_DATA.length).toBe(56);   // v140: + «Опять ко мне?» (хостес, урок 10); v141: + «Касса не сходится» (менеджер, урок 7); v142: + «Экспедитор торопит» (бар и менеджер)
+    expect(choices.length).toBe(216);
     for (const { d, s } of choices) {
       expect(s.options.length, d.id).toBeGreaterThanOrEqual(2);
       expect(s.options.filter((o) => o.correct).length, d.id + ": " + s.prompt).toBe(1);

@@ -29,7 +29,9 @@
 // v141 (Доп. 457–459): Мария — «Распорядок смены» в «Смене» (шаги открывают чек-лист и брифинг), брифинг с гоу-листом «Как вчера»,
 // итог за сегодня, «Утро руководителя» со вчерашним гоу-листом, «График» с напоминанием по ТК РФ, ст. 103; Анна — метка
 // «гоу-лист» в меню и гоу-лист в брифинге; у Марии в треке «Менеджер» последняя тема — «Админ на смене».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,phone]
+// v142 (Доп. 460–461): «Приём и хранение» — у Анны в «Баре» тема и урок, «Хранение» на карточке вина, Наставник по стандарту;
+// у Марии — новые пункты чек-листов, «Утро» с тем, что не отмечено, «Урок 8» и «Сборка: приёмка поставки».
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,receive,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -860,13 +862,15 @@ if (!ONLY || ONLY.includes("lessons")) {
   ok("«Ядро»: последняя тема — «Алкоголь: вино, крепкое, пиво» (после «Наш ресторан» и шести прежних)", tp.length === 8 && /Алкоголь: вино, крепкое, пиво/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   await shot("l1-core");
   tp = await track("anna", "_Анна_Смирнова", "bar");
-  ok("«Бар»: последняя тема — «Конфликты: гость у стойки и команда»", tp.length === 8 && /Конфликты: гость у стойки и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  // v142 (Доп. 460): за конфликтами — «Приём и хранение»
+  ok("«Бар»: предпоследняя — «Конфликты: гость у стойки и команда», последняя — «Приём и хранение»", tp.length === 9 && /Конфликты: гость у стойки и команда/.test(tp[7] || "")
+    && /Приём и хранение/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   tp = await track("anna", "_Анна_Смирнова", "spg");
   ok("«Хостес»: последняя тема — «Хостес и команда: конфликты внутри»", tp.length === 12 && /Хостес и команда/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   tp = await track("maria", "_Мария_Ким", "manager");
-  // v141 (Доп. 457): за алкоголем — «Админ на смене»
-  ok("Мария, «Менеджер»: предпоследняя — «Алкоголь в заведении», последняя — «Админ на смене: от открытия до планёрки»", tp.length === 9 && /Алкоголь в заведении/.test(tp[tp.length - 2] || "")
-    && /Админ на смене/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
+  // v141 (Доп. 457): за алкоголем — «Админ на смене»; v142 (Доп. 460): за ним — «Приём и хранение»
+  ok("Мария, «Менеджер»: «Алкоголь в заведении», «Админ на смене», последняя — «Приём и хранение»", tp.length === 10 && /Алкоголь в заведении/.test(tp[tp.length - 3] || "")
+    && /Админ на смене/.test(tp[tp.length - 2] || "") && /Приём и хранение/.test(lastOf(tp)), tp.length + " · " + lastOf(tp));
   await shot("l2-manager");
   await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); });
 }
@@ -930,6 +934,61 @@ if (!ONLY || ONLY.includes("routine")) {
   await toBar("cocktail", 2200); await closeDemo();
   ok("Анна: «Барная карта» → «Коктейли»: у «Негрони» метка «гоу-лист»", (await page.locator("[data-go-badge]").count()) >= 1);
   await shot("r7-badge");
+}
+if (!ONLY || ONLY.includes("receive")) {
+  // v142 (Доп. 460–461): «Приём и хранение» — Анна в треке «Бар»: тема (значок-коробка, 10 шагов), урок «Хранение», «Барная
+  // карта» → «Хранение» на карточке вина, Наставник по стандарту (в демо без нейросети); Мария: «Чек-листы» с новыми пунктами,
+  // «Утро руководителя» — что вчера не отмечено, «Менеджер» → «Урок 8» и «Сборка: приёмка поставки».
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; }
+    await page.locator("#demo-tg").click().catch(() => {}); };
+  const nav = async (x, ms = 1500) => { await page.evaluate((v) => window.__saNav && window.__saNav(v), x); await page.waitForTimeout(ms); };
+  const down = async (sel) => { await page.evaluate((q) => { const el = q && document.querySelector(q); if (el) el.scrollIntoView({ block: "center" }); }, sel); await page.waitForTimeout(500); };
+  const who = async (w, uk, role) => {
+    await page.evaluate((x) => { localStorage.setItem("__demo_who", x); localStorage.removeItem("__demo_me"); }, w);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(800); await closeDemo();
+    await page.evaluate(([k, r]) => localStorage.setItem("sa_last_role" + k, JSON.stringify(r)), [uk, role]);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1200); await closeDemo(); };
+  const topic = async () => { await nav("home", 1600); await closeDemo(); await page.locator('.tbp-num[aria-label*="Приём и хранение"]').first().click().catch(() => {}); await page.waitForTimeout(1100); };
+  const step = async (t) => { await page.locator(".tbm-node:not(.tbp-side *)", { hasText: t }).first().click().catch(() => {}); await page.waitForTimeout(1500); };
+  await page.evaluate(() => localStorage.clear());
+  await who("anna", "_Анна_Смирнова", "bar");
+  await topic();
+  ok("Анна, «Бар»: тема «Урок 7 · Приём и хранение» — 10 шагов, значок-коробка", /Урок 7 · 10 шагов/.test(await txt()) && (await page.locator('svg path[d="M14.4 15.3l1.6 1.5 2.7-3.1"]').count()) >= 1);
+  await shot("v1-topic");
+  await step("Хранение: лицензия, условия, вскрытые бутылки");
+  await page.evaluate(() => { const b = document.querySelector('[aria-label="Читать лентой"]'); if (b) b.click(); }); await page.waitForTimeout(600);
+  ok("урок «Хранение»: адрес из лицензии, тихое вино 3 суток, «В приложении»", /только в месте, указанном в лицензии/.test(await txt()) && /Тихое вино — 3 суток/.test(await txt()) && /«Барная карта» → карточка вина/.test(await txt()));
+  await shot("v2-lesson");
+  await toBar("wine", 2200); await closeDemo();
+  // первый вход в «Барную карту» — подсказка в три шага (как в разделе maria): пролистать её «Дальше», потом вкладка «Вина»
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => { const h = [...document.querySelectorAll(".sa-hintin")].pop(); const b = h && [...h.querySelectorAll('[data-lens-btn="main"]')].pop(); if (b) b.click(); }); await page.waitForTimeout(500); }
+  await page.locator('[data-bar-tab="wine"]').click().catch(() => {}); await page.waitForTimeout(800);
+  await page.locator("[data-wine-row]", { hasText: "Шабли" }).first().click().catch(() => {}); await page.waitForTimeout(1200);
+  const st = (await page.locator("[data-wine-store]").innerText().catch(() => "")) + " " + (await page.locator("[data-wine-open]").innerText().catch(() => ""));
+  ok("«Барная карта» → Шабли: «Хранение» 10–14 °C, вскрытая — 3 суток, стикер", /10–14 °C/.test(st) && /3 суток с вакуумной пробкой/.test(st) && (await page.locator("[data-wine-sticker]").count()) === 1, st);
+  await down("[data-wine-store]"); await shot("v3-card");
+  await nav("assistant", 1600); await closeDemo();
+  await page.locator(".sa-layer textarea").fill("Что делать, если у бутылки нет марки?").catch(() => {});
+  await page.locator('.sa-layer button:has(path[d="M22 2L11 13"])').click().catch(() => {});
+  await page.waitForTimeout(2600);
+  ok("Наставник: «бутылку без марки… не принимаем ни в каком виде» (по стандарту, в демо без нейросети)", /не принимаем ни в каком виде/.test(await txt()));
+  await shot("v4-mentor");
+  await who("maria", "_Мария_Ким", "manager");
+  await nav("checklist", 2000); await closeDemo();
+  ok("Мария, «Чек-листы» → «Открытие»: «Вскрытые бутылки: стикеры и сроки»", /Вскрытые бутылки: стикеры и сроки/.test(await txt()));
+  await page.getByText("Закрытие", { exact: true }).first().click().catch(() => {}); await page.waitForTimeout(900);
+  ok("«Закрытие»: «ЕГАИС и ЭДО: накладные, УПД, акты за день»", /ЕГАИС и ЭДО: накладные, УПД, акты за день/.test(await txt()));
+  await shot("v5-checklist");
+  await nav("morning", 2600); await closeDemo();
+  const mo = await page.locator('[data-mo-row="cl-close"]').innerText().catch(() => "");
+  ok("«Утро руководителя»: «Закрытие: отмечено 4 из 7» и «Не отмечено: «ЕГАИС и ЭДО…»»", /отмечено 4 из 7/.test(mo) && /Не отмечено: «ЕГАИС и ЭДО/.test(mo), mo.replace(/\s+/g, " "));
+  await down('[data-mo-row="cl-close"]'); await shot("v6-morning");
+  await topic();
+  ok("«Менеджер»: тема «Урок 8 · Приём и хранение» — 11 шагов (с уроком «Контроль»)", /Урок 8 · 11 шагов/.test(await txt()));
+  await step("Сборка: приёмка поставки");
+  ok("«Сборка: приёмка поставки» — Накладная, Марки, ЕГАИС, УПД, Хранение", (await page.locator(".sa-bld-fnm").allInnerTexts().catch(() => [])).join(",") === "Накладная,Марки,ЕГАИС,УПД,Хранение");
+  await shot("v7-build");
+  await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); localStorage.setItem("sa_last_role_Анна_Смирнова", JSON.stringify("seasonal")); });
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

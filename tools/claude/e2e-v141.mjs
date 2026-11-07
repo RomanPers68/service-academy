@@ -410,7 +410,8 @@ await run("LESSON", async () => {
   const m = await open({ who: MARIA, srv });
   await nav(m.page, "home", 2200);
   const tp = await m.page.evaluate(() => [...document.querySelectorAll(".tbp-num")].map((e) => e.getAttribute("aria-label") || ""));
-  ok("LESSON: у Марии («Менеджер») последняя тема — «Админ на смене: от открытия до планёрки»", /Админ на смене/.test(tp[tp.length - 1] || ""), tp.length + " · " + (tp[tp.length - 1] || ""));
+  // v142: дальше девятая тема «Урок 8 · Приём и хранение», поэтому «Админ на смене» — восьмая, но уже не последняя
+  ok("LESSON: у Марии («Менеджер») восьмая тема — «Админ на смене: от открытия до планёрки»", tp.length >= 8 && /Админ на смене/.test(tp[7] || ""), tp.length + " · " + (tp[7] || ""));
   await nav(m.page, "search", 1200);
   await m.page.locator("input").first().fill("Гоу-лист: что смена"); await sleep(900);
   const les = m.page.locator(".sa-card").filter({ hasText: "Гоу-лист: что смена продаёт сегодня" }).first();

@@ -55,7 +55,8 @@ describe("v140: новые темы — в конце треков, прежни
   });
   it("индекс уроков собирается скриптом из данных: и заголовки совпадают (раньше один был устаревшим)", () => {
     const ROLES = { bar: BAR_MODULES, seasonal: SEASONAL_MODULES, core: CORE_MODULES, manager: MANAGER_MODULES, service_manager: SERVICE_MANAGER_MODULES, spg: SPG_MODULES };
-    const want = Object.fromEntries(Object.entries(ROLES).map(([r, mods]) => [r, mods.map((m) => ({ id: m.id, title: m.title, lessons: m.lessons.map((l) => ({ id: l.id, title: l.title, type: l.type })) }))]));
+    // v144 (Доп. 465): у темы «для ознакомления» в индексе — пометка info
+    const want = Object.fromEntries(Object.entries(ROLES).map(([r, mods]) => [r, mods.map((m) => ({ id: m.id, title: m.title, ...(m.info ? { info: true } : {}), lessons: m.lessons.map((l) => ({ id: l.id, title: l.title, type: l.type })) }))]));
     expect(MODULES_INDEX).toEqual(want);
     expect(Object.keys(MODULES_INDEX)).toEqual(["bar", "seasonal", "core", "manager", "service_manager", "spg"]);
     const gen = rd("scripts/gen-modules-index.mjs");

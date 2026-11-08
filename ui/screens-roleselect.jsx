@@ -9,6 +9,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
 import { MODULES } from "../data/modules";
+import { countable } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления» не считаются в прогрессе
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
@@ -230,7 +231,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // Добавляем разблокированные через прохождение
   const effectiveUnlocked = new Set([...baseUnlocked, ...completedRoles]);
   const progressOf = (rid) => {
-    const mods = [...(MODULES[rid] || []), ...(customByRole[rid] || [])];
+    const mods = countable([...(MODULES[rid] || []), ...(customByRole[rid] || [])]);
     const all = mods.flatMap((m) => (m.lessons || []).filter((l) => l.type !== "result"));
     if (!all.length) return 0;
     return Math.round((all.filter((l) => (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length / all.length) * 100);
@@ -323,7 +324,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
-          const mods = [...(MODULES[role] || []), ...(customByRole[role] || [])];   // свои разделы — как родные (правка 165)
+          const mods = countable([...(MODULES[role] || []), ...(customByRole[role] || [])]);   // свои разделы — как родные (правка 165); v144: без тем для ознакомления
           if (!mods.length) return <div style={{ padding:"0 14px 9px" }}><SkeletonCard a11y={a11y} h={92} style={{ borderRadius:14 }} /></div>; // Доп. 132/146: уроки едут — мерцающий силуэт
           const next = nextLessonOf(mods, completed, quizDone);
           const dueM = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
@@ -751,7 +752,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           // Ступень внутри профессии: компактная строка на нити с номером.
           // Отличается от самостоятельного трека и высотой, и формой.
           const roleProgress = (rid) => {
-            const mods = [...(MODULES[rid] || []), ...(customByRole[rid] || [])];
+            const mods = countable([...(MODULES[rid] || []), ...(customByRole[rid] || [])]);
             const all = mods.flatMap(m => (m.lessons || []).filter(l => l.type !== "result"));
             if (!all.length) return 0;
             const done = all.filter(l => l.type === "quiz" ? quizDone[l.id] : completed[l.id]).length;

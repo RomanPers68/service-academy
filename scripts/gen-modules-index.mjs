@@ -11,7 +11,8 @@ const ROLES = [["bar", "modules-bar.js", "BAR_MODULES"], ["seasonal", "modules-s
 const index = {};
 for (const [role, file, name] of ROLES) {
   const mods = (await import(join(root, "data", file)))[name];
-  index[role] = mods.map((m) => ({ id: m.id, title: m.title, lessons: (m.lessons || []).map((l) => ({ id: l.id, title: l.title, type: l.type })) }));
+  // v144 (Доп. 465): тема «для ознакомления» — с пометкой info (отчёт руководителя её не считает)
+  index[role] = mods.map((m) => ({ id: m.id, title: m.title, ...(m.info ? { info: true } : {}), lessons: (m.lessons || []).map((l) => ({ id: l.id, title: l.title, type: l.type })) }));
 }
 const path = join(root, "data/modules-index.js");
 const src = readFileSync(path, "utf8");

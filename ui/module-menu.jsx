@@ -13,6 +13,7 @@ import { onActivate, vibrate } from "../lib/utils";
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
 import { GOLD_N, CREDIT_N } from "../lib/marks";
 import { practicePool, quizPool } from "../lib/table-pick";
+import { INFO_NOTE } from "../lib/info-topics";   // v144 (Доп. 465): тема «для ознакомления» — записка под названием
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
 const DONE_WORD = { lesson: "пройден", quiz: "сдан", practice: "сыграно", dialogue: "пройден", build: "собрано" };
@@ -161,6 +162,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           </div>
           <h2 className="tbm-title">{mod.title}</h2>
           {mod.subtitle ? <p className="tbm-sub">{mod.subtitle}</p> : null}
+          {mod.info ? <div className="tbm-infonote" role="note">{INFO_NOTE}</div> : null}
           {sealed ? <div className="tbm-sealnote" role="note">Раздел пройден · печать</div> : null}
           {/* v73 (Доп. 386): разделитель — одна тонкая линия без звезды (половинки сходятся; высота — как была со звездой) */}
           <div className="tbm-orn" aria-hidden="true" style={{ gap: 0, height: 10.5 }}><i /><i /></div>
@@ -170,7 +172,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           {lessons.map((l, i) => {
             const done = isDone(l);
             const cur = i === curIdx;
-            const kind = KIND[l.type] || "урок";
+            const kind = mod.info && l.type === "quiz" ? "самопроверка" : KIND[l.type] || "урок";
             const isQuiz = l.type === "quiz";
             const final = isQuiz && i === lastIdx && lessons.length > 1;
             const cls = [cur ? "cur" : "", i > 0 && isDone(lessons[i - 1]) ? "pd" : "", done ? "sd" : "", final ? "final" : ""].filter(Boolean).join(" ");
@@ -201,13 +203,13 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
             return (
               <li key={l.id} className={cls}>
                 <button type="button" className={"tbm-node" + (done ? " done" : "")} onClick={go}
-                  aria-label={l.title + " · " + sub + " · " + (done ? DONE_WORD[l.type] || "пройден" : est(l) + " мин")}>
+                  aria-label={l.title + " · " + sub + " · " + (done ? (mod.info && l.type === "quiz" ? "пройдена" : DONE_WORD[l.type] || "пройден") : est(l) + " мин")}>
                   {marker}
                   <span className="tbm-row">
                     <span className="tbm-t">{l.title}</span>
                     <span className="tbm-lead" />
                     {done
-                      ? <span className={"tbm-m tbm-hand" + (fresh.has(l.id) ? " just" : "")}>{DONE_WORD[l.type] || "пройден"}</span>
+                      ? <span className={"tbm-m tbm-hand" + (fresh.has(l.id) ? " just" : "")}>{mod.info && l.type === "quiz" ? "пройдена" : DONE_WORD[l.type] || "пройден"}</span>
                       : <span className="tbm-m">{est(l)} мин</span>}
                   </span>
                   {/* у урока подпись «шаг N · урок» стала номером в кружке; у практики, теста, диалога

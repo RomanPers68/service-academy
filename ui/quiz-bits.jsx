@@ -28,15 +28,17 @@ export function quizRule(n) {
 
 // «Тест: поведение в зале» → «Поведение в зале»; другое название — как есть
 export function quizTopic(title) {
-  const t = String(title || "").replace(/^\s*(финальный\s+)?тест\s*[:.—–-]\s*/i, "").trim();
+  const t = String(title || "").replace(/^\s*((финальный\s+)?тест|самопроверка)\s*[:.—–-]\s*/i, "").trim();   // v144: «Самопроверка: …» — тест темы для ознакомления
   if (!t) return "Тест";
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-export function rulePhrase(n) {
+// v144 (Доп. 465): self — самопроверка темы «для ознакомления»: те же правила, своими словами
+export function rulePhrase(n, self = false) {
   const { need, allowed } = quizRule(n);
   if (allowed <= 0) return "Для зачёта нужно ответить верно на все " + n + " " + plural(n, "вопрос", "вопроса", "вопросов") + ".";
   const times = allowed === 1 ? "один раз" : allowed === 2 ? "два раза" : allowed + " " + plural(allowed, "раз", "раза", "раз");
+  if (self) return "Для зачёта нужно " + need + " верных из " + n + ". Можно ошибиться " + times + ", на третьей ошибке самопроверка закончится. Пройти заново можно сразу.";
   return "Для зачёта нужно " + need + " верных из " + n + ". Можно ошибиться " + times + ", на третьей ошибке тест закончится. Пересдать можно сразу.";
 }
 
@@ -133,12 +135,12 @@ export function QuizMeta({ n, step, light = false }) {
 }
 
 // Правило словами — на первом вопросе, пока не ответил (дальше его заменяют тарелки и бусины)
-export function QuizRuleNote({ n, light = false }) {
+export function QuizRuleNote({ n, light = false, self = false }) {
   return (
     <div data-quiz-rule role="note" data-lens-edge="" style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "12px 0 4px", padding: "10px 12px", borderRadius: 12,
       background: light ? "rgba(139,106,48,0.07)" : "rgba(214,178,102,0.07)", boxShadow: "inset 0 0 0 1px " + (light ? "rgba(139,106,48,0.22)" : "rgba(214,178,102,0.20)") }}>
       <span style={{ marginTop: 1 }}><Plate ok light={light} /></span>
-      <span style={{ fontSize: light ? 15 : 13, lineHeight: 1.5, color: light ? INK : CREAM, opacity: light ? 0.9 : 0.86 }}>{rulePhrase(n)}</span>
+      <span style={{ fontSize: light ? 15 : 13, lineHeight: 1.5, color: light ? INK : CREAM, opacity: light ? 0.9 : 0.86 }}>{rulePhrase(n, self)}</span>
     </div>
   );
 }

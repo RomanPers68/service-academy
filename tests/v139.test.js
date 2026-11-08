@@ -255,11 +255,13 @@ describe("v139: сервер демо — как этап 49", () => {
 describe("v139: связи в приложении", () => {
   const app = rd("App.jsx");
   it("программа: «Наш ресторан» первым; свои разделы — с ним; отчёт и «Далее» его знают", () => {
-    expect(app).toContain("const programModules = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);");
+    // v144 (Доп. 465): программа — без тем «для ознакомления»; все темы (и «Наш ресторан» первым) — programAllMods
+    expect(app).toContain("const programAllMods = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);");
+    expect(app).toContain("const programModules = useMemo(() => countable(programAllMods), [programAllMods]);");
     expect(app).toContain("const customModules = useMemo(() => [...conceptMods, ...customOwn], [conceptMods, customOwn]);");
     expect(app).toContain("const homeMods = useMemo(() => [...conceptMods, ...modules], [conceptMods, modules]);");
     expect(app).toContain("customLessons={reportCms}");
-    expect(app).toContain("const seq = programModules.flatMap(m => m.lessons.filter(l => l.type !== \"result\").map(l => ({ mod: m, lesson: l })));");
+    expect(app).toContain("const seq = (quiet ? [activeModule] : programModules).flatMap(m => m.lessons.filter(l => l.type !== \"result\").map(l => ({ mod: m, lesson: l })));");   // v144
     expect(app).toContain("[...conceptModules(concept, r.id, TRACK_COLOR[r.id] || GOLD, customIcon),");
   });
   it("Наставнику — только свои уроки из редактора: раздел «Наш ресторан» уходит текстом «О нас», а не списком", () => {

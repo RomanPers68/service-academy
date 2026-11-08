@@ -51,6 +51,7 @@ import { QuizPlates, QuizBeads, QuizMeta, QuizRuleNote, OptLetter, quizTopic, en
 import { lessonShareItem } from "../lib/share-items";   // v97 (Доп. 410): пройденный урок — в чат команды
 import { CHAT_SHARE_IC } from "./share-chat";
 import { ConceptPhotos } from "./concept-photo";   // v139 (Доп. 454): фото блоков «О нас» в уроках раздела «Наш ресторан»
+import { isInfo, countable, INFO_LABEL } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления»
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
 // модуль, грузится фоном. Пока не приехал (или без сети не загрузился) —
@@ -232,7 +233,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   useColumn(wideScr ? 820 : 0);
   // Сколько минут осталось до конца программы (по незавершённым разделам)
   const leftMins = React.useMemo(() =>
-    [...modules, ...customModules].reduce((s, m) =>
+    [...countable(modules), ...customModules].reduce((s, m) =>   // v144: без тем для ознакомления
       s + (m.lessons || []).filter(l => l.type !== "result").reduce((a, l) =>
         a + ((l.type === "quiz" ? quizDone[l.id] : completed[l.id]) ? 0 : _estMins(l)), 0), 0),
     [modules, customModules, completed, quizDone]);
@@ -245,7 +246,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const isDoneL = (l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id]);
   const stepsOf = (m) => ((m && m.lessons) || []).filter((l) => l && l.type !== "result");
   const idxOf = (id) => (id ? pages.findIndex((m) => m.id === id) : -1);
-  const curIdx = pages.findIndex((m) => stepsOf(m).some((l) => !isDoneL(l)));
+  const curIdx = pages.findIndex((m) => !isInfo(m) && stepsOf(m).some((l) => !isDoneL(l)));   // v144: тема для ознакомления не «ты здесь»
   const [view, setView] = React.useState(() => { try { return localStorage.getItem(TRACK_VIEW_KEY) === "list" ? "list" : "pager"; } catch (e) { return "pager"; } });
   // из урока («3 из 6») и после теста — сначала меню темы, даже если выбран список
   const [forcePager, setForcePager] = React.useState(!!pagerOnly);
@@ -659,9 +660,10 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   const statOf = (m) => {
     const st = stepsOf(m); const dn = st.filter(isDoneL).length;
     if (!st.length) return "";
-    if (dn >= st.length) { const tp = topicOf(m); return tp && tp.gold ? "золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? freshLabel(tp.f) : "тема пройдена ✓"; }
+    const pre = isInfo(m) ? INFO_LABEL + " · " : "";   // v144 (Доп. 465)
+    if (dn >= st.length) { const tp = topicOf(m); return pre + (tp && tp.gold ? "золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? freshLabel(tp.f) : "тема пройдена ✓"); }
     const left = st.filter((l) => !isDoneL(l)).reduce((a, l) => a + _estMins(l), 0);
-    return (dn ? "пройдено " + dn + " из " + st.length : st.length + " " + stepsWord(st.length)) + " · ≈ " + _fmtMins(left);
+    return pre + (dn ? "пройдено " + dn + " из " + st.length : st.length + " " + stepsWord(st.length)) + " · ≈ " + _fmtMins(left);
   };
   const peekBubble = (pin) => {
     if (!peek || !!peek.pinned !== !!pin) return null;
@@ -711,7 +713,9 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
   };
   const menuFor = (m, passive) => {
     const i = pages.indexOf(m);
-    const nx = i >= 0 && i < pages.length - 1 ? pages[i + 1] : null;
+    // v144 (Доп. 465): из обычной темы «Дальше» не ведёт в тему для ознакомления (из неё самой — на следующую страницу)
+    const nxI = i < 0 ? -1 : isInfo(m) ? (i < pages.length - 1 ? i + 1 : -1) : pages.findIndex((p, k) => k > i && !isInfo(p));
+    const nx = nxI >= 0 ? pages[nxI] : null;
     return (
       <>
         {/* v32 (Доп. 333): соседняя страница рисуется тем же составом, что и текущая (кнопки
@@ -722,8 +726,8 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           topic={topicOf(m)} acts={topicActs ? (passive ? PASSIVE_ACTS : { onRefresh: () => topicActs.refresh(m), onCredit: () => topicActs.credit(m), onGold: () => topicActs.gold(m), onCellar: topicActs.cellar }) : null} />
         {/* Доп. 308: в конце меню — тихая ссылка на следующую тему (для тех, кто листает вниз, а не вбок) */}
         {nx && !nextCardFor(m) ? (
-          <button type="button" className="tbp-nextlink" tabIndex={passive ? -1 : undefined} onClick={passive ? undefined : () => goTo(i + 1)}>
-            <span>Дальше:</span><b><TopicNo label={labelOf(nx, i + 1)} />{" · " + nx.title}</b><span className="ar" aria-hidden="true">›</span>
+          <button type="button" className="tbp-nextlink" tabIndex={passive ? -1 : undefined} onClick={passive ? undefined : () => goTo(nxI)}>
+            <span>Дальше:</span><b><TopicNo label={labelOf(nx, nxI)} />{" · " + nx.title}</b><span className="ar" aria-hidden="true">›</span>
           </button>
         ) : null}
       </>
@@ -741,12 +745,12 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         const st = stepsOf(m); const dn = st.filter(isDoneL).length;
         const tp = st.length && dn >= st.length ? topicOf(m) : null;
         const fz = tp && tp.f ? (tp.f.updated ? " upd" : tp.f.level === "faded" ? " fade2" : tp.f.level === "fading" ? " fade1" : "") : "";
-        const cls = "tbp-num" + (i === pg ? " on" : "") + (st.length && dn >= st.length ? " done" : dn > 0 ? " part" : "") + (i === curIdx ? " cur" : "") + (tp && tp.gold ? " gold" : fz);
+        const cls = "tbp-num" + (i === pg ? " on" : "") + (st.length && dn >= st.length ? " done" : dn > 0 ? " part" : "") + (i === curIdx ? " cur" : "") + (tp && tp.gold ? " gold" : fz) + (isInfo(m) ? " info" : "");
         return (
           <button key={m.id} type="button" role={pin ? undefined : "tab"} aria-selected={pin ? undefined : i === pg} tabIndex={pin ? -1 : (i === pg ? 0 : -1)} className={cls} data-i={i}
             style={{ "--dot": shadeAt(i) }} onClick={() => numClick(i)} onTouchStart={(e) => peekStart(e, i, pin)} onContextMenu={(e) => e.preventDefault()}
             onMouseEnter={() => hoverIn(i, pin)} onMouseLeave={hoverOut} onFocus={pin ? undefined : (e) => focusIn(e, i)} onBlur={pin ? undefined : hoverOut}
-            aria-label={pin ? undefined : (m.tag ? m.tag + " · " : "") + m.title + " · пройдено " + dn + " из " + st.length + (i === curIdx ? " · ты здесь" : "") + (tp && tp.gold ? " · золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? " · " + freshLabel(tp.f) : "")}>
+            aria-label={pin ? undefined : (m.tag ? m.tag + " · " : "") + m.title + (isInfo(m) ? " · " + INFO_LABEL : "") + " · пройдено " + dn + " из " + st.length + (i === curIdx ? " · ты здесь" : "") + (tp && tp.gold ? " · золотая тема" : tp && tp.f && tp.f.level !== "fresh" ? " · " + freshLabel(tp.f) : "")}>
             <span className="n"><TopicNo label={labelOf(m, i)} /></span>
             {tp && tp.f && !tp.gold && !tp.f.updated
               ? <i className="wl" aria-hidden="true"><b style={{ height: Math.round(wineLevel(tp.f) * 100) + "%" }} /></i>
@@ -886,7 +890,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
           ширину: карточка раздувалась и съедала воздух. Здесь иконка с кольцом
           прогресса, значок типа шага и кнопка сбоку по размеру задачи. */}
       {(() => {
-        const all = [...modules, ...customModules];
+        const all = [...countable(modules), ...customModules];   // v144: тема для ознакомления не «Дальше»
         const nx = all.find(m => {
           const tot = m.lessons.filter(l => l.type !== "result").length;
           const dn = m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length;
@@ -985,7 +989,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
               {/* v73 (Доп. 386): цветная полоска слева убрана — цвет темы и так у значка, подписи и процента */}
               <div data-lens="disc" style={{ ...T.modIcon, display:"flex", alignItems:"center", justifyContent:"center" }}>{(MOD_SVG[m.icon] || UI_SVG.book)(m.color, 28)}</div>
               <div style={T.modInfo}>
-                <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
+                <div style={{ ...T.modTag, color: inkOf(m.color, a11y) }}>{m.tag}{isInfo(m) ? " · " + INFO_LABEL : ""} · ≈ {_fmtMins((m.lessons || []).filter(l => l.type !== "result").reduce((a, l) => a + _estMins(l), 0))}</div>
                 <div style={T.modTitle}>{m.title}</div>
                 <div style={T.modSub}>{m.subtitle}</div>
               </div>
@@ -1789,7 +1793,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       const wrongAnswers = allAnswers.filter(a=>!a.isCorrect);
       return (
         <div style={T.screen}>
-          <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Результат теста</div></div>
+          <div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{isInfo(mod) ? "Результат самопроверки" : "Результат теста"}</div></div>
           <div style={{ ...T.quizWrap, paddingBottom:40 }}>
             <div style={T.resultWrap}>
               <div className="sa-pop" style={{ ...T.resultCircle, borderColor:color }}>
@@ -1797,9 +1801,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 <span style={{ color:"#a09080", fontSize:12.5 }}>правильно</span>
               </div>
               <div style={T.resultTxt}>
-                {quizState.blocked?"Это третья ошибка, тест закончился. Посмотри разбор ниже и попробуй снова: пересдать можно сразу.":
+                {quizState.blocked?(isInfo(mod) ? "Это третья ошибка, самопроверка закончилась. Посмотри разбор ниже и попробуй снова, когда захочешь." : "Это третья ошибка, тест закончился. Посмотри разбор ниже и попробуй снова: пересдать можно сразу."):
                   score===lesson.questions.length?<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="checkC" s={20} c={GREEN} />Всё верно</span>:
-                  score>=lesson.questions.length*0.7?<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="check" s={20} c={GREEN} />Тест сдан, ошибки разобраны ниже</span>:<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="book" s={20} c={color} />Стоит перечитать урок</span>}
+                  score>=lesson.questions.length*0.7?<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="check" s={20} c={GREEN} />{isInfo(mod) ? "Самопроверка пройдена, ошибки разобраны ниже" : "Тест сдан, ошибки разобраны ниже"}</span>:<span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Sign n="book" s={20} c={color} />Стоит перечитать урок</span>}
               </div>
             </div>
             {wrongAnswers.length > 0 && (
@@ -1837,7 +1841,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       <div style={T.screen}>
         <div style={{ ...T.lessHead, gap: 8 }}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { commitPending(); onBack(); }}>‹</button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div data-quiz-kind style={{ ...labelStyle(light ? 14.5 : 13), color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>Тест · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
+            <div data-quiz-kind style={{ ...labelStyle(light ? 14.5 : 13), color: light ? "#7A5A1E" : GOLD, marginBottom: 2 }}>{isInfo(mod) ? "Самопроверка" : "Тест"} · {nQ} {nQ % 10 === 1 && nQ % 100 !== 11 ? "вопрос" : (nQ % 10 >= 2 && nQ % 10 <= 4 && (nQ % 100 < 10 || nQ % 100 >= 20)) ? "вопроса" : "вопросов"}</div>
             <div data-quiz-title style={{ ...T.lessHeadTitle, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{quizTopic(lesson.title)}</div>
           </div>
           <QuizPlates mistakes={mistakesNow} light={light} justBroke={pendingBad} />
@@ -1845,7 +1849,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         <div key={quizState.step} className="sa-cardpage-r" style={T.quizWrap}>
           <QuizMeta n={nQ} step={quizState.step} light={light} />
           <QuizBeads n={nQ} step={quizState.step} answers={quizState.answers} pending={reveal !== null ? { isCorrect: !pendingBad } : null} light={light} />
-          {quizState.step === 0 && !quizState.answers.length ? <QuizRuleNote n={nQ} light={light} /> : null}
+          {quizState.step === 0 && !quizState.answers.length ? <QuizRuleNote n={nQ} light={light} self={isInfo(mod)} /> : null}
           <div style={{ height: 14 }} />
           {q.img && <img src={q.img} alt="" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:210, objectFit:"cover", borderRadius:14, display:"block", margin:"0 0 14px" }} />}
           <div style={{ ...T.quizQ, fontSize: light ? 19 : 17, lineHeight: light ? 1.6 : 1.55 }}>{q.q}</div>

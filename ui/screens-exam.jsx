@@ -31,8 +31,8 @@ const _CERT_ROLE_ORDER = ["spg", "bar", "seasonal", "core", "manager", "service_
 
 // Собрать все вопросы квизов роли
 function collectRoleQuestions(roleId) {
-  const mods = MODULES[roleId];
-  if (!Array.isArray(mods)) return [];
+  if (!Array.isArray(MODULES[roleId])) return [];
+  const mods = MODULES[roleId].filter((m) => m && !m.info);   // v144 (Доп. 465): самопроверка тем для ознакомления — не в экзамене
   const out = [];
   mods.forEach(m => {
     (m && Array.isArray(m.lessons) ? m.lessons : []).forEach(l => {

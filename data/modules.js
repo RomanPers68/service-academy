@@ -9,6 +9,7 @@
 // первой отрисовки. Всё, что должно знать обо всех ролях ДО загрузки (id уроков
 // для сверки прогресса, роль по id урока), берёт MODULES_INDEX из modules-index.js.
 import { MODULES_INDEX } from "./modules-index";
+import { countable } from "../lib/info-topics";
 export { MODULES_INDEX };
 
 export const MODULES = {
@@ -95,9 +96,11 @@ export function loadOpenModules(profile) {
 // Свои разделы по ролям (правка 167): App кладёт сюда свои модули; экраны, которые считают
 // программу роли (статистика, рейтинг, карточка сотрудника и обучения), берут её отсюда —
 // свои уроки для них как родные.
+// v144 (Доп. 465): темы «для ознакомления» (lib/info-topics.js) в программу роли не входят — их не считают ни проценты,
+// ни рейтинг, ни сертификаты.
 let CUSTOM_BY_ROLE = {};
 export function setCustomProgram(byRole) { CUSTOM_BY_ROLE = byRole || {}; }
-export function programOf(role) { return [...(MODULES[role] || []), ...(CUSTOM_BY_ROLE[role] || [])]; }
+export function programOf(role) { return countable([...(MODULES[role] || []), ...(CUSTOM_BY_ROLE[role] || [])]); }
 export function programAll() {
   const out = {};
   new Set([...Object.keys(MODULES), ...Object.keys(CUSTOM_BY_ROLE)]).forEach(r => { out[r] = programOf(r); });

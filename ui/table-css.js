@@ -184,6 +184,8 @@ html.sa-light .tbm-act:focus-visible,html.sa-light .tbm-cellar:focus-visible{out
 html.sa-light .tbm-seal svg{filter:drop-shadow(0 3px 5px rgba(110,45,20,.32))}
 .tbm-sealnote{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:3px 10px;border-radius:999px;border:1px solid rgba(150,51,31,.45);color:#C0624B;${LABEL_CSS};font-size:13px}
 html.sa-light .tbm-sealnote{color:#8B3020}
+.tbm-infonote{display:block;max-width:300px;margin:8px auto 0;padding:5px 12px;border-radius:12px;border:1px solid rgba(200,169,110,.32);color:#C9B791;font-size:12.5px;line-height:1.4;text-align:center;text-wrap:balance}
+html.sa-light .tbm-infonote{color:#6E5C3C;border-color:rgba(139,106,48,.35)}
 @keyframes tbStamp{0%{transform:rotate(-30deg) scale(2.3);opacity:0}55%{transform:rotate(-10deg) scale(.92);opacity:1}75%{transform:rotate(-13deg) scale(1.04)}100%{transform:rotate(-12deg) scale(1)}}
 /* Доп. 307: трек — меню тем, листаются за пальцем; номера тем — оглавление, как страницы меню */
 .tbp-strip{position:relative;z-index:6;display:flex;align-items:center;gap:8px;margin:10px 14px 6px}
@@ -225,6 +227,7 @@ html.sa-light .tbp-ind-row span{color:#1E1407}
 .tbp-num.fade2 .n{opacity:.66}.tbp-num.fade2 .st{filter:saturate(0);opacity:.55}
 .tbp-num.gold .n{color:#E8C56A;text-shadow:0 0 8px rgba(232,197,106,.45)}.tbp-num.gold .st{background:#E8C56A!important;border-color:#E8C56A!important;filter:none;opacity:1}
 .tbp-num.upd .st{background:#8FB0D6!important;border-color:#8FB0D6!important;filter:none;opacity:1}
+.tbp-num.info .n{font-style:italic;opacity:.7}.tbp-num.info.on .n{opacity:1}
 /* v31: свежесть пройденной темы — «уровень вина» в бокале под номером (полный — свежая, на донышке — пора освежить) */
 .tbp-num .wl{display:block;position:relative;width:7px;height:9px;margin:-2px auto 0;box-sizing:border-box;border:1.3px solid var(--dot,var(--role,#C8A96E));border-top-width:0;border-radius:0 0 3.5px 3.5px;overflow:hidden}
 .tbp-num .wl b{position:absolute;left:0;right:0;bottom:0;background:var(--dot,var(--role,#C8A96E));transition:height .4s}

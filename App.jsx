@@ -46,6 +46,7 @@ import { DayChips, WarmupCard, RemindSheet, readRemindFlag, inTelegramApp } from
 import { syncMySchedule } from "./lib/schedule-sync";
 import { wineCatchUp } from "./lib/wine-sync";   // v126 (Доп. 439): выученное до v125 — на сервер
 import { practiceQuestionTexts, mistakeFromSituation } from "./lib/practice-mistake";
+import { countable, isInfo, infoLessonIds } from "./lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления»
 import { LiquidTabBar, NavRail } from "./ui/tabbar";
 import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   // v50 (Доп. 363): горизонталь и компьютер
 import { loadDialogues } from "./data/dialogues-lazy";
@@ -1042,7 +1043,13 @@ function ServiceAcademy() {
   const customSkills = useMemo(() => customModules.flatMap(m => m.skills || []), [customModules]);   // Доп. 310
   // Программа роли — штатные модули и свои разделы вместе (правка 165): по ней считаются процент
   // трека, «пройдено N из M», завершение роли, «Задания дня» — свои уроки как родные
-  const programModules = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);
+  // v144 (Доп. 465): темы «для ознакомления» (lib/info-topics.js) в программу не входят: прогресс, «Дальше», задания дня,
+  // разминка, «Вопрос дня» и свежесть считаются без них. programAllMods — все темы: листание трека, поиск, «Подсмотреть в уроке»
+  const programAllMods = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);
+  const programModules = useMemo(() => countable(programAllMods), [programAllMods]);
+  // шаги тем для ознакомления (всех загруженных ролей): их ошибки не идут в «Работу над ошибками», тест — самопроверка
+  const infoIds = useMemo(() => infoLessonIds(Object.values(MODULES).flat()), [contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const infoIdsRef = useRef(infoIds); infoIdsRef.current = infoIds;
   const homeMods = useMemo(() => [...conceptMods, ...modules], [conceptMods, modules]);   // v139: экран трека — «Наш ресторан» первым
   const reportCms = useMemo(() => [...customLessons, ...conceptRecordsAll(concept)], [customLessons, concept]);   // v139: отчёт видит и «Наш ресторан»
   // свои разделы по всем ролям — для «Учусь» (проценты треков) и экзамена
@@ -1991,7 +1998,15 @@ function ServiceAcademy() {
       // 2. Квиз → результат + отметка о прохождении (считаем свежие значения, чтобы передать их дальше)
       let newScores = scores;
       let newQuizDone = quizDone;
-      if (activeLesson.type === "quiz" && profile) {
+      // v144 (Доп. 465): тест темы «для ознакомления» — самопроверка: балл не уходит в рейтинг и отчёт, отметка «пройдено» остаётся
+      const selfCheck = activeLesson.type === "quiz" && infoIdsRef.current.has(activeLesson.id);
+      if (activeLesson.type === "quiz" && profile && selfCheck && !quizDone[activeLesson.id]) {
+        newQuizDone = { ...quizDone, [activeLesson.id]: true };
+        try { localStorage.setItem("sa_quiz_done" + uk, JSON.stringify(newQuizDone)); } catch(e) {}
+        setQuizDone(newQuizDone);
+        rpcSync("save_quiz_done", { p_token: saToken(), p_quiz_id: activeLesson.id });
+      }
+      if (activeLesson.type === "quiz" && profile && !selfCheck) {
         const sc = quizState.answers.filter(a => a.isCorrect).length;
         const newScore = {
           id: Date.now(), name: profile.name, surname: normSurname(profile.surname),
@@ -2038,7 +2053,7 @@ function ServiceAcademy() {
       }
 
       // 4. Пройдена ли вся роль? (используем СВЕЖИЕ newCompleted / newQuizDone)
-      const allLessons = [...(MODULES[role] || []), ...(customModules || [])].flatMap(m => m.lessons).filter(l => l.type !== "result");   // свои — как родные (правка 165)
+      const allLessons = countable([...(MODULES[role] || []), ...(customModules || [])]).flatMap(m => m.lessons).filter(l => l.type !== "result");   // свои — как родные (правка 165); v144: без тем для ознакомления
       const allDone = allLessons.length > 0 && allLessons.every(l => l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]); // Доп. 132: пустой список — не «всё пройдено»
       const roleIdx = ROLE_ORDER.indexOf(role);
       const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined; // роли вне лестницы (напр. СПГ) — без следующей ступени
@@ -2065,15 +2080,17 @@ function ServiceAcademy() {
         // Свои разделы — в той же последовательности (правка 164): раньше урок своего раздела в
         // ней не находился, и «Дальше» уводило в штатную программу, в другую тему
         // v139 (Доп. 454): в порядке программы — раздел «Наш ресторан» первым
-        const seq = programModules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
+        // v144 (Доп. 465): в теме «для ознакомления» — только её шаги: после последнего «Дальше» не ведёт никуда
+        const quiet = !!(activeModule && isInfo(activeModule));
+        const seq = (quiet ? [activeModule] : programModules).flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => ({ mod: m, lesson: l })));
         const cur = seq.findIndex(x => x.lesson.id === activeLesson.id);
-        const nx = cur >= 0 ? (seq[cur + 1] || null) : nextLessonOf(programModules, newCompleted, newQuizDone);
+        const nx = cur >= 0 ? (seq[cur + 1] || null) : quiet ? null : nextLessonOf(programModules, newCompleted, newQuizDone);
         if (activeLesson.type === "lesson") {
           // Доп. 207: подсказка, а не принуждение — первое непройденное ПОЗАДИ текущего
           const isDone = (l) => l.type === "quiz" ? !!newQuizDone[l.id] : !!newCompleted[l.id];
           // Внутри своего раздела «позади» — только его шаги (правка 164): свои разделы стоят после
           // всей штатной программы, и подсказка звала назад к «85 непройденным» штатным урокам
-          const behind = cur > 0 ? seq.slice(0, cur).filter(x => !(activeModule && activeModule.custom) || x.mod.id === activeModule.id) : [];
+          const behind = cur > 0 && !quiet ? seq.slice(0, cur).filter(x => !(activeModule && activeModule.custom) || x.mod.id === activeModule.id) : [];
           const skipped = behind.find(x => !isDone(x.lesson)) || null;
           const skippedCount = behind.filter(x => !isDone(x.lesson)).length;
           setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id, done: isDone(nx.lesson) } : null, skipped: skipped ? { ...skipped, count: skippedCount } : null });
@@ -2105,7 +2122,7 @@ function ServiceAcademy() {
     saveCredit(uk, mod.id, { d: ymd(new Date()), s: res.firstOk, t: res.total });
     bumpMarks();
     // роль пройдена целиком — как после последнего урока (completeLesson)
-    const allLessons = [...(MODULES[role] || []), ...(customModules || [])].flatMap((m) => m.lessons).filter((l) => l.type !== "result");
+    const allLessons = countable([...(MODULES[role] || []), ...(customModules || [])]).flatMap((m) => m.lessons).filter((l) => l.type !== "result");
     const allDone = allLessons.length > 0 && allLessons.every((l) => (l.type === "quiz" ? newQuizDone[l.id] : newCompleted[l.id]));
     const roleIdx = ROLE_ORDER.indexOf(role);
     const nextRole = roleIdx >= 0 ? ROLE_ORDER[roleIdx + 1] : undefined;
@@ -2148,15 +2165,18 @@ function ServiceAcademy() {
     if (quizState.blocked) return;
     const q = activeLesson.questions[quizState.step];
     const isCorrect = idx === q.correct;
+    // v144 (Доп. 465): тест темы «для ознакомления» — самопроверка: ответы не уходят в аналитику и отчёт, ошибки — не в «Работу над ошибками»
+    const selfCheck = infoIdsRef.current.has(activeLesson.id);
     // Аналитика вопросов (stage 7): очередь тихо отбросит вызов, если RPC ещё не создан
-    try { rpcSync("log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }); } catch(e) {}
+    if (!selfCheck) try { rpcSync("log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }); } catch(e) {}
     // Этап 15: что выбрал и что было верно — для «Аналитика → Люди». Идёт следом в той же
     // очереди и дописывается к записи выше; без этапа 15 тихо отклоняется, запись выше цела.
-    try { rpcSync("log_quiz_pick", { p_token: saToken(), p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_answer: String((q.options || [])[idx] ?? "").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? "").slice(0, 300) }); } catch(e) {}
+    if (!selfCheck) try { rpcSync("log_quiz_pick", { p_token: saToken(), p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_answer: String((q.options || [])[idx] ?? "").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? "").slice(0, 300) }); } catch(e) {}
     const newMistakes = quizState.mistakes + (isCorrect ? 0 : 1);
     const answers = [...quizState.answers, { idx, isCorrect }];
     const done = quizState.step + 1 >= activeLesson.questions.length;
     if (isCorrect) vibrate("light");
+    else if (selfCheck) vibrate("error");
     else {
       vibrate("error");
       const _qe = { q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "", img: q.img || null, lessonTitle: (activeLesson && activeLesson.title) || "", lessonId: (activeLesson && activeLesson.id) || "", stage: 0, due: Date.now() };
@@ -2167,7 +2187,7 @@ function ServiceAcademy() {
     }
     // Лазейка: помним попытку до «Продолжить ✓». Официальный конец — "pass" (70%+)
     // или "fail" (меньше 70% или три ошибки): провал — честная пересдача, не лазейка.
-    try { if (profile) {
+    try { if (profile && !selfCheck) {
       const blockedNow = newMistakes >= 3 && !isCorrect;
       const passNow = !blockedNow && answers.filter(a => a.isCorrect).length >= activeLesson.questions.length * 0.7;
       loopTrack(loopUk, activeLesson, q, idx, (blockedNow || done) ? (passNow ? "pass" : "fail") : undefined);
@@ -2197,7 +2217,8 @@ function ServiceAcademy() {
   // Доп. 291: ошибки практики и «у стола» тоже попадают в «Работу над ошибками» —
   // тем же форматом, что вопросы тестов ({ q, options, correct, explanation, … }).
   const addMistakes = useCallback((items) => {
-    const list = (items || []).filter(x => x && x.q && Array.isArray(x.options) && x.options.length > 1);
+    // v144 (Доп. 465): ошибки тем «для ознакомления» не копим: тема не зовёт повторять
+    const list = (items || []).filter(x => x && x.q && Array.isArray(x.options) && x.options.length > 1 && !infoIdsRef.current.has(x.lessonId));
     if (!list.length) return;
     setMistakeBank(prev => {
       const have = new Set(prev.map(m => m.q));
@@ -2703,11 +2724,12 @@ function ServiceAcademy() {
   // Контекстная подсказка: появляется в момент, когда впервые есть что повторить
   // «Дальше» под меню раздела и конец программы (Доп. 196–197) — вынесено из экрана раздела без
   // изменений: тем же пользуется листаемый трек (Доп. 307)
-  const inPages = (m) => !!m && programModules.some((x) => x.id === m.id);
+  const inPages = (m) => !!m && programAllMods.some((x) => x.id === m.id);   // v144: и темы для ознакомления
   const moduleNextFor = (m) => {
     // «Дальше» внизу своего раздела — сначала непройденный шаг этого раздела (правка 163);
     // раньше вела по штатной программе даже внутри незаконченного своего раздела
-    if (m && m.custom) {
+    // v144: так же внутри темы «для ознакомления»; пройдена — дальше обычная программа (сама она «Дальше» не зовёт)
+    if (m && (m.custom || isInfo(m))) {
       const l = (m.lessons || []).find(x => x.type !== "result" && !(x.type === "quiz" ? quizDone[x.id] : completed[x.id]));
       if (l) return { mod: m, lesson: l };
     }
@@ -3032,7 +3054,7 @@ function ServiceAcademy() {
             перемонтаж его уничтожил бы (тема переключается без пересборки) */}
         {/* Доп. 301: разминка до смены — слой «у стола» поверх вкладки */}
         {warmupOpen && tbMod && warmSits.length ? (
-          <tbMod.TableCheck mode="warmup" situations={warmSits} modules={programModules} shift={shiftText}
+          <tbMod.TableCheck mode="warmup" situations={warmSits} modules={programAllMods} shift={shiftText}
             color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank}
             mentorName={mentorName} goal={{ steps: todaySteps, goal }} onFinish={finishWarmup} onActivity={logActivity}
             onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake} onAskMentor={askMentor}
@@ -3040,7 +3062,7 @@ function ServiceAcademy() {
         ) : null}
         {/* v30: освежить тему, зачёт на опыт, раунд мастера — тот же стол поверх трека */}
         {special && tbMod ? (
-          <tbMod.TableCheck key={special.key} mode={special.mode} mod={special.mod} situations={special.sits} modules={programModules} timer={special.timer || 0}
+          <tbMod.TableCheck key={special.key} mode={special.mode} mod={special.mod} situations={special.sits} modules={programAllMods} timer={special.timer || 0}
             intro={special.intro || null} record={special.record || null} extra={special.extra || null} onBegin={special.onBegin || null}
             color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank} mentorName={mentorName}
             goal={{ steps: todaySteps, goal }} verdict={special.verdict} onFinish={finishSpecial} onActivity={logActivity}
@@ -3067,7 +3089,7 @@ function ServiceAcademy() {
         {/* v30 (Доп. 312): «Живой гость» */}
         {guestOpen && profile ? (
           <Suspense fallback={null}><LiveGuestScreen a11y={a11y} profile={profile} role={role} uk={ukP} color={TRACK_COLOR[role] || "#C8A96E"}
-            track={programModules} modules={[...programModules, ...Object.values(MODULES).flat()]} mistakeBank={mistakeBank}
+            track={programAllMods} modules={[...programAllMods, ...Object.values(MODULES).flat()]} mistakeBank={mistakeBank}
             onMistakes={addMistakes} onActivity={logActivity} onTouch={touchStreak}
             onOpenLesson={(id) => { setGuestOpen(false); assistantNavigate({ lesson: id }, true); }}
             onClose={() => setGuestOpen(false)} /></Suspense>
@@ -3158,7 +3180,7 @@ function ServiceAcademy() {
             else if (dest === "checklist") navigate("checklist");
             else if (dest === "chat" && x && x.chat) setChatOpen({ intent: { kind: "chat", id: Number(x.chat), msg: x.msg ? Number(x.msg) : null, at: Date.now() } });
             else if (dest === "lesson" && x && x.mod) {   // v143 (Доп. 463): проверки оборудования → урок «Контроль»
-              const m = (programModules || []).find((mm) => mm.id === x.mod), l = m && (m.lessons || []).find((ll) => ll.id === x.id);
+              const m = (programAllMods || []).find((mm) => mm.id === x.mod), l = m && (m.lessons || []).find((ll) => ll.id === x.id);
               if (m && l) { setActiveModule(m); openLesson(l); } else if (m) openModule(m);
             }
           }} lessonOn={!!(programModules || []).find((mm) => mm.id === "m9")} /></Suspense></div>}
@@ -3520,7 +3542,7 @@ function ServiceAcademy() {
         {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } goBack("module"); /* Доп. 306: туда, откуда пришёл */ }} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T}
           mod={activeModule} profile={profile} streak={streak} mistakeBank={mistakeBank} onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake}
           wasCompleted={!!(activeLesson && completed[activeLesson.id])}
-          modules={programModules} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
+          modules={programAllMods} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
           onContents={activeModule ? () => navigate("module") : undefined} onShareChat={chatShare} />}
         {screen === "roleComplete" && <Suspense fallback={<ScreenLoader T={T} />}><RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} /></Suspense>}
         {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onWines={() => { setRefStart(null); navigate("wines"); }} onBarItem={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onShareChat={chatShare} /></Suspense>}

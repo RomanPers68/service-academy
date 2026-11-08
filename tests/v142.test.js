@@ -48,7 +48,7 @@ describe("v142 (Доп. 460): тема в конце треков бара и м
   it("у бара шесть уроков, у менеджера семь (плюс «Контроль»); сборка, диалог, практика на 8, тест на 20", () => {
     expect(B7.lessons.map((l) => l.type)).toEqual(["lesson", "lesson", "lesson", "lesson", "lesson", "lesson", "build", "dialogue", "practice", "quiz"]);
     expect(M8.lessons.map((l) => l.type)).toEqual(["lesson", "lesson", "lesson", "lesson", "lesson", "lesson", "lesson", "build", "dialogue", "practice", "quiz"]);
-    expect(les(B7).map((l) => l.title)).toEqual(TITLES);
+    expect(les(B7).map((l) => l.title)).toEqual([...TITLES.slice(0, 5), "Шесть правил и три проверки"]);   // v144: у бара без штрафов (tests/v144)
     expect(les(M8).map((l) => l.title)).toEqual([...TITLES, "Контроль: смена, месяц, документы"]);
     for (const m of [B7, M8]) {
       expect(les(m, "quiz")[0].questions.length).toBe(20);
@@ -59,10 +59,10 @@ describe("v142 (Доп. 460): тема в конце треков бара и м
     expect(B7.lessons.find((l) => l.type === "build")).toMatchObject({ id: "bar7-build", buildId: "receive-bar", role: "bar", mod: "bar7", flow: true });
     expect(M8.lessons.find((l) => l.type === "build")).toMatchObject({ id: "m8-build", buildId: "receive-admin", role: "manager", mod: "m8", flow: true });
   });
-  it("уроки 1–6 у бара и менеджера — один текст (правишь один — правь оба)", () => {
-    for (let i = 0; i < 6; i++) expect(les(M8)[i].content, TITLES[i]).toBe(les(B7)[i].content);
-    expect(rd("data/modules-bar.js")).toContain("правишь здесь — поправь и там (tests/v142 сверяет)");
-    expect(rd("data/modules-manager.js")).toContain("правишь здесь — поправь и там (tests/v142 сверяет)");
+  it("уроки 1 и 3 у бара и менеджера — один текст (v144: остальные у бара без юридического, tests/v144)", () => {
+    for (const i of [0, 2]) expect(les(M8)[i].content, TITLES[i]).toBe(les(B7)[i].content);
+    expect(rd("data/modules-bar.js")).toContain("правишь здесь — поправь и там (tests/v144 сверяет)");
+    expect(rd("data/modules-manager.js")).toContain("(tests/v144 сверяет)");
   });
   it("индекс уроков собран скриптом и знает обе темы", () => {
     for (const [r, m] of [["bar", B7], ["manager", M8]]) {
@@ -80,13 +80,14 @@ describe("v142 (Доп. 460): содержание — стандарт холд
       "дежурную службу ЕГАИС", "Федеральная специальная марка (ФСМ) — на российском алкоголе, акцизная — на импортном"]) expect(TXT, s).toContain(s);
   });
   it("расхождения: без марки не принимаем, акт с экспедитором, штраф за немаркированный алкоголь", () => {
-    for (const s of ["Бутылку без марки или с повреждённой маркой не принимаем ни в каком виде", "Составляем акт расхождений с экспедитором, подписываем оба",
+    for (const s of ["Бутылку без марки или с повреждённой маркой не принимаем ни в каком виде", "Составляем акт расхождений с экспедитором и подписываем вдвоём",   // v144: вычитка
+     
       "штраф организации от 1 до 1,5 млн ₽", "Подпись до пересчёта — согласие с тем, что всё привезли целым"]) expect(TXT, s).toContain(s);
   });
   it("касса и списание: каждая продажа — в ЕГАИС с 1 июля 2024 года, вскрытие не регистрируют, акт — следующий рабочий день, пивные акты остаются", () => {
     for (const s of ["С 1 июля 2024 года общепит передаёт в ЕГАИС каждую продажу алкоголя, а вскрытие отдельно не регистрирует",
       "Сканируем марку бутылки, из которой наливаем, в чеке — объём в мл", "Срок — не позднее следующего рабочего дня после первичного документа о списании, например акта о бое",
-      "в феврале 2026 года Росалкогольтабакконтроль это отозвал. Акты подаём, как раньше"]) expect(TXT, s).toContain(s);
+      "в феврале 2026 года Росалкогольтабакконтроль от отмены отказался, акты подаём, как раньше"]) expect(TXT, s).toContain(s);
   });
   it("«Честный знак»: УПД, кега — не позднее следующего рабочего дня, вывод из оборота — 3 рабочих дня, молоко — номер партии с 1 ноября 2026, просроченное", () => {
     for (const s of ["УПД подписываем после пересчёта и проверки кодов, в день поставки — стандарт холдинга", "Срок — не позднее следующего рабочего дня после подключения",
@@ -181,9 +182,9 @@ describe("v142 (Доп. 460): сборка, диалог, глоссарий, о
       expect(low, t).toContain(t.toLowerCase().slice(0, 6));
     }
   });
-  it("«Книга отзывов» у обеих тем, план новичка: у бара «Честность и деньги» → bar7", () => {
+  it("«Книга отзывов» у обеих тем, план новичка: у бара «Честность и деньги» — нет (v144: тема для ознакомления)", () => {
     for (const k of ["bar7", "m8"]) { const rv = MODULE_REVIEWS[k]; expect(rv && rv.text.length > 60 && rv.guest && rv.table, k).toBeTruthy(); }
-    expect(NB_COMP_MODULES.bar["Честность и деньги"]).toBe("bar7");
+    expect(NB_COMP_MODULES.bar["Честность и деньги"]).toBeUndefined();   // v144: как до v142
     expect(NB_COMP_MODULES.bar["Продукт и подача"]).toBe("bar3");   // прежнее — как было
     expect(NB_COMP_MODULES.manager["Честность и деньги"]).toBe("m7");
   });

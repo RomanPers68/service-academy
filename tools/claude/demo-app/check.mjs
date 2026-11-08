@@ -35,7 +35,10 @@
 // стекла у льда», живой диалог «Тут точно 50?», Наставник по стандарту, «Справочник» → «Кофе» → «Чистота машины»; у Марии —
 // пункт «Бар: …» в «Закрытии», «Урок 9» и «Сборка: поломка на смене», «Утро руководителя» в понедельник (демо переводит
 // часы на ближайший понедельник) — строка «Раз в неделю» ведёт в урок «Контроль».
-// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,receive,equip,phone]
+// v144 (Доп. 464–465): у Анны в «Баре» «Урок 7» и «Урок 8» — для ознакомления (номер курсивом, записка, «0 из 50»), урок «Шесть
+// правил и три проверки» без штрафов, «Самопроверка»; у Марии в «Менеджере» темы обычные — штрафы и пункты на месте, «Смена
+// целиком»: касса сразу после обхода.
+// Запуск: node tools/claude/demo-app/check.mjs <папка демо> <папка снимков> [anna,maria,roman,ksenia,about,lessons,routine,receive,equip,info,phone]
 import { createRequire } from "node:module";
 import http from "node:http";
 import { readFileSync, statSync, mkdirSync } from "node:fs";
@@ -1067,6 +1070,57 @@ if (!ONLY || ONLY.includes("equip")) {
   ok("«Сборка: поломка на смене» — Отключить, Табличка, Заявка, Посуда, Передача", (await page.locator(".sa-bld-fnm").allInnerTexts().catch(() => [])).join(",") === "Отключить,Табличка,Заявка,Посуда,Передача");
   await shot("e10-build");
   await page.evaluate(() => { localStorage.clear(); });
+}
+if (!ONLY || ONLY.includes("info")) {
+  // v144 (Доп. 465): темы бара для ознакомления; у менеджера — обычные
+  const closeDemo = async () => { for (let i = 0; i < 4; i++) { const b = page.locator("#demo-tgchat .done"); if (await b.count() && await b.first().isVisible().catch(() => false)) { await b.first().click().catch(() => {}); await page.waitForTimeout(400); } else break; }
+    await page.locator("#demo-tg").click().catch(() => {}); };
+  const nav = async (x, ms = 1500) => { await page.evaluate((v) => window.__saNav && window.__saNav(v), x); await page.waitForTimeout(ms); };
+  const who = async (w, uk, role) => {
+    await page.evaluate((x) => { localStorage.setItem("__demo_who", x); localStorage.removeItem("__demo_me"); }, w);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(800); await closeDemo();
+    await page.evaluate(([k, r]) => localStorage.setItem("sa_last_role" + k, JSON.stringify(r)), [uk, role]);
+    await page.goto("http://localhost:" + PORT + "/index.html", { waitUntil: "load" }); await boot(); await page.waitForTimeout(1200); await closeDemo(); };
+  const topic = async (t) => { await nav("home", 1600); await closeDemo(); await page.locator('.tbp-num[aria-label*="' + t + '"]').first().click().catch(() => {}); await page.waitForTimeout(1100); };
+  const step = async (t) => { await page.locator(".tbm-node:not(.tbp-side *)", { hasText: t }).first().click().catch(() => {}); await page.waitForTimeout(1500); };
+  const feed = async () => { await page.evaluate(() => { const b = document.querySelector('[aria-label="Читать лентой"]'); if (b) b.click(); }); await page.waitForTimeout(600); };
+  await page.evaluate(() => localStorage.clear());
+  await who("anna", "_Анна_Смирнова", "bar");
+  await nav("home", 1600); await closeDemo();
+  const labels = await page.evaluate(() => [...document.querySelectorAll(".tbp-strip .tbp-num")].map((e) => e.getAttribute("aria-label") || ""));
+  // в демо у Анны первым — раздел «Наш ресторан» и свои разделы: темы ищем по названию, сумму шагов — по подписям номеров
+  const info = labels.filter((l) => /для ознакомления/.test(l));
+  ok("Анна, «Бар»: «для ознакомления» — только у «Урока 7» и «Урока 8»", info.length === 2 && /^Урок 7 · Приём и хранение/.test(info[0]) && /^Урок 8 · Инвентарь/.test(info[1]), JSON.stringify(labels.slice(-4)));
+  const total = labels.filter((l) => !/для ознакомления/.test(l)).reduce((a, l) => a + (Number((l.match(/ из (\d+)/) || [])[1]) || 0), 0);
+  ok("шапка трека — «… из " + total + "»: шаги тем для ознакомления не считаются", total > 0 && new RegExp(" из " + total + " ·").test(await txt()), String(total));
+  await topic("Приём и хранение");
+  ok("«Урок 7»: записка «Тема для ознакомления: в прогресс трека и отчёт руководителя не входит», шестой урок — «Шесть правил и три проверки»",
+    /Тема для ознакомления: в прогресс трека и отчёт руководителя не входит/.test(await txt()) && /Шесть правил и три проверки/.test(await txt()) && !/Ответственность: штрафы/.test(await txt()));
+  await shot("i1-topic");
+  await step("Шесть правил и три проверки"); await feed();
+  ok("урок «Шесть правил и три проверки» — без штрафов и статей", /Не принимаем бутылку без марки/.test(await txt()) && !/штраф|КоАП/.test(await txt()));
+  await shot("i2-lesson");
+  await topic("Приём и хранение"); await step("Самопроверка: приём и хранение");
+  await page.waitForSelector("[data-quiz-kind]", { timeout: 8000 }).catch(() => {});
+  ok("тест темы — «Самопроверка · … вопросов»", /^Самопроверка · \d+ вопрос/.test((await page.locator("[data-quiz-kind]").innerText().catch(() => "")).trim()));
+  await shot("i3-selfcheck");
+  await page.locator('[aria-label="Вернуться"]').first().click().catch(() => {}); await page.waitForTimeout(800);
+  await nav("home", 1400); await closeDemo();
+  await page.locator('[aria-label="Все темы списком"]').first().click().catch(() => {}); await page.waitForTimeout(900);
+  ok("список тем: «Урок 7 · для ознакомления», «Урок 8 · для ознакомления»", /Урок 7 · для ознакомления/.test(await txt()) && /Урок 8 · для ознакомления/.test(await txt()));
+  await page.evaluate(() => { const el = [...document.querySelectorAll("div")].find((e) => e.children.length === 0 && /Урок 7 · для ознакомления/.test(e.textContent || "")); if (el) el.scrollIntoView({ block: "center" }); }); await page.waitForTimeout(500);
+  await shot("i4-list");
+  await page.locator('[aria-label="Листать темы по одной"]').first().click().catch(() => {}); await page.waitForTimeout(600);
+  await who("maria", "_Мария_Ким", "manager");
+  await topic("Приём и хранение");
+  ok("Мария, «Менеджер»: «Урок 8» — обычная тема, урок «Ответственность: штрафы и шесть правил»", !/Тема для ознакомления/.test(await txt()) && /Ответственность: штрафы и шесть правил/.test(await txt()));
+  await step("Ответственность: штрафы и шесть правил"); await feed();
+  ok("у менеджера штрафы и статьи на месте (КоАП РФ, ст. 15.12)", /КоАП РФ, ст\. 15\.12/.test(await txt()));
+  await shot("i5-manager");
+  await topic("Админ на смене"); await step("Смена целиком"); await feed();
+  ok("«Смена целиком»: касса сразу после обхода", /Сразу после обхода — кассовая смена под своей учётной записью/.test(await txt()));
+  await shot("i6-shift");
+  await page.evaluate(() => { localStorage.setItem("sa_last_role_Мария_Ким", JSON.stringify("seasonal")); localStorage.setItem("sa_last_role_Анна_Смирнова", JSON.stringify("seasonal")); });
 }
 if (!ONLY || ONLY.includes("phone")) {
   await page.evaluate(() => { localStorage.setItem("__demo_who", "anna"); localStorage.setItem("__demo_newphone", "1"); localStorage.removeItem("__demo_me"); });

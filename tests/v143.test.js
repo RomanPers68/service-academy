@@ -57,15 +57,15 @@ describe("v143 (Доп. 462): тема в конце треков бара и м
       expect(les(m, "quiz")[0].questions.length).toBe(20);
       expect(les(m, "practice")[0].situations.length).toBe(8);
       for (const l of les(m)) expect(l.content.length, l.id).toBeGreaterThan(900);
-      expect(m.lessons.find((l) => l.type === "dialogue")).toMatchObject({ dialogueId: "bar-b8-1", title: "Живой диалог: «тут точно 50?»" });
+      expect(m.lessons.find((l) => l.type === "dialogue")).toMatchObject({ dialogueId: "bar-b8-1", title: "Живой диалог: «Тут точно 50?»" });   // v144: вычитка
     }
     expect(B8.lessons.find((l) => l.type === "build")).toMatchObject({ id: "bar8-build", title: "Сборка: бой стекла у льда", buildId: "glass-ice", role: "bar", mod: "bar8", flow: true });
     expect(M9.lessons.find((l) => l.type === "build")).toMatchObject({ id: "m9-build", title: "Сборка: поломка на смене", buildId: "breakdown-admin", role: "manager", mod: "m9", flow: true });
   });
-  it("уроки 1–6 у бара и менеджера — один текст (правишь один — правь оба)", () => {
-    for (let i = 0; i < 6; i++) expect(les(M9)[i].content, TITLES[i]).toBe(les(B8)[i].content);
-    expect(rd("data/modules-bar.js")).toContain("правишь здесь — поправь и там (tests/v143 сверяет)");
-    expect(rd("data/modules-manager.js")).toContain("правишь здесь — поправь и там (tests/v143 сверяет)");
+  it("уроки 5 и 6 у бара и менеджера — один текст (v144: остальные у бара без пунктов СанПиН и ПП, tests/v144)", () => {
+    for (const i of [4, 5]) expect(les(M9)[i].content, TITLES[i]).toBe(les(B8)[i].content);
+    expect(rd("data/modules-bar.js")).toContain("правишь здесь — поправь и там (tests/v144 сверяет)");
+    expect(rd("data/modules-manager.js")).toContain("(tests/v144 сверяет)");
   });
   it("индекс уроков собран скриптом и знает обе темы", () => {
     for (const [r, m] of [["bar", B8], ["manager", M9]]) {
@@ -97,7 +97,8 @@ describe("v143 (Доп. 462): содержание — стандарт холд
       "моем всю посуду в режиме с дезинфекцией и максимальной температурой (СанПиН 2.3/2.4.4282-26, п. 37), затем сливаем воду и чистим фильтры",
       "не реже раза в 14 дней и при смене сорта (норматив холдинга)", "опорожняем, моем и дезинфицируем бункер и узлы (норматив холдинга)", "Первую партию льда утилизируем, мойку отмечаем в графике",
       "записываем температуру в журнал (СанПиН, п. 35)", "влажная уборка с моющими и дезинфицирующими средствами (СанПиН, п. 21); испачкали — убираем сразу (норматив холдинга)",
-      "СанПиН (п. 38) требует обрабатывать аппараты для напитков по инструкции изготовителя, моющими и дезинфицирующими средствами. Стандарт холдинга может требовать чаще инструкции, но не реже",
+      "СанПиН (п. 38) требует обрабатывать аппараты для напитков моющими и дезинфицирующими средствами по инструкции изготовителя. Стандарт холдинга может требовать чаще инструкции, но не реже",   // v144: вычитка
+     
       "не допускаем их попадания в напитки (СанПиН, п. 46)", "название средства, концентрацию, дату приготовления и срок годности (п. 47)"]) expect(TXT, s).toContain(s);
     // температуры стаканомойки — по инструкции к машине: цифр в уроках нет
     expect(TXT).not.toMatch(/\d\d\s*°C/);
@@ -111,7 +112,7 @@ describe("v143 (Доп. 462): содержание — стандарт холд
       "🔴 Одышка или головокружение: сразу выходим и выводим всех, к вентилю не идём", "Человек упал — за ним не спускаемся, звоним 112"]) expect(TXT, s).toContain(s);
     // сверка 07.11: с симптомами к вентилю не идём (в стандарте — сначала вентиль); в практике верный — «сразу выводим всех»
     const co2 = les(B8, "practice")[0].situations.find((x) => /кружится голова/.test(x.scene || ""));
-    expect(co2.options[co2.correct]).toBe("Сразу выводим всех из подвала");
+    expect(co2.options[co2.correct]).toBe("Сразу вывожу всех из подвала");   // v144: вычитка, в одной форме с остальными
   });
   it("поломка: отключить, табличка, администратору, Битрикс24 в ту же смену, сами не ремонтируем; семь «не делаем»; сдача бара", () => {
     for (const s of ["Отключаем оборудование и вешаем табличку «Не работает»", "Администратор в ту же смену ставит задачу в Битрикс24: что сломалось, когда, фото",
@@ -191,7 +192,8 @@ describe("v143 (Доп. 462): сборки, диалог, глоссарий, о
       expect(answerTell(s.options)).toBe(false);
     }
     expect(d.guest.mood + ch.reduce((a, s) => a + s.options.find((o) => o.correct).moodDelta, 0)).toBeGreaterThanOrEqual(5);
-    expect(ch[0].options.find((o) => o.correct).feedback).toContain("(ПП РФ № 1515, п. 18)");
+    expect(ch[0].options.find((o) => o.correct).feedback).toContain("Гость вправе проверить объём");
+    expect(ch[0].options.find((o) => o.correct).feedback).not.toContain("ПП РФ");   // v144: диалог общий с баром — пункт закона только в уроке менеджера
     expect(DIALOGUES_DATA.filter((x) => x.termKey === "бар-б8").length).toBe(1);
   });
   it("глоссарий: 12 новых терминов, каждый один раз, и они есть в уроках", () => {
@@ -204,12 +206,12 @@ describe("v143 (Доп. 462): сборки, диалог, глоссарий, о
       expect(low, t).toContain(t.toLowerCase().slice(0, 6));
     }
   });
-  it("«Книга отзывов» у обеих тем, план новичка: у бара гигиена → bar8", () => {
+  it("«Книга отзывов» у обеих тем, план новичка: у бара гигиена → bar1 (v144: как до v143, тема бара для ознакомления)", () => {
     for (const k of ["bar8", "m9"]) { const rv = MODULE_REVIEWS[k]; expect(rv && rv.text.length > 60 && rv.guest && rv.table, k).toBeTruthy(); }
-    expect(NB_COMP_MODULES.bar["Гигиена и безопасность"]).toBe("bar8");
-    expect(NB_COMP_MODULES.bar["Гигиена и стандарты"]).toBe("bar8");
+    expect(NB_COMP_MODULES.bar["Гигиена и безопасность"]).toBe("bar1");
+    expect(NB_COMP_MODULES.bar["Гигиена и стандарты"]).toBe("bar1");
     expect(NB_COMP_MODULES.bar["Общие стандарты"]).toBe("bar1");   // прежнее — как было
-    expect(NB_COMP_MODULES.bar["Честность и деньги"]).toBe("bar7");
+    expect(NB_COMP_MODULES.bar["Честность и деньги"]).toBeUndefined();
     expect(NB_COMP_MODULES.manager["Гигиена и безопасность"]).toBe("m5");
   });
   it("значки у ситуаций практики — из прежнего набора", () => {

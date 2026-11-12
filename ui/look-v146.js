@@ -5,9 +5,8 @@
 // :not(#sa-v146) — вес селектора как у id: правило перекрывает прежние, сколько бы классов у тех ни было.
 export const LOOK_V146_CSS = `
 /* ── v146 (Доп. 467). Владелец (12.11) на разбор «чтобы человек захотел остаться» — «Давай все»:
-   1) «Одна главная кнопка на экране, залитая золотом»: главная кнопка (data-lens-btn="main") и главная кнопка уроков у стола,
-      радио и «Живого гостя» (.tb-main) — золотая заливка и тёмная надпись (контраст 5,7–13), без внешнего кольца; всё
-      внутри кнопки — цветом надписи (значки тоже). «Начать» на карточке «сейчас» главной — золотой корешок билета.
+   1) «Одна главная кнопка на экране, залитая золотом»: в v146 — «Начать» на главной золотым корешком и золото на всех кнопках
+      data-lens-btn="main" и .tb-main. v147 (Доп. 470–471) вернул кнопкам линзы с одним кольцом, «Начать» — линза с подсветкой.
    2) «Меньше колец»: внешнее кольцо (--lk-ring) больше не рисуется у простых значков, «назад», «закрыть», вкладок и
       строк — у них остаётся одно стекло. Кольцо осталось там, где оно что-то показывает: медальоны главной (серия, цель,
       путь), кружки треков (прогресс), кнопка AI и чат внизу, SOS, «Слушать» у радио.
@@ -21,32 +20,27 @@ html.sa-lens [data-chat-dock]:not(#sa-v146),html.sa-lens .rd-ctl .play:not(#sa-v
 html.sa-lens.sa-light .de-medal:not(#sa-v146),html.sa-lens.sa-light [data-tracks-row]:not(#sa-v146),html.sa-lens.sa-light [data-tab-ai]:not(#sa-v146),
 html.sa-lens.sa-light [data-chat-dock]:not(#sa-v146),html.sa-lens.sa-light .rd-ctl .play:not(#sa-v146){--lk-ring:rgba(139,106,48,0.32)}
 html.sa-lens [data-lens="glyph"]:not(#sa-v146)::after{border-color:transparent!important}
-html.sa-lens [data-lens-btn="main"]:not(#sa-v146),html.sa-lens .tb-table .tb-main:not(:disabled):not(#sa-v146),
-html.sa-lens .tb-radio .tb-main:not(:disabled):not(#sa-v146),html.sa-lens .tb-guest .tb-main:not(:disabled):not(#sa-v146){
-  color:#24180A!important;border-color:transparent!important;text-shadow:none!important;
-  background:linear-gradient(172deg,#F1DBA4 0%,#DDBE7F 46%,#BC9A5E 100%)!important;
-  box-shadow:inset 0 1px 0 rgba(255,250,235,0.7),inset 0 -1px 0 rgba(120,82,28,0.45),0 6px 16px rgba(214,178,102,0.2),0 2px 6px rgba(0,0,0,0.3)!important}
-html.sa-lens.sa-light [data-lens-btn="main"]:not(#sa-v146),html.sa-lens.sa-light .tb-table .tb-main:not(:disabled):not(#sa-v146),
-html.sa-lens.sa-light .tb-radio .tb-main:not(:disabled):not(#sa-v146),html.sa-lens.sa-light .tb-guest .tb-main:not(:disabled):not(#sa-v146){
-  color:#24180A!important;background:linear-gradient(172deg,#EFD69C 0%,#D7B470 48%,#B48F50 100%)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(120,82,28,0.4),0 4px 12px rgba(150,110,40,0.28)!important}
+/* v147 (Доп. 470): кнопки — снова линзы. Золото v146 легло на все кнопки с data-lens-btn="main" и .tb-main (их ~170 на ~45
+   экранах, в «Графике» — до трёх золотых рядом); владелец: «Некоторые кнопки сменили линзы на золотые». Остаётся только
+   одно кольцо — внешнее (::after) скрыто, как у остальных «меньше колец»; стекло, ободок и свет — прежние (ui/home-look.jsx). */
 html.sa-lens [data-lens-btn="main"]:not(#sa-v146)::after,html.sa-lens .tb-main:not(#sa-v146)::after{display:none!important}
-html.sa-lens [data-lens-btn="main"]:not(#sa-v146) *{color:inherit!important}
-html.sa-lens [data-lens-btn="main"]:not(#sa-v146) svg[stroke]:not([stroke="none"]),html.sa-lens [data-lens-btn="main"]:not(#sa-v146) svg [stroke]:not([stroke="none"]){stroke:currentColor!important}
-html.sa-lens [data-lens-btn="main"]:not(#sa-v146) svg[fill]:not([fill="none"]),html.sa-lens [data-lens-btn="main"]:not(#sa-v146) svg [fill]:not([fill="none"]){fill:currentColor!important}
-html.sa-lens [data-lens-btn="main"]:not(#sa-v146):active{filter:brightness(0.94)}
-html.sa-lens [data-lens-btn="main"]:disabled:not(#sa-v146),html.sa-lens [data-lens-btn="main"][aria-disabled="true"]:not(#sa-v146){filter:saturate(0.35) brightness(0.82);opacity:0.6}
-/* «Начать» на карточке «сейчас» — золотой корешок билета (перфорация остаётся слева) */
-html.sa-lens .sa-look-lens [data-now-stub]:not(#sa-v146){position:relative;width:84px!important;margin:8px 8px 8px 0;gap:6px!important;border-radius:12px;
-  background:linear-gradient(165deg,#F0D9A4 0%,#D6B577 48%,#B08F55 100%);
-  box-shadow:0 8px 22px rgba(214,178,102,0.26),inset 0 1px 0 rgba(255,255,255,0.6),inset 0 -1px 0 rgba(120,82,28,0.4)}
-html.sa-lens.sa-light .sa-look-lens [data-now-stub]:not(#sa-v146){background:linear-gradient(165deg,#EFD69C 0%,#D7B470 48%,#B48F50 100%);
-  box-shadow:0 6px 16px rgba(150,110,40,0.3),inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(120,82,28,0.4)}
-html.sa-lens .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146){background:rgba(42,31,14,0.1)!important;box-shadow:none!important}
+/* «Начать» на карточке «сейчас» — v147 (Доп. 471): линза с подсветкой и одним кольцом. В v146 был золотой корешок билета;
+   владелец: «Давай подумаем над этой кнопкой. Как будто она не вписывается. Особенно заметно в теме для чтения». Из трёх
+   вариантов («как было» — линза с двумя кольцами, линза с подсветкой, золотая монета) — линза с подсветкой: стекло светлее,
+   ободок ярче, вокруг — мягкое свечение, второе кольцо (span в линзе) скрыто, надпись — золотом. Корешок уже (84 px вместо 98),
+   чтобы заголовку оставалось места, как в v146; длинное («Начать проверку», «Другие треки ›») — в две строки по центру. */
+html.sa-lens .sa-look-lens [data-now-stub]:not(#sa-v146){width:84px!important;background:radial-gradient(80% 55% at 50% 40%,rgba(232,201,131,0.15),rgba(232,201,131,0) 72%)}
+html.sa-lens .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146){width:50px!important;height:50px!important;
+  background:radial-gradient(circle at 50% 28%,rgba(240,214,150,0.34),rgba(200,169,110,0.13) 72%)!important;
+  box-shadow:inset 0 0 0 1.5px rgba(232,201,131,0.9),inset 0 0 16px rgba(255,230,170,0.16),inset 0 1.5px 0 rgba(255,255,255,0.32),0 0 20px rgba(232,201,131,0.3)!important}
 html.sa-lens .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146)>span{display:none!important}
-html.sa-lens .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146) svg{stroke:#2A1F0E!important}
-html.sa-lens .sa-look-lens [data-now-stub] [data-now-cta]:not(#sa-v146){color:#1A1008!important;font-size:17px!important;font-weight:bold!important}
-html.sa-lens .sa-look-lens [data-now-stub]>span:last-child:not([data-now-cta]):not([data-now-lens]):not(#sa-v146){color:rgba(42,31,14,0.75)!important;margin-top:-3px!important}
+html.sa-lens .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146) svg{stroke:#F1DBA4!important}
+html.sa-lens .sa-look-lens [data-now-stub] [data-now-cta]:not(#sa-v146){color:#E8C983!important;font-size:16px!important;font-weight:bold!important;text-align:center;line-height:1.15}
+html.sa-lens.sa-light .sa-look-lens [data-now-stub]:not(#sa-v146){background:radial-gradient(80% 55% at 50% 40%,rgba(176,138,70,0.12),rgba(176,138,70,0) 72%)}
+html.sa-lens.sa-light .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146){background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.95),rgba(176,138,70,0.2) 75%)!important;
+  box-shadow:inset 0 0 0 1.5px rgba(139,106,48,0.8),inset 0 0 14px rgba(255,255,255,0.6),inset 0 1.5px 0 #fff,0 0 16px rgba(176,138,70,0.28)!important}
+html.sa-lens.sa-light .sa-look-lens [data-now-stub] [data-now-lens]:not(#sa-v146) svg{stroke:#6B4E1A!important}
+html.sa-lens.sa-light .sa-look-lens [data-now-stub] [data-now-cta]:not(#sa-v146){color:#6B4E1A!important}
 /* инструменты главной — линзы, как были (стекло, ободок, свет сверху и отсвет цвета инструмента снизу), но без второго
    кольца (Доп. 468, владелец: «Может их сделаем линзами, как были, только без второго кольца»): внешнее кольцо (::after)
    скрыто, стекло (::before) — во весь кружок, и его ободок — единственное кольцо */

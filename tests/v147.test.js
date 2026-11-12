@@ -44,7 +44,9 @@ describe("v147: кнопки — линзы с одним кольцом, «На
     for (const bg of ["#2A2113", "#3A2F1F", "#4A3C26"]) expect(cr("#E8C983", bg), bg).toBeGreaterThanOrEqual(4.5);
     for (const bg of ["#FFFDF8", "#F7EEDC", "#EBDDBF"]) expect(cr("#6B4E1A", bg), bg).toBeGreaterThanOrEqual(4.5);
   });
-  it("метка сборки — v147", () => {
-    expect(rd("ui/menu-trainer.jsx")).toContain("· сборка v147</span>");
+  it("метка сборки — v147 и новее (номер последней версии сторожит tests/v145.test.js)", () => {
+    const n = [...rd("ui/menu-trainer.jsx").matchAll(/· сборка v(\d+)<\/span>/g)].map((m) => Number(m[1]));
+    expect(n.length).toBe(1);
+    expect(n[0]).toBeGreaterThanOrEqual(147);
   });
 });

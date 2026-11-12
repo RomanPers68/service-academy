@@ -58,7 +58,7 @@ const readTab = () => { try { return localStorage.getItem(TAB_KEY) || ""; } catc
 const saveTab = (t) => { try { localStorage.setItem(TAB_KEY, t); } catch (e) {} };
 
 // startTab + startId — открыть карточку (вина, крепкого; со startTab "cocktail" — коктейля); note — строка под её заголовком
-export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = null, startId = null, note = "", onOpenCocktail = null, onBuildCocktail = null, onCocktailDeck = null, onBarLab = null, onCocktailEdit = null, onShareChat = null }) {
+export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = null, startId = null, note = "", onOpenCocktail = null, onBuildCocktail = null, onCocktailDeck = null, onBarLab = null, onCocktailEdit = null, onShareChat = null, startSom = false }) {
   const gold = a11y ? "#7A5D2A" : GOLD, text = T.modTitle.color, sub = T.modSub.color;
   const restaurant = (profile && profile.restaurant) || "";
   const edit = canEditWines(profile) && !!onEdit;
@@ -124,7 +124,11 @@ export function BarCardScreen({ T, a11y, profile, onBack, onEdit, startTab = nul
   // v131 (Доп. 444): «Сомелье» — вместо вкладок, как печать; просьба и ответ живут, пока ты в «Барной карте»
   const [som, setSom] = React.useState(false);
   const somMem = React.useRef(null);
-  const somRow = cocktails.length + wines.length + spirits.length >= 2 ? <SomEntry T={T} a11y={a11y} onClick={() => setSom(true)} /> : null;
+  const somOk = cocktails.length + wines.length + spirits.length >= 2;
+  const somRow = somOk ? <SomEntry T={T} a11y={a11y} onClick={() => setSom(true)} /> : null;
+  // v148 (Доп. 472): совет в уроке «спроси Сомелье» — сразу к подбору, как только в карте есть из чего выбирать (один раз)
+  const somAuto = React.useRef(!!startSom);
+  React.useEffect(() => { if (somAuto.current && somOk) { somAuto.current = false; setSom(true); } }, [somOk]);
   // v128: вкладки — и в копии шапки сверху (ui/bar-pin.jsx); у копии свои метки, чтобы не путать с вкладками на месте
   const tabBar = (pin) => (avail.length > 1 ? (
     <div role="tablist" aria-label="Барная карта" id={pin ? undefined : "sa-bar-tabs"} data-bar-tabs={pin ? undefined : avail.join(",")} data-bar-pin-tabs={pin ? avail.join(",") : undefined} data-lens-seg="flat"

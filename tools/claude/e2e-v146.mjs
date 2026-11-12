@@ -200,9 +200,11 @@ if (want("BTN")) {
   const { ctx, page } = await open();   // разминка — с главной сразу после входа (карточка «сейчас» — «Разминка перед сменой»)
   await closeBadge(page);
   await page.locator("[data-now-cta]").click(); await page.waitForTimeout(1500);
-  await page.getByText("Жду, пока гости уйдут").first().click(); await page.waitForTimeout(2600);
-  const t = await page.evaluate(() => { const x = [...document.querySelectorAll(".tb-main")].find((e) => /Спасти/.test(e.textContent)); if (!x) return null; const cs = getComputedStyle(x); return { bg: cs.backgroundImage, c: cs.color, after: getComputedStyle(x, "::after").display }; });
-  ok("BTN: «Спасти ситуацию» в разминке — линза, без внешнего кольца (v147)", !!t && /^radial-gradient/.test(t.bg) && t.c === "rgb(232, 201, 131)" && t.after === "none", JSON.stringify(t));
+  // v148: ситуации разминки меняются по дням (было — вариант «Жду, пока гости уйдут» ситуации 12.11) — отвечаем последним
+  // вариантом и смотрим главную кнопку стола: «Спасти ситуацию», если ответ неверный, иначе «Дальше»
+  await page.locator(".tb-acts .tb-actc").last().click(); await page.waitForTimeout(2600);
+  const t = await page.evaluate(() => { const all = [...document.querySelectorAll(".tb-main")].filter((e) => e.offsetParent); const x = all.find((e) => /Спасти/.test(e.textContent)) || all[0]; if (!x) return null; const cs = getComputedStyle(x); return { t: x.textContent.trim().slice(0, 30), bg: cs.backgroundImage, c: cs.color, after: getComputedStyle(x, "::after").display }; });
+  ok("BTN: главная кнопка стола в разминке («Спасти ситуацию» / «Дальше») — линза, без внешнего кольца (v147)", !!t && /^radial-gradient/.test(t.bg) && t.c === "rgb(232, 201, 131)" && t.after === "none", JSON.stringify(t));
   await shot(page, "btn-warmup");
   await ctx.close();
 }

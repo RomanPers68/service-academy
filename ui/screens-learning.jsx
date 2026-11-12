@@ -40,6 +40,7 @@ import { iconForSituation, iconForEmoji, LEAD_EMOJI_RE as LEAD_EM_RE, ONE_EMOJI_
 const stripEm = (t) => String(t || "").replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trim();
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
+import { LessonTip } from "./lesson-tip";   // v148 (Доп. 472): совет в конце урока
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
 import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
 import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): трек шире, глоссарий в две колонки на широком экране
@@ -1124,7 +1125,8 @@ function TapAnchored({ x, y, T, children }) {
 
 export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped,
   mod = null, profile = null, streak = null, mistakeBank = [], onMistakes, onResolveMistake, onFailMistake, wasCompleted = false,
-  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents, onShareChat = null }) {
+  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents, onShareChat = null,
+  tip = null, onTipGo, onTipLater, onTipShown, a11y = false }) {
   // Доп. 299–303: повтор пройденного — меньше нажатий (автопереход), шпаргалка из уроков
   // раздела, подпись настоящего наставника, стакан «цель дня» в чеке, вопрос Наставнику.
   const replay = !!wasCompleted;
@@ -1334,6 +1336,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
       </div>
     );
   };
+  // v148 (Доп. 472): совет — над «Закрепить у стола» / «Урок пройден» и после «Пройдено ✓» (что и когда — App → lib/lesson-tips.js)
+  const tipCard = tip && lesson.type === "lesson"
+    ? <LessonTip tip={tip} T={T} color={color} a11y={a11y || !!T.a11y} onGo={onTipGo} onLater={onTipLater} onShown={onTipShown} /> : null;
   const resumeBanner = cardMode && resumeFrom > 0 && cardIdx === resumeFrom && !done ? (
     <div className="sa-fadein" style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px", padding: "8px 12px", borderRadius: 12, border: `1px dashed ${color}77`, fontSize: 12.5, color: T.modSub.color }}>
       <span style={{ flex: 1, minWidth: 0 }}>Продолжаем с того же места: карточка {Math.min(cardIdx, cards.length - 1) + 1} из {cards.length}</span>
@@ -1508,13 +1513,17 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               {cardIdx === 0 && cards.length > 1 && (
                 <div style={{ textAlign: "center", color: T.modSub.color, fontSize: 12.5, fontStyle: "italic", opacity: 0.75, marginBottom: 8 }}>листай свайпом ← →</div>
               )}
+              {cardIdx === cards.length - 1 && tipCard}
               {cardIdx === cards.length - 1 && (done
                 ? <DoneNext />
-                : <FinishLesson mt={6} />
+                : <FinishLesson mt={tipCard ? 0 : 6} />
               )}
             </div>
           ) : (
-            done ? <DoneNext /> : <FinishLesson mt={24} />
+            <>
+              {tipCard ? <div style={{ marginTop: 22 }}>{tipCard}</div> : null}
+              {done ? <DoneNext /> : <FinishLesson mt={tipCard ? 0 : 24} />}
+            </>
           )}
         </div>
         {/* Живой диалог — полноэкранный «экран» с автопрокруткой: он должен жить

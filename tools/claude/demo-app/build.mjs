@@ -24,6 +24,10 @@ const demoPlugin = {
       if (/[\\/]App\.jsx$/.test(args.path)) {
         const anchor = '  const goBack = useCallback((fallback = "roleSelect") => {';
         if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saNav = navigate;\n' + anchor);
+        // v148: открыть любой урок по id (e2e-v148 — советы в уроках); все роли догружаются, если ещё не приехали
+        if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saLesson = async (id) => { try { await loadAllModules(); } catch (e) {} '
+          + 'const m = Object.values(MODULES).flat().find((x) => (x.lessons || []).some((l) => l.id === id)); if (!m) return false; '
+          + 'setActiveModule(m); openLesson(m.lessons.find((l) => l.id === id)); return true; };\n' + anchor);
         // v109: месяц «Что дало обучение» для кнопки «Открыть итог» в сообщении бота (в приложении — ссылка ?go=gain_<месяц>)
         const gm = '  const [gainMonth, setGainMonth] = useState("");';
         if (src.includes(gm)) src = src.replace(gm, gm + '\n  if (typeof window !== "undefined") window.__saGainMonth = setGainMonth;');

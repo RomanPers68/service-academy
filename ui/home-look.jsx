@@ -18,6 +18,7 @@
 // v105: хвостик пузыря продолжает ободок. Две маски той же формы, что TAIL в ui/chat.jsx: под ::before — форма с
 // краем (красится цветом ободка), под ::after — та же форма на 1 px внутрь (заливка пузыря). Ободок самого пузыря
 // у хвостика закрывает заливка, и ободок идёт по кромке пузыря и хвостика без шва.
+import { ensureLookV146Css } from "./look-v146";   // v146 (Доп. 467)
 const tailSvg = (d) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 16'><path d='${d}'/></svg>`)}")`;
 const TAIL_RIM = tailSvg("M6 0C6 7.5 4.6 12.6 0 16h11v-5H7V0z"), TAIL_FILL = tailSvg("M7 0C7 7.3 5.7 12 2.6 15H11v-4H7z");
 
@@ -525,6 +526,8 @@ html.sa-lens [data-lens-x]::before,html.sa-lens [data-nb-x]::before{content:"";p
 `;
 export function ensureLookCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;
-  if (document.getElementById("sa-home-look-css")) return;
-  const st = document.createElement("style"); st.id = "sa-home-look-css"; st.textContent = CSS; document.head.appendChild(st);
+  if (!document.getElementById("sa-home-look-css")) {
+    const st = document.createElement("style"); st.id = "sa-home-look-css"; st.textContent = CSS; document.head.appendChild(st);
+  }
+  ensureLookV146Css();   // v146 (Доп. 467): главная кнопка золотом, меньше колец, треки цветом — свой файл, после этих правил
 }

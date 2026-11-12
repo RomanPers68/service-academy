@@ -48,6 +48,15 @@ html = html.replace(/<script src="https:\/\/telegram\.org[^<]*<\/script>/, "")
   .replace(/<title>[^<]*<\/title>/, "<title>Service Academy · демо</title>")
   .replace(/url\(\/assets\//g, "url(assets/")
   .replace(/<script type="module" src="[^"]*"><\/script>/, "");
+// v146 (Доп. 467): демо открывают и в «песочнице» (страница Claude, iframe без allow-same-origin): там чтение localStorage
+// бросает SecurityError, и приложение падало на старте («Что-то пошло не так»). Первым скриптом — память в странице вместо
+// localStorage и sessionStorage, если настоящие недоступны: демо работает, просто не помнит состояние между открытиями.
+const STORAGE_SHIM = "<script>(function(){function M(){}M.prototype.getItem=function(k){k=String(k);return Object.prototype.hasOwnProperty.call(this,k)?this[k]:null};" +
+  "M.prototype.setItem=function(k,v){this[String(k)]=String(v)};M.prototype.removeItem=function(k){delete this[String(k)]};" +
+  "M.prototype.clear=function(){var t=this;Object.keys(t).forEach(function(k){delete t[k]})};M.prototype.key=function(i){return Object.keys(this)[i]||null};" +
+  "Object.defineProperty(M.prototype,'length',{get:function(){return Object.keys(this).length}});" +
+  "['localStorage','sessionStorage'].forEach(function(n){try{var s=window[n];s.setItem('__sa_t','1');s.removeItem('__sa_t')}catch(e){try{Object.defineProperty(window,n,{value:new M(),configurable:true,writable:true})}catch(e2){}}})})();</script>";
+html = /<meta charset="UTF-8" \/>/i.test(html) ? html.replace(/(<meta charset="UTF-8" \/>)/i, "$1\n    " + STORAGE_SHIM) : html.replace(/<head>/, "<head>\n    " + STORAGE_SHIM);
 html = html.replace("</head>", '    <script src="dist/demo-boot.js"></script>\n  </head>');
 html = html.replace("</body>", '    <script type="module" src="dist/index.js"></script>\n  </body>');
 writeFileSync(OUT + "/index.html", html);

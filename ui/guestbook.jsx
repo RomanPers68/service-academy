@@ -263,7 +263,7 @@ export function GuestBookScreen({ T, a11y, profile, role, completed = {}, quizDo
               <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ ...labelStyle(13), color: "#7A654C" }}>Роль «Бар» · лучшие прогоны</div>
-                  <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar("#C8A96E", 16)}</span>
+                  <span style={{ display:"inline-flex", verticalAlign:"-3px" }}>{ROLE_SVG.bar((ROLES.find((r) => r.id === "bar") || {}).color || GOLD, 16)}</span>
                 </div>
                 <div style={{ ...SCRIPT, color: INK, fontSize: 25, marginTop: 10 }}>Витрина сборки</div>
                 <div style={{ marginTop: 6, flex: 1 }}>

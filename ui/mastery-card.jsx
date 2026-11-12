@@ -65,6 +65,19 @@ html.sa-light .ms-burst i.k2{background:#C99A2E}
 .ms-glow{animation:msGlow 2.6s ease-in-out infinite}
 @keyframes msGlow{0%,100%{opacity:.55;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
 @media (prefers-reduced-motion: reduce){.ms-toast-pos,.ms-toast-pos.out,.ms-modal,.ms-modal-card,.ms-glow{animation:none}.ms-burst{display:none}}
+.ms-moment{position:fixed;inset:0;z-index:9700;display:flex;align-items:center;justify-content:center;padding:24px 22px;animation:msMomentIn .35s ease both}
+@keyframes msMomentIn{from{opacity:0}to{opacity:1}}
+.ms-moment-card{width:100%;max-width:360px;text-align:center;animation:msMomentRise .5s cubic-bezier(.2,.9,.25,1) .05s both}
+@keyframes msMomentRise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.ms-mint{position:relative;display:block;animation:msMint .62s cubic-bezier(.2,1.35,.4,1) .18s both}
+@keyframes msMint{0%{opacity:0;transform:scale(1.9) rotate(-14deg)}62%{opacity:1;transform:scale(.94) rotate(2deg)}80%{transform:scale(1.03)}100%{opacity:1;transform:none}}
+.ms-shine{position:absolute;inset:6%;border-radius:50%;overflow:hidden;pointer-events:none}
+.ms-shine::after{content:"";position:absolute;top:-25%;bottom:-25%;width:40%;left:-70%;background:linear-gradient(100deg,transparent,rgba(255,250,230,.7),transparent);transform:skewX(-18deg);animation:msShineGo 1.1s ease-in-out .85s both}
+@keyframes msShineGo{from{left:-70%}to{left:135%}}
+.ms-wave{position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(232,197,106,.6);opacity:0;pointer-events:none;animation:msWave .9s ease-out .62s both}
+html.sa-light .ms-wave{border-color:rgba(156,116,32,.55)}
+@keyframes msWave{0%{opacity:.9;transform:scale(.92)}100%{opacity:0;transform:scale(1.6)}}
+@media (prefers-reduced-motion: reduce){.ms-moment,.ms-moment-card,.ms-mint{animation:none}.ms-shine::after,.ms-wave{display:none}}
 `;
 export function ensureMsCardCss() {
   if (typeof document === "undefined" || !document.head || !document.createElement) return;
@@ -386,13 +399,35 @@ const burst = (list, sm) => (
 const buzz = () => { try { if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) {} vibrate("success"); sfx("done"); };   // v57: и колокольчик
 const XIcon = ({ color = "currentColor" }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 
-export function BadgeToast({ a11y, item, state, onOpen, onClose, inline = false }) {
+// v146 (Доп. 467), владелец (12.11) на идею «новый значок — это событие, а не уведомление: первый значок уровня — на весь
+// экран: медаль чеканится, звенят бокалы, телефон вибрирует» — «Давай все». Новая ступень значка (бронза, серебро, золото) и
+// «Первые шаги» — момент на весь экран (TierMoment); если таких несколько подряд, момент — первый, остальные в ближайшие
+// 10 минут — прежней плашкой снизу (иначе праздник превращается в очередь окон). «Мастер роли» — как был (окно по центру).
+// Решает App.jsx (moment="auto" — только в первые 10 минут после занятия: при входе в приложение значок — плашкой, экран
+// не загорожен); без этого BadgeToast — прежняя плашка.
+export const MOMENT_KEY = "sa_ms_moment_at";
+export const MOMENT_GAP_MS = 10 * 60 * 1000;
+export const MOMENT_AFTER_MS = 10 * 60 * 1000;   // момент — если занятие было не раньше 10 минут назад (App.jsx, lastActRef)
+export function momentDue(item, now = Date.now(), last = null) {
+  if (!item || (item.kind !== "tier" && item.kind !== "firstWeek")) return false;
+  let at = last;
+  if (at === null) { try { at = Number(localStorage.getItem(MOMENT_KEY)) || 0; } catch (e) { at = 0; } }
+  return !(at > 0 && now - at < MOMENT_GAP_MS && now >= at);
+}
+const DECIDED = new Map();   // ключ значка → "moment" | "toast": решение одно, пока значок на экране
+
+// moment: не задан — плашка, как раньше; true — момент; "auto" — момент или плашка по momentDue (так зовёт App.jsx)
+export function BadgeToast({ a11y, item, state, onOpen, onClose, inline = false, moment = null }) {
   ensureMsCardCss();
   if (!item || !item.kind) return null;
   const key = item.kind + ":" + (item.id || item.role || "") + ":" + (item.tier || "");
+  let mode = moment === true ? "moment" : moment === "auto" ? DECIDED.get(key) : "toast";
+  if (!mode) { mode = momentDue(item) ? "moment" : "toast"; DECIDED.set(key, mode); }
   const el = item.kind === "master"
     ? <MasterModal key={key} a11y={a11y} item={item} onOpen={onOpen} onClose={onClose} />
-    : <TierToast key={key} a11y={a11y} item={item} state={state} onOpen={onOpen} onClose={onClose} />;
+    : mode === "moment"
+      ? <TierMoment key={key} a11y={a11y} item={item} state={state} onOpen={onOpen} onClose={onClose} />
+      : <TierToast key={key} a11y={a11y} item={item} state={state} onOpen={onOpen} onClose={onClose} />;
   if (inline || typeof document === "undefined" || !document.body) return el;
   return createPortal(el, document.body);
 }
@@ -464,6 +499,57 @@ function TierToast({ a11y, item, state, onOpen, onClose }) {
           style={{ ...msPrimary, width: "100%", minHeight: 44, marginTop: 12, fontSize: a11y ? 16 : 15 }}>Путь мастера ›</button>
         <button type="button" aria-label="Закрыть" data-lens="disc" data-lens-x="" onClick={() => finish(false)}
           style={{ position: "absolute", top: 2, right: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", padding: 0, color: c.sub }}><XIcon /></button>
+      </div>
+    </div>
+  );
+}
+
+// Момент новой ступени: медаль «чеканится» (падает крупной и встаёт на место с ударом), волна от удара, блик по металлу,
+// искры; в момент удара — звон бокалов и отдача (после первого касания страницы, как у плашки). «Меньше движения» — без
+// движения, звук и отдача остаются. Касание мимо или «Позже» — закрыть, «Путь мастера ›» — открыть путь на этом значке.
+function TierMoment({ a11y, item, state, onOpen, onClose }) {
+  const c = msPal(a11y);
+  const fired = React.useRef(false);
+  const once = (fn) => () => { if (fired.current) return; fired.current = true; vibrate("light"); if (fn) fn(item); };
+  React.useEffect(() => {
+    try { localStorage.setItem(MOMENT_KEY, String(Date.now())); } catch (e) { /* */ }
+    let calm = false;
+    try { calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { /* */ }
+    const t = setTimeout(() => {
+      try { if (typeof navigator !== "undefined" && navigator.userActivation && !navigator.userActivation.hasBeenActive) return; } catch (e) { /* */ }
+      sfx("ok"); vibrate("success");
+    }, calm ? 0 : 560);
+    const k = (e) => { if (e.key === "Escape") once(onClose)(); };
+    window.addEventListener("keydown", k);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", k); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  const first = item.kind === "firstWeek";
+  const tier = first ? 3 : Math.max(1, Math.min(3, Math.floor(Number(item.tier) || 1)));
+  const title = first ? "Первые шаги" : item.title || titleOf(item.id);
+  const line = toastLine(item, state);
+  const metal = tierColor(tier, a11y);
+  return (
+    <div className="ms-moment" data-ms-toast="" data-ms-moment={first ? "first" : String(tier)} onClick={once(onClose)}
+      style={{ background: a11y
+        ? "radial-gradient(70% 50% at 50% 36%, rgba(255,246,220,0.97), rgba(240,226,196,0.97) 60%, rgba(214,196,160,0.98) 100%)"
+        : "radial-gradient(70% 48% at 50% 34%, rgba(84,62,24,0.96), rgba(22,16,8,0.97) 62%, rgba(10,7,4,0.98) 100%)" }}>
+      <div className="ms-moment-card" role="dialog" aria-modal="true" aria-label={"Новый значок: " + title} onClick={(e) => e.stopPropagation()} style={{ fontFamily: BODY }}>
+        <div style={{ position: "relative", width: 156, height: 156, margin: "0 auto 18px" }}>
+          <span className="ms-glow" aria-hidden="true" style={{ position: "absolute", inset: -30, borderRadius: "50%", background: "radial-gradient(circle, " + metal + "66 0%, " + metal + "00 68%)" }} />
+          <span className="ms-wave" aria-hidden="true" style={{ borderColor: metal }} />
+          <span className="ms-mint">
+            <Medal id={first ? "first" : item.id} tier={tier} size={156} a11y={a11y} ring={false} style={{ position: "relative" }} />
+            <span className="ms-shine" aria-hidden="true" />
+          </span>
+          {burst(SPARKS, false)}
+        </div>
+        <div style={{ ...msEye(a11y), color: tierText(tier, a11y), fontSize: a11y ? 15 : 14 }}>{first ? "Новый значок" : "Новый значок · " + TIERS[tier]}</div>
+        <h2 style={{ margin: "6px 0 6px", fontFamily: SERIF, fontWeight: 700, fontSize: a11y ? 32 : 30, lineHeight: 1.12, color: c.text, textWrap: "balance" }}>{msTie(title)}</h2>
+        {line ? <p style={{ margin: "0 auto 22px", maxWidth: 300, fontSize: a11y ? 16.5 : 15.5, lineHeight: 1.45, color: a11y ? c.sub : "#D8CBAE" }}>{line}</p> : <div style={{ height: 16 }} />}
+        <button type="button" className="sa-btn" data-lens-btn="main" onClick={once(onOpen)}
+          style={{ ...msPrimary, width: "100%", minHeight: 52, fontSize: a11y ? 17 : 16 }}>Путь мастера ›</button>
+        <button type="button" className="sa-btn" data-sa-back="" onClick={once(onClose)}
+          style={{ display: "block", width: "100%", minHeight: 44, marginTop: 6, border: 0, background: "none", cursor: "pointer", color: a11y ? c.sub : "#CFC2A4", fontFamily: BODY, fontSize: a11y ? 16 : 15, fontWeight: "bold" }}>Позже</button>
       </div>
     </div>
   );

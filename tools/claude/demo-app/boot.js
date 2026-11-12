@@ -19,6 +19,7 @@
 // Собирается в один скрипт (esbuild, IIFE) и подключается в index.html до приложения.
 import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { CONCEPT_SEED, CONCEPT_PHOTOS } from "./concept-seed.js";   // v139 (Доп. 454): «О нас» — пример концепции и стандартов
+import { LESSON_PHOTOS } from "./lesson-photo-seed.js";   // v146 (Доп. 467): фото уроков — пример, руководитель меняет на свои
 import { RESTAURANT_MENUS } from "../../../data/menu.js";
 import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
@@ -359,7 +360,10 @@ MENU.push({ id: "__somrules__", kind: "somrules", text: "", prio: ["wine:wn-demo
 MENU.filter((d) => d && d.id === "wn-demo-3").forEach((d) => Object.assign(d, { stop: { since: Date.now() - 2 * 3600e3, by: "Мария Ким" }, stopAt: Date.now() - 2 * 3600e3 }));
 
 // ── кто я: Анна, Мария или Роман; «Новый телефон» — Анна без входа, приложение открыто «в Telegram» ──
-const whoKey = lsGet(K_WHO);
+// v146 (Доп. 467): в «песочнице» (страница Claude без своей памяти) localStorage — память страницы и после перезагрузки
+// пуст: кого выбрали в строке демо, помнит и адрес (#maria, #roman, #ksenia)
+const hashWho = (() => { try { const h = String(location.hash || "").slice(1); return /^(anna|maria|roman|ksenia)$/.test(h) ? h : null; } catch (e) { return null; } })();
+const whoKey = lsGet(K_WHO) || hashWho;
 const who = ME[whoKey] ? whoKey : "anna";
 const me = PEOPLE.find((p) => p.id === ME[who]);
 const newPhone = lsGet(K_NEW) === "1";
@@ -472,7 +476,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   activity: ACTIVITY, quiz: QUIZ,   // v109: журнал занятий и ответы в тестах за два месяца («Что дало обучение»)
   briefDays: { "-1": ["e-anna", "e-petr", "e-olga", "e-vera", "u-maria", "e-ilya"] },
   tgLinked: ["u-maria", "u-roman", "e-anna", "e-petr", "e-vera", "e-ksenia"],
-  concept: CONCEPT_SEED, conceptPhotos: CONCEPT_PHOTOS,   // v139 (Доп. 454): «О нас» — сеть, «Океан» и сосед «Порт»
+  concept: CONCEPT_SEED, conceptPhotos: CONCEPT_PHOTOS, lessonPhotos: LESSON_PHOTOS,   // v139 (Доп. 454): «О нас» — сеть, «Океан» и сосед «Порт»
   pushSubs: ["e-petr", "e-olga", "e-vera"],   // v137: уведомления на телефоне уже включили Пётр, Ольга (без Telegram) и Вера
   // v125 (Доп. 438): тренировка по винам у команды (этап 44): Анна выучила новые вина («Совиньон Блан» и «Москато»), Вера
   // их учит, Илья выучил одно, Пётр учит карту, новые не открывал; остальные пока не занимались (смещения дней от сейчас)
@@ -1105,7 +1109,7 @@ function panel() {
     b.innerHTML = "<b></b><span></span>"; b.querySelector("b").textContent = TIPS[k].t; b.querySelector("span").textContent = TIPS[k].s;
     b.addEventListener("click", () => {
       if (k === "phone") { lsSet(K_WHO, "anna"); lsSet(K_NEW, "1"); lsDel("__demo_me"); location.reload(); return; }
-      if (k !== who || newPhone || !lsGet("sa_session_token")) { lsSet(K_WHO, k); lsDel("__demo_me"); location.reload(); } else v.remove();
+      if (k !== who || newPhone || !lsGet("sa_session_token")) { lsSet(K_WHO, k); lsDel("__demo_me"); try { history.replaceState(null, "", "#" + k); } catch (e) { try { location.hash = k; } catch (e2) { /* */ } } location.reload(); } else v.remove();
     });
     box.appendChild(b);
   }

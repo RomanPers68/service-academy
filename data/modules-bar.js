@@ -7,7 +7,7 @@ export const BAR_MODULES = [
   "title": "Новичок за баром",
   "subtitle": "База: культура, станция, инструмент, лёд",
   "icon": "🍸",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar0-1",
@@ -286,7 +286,7 @@ export const BAR_MODULES = [
   "title": "Техника и методы",
   "subtitle": "Пролив, билд, стир, шейк и подача",
   "icon": "🥃",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar1-1",
@@ -560,7 +560,7 @@ export const BAR_MODULES = [
   "title": "Семейства коктейлей",
   "subtitle": "Сауэр, хайбол, олд фэшн и логика замен",
   "icon": "🍋",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar2-1",
@@ -834,7 +834,7 @@ export const BAR_MODULES = [
   "title": "Алкоголь как продукт",
   "subtitle": "Категории, вермуты, вино, пиво и словарь вкуса",
   "icon": "🍷",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar3-1",
@@ -1108,7 +1108,7 @@ export const BAR_MODULES = [
   "title": "Гость за стойкой",
   "subtitle": "Чтение, рекомендация, беседа и границы",
   "icon": "👥",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar4-1",
@@ -1382,7 +1382,7 @@ export const BAR_MODULES = [
   "title": "Старший бармен",
   "subtitle": "Час пик, деньги, запасы и наставничество",
   "icon": "🎓",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar5-1",
@@ -1656,7 +1656,7 @@ export const BAR_MODULES = [
   "title": "Конфликты: гость у стойки и команда",
   "subtitle": "Спорить по делу и не выносить конфликт к гостю",
   "icon": "⚖️",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "lessons": [
    {
     "id": "bar6-1",
@@ -1933,7 +1933,7 @@ export const BAR_MODULES = [
   "title": "Приём и хранение: ЕГАИС, «Честный знак», марки",
   "subtitle": "Накладные, марки, кеги, касса, лицензия и сроки",
   "icon": "📦",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "info": true,
   "lessons": [
    {
@@ -2351,7 +2351,7 @@ export const BAR_MODULES = [
   "title": "Инвентарь и оборудование бара",
   "subtitle": "Лёд, стекло, график мойки, CO2 и поломки",
   "icon": "🧊",
-  "color": "#C8A96E",
+  "color": "#D2875A",
   "info": true,
   "lessons": [
    {

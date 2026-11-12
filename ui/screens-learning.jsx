@@ -51,6 +51,8 @@ import { QuizPlates, QuizBeads, QuizMeta, QuizRuleNote, OptLetter, quizTopic, en
 import { lessonShareItem } from "../lib/share-items";   // v97 (Доп. 410): пройденный урок — в чат команды
 import { CHAT_SHARE_IC } from "./share-chat";
 import { ConceptPhotos } from "./concept-photo";   // v139 (Доп. 454): фото блоков «О нас» в уроках раздела «Наш ресторан»
+import { LessonCover } from "./lesson-photo";   // v146 (Доп. 467): фото урока сверху карточки, руководитель меняет с телефона
+import { lessonLead, lessonPhotoId } from "../lib/lesson-photo";   // v146: первая мысль урока — крупно
 import { isInfo, countable, INFO_LABEL } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления»
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
@@ -1287,6 +1289,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     });
   }, [lesson.id]);
 
+  // v146 (Доп. 467): первая мысль урока — крупно (первый обычный абзац, у длинного — первое предложение)
+  const leadInfo = React.useMemo(() => (lesson.type === "lesson" ? lessonLead(lesson.content) : null), [lesson.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Рендер строки с подсветкой из предвычисленных данных
   const highlightTerms = React.useCallback((text) => {
     if (!text || typeof text !== "string") return <span>{text}</span>;
@@ -1386,6 +1390,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             {/* Нижняя тень */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"20%", borderRadius:"0 0 22px 22px", background:"linear-gradient(0deg, rgba(0,0,0,0.12) 0%, transparent 100%)", pointerEvents:"none" }} />
             <div style={{ position:"relative", zIndex:1 }}>
+          {/* v146: фото урока — к краям карточки, на первой карточке (в ленте — сверху) */}
+          {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id)
+            ? <LessonCover lessonId={lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
             <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:16, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>
@@ -1400,7 +1407,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               </div>
             </div>
           )}
-          {(cardMode ? (cards[Math.min(cardIdx, cards.length - 1)] || []) : lesson.content.split("\n")).map((line,i) => {
+          {(cardMode ? (cards[Math.min(cardIdx, cards.length - 1)] || []) : lesson.content.split("\n")).map(((leadSeen) => (line,i) => {
             if (!line.trim()) return <div key={i} style={{ height:10 }} />;
             // Тег мимодзи [mm:name] — крупная иллюстрация по центру
             if (line.trim().startsWith("[mm:") && line.trim().endsWith("]")) {
@@ -1464,8 +1471,24 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               );
             }
             if (line.startsWith("«") && line.includes("»")) return <div key={i} style={{ ...T.quote, borderLeftColor:color }}>{highlightTerms(line, T.quote)}</div>;
+            // v146 (Доп. 467): первая мысль урока — крупным шрифтом заголовков; **выделенное** в ней — золотом
+            if (leadInfo && line === leadInfo.line && (!cardMode || cardIdx === 0) && !leadSeen.v) {
+              leadSeen.v = true;
+              const hi = T.a11y ? "#7A5A1E" : "#E8C983";
+              const lead = leadInfo.lead.includes("**")
+                ? leadInfo.lead.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, k) => (part.startsWith("**") && part.endsWith("**")
+                  ? <span key={k} style={{ color: hi }}>{part.slice(2, -2)}</span> : <React.Fragment key={k}>{highlightTerms(part)}</React.Fragment>))
+                : highlightTerms(leadInfo.lead);
+              return (
+                <React.Fragment key={i}>
+                  <div data-lesson-first="" style={{ ...T.para, fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: T.a11y ? 21.5 : 19.5, lineHeight: 1.36,
+                    letterSpacing: -0.1, color: T.a11y ? "#2A1F0E" : "#F2E8D2", margin: "0 0 12px" }}>{lead}</div>
+                  {leadInfo.rest ? <div style={T.para}>{inline(leadInfo.rest, T.para)}</div> : null}
+                </React.Fragment>
+              );
+            }
             return <div key={i} style={T.para}>{inline(line, T.para)}</div>;
-          })}
+          })({ v: false }))}
             </div>{/* конец zIndex:1 */}
           </div>{/* конец стеклянной подложки */}
           {/* v139 (Доп. 454): фото стандарта (дресс-код, сервировка) — под текстом, в карточках — на последней */}

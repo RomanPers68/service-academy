@@ -25,6 +25,15 @@
 // выбранного трека: карточка линзы, язычок и черта под ним золотом (как кольцо выбранного кружка), «твой» стеклом,
 // «Открыть ›» плашкой с кольцом, «свернуть» линзой 32 px. Метки data-lens-* и data-track-head, -desc, -line, -bar; стили в
 // ui/home-look.jsx (раздел v121). Вид «как сейчас» прежний.
+// v146 (Доп. 467), владелец (12.11): «Давай все» — к идее «у треков уже есть свои цвета, но в «Линзе» их почти не видно,
+// а у Бара тот же золотой, что у Ядра». Цвет трека уходит в стили переменными --tc (цвет), --tc-a (заливка стекла) и --tc-r
+// (ободок): в «Линзе» стекло, ободок и кольцо прогресса — цветом трека (ui/look-v146.js). У Бара свой цвет — медь
+// (data/roles.js, lib/tracks.js).
+// Доп. 469 (12.11): подписей под кружками больше нет. Их добавил Доп. 467 («новичок не поймёт, где что»); владелец на
+// снимке ряда: «Меня смущают подписи ролей. Либо как будто лишние, либо нужно что-то другое придумать». Шесть подписей
+// цветом шумели, «Сервис-менеджер» уходил в две строки, «8 %» у своего трека упиралась в подпись. Название трека — в панели
+// по тапу (с «Ступенью» и описанием), весь список — «подробнее ›», свой трек — в строке приветствия; новичку при первом
+// входе — «Твоя роль. Тапни».
 import React from "react";
 import { ROLES } from "../data/roles";
 import { ROLE_SVG } from "./icons";
@@ -188,11 +197,13 @@ export function TracksRow({ T, a11y, role, unlocked, progressOf, onSelect, onPic
     const selRing = x.open ? ic : (a11y ? "#8A7A60" : "#A79C86");
     return (
       <button key={x.r.id} type="button" id={"sa-orb-" + x.r.id} data-track-chip={x.r.id} data-track-locked={x.open ? undefined : ""} data-track-sel={sel ? "" : undefined}
+        data-track-cur={x.cur ? "" : undefined}
         title={x.r.label} className="sa-opt" aria-pressed={sel}
         aria-label={`Трек «${x.r.label}»${x.cur ? ", твой" : !x.open ? ", закрыт" : ""}`}
         onClick={() => pick(x.r.id)}
         style={{ ...btn, flex: `0 0 ${d}px`, width: d, height: d, display: "grid", placeItems: "center", WebkitTapHighlightColor: "transparent", position: "relative", zIndex: 1,
-          transform: sel ? "scale(1.07)" : "none", transition: `transform .3s ${EASE}` }}>
+          transform: sel ? "scale(1.07)" : "none", transition: `transform .3s ${EASE}`,
+          ...(x.open ? { "--tc": ic, "--tc-a": ic + (a11y ? "24" : "2E"), "--tc-r": ic + (a11y ? "8C" : "A6") } : null) }}>
         <span style={{ position: "relative", width: d, height: d, display: "grid", placeItems: "center", opacity: x.open ? 1 : 0.7 }}>
           <svg aria-hidden width={d} height={d} viewBox={`0 0 ${d} ${d}`} style={{ position: "absolute", inset: 0 }}>
             <circle cx={d / 2} cy={d / 2} r={R} fill="none" strokeWidth={x.open ? 2.5 : 1.5}

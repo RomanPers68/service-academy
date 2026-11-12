@@ -36,6 +36,7 @@ import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCred
 // v40: «Путь мастера» — значки за привычки, «Мастер роли», шаг дня, первая неделя в академии
 import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEarned, newlyEarned, mergeEarned, saveSummary, syncLife, readSeen, markSeen, newTools, isNewTool, mastersIndex, restoreFromCopy, TIERS, MASTER_NEED } from "./lib/mastery";
 import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
+import { MOMENT_AFTER_MS } from "./ui/mastery-card";   // v146 (Доп. 467): момент значка — в первые 10 минут после занятия
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
@@ -597,7 +598,11 @@ function ServiceAcademy() {
   // (отпразднованный значок, открытый инструмент, сброс)
   const [masteryVer, setMasteryVer] = useState(0);
   React.useEffect(() => { setActivity(readActivity(ukP)); setGoalState(readGoal(ukP)); }, [ukP]);
+  // v146 (Доп. 467): когда было последнее занятие — новый значок сразу после занятия празднуем на весь экран, а при
+  // входе в приложение (человек пришёл за графиком или «Опаздываю?») — прежней плашкой, не загораживая экран
+  const lastActRef = useRef(0);
   const logActivity = useCallback((kind, n = 1) => {
+    lastActRef.current = Date.now();
     try {
       const day = ymd(new Date());
       const before = stepsOn(readActivity(ukP), day);
@@ -3012,7 +3017,8 @@ function ServiceAcademy() {
         <Suspense fallback={null}><AchievementPopup ach={newAchievement} a11y={a11y} onClose={() => setNewAchievement(null)} /></Suspense>
       )}
       {/* v40: новый значок «Пути мастера» или «Мастер роли» — по одному, не поверх урока и слоёв */}
-      {mToast ? <BadgeToast a11y={a11y} item={mToast} state={mState}
+      {/* v146 (Доп. 467): новая ступень значка сразу после занятия — момент на весь экран (не чаще раза в 10 минут), иначе — плашкой */}
+      {mToast ? <BadgeToast a11y={a11y} item={mToast} state={mState} moment={Date.now() - lastActRef.current < MOMENT_AFTER_MS ? "auto" : null}
         onOpen={(it) => { ackBadge(it); openMastery(it && it.kind === "master" ? "certificate" : it && it.kind === "tier" ? it.id : null); }}
         onClose={(it) => ackBadge(it)} /> : null}
 

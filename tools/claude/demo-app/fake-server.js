@@ -691,6 +691,62 @@ export function makeServer(opts) {
     return undefined;
   }
 
+  // ── v146 (Доп. 467, этап 51): фото урока — как supabase-stage51-lesson-photos.sql. opts.lessonPhotos: { "урок|заведение": { full,
+  // thumb, w, h, by } } — снимки демо (заведение пустое — вся сеть); в состоянии (S.lp) — только поставленное и убранное в демо
+  // (null — убрано), чтобы не возить снимки примера в localStorage. Права — как у «О нас» (cnCan); opts.noStage51 — этапа нет
+  if (!S.lp) S.lp = {};
+  const lpSeed = opts.lessonPhotos || {};
+  const lpHash = (str) => { let h1 = 0x811c9dc5, h2 = 0x01000193; for (let i = 0; i < str.length; i += 7) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0; h2 = Math.imul(h2 + c, 0x9e3779b1) >>> 0; }
+    return (h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0")).slice(0, 12); };
+  const lpAll = () => {
+    const out = {};
+    for (const [k, x] of Object.entries(lpSeed)) out[k] = { ...x, ver: x.ver || lpHash(x.full), at: x.at || new Date(clock() - 2 * 864e5).toISOString() };
+    for (const [k, x] of Object.entries(S.lp)) { if (x) out[k] = x; else delete out[k]; }
+    return out;
+  };
+  function lessonPhotos(fn, p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    const rest = p.restaurant || null;
+    const all = lpAll();
+    if (fn === "lesson_photos") {
+      const items = Object.entries(all).map(([k, x]) => { const i = k.indexOf("|"); return { lesson: k.slice(0, i), scope: k.slice(i + 1), ver: x.ver, w: x.w || null, h: x.h || null, by: x.by || "", at: x.at || null }; })
+        .filter((it) => it.scope === "" || it.scope === rest).sort((a, b2) => a.lesson.localeCompare(b2.lesson) || a.scope.localeCompare(b2.scope));
+      return { ok: true, restaurant: rest, items, can: { net: cnCan(p, ""), venue: !!rest && cnCan(p, rest) } };
+    }
+    if (fn === "lesson_photo") {
+      const lesson = String(b.p_lesson || "");
+      const want = b.p_scope == null ? null : String(b.p_scope).trim();
+      let sc = want;
+      if (want === null) sc = rest && all[lesson + "|" + rest] ? rest : "";
+      else if (want !== "" && want !== rest) return { ok: false, error: "not_found" };
+      const x = all[lesson + "|" + sc];
+      if (!x) return { ok: false, error: "not_found" };
+      return { ok: true, lesson, scope: sc, ver: x.ver, data: b.p_full ? x.full : x.thumb, mime: "image/jpeg", w: x.w || null, h: x.h || null };
+    }
+    if (fn === "lesson_photo_set") {
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      const lesson = String(b.p_lesson || "");
+      if (!ID_RE.test(lesson)) return { ok: false, error: "bad_request" };
+      const ok64 = (v) => typeof v === "string" && /^[A-Za-z0-9+/]+={0,2}$/.test(v);
+      if (!ok64(b.p_full) || !ok64(b.p_thumb) || b.p_full.length > 640000 || b.p_thumb.length > 110000 || b.p_full.length < 100) return { ok: false, error: "bad_photo" };
+      if (Object.keys(all).filter((k) => k.endsWith("|" + sc) && k !== lesson + "|" + sc && k.slice(k.indexOf("|") + 1) === sc).length >= 600) return { ok: false, error: "too_many" };
+      const ver = lpHash(b.p_full);
+      const w = Number(b.p_w) >= 1 && Number(b.p_w) <= 10000 ? Number(b.p_w) : null, h = Number(b.p_h) >= 1 && Number(b.p_h) <= 10000 ? Number(b.p_h) : null;
+      S.lp[lesson + "|" + sc] = { full: b.p_full, thumb: b.p_thumb, w, h, ver, by: full(p), at: new Date(clock()).toISOString() };
+      return { ok: true, ver, scope: sc };
+    }
+    if (fn === "lesson_photo_del") {
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      const k = String(b.p_lesson || "") + "|" + sc;
+      const had = !!all[k];
+      S.lp[k] = null;
+      return { ok: true, removed: had ? 1 : 0 };
+    }
+    return undefined;
+  }
+
   function rpc(fn, b) {
     b = b || {};
     const p = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
@@ -699,6 +755,7 @@ export function makeServer(opts) {
     if (fn === "my_reset_at") return { ok: true, reset_at: null };
     if (fn === "cms_list_lessons") return [];
     if (/^concept_/.test(fn)) { if (opts.noStage49) return { code: "PGRST202", message: "Could not find the function" }; const r = concept(fn, p, b); if (r !== undefined) return r; }   // v139: этап 49
+    if (/^lesson_photo/.test(fn)) { if (opts.noStage51) return { code: "PGRST202", message: "Could not find the function" }; const r = lessonPhotos(fn, p, b); if (r !== undefined) return r; }   // v146: этап 51
     if (fn === "team_scores") return { ok: true, rows: [] };
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };

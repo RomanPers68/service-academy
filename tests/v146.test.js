@@ -26,8 +26,11 @@ const lum = (hex) => { const v = hex.replace("#", "").match(/../g).map((x) => pa
 const cr = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 
 describe("v146: метка сборки и журнал", () => {
-  it("«сборка v146» в «Меню»; CHANGES — Дополнение 467 со словами владельца", () => {
-    expect([...rd("ui/menu-trainer.jsx").matchAll(/· сборка v(\d+)<\/span>/g)].map((m) => m[1])).toEqual(["146"]);
+  // номер в метке — последней версии (сторож — tests/v145.test.js); здесь — что не ниже v146
+  it("«сборка v146» и новее в «Меню»; CHANGES — Дополнение 467 со словами владельца", () => {
+    const n = [...rd("ui/menu-trainer.jsx").matchAll(/· сборка v(\d+)<\/span>/g)].map((m) => Number(m[1]));
+    expect(n.length).toBe(1);
+    expect(n[0]).toBeGreaterThanOrEqual(146);
     const c = rd("CHANGES.md");
     expect(c).toMatch(/# Дополнение 467 — /);
     expect(c).toContain("Давай все");
@@ -68,7 +71,7 @@ describe("v146: у Бара свой цвет; подписей под круж�
   });
 });
 
-describe("v146: «Линза» — главная кнопка золотом, меньше колец (ui/look-v146.js)", () => {
+describe("v146: «Линза» — меньше колец, «Начать» на главной золотом (ui/look-v146.js)", () => {
   const rules = LOOK_V146_CSS.split("\n").filter((l) => l.includes("{") && !/^\s*\/\*/.test(l) && !/^\s+/.test(l));
   it("отдельный файл после правил home-look.jsx; все правила — под html.sa-lens; без ${…}", () => {
     expect(rules.length).toBeGreaterThanOrEqual(15);
@@ -80,13 +83,12 @@ describe("v146: «Линза» — главная кнопка золотом, �
     // разделы home-look.jsx не тронуты: последний — по-прежнему v122
     expect(L.indexOf("/* ── v", L.indexOf("/* ── v122") + 5)).toBe(-1);
   });
-  it("главная кнопка и .tb-main — золотая заливка, тёмная надпись, без кольца; значки внутри — цветом надписи", () => {
-    expect(LOOK_V146_CSS).toContain('html.sa-lens [data-lens-btn="main"]:not(#sa-v146),html.sa-lens .tb-table .tb-main:not(:disabled):not(#sa-v146),');
-    expect(LOOK_V146_CSS).toContain("color:#24180A!important;border-color:transparent!important;");
-    expect(LOOK_V146_CSS).toContain("background:linear-gradient(172deg,#F1DBA4 0%,#DDBE7F 46%,#BC9A5E 100%)!important;");
+  // v147 (Доп. 470): золотую заливку кнопок сняли — она легла на все data-lens-btn="main" и .tb-main («Некоторые кнопки сменили
+  // линзы на золотые»). Кнопки — прежние линзы с одним кольцом; золотом — только «Начать» на главной (tests/v147.test.js).
+  it("главная кнопка и .tb-main — линза без внешнего кольца (золото снято в v147)", () => {
     expect(LOOK_V146_CSS).toContain('html.sa-lens [data-lens-btn="main"]:not(#sa-v146)::after,html.sa-lens .tb-main:not(#sa-v146)::after{display:none!important}');
-    expect(LOOK_V146_CSS).toContain('html.sa-lens [data-lens-btn="main"]:not(#sa-v146) *{color:inherit!important}');
-    for (const bg of ["#F1DBA4", "#DDBE7F", "#BC9A5E", "#EFD69C", "#D7B470", "#B48F50"]) expect(cr("#24180A", bg), bg).toBeGreaterThanOrEqual(5.5);
+    expect(LOOK_V146_CSS).not.toContain("linear-gradient(172deg");
+    expect(LOOK_V146_CSS).not.toContain("#24180A");
   });
   it("кольцо: нет у простых значков; есть у медальонов, треков, кнопки AI, чата и «Слушать»", () => {
     expect(LOOK_V146_CSS).toContain("html.sa-lens:not(#sa-v146),html.sa-lens .sa-look:not(#sa-v146),html.sa-lens.sa-light .sa-look:not(#sa-v146){--lk-ring:transparent}");
@@ -98,9 +100,9 @@ describe("v146: «Линза» — главная кнопка золотом, �
     // инструменты главной: внешнего кольца нет (Доп. 468 вернул им стекло — см. ниже)
     expect(LOOK_V146_CSS).toContain("html.sa-lens .sa-look-lens [data-tool-disc]:not(#sa-v146)::after{display:none!important}");
   });
-  it("«Начать» на главной — золотой корешок; треки — цветом трека", () => {
-    expect(LOOK_V146_CSS).toContain("html.sa-lens .sa-look-lens [data-now-stub]:not(#sa-v146){position:relative;width:84px!important;");
-    expect(LOOK_V146_CSS).toContain("html.sa-lens .sa-look-lens [data-now-stub] [data-now-cta]:not(#sa-v146){color:#1A1008!important;");
+  // v147 (Доп. 471): «Начать» — уже не золотой корешок, а линза с подсветкой (tests/v147.test.js)
+  it("«Начать» на главной — корешок 84 px; треки — цветом трека", () => {
+    expect(LOOK_V146_CSS).toContain("html.sa-lens .sa-look-lens [data-now-stub]:not(#sa-v146){width:84px!important;");
     expect(LOOK_V146_CSS).toContain("background:var(--tc-a,var(--lk-glass))!important;");
     expect(LOOK_V146_CSS).toContain("svg circle+circle{stroke:var(--tc,var(--lk-gold))}");
   });

@@ -1,14 +1,14 @@
 // e2e v146 (Доп. 467): «Давай все» — главная кнопка золотом, меньше колец, цвет и подписи треков, фото урока и первая мысль
 // крупно, новый значок на весь экран. Сайт — демо целиком (tools/claude/demo-app/build.mjs: сервер в странице, люди демо).
-// Разделы: HOME (корешок «Начать» золотом, инструменты — линзы, как были, с одним кольцом — Доп. 468; кольцо у медальонов
+// Разделы: HOME (корешок «Начать» — с v147 линза с подсветкой, инструменты — линзы, как были, с одним кольцом — Доп. 468; кольцо у медальонов
 // есть, у «поиска» нет; под кружками треков подписей нет — Доп. 469, имя — в title и в панели по тапу; у Бара — медь),
 // NARROW (320 / 360 / 430 px: шесть кружков в ряд, не наезжают, ряд не шире экрана),
-// BTN (главная кнопка «Пути мастера» и «Спасти ситуацию» в разминке — золотая заливка, тёмная надпись, без кольца),
+// BTN (главная кнопка «Пути мастера» и «Спасти ситуацию» в разминке — с v147 снова линзы, без внешнего кольца),
 // LESSON (Анна: «Концепция и история» — фото сети и первая мысль крупно, без фотоаппарата; урок без фото — без строки
 // «Добавить»), EDIT (Мария: фотоаппарат, лист, «Новое заменит его для …», фото с телефона → у урока фото заведения, после
 // перезагрузки тоже; Анна видит его; «Убрать» в два касания → снова фото сети; урок без фото — «Добавить фото к уроку»),
 // OWNER (Роман: «Вся сеть» и «Два моря, Океан»), MOMENT (при входе — плашка; после разминки новая ступень — момент на весь
-// экран, «Позже» закрывает; момент был минуту назад — плашка), LIGHT («Для чтения»: корешок и главная кнопка золотом, Бар — тёмная медь, лист
+// экран, «Позже» закрывает; момент был минуту назад — плашка), LIGHT («Для чтения»: корешок «Начать» со свечением, «Выбрать фото» — линза, Бар — тёмная медь, лист
 // светлый; инструменты — светлые линзы с одним кольцом), NOW (вид «как сейчас»: без золотого корешка, подписей треков
 // нет и здесь, инструменты прежние), REDUCED (меньше движения — момент без анимации).
 // Запуск: E2E_SITE=<демо> E2E_PORT=<порт> E2E_OUT=<папка снимков> E2E_SRC=<исходники> node e2e-v146.mjs [разделы]
@@ -142,7 +142,8 @@ if (want("HOME")) {
     };
   });
   ok("HOME: вид «Линза», стили v146 подключены", g.lens && g.css146, JSON.stringify(g));
-  ok("HOME: «Начать» — золотой корешок, надпись тёмная", /linear-gradient/.test(g.stubBg) && g.ctaColor === "rgb(26, 16, 8)", g.stubBg.slice(0, 80) + " " + g.ctaColor);
+  // v147 (Доп. 471): «Начать» — линза с подсветкой (не золотой корешок), надпись золотом
+  ok("HOME: «Начать» — корешок со свечением, надпись золотом (v147)", /^radial-gradient/.test(g.stubBg) && g.ctaColor === "rgb(232, 201, 131)", g.stubBg.slice(0, 80) + " " + g.ctaColor);
   ok("HOME: инструменты — линза с одним кольцом (стекло ::before есть, внешнего кольца ::after нет)", g.toolBefore === "block" && g.toolAfter === "none", g.toolBefore + "/" + g.toolAfter);
   ok("HOME: инструменты Анны — Справочник, Меню, Глоссарий, Чек-листы", g.tools.map((t) => t.label).join("|") === "Справочник|Меню|Глоссарий|Чек-листы", g.tools.map((t) => t.label).join("|"));
   ok("HOME: стекло как было — во весь кружок, ободок, свет; кружок прозрачный, кольца снаружи нет",
@@ -190,7 +191,8 @@ if (want("BTN")) {
   await closeBadge(page);
   await nav(page, "mastery");
   const b = await page.evaluate(() => { const x = [...document.querySelectorAll('[data-lens-btn="main"]')].find((e) => e.offsetParent); if (!x) return null; const cs = getComputedStyle(x); return { t: x.textContent.trim(), bg: cs.backgroundImage, c: cs.color, after: getComputedStyle(x, "::after").display }; });
-  ok("BTN: «Путь мастера» — главная кнопка золотом, тёмная надпись, без кольца", !!b && /linear-gradient/.test(b.bg) && b.c === "rgb(36, 24, 10)" && b.after === "none", JSON.stringify(b));
+  // v147 (Доп. 470): золото с кнопок снято — главная кнопка снова линза (стекло radial-gradient, золотая надпись), кольцо одно
+  ok("BTN: «Путь мастера» — главная кнопка-линза, золотая надпись, без внешнего кольца", !!b && /^radial-gradient/.test(b.bg) && b.c === "rgb(232, 201, 131)" && b.after === "none", JSON.stringify(b));
   await shot(page, "btn-mastery");
   await ctx.close();
 }
@@ -200,7 +202,7 @@ if (want("BTN")) {
   await page.locator("[data-now-cta]").click(); await page.waitForTimeout(1500);
   await page.getByText("Жду, пока гости уйдут").first().click(); await page.waitForTimeout(2600);
   const t = await page.evaluate(() => { const x = [...document.querySelectorAll(".tb-main")].find((e) => /Спасти/.test(e.textContent)); if (!x) return null; const cs = getComputedStyle(x); return { bg: cs.backgroundImage, c: cs.color, after: getComputedStyle(x, "::after").display }; });
-  ok("BTN: «Спасти ситуацию» в разминке — золотом, без кольца", !!t && /linear-gradient/.test(t.bg) && t.c === "rgb(36, 24, 10)" && t.after === "none", JSON.stringify(t));
+  ok("BTN: «Спасти ситуацию» в разминке — линза, без внешнего кольца (v147)", !!t && /^radial-gradient/.test(t.bg) && t.c === "rgb(232, 201, 131)" && t.after === "none", JSON.stringify(t));
   await shot(page, "btn-warmup");
   await ctx.close();
 }
@@ -335,7 +337,7 @@ if (want("LIGHT")) {
       tools: [...document.querySelectorAll("[data-tool-disc]")].map((d) => { const sv = getComputedStyle(d.querySelector("svg")), b = getComputedStyle(d, "::before");
         return { label: d.parentElement.title, stroke: sv.stroke, glass: b.backgroundColor, top: b.top, after: getComputedStyle(d, "::after").display }; }) };
   });
-  ok("LIGHT: «Для чтения» — корешок «Начать» золотом", g.light && /linear-gradient/.test(g.stub), JSON.stringify(g).slice(0, 200));
+  ok("LIGHT: «Для чтения» — корешок «Начать» со свечением, без золотой заливки (v147)", g.light && /^radial-gradient/.test(g.stub) && !/linear-gradient/.test(g.stub), JSON.stringify(g).slice(0, 200));
   ok("LIGHT: цвет Бара — тёмная медь (#93500F)", g.bar === "#93500F", g.bar);
   // Доп. 468: у Марии пятый — «AI-интервью»; линзы светлым стеклом с одним кольцом, значки тёмным золотом, как были
   ok("LIGHT: инструменты — светлое стекло во весь кружок, без внешнего кольца, значки тёмным золотом",
@@ -348,7 +350,7 @@ if (want("LIGHT")) {
   const sb = await page.evaluate(() => getComputedStyle(document.querySelector("[data-lp-sheet] [role=dialog]")).backgroundColor);
   ok("LIGHT: лист «Фото урока» светлый", sb === "rgb(247, 238, 219)", sb);
   const mb = await page.evaluate(() => { const x = document.querySelector("[data-lp-pick]"); const cs = getComputedStyle(x); return cs.color + " " + cs.backgroundImage.slice(0, 40); });
-  ok("LIGHT: «Выбрать фото» — золотом, тёмная надпись", /^rgb\(36, 24, 10\) linear-gradient/.test(mb), mb);
+  ok("LIGHT: «Выбрать фото» — светлая линза (v147: без золота)", /^rgb\(\d+, \d+, \d+\) radial-gradient/.test(mb) && !mb.startsWith("rgb(36, 24, 10)"), mb);
   await shot(page, "light-sheet");
   await ctx.close();
 }

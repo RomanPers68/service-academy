@@ -2,6 +2,7 @@ import React from "react";
 import { resetHints } from "./widgets";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
+import { tipReason, TIP_GROUP } from "../lib/lesson-tips";   // v156 (Доп. 480): «Советы в уроках» — руководителю
 
 // ── Дополнение 140: «Гид по приложению» — всегда под рукой во вкладке «Я» ────
 // Попап первого входа показывается один раз; гид — постоянный. Каждая функция:
@@ -116,7 +117,7 @@ export const GUIDE = [
   ]},
 ];
 
-export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null }) {
+export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null, tips = null, onTipsReset = null }) {
   const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
@@ -165,6 +166,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null }) 
             : "Открой любой раздел, и подсказка встретит там же, где в первый раз"}
         </div>
       </div>
+      {tips ? <GuideTips tips={tips} onReset={onTipsReset} frost={frost} gold={gold} text={text} sub={sub} a11y={a11y} /> : null}
       <div style={{ padding: "4px 16px 100px" }}>
         <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginBottom: 12 }}>Тапни пункт, и откроется объяснение с кнопкой «Открыть». Список всегда здесь, во вкладке «Я».</div>
         {GUIDE.map(sec => {
@@ -202,6 +204,89 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null }) 
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── v156 (Доп. 480): «Советы в уроках» — руководителю. Владелец: «Прошел уже 2 урока, и пока не одной подсказки не увидел🥺».
+// Совет показывается только о том, чем ещё не пользовались, — у того, кто открывал почти всё, их почти нет. Здесь видно,
+// какие советы трека ещё покажутся (тап — текст совета), какие скрыты и почему, и «Показать советы снова».
+const GROUPS = ["ok", "later", "cant", "missed", "used"];
+export function GuideTips({ tips, onReset, frost, gold, text, sub, a11y = false }) {
+  const rows = (tips && tips.rows) || [];
+  const groups = GROUPS.map((k) => ({ k, rows: rows.filter((r) => r.status && r.status.kind === k) })).filter((g) => g.rows.length);
+  const [open, setOpen] = React.useState(false);
+  const [grp, setGrp] = React.useState(null);
+  const [row, setRow] = React.useState(null);
+  const [done, setDone] = React.useState(false);
+  const okN = rows.filter((r) => r.status && r.status.kind === "ok").length;
+  const shownGrp = grp || (groups[0] && groups[0].k);
+  const toggle = () => { vibrate("light"); setOpen(!open); };
+  const reset = () => { vibrate("light"); if (onReset) onReset(); setDone(true); setGrp("ok"); setRow(null); };
+  const chev = (on) => ({ color: gold, fontSize: 18, transform: on ? "rotate(90deg)" : "none", transition: "transform .3s cubic-bezier(.25,.8,.25,1)" });
+  return (
+    <div data-lens-card="" data-guide-tips={open ? "open" : ""} style={{ ...frost, borderRadius: 14, margin: "0 16px 12px", overflow: "hidden" }}>
+      <div onClick={toggle} {...onActivate(toggle)} aria-expanded={open} data-guide-tips-head="" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text }}>Советы в уроках</div>
+          <div data-guide-tips-sum="" style={{ fontSize: 12, color: sub, marginTop: 2, lineHeight: 1.4 }}>
+            {rows.length ? "покажутся " + okN + " · скрыто " + (rows.length - okN) : "в уроках твоего трека советов нет"}
+          </div>
+        </div>
+        <span aria-hidden="true" style={chev(open)}>›</span>
+      </div>
+      {open && (
+        <div className="sa-fadein" style={{ padding: "0 14px 14px" }}>
+          <div style={{ fontSize: 13, color: sub, lineHeight: 1.55 }}>
+            Совет появляется тихой карточкой в конце обычного урока: не чаще раза в день и только о том, чем человек ещё не пользовался. Ниже советы твоего трека и почему часть из них скрыта.
+          </div>
+          {tips.today ? (
+            <div data-guide-tips-today="" style={{ fontSize: 13, color: text, lineHeight: 1.5, marginTop: 8 }}>
+              Сегодня совет уже был: «{tips.today.name}» в уроке «{tips.today.title}». Следующий будет завтра.
+            </div>
+          ) : null}
+          {groups.map((g) => {
+            const on = shownGrp === g.k;
+            const tg = () => { vibrate("light"); setGrp(on ? "-" : g.k); setRow(null); };
+            return (
+              <div key={g.k} data-guide-tips-group={g.k} style={{ marginTop: 12 }}>
+                <div onClick={tg} {...onActivate(tg)} aria-expanded={on} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "4px 0", WebkitTapHighlightColor: "transparent" }}>
+                  <span style={{ ...labelStyle(13), color: gold, flex: 1 }}>{TIP_GROUP[g.k]} · {g.rows.length}</span>
+                  <span aria-hidden="true" style={chev(on)}>›</span>
+                </div>
+                {on && g.rows.map((r) => {
+                  const rOn = row === r.id, l0 = r.lessons && r.lessons[0];
+                  const tr = () => { vibrate("light"); setRow(rOn ? null : r.id); };
+                  return (
+                    <div key={r.id} data-guide-tip-row={r.id} onClick={tr} {...onActivate(tr)} aria-expanded={rOn}
+                      style={{ padding: "8px 0", borderTop: `1px solid ${gold}${a11y ? "33" : "26"}`, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+                      <div style={{ fontFamily: "Georgia, serif", fontSize: 15, color: text, lineHeight: 1.35 }}>{r.name}</div>
+                      <div data-guide-tip-why="" style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2 }}>{tipReason(r)}</div>
+                      {rOn && l0 ? (
+                        <div data-guide-tip-text="" className="sa-fadein" style={{ marginTop: 6, padding: "8px 10px", borderRadius: 10, background: gold + (a11y ? "14" : "12"),
+                          fontFamily: "Georgia, 'PT Serif', serif", fontSize: 13.5, color: text, lineHeight: 1.45 }}>
+                          <span style={{ color: sub }}>Урок «{l0.title}»: </span>{l0.text}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {rows.length ? (
+            <>
+              <button type="button" className="sa-btn" data-lens-btn="soft" data-guide-tips-reset="" onClick={reset}
+                style={{ marginTop: 14, border: `1px solid ${gold}88`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 14, fontWeight: "bold", borderRadius: 12, padding: "8px 14px", cursor: "pointer" }}>
+                Показать советы снова
+              </button>
+              <div data-guide-tips-note="" style={{ fontSize: 12, color: sub, lineHeight: 1.5, marginTop: 6 }}>
+                {done ? "Готово: советы снова появятся в уроках, по одному в день." : "Отметки сбросятся, и советы снова появятся в уроках, по одному в день. Откроешь функцию, и совет о ней снова спрячется."}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

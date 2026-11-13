@@ -226,9 +226,9 @@ describe("v149: кнопка совета — прямо туда, где фун
     for (const [l, list] of Object.entries(LESSON_TIPS)) for (const [f, t] of list) if (f === "call" && !LESSONS.get(l).track.includes("manager")) expect(t, l).toMatch(/кто сегодня (в смене|работает)/);
     expect(TIP_FEATURES.late.open).toEqual({ screen: "guide" });
     expect(app).toContain('if (o.screen === "guide") { setGuideFocus(tip.id); navigate("guide"); return; }');
-    expect(app).toContain("focus={guideFocus} onBack={() => goBack(\"me\")} onOpen={openDest} />");
+    expect(app).toContain("focus={guideFocus} onBack={() => goBack(\"me\")} onOpen={openDest} tips={guideTips} onTipsReset={resetTipsAll} />");   // v156: и «Советы в уроках»
     const g = rd("ui/guide.jsx");
-    expect(g).toContain("export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null }) {");
+    expect(g).toContain("export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null, tips = null, onTipsReset = null }) {");   // v156: и «Советы в уроках»
     expect(g).toContain("const [open, setOpen] = React.useState(focus || null);");
     expect(g).toContain("data-guide-key={it.key}");
     expect(g).toMatch(/\{ key: "late", title: "Опаздываю"/);

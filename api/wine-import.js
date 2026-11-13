@@ -24,6 +24,10 @@
 // «по этикетке» (одна позиция): модель, что молчит дольше 30 с, не держит запрос, спрашиваем следующую; на всё 50 с, и если
 // не ответил никто, то ответ 504 словами. «По названию» получает known: что уже вписано в карточку (факты, их держаться) и
 // пишет только недостающее: ответ короче и быстрее, с картой не спорит.
+// v151 (Доп. 475): "gaps" — { items: [{ name, known, missing }] } (до 6 за раз) → «Дописать пустое» на всю барную карту:
+// у каждой позиции — что вписано (факты) и чего не хватает; модель пишет только недостающее, ответ — { wines: [{ i, …поля }] }
+// (i — номер позиции в запросе). Год урожая, объём, цены, порцию и «бокалом» не спрашиваем и не берём (владелец: «без года
+// урожая, его уже вручную вобью»). Позицию модель не узнала — её нет в ответе или у неё только i и name.
 
 export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
@@ -161,6 +165,58 @@ export function factsText(known, keys) {
 // v134: сколько ждать модель, когда позиция одна («по названию», «по этикетке»): каждую до 30 с, все вместе до 50 с
 const SLOW = "AI не успел ответить: нажми ещё раз. Если повторится, подожди минуту";
 const quickLim = () => ({ each: Number(process.env.WINE_AI_EACH_MS) || 30000, total: Number(process.env.WINE_AI_TOTAL_MS) || 50000 });
+// v151: пачка «Дописать пустое» — тоже не дольше, чем ждёт Vercel: первой модели до 45 с, на всё 50 с
+const gapLim = () => ({ each: Number(process.env.WINE_AI_GAPS_EACH_MS) || 45000, total: Number(process.env.WINE_AI_GAPS_TOTAL_MS) || 50000 });
+
+// ── v151 (Доп. 475): «Дописать пустое» ──
+export const GAP_SKIP = ["vintage", "volume", "byGlass", "priceGlass", "priceBottle", "portion", "pricePortion"];
+export const GAP_MAX = 6;
+/** Позиции из запроса: название, что вписано (факты), чего не хватает (только из полей «по названию», без GAP_SKIP).
+ *  Номера сохраняются: позиция без названия или без пустых полей остаётся в списке, но в подсказку модели не идёт. */
+export function gapItems(raw, sp) {
+  const keys = sp ? SP_FILL_KEYS : FILL_KEYS, ask = keys.filter((f) => !GAP_SKIP.includes(f));
+  return (Array.isArray(raw) ? raw : []).slice(0, GAP_MAX).map((x) => ({
+    name: str(x && x.name, 120), known: knownFacts(x && x.known, keys),
+    missing: (Array.isArray(x && x.missing) ? x.missing : []).filter((f, i, a) => ask.includes(f) && a.indexOf(f) === i),
+  }));
+}
+export function gapsPrompt(items, sp) {
+  const rows = items.map((x, i) => (x.name && x.missing.length
+    ? i + ". «" + x.name + "»" + (Object.keys(x.known).length ? " — вписано: " + JSON.stringify(x.known) : "") + "; не хватает: " + x.missing.join(", ") : "")).filter(Boolean);
+  return `Ты — ${sp ? "бармен" : "сомелье"} ресторанной академии. Ниже ${sp ? "крепкие напитки из барной карты ресторана" : "вина из винной карты ресторана"}: номер,
+название, что уже вписано в карточку и каких полей не хватает. Вписанное — верно: по нему пойми, о какой позиции речь, держись его и не
+повторяй. Для каждой позиции верни объект: "i" — номер, "name" — название, как в строке, и только недостающие поля из её списка,
+по образцу:
+${sp ? SP_SHAPE : SHAPE}
+${sp ? SP_RULES : RULES}
+Год урожая, объём, цены${sp ? " и порцию" : " и подачу бокалом"} не пиши. Позицию не узнаёшь — верни для неё только "i" и "name".
+Ответ — JSON-массив в том же порядке.
+
+${sp ? "Напитки" : "Вина"}:
+${rows.join("\n")}`;
+}
+const hasV = (v) => (Array.isArray(v) ? v.length > 0 : v !== "" && v != null && v !== false);
+const nameKey = (x) => String(x || "").toLowerCase().replace(/[^a-zа-яё0-9]+/gi, " ").trim();
+/** Ответ модели → [{ i, name, …только недостающие поля этой позиции }]: позиция — по "i", иначе по названию, иначе по порядку. */
+export function gapsPick(got, items, sp) {
+  const byName = new Map();
+  items.forEach((x, i) => { const k = nameKey(x.name); if (k && !byName.has(k)) byName.set(k, i); });
+  const ok = (i) => Number.isInteger(i) && i >= 0 && i < items.length && !!items[i].name && items[i].missing.length > 0;
+  const seen = new Set(), out = [];
+  (Array.isArray(got) ? got : []).forEach((g, j) => {
+    if (!g || typeof g !== "object") return;
+    // номер есть, но чужой (повтор, позиция без названия) — только по названию; номера нет — по названию, иначе по порядку
+    const hasI = !(g.i === "" || g.i == null);
+    let i = hasI ? Number(g.i) : NaN;
+    if (!ok(i) || seen.has(i)) { const k = nameKey(g.name); i = k && byName.has(k) ? byName.get(k) : hasI ? NaN : j; }
+    if (!ok(i) || seen.has(i)) return;
+    seen.add(i);
+    const c = (sp ? cleanSpirit : clean)({ ...g, name: items[i].name }), w = { i, name: items[i].name };
+    for (const f of items[i].missing) if (hasV(c[f])) w[f] = c[f];
+    out.push(w);
+  });
+  return out.sort((a, b) => a.i - b.i);
+}
 
 const OPENROUTER_MODELS = [process.env.OPENROUTER_WINE_MODEL, process.env.OPENROUTER_MENU_MODEL, "anthropic/claude-sonnet-4.6", "google/gemini-2.5-flash"].filter(Boolean);
 
@@ -308,6 +364,22 @@ export default async function handler(req, res) {
 
   let parts;
   const sp = b.kind === "spirit", P = sp ? SP_PROMPTS : PROMPTS;   // v127: крепкое
+  // v151 (Доп. 475): «Дописать пустое» — пачка позиций, ответ с номерами; ничего не узнал — пустой список, а не ошибка
+  if (b.mode === "gaps") {
+    const items = gapItems(b.items, sp);
+    if (!items.some((x) => x.name && x.missing.length)) return res.status(400).json({ error: "Нечего дописывать" });
+    try {
+      const text = gapsPrompt(items, sp);
+      const out = orKey ? await viaOpenRouter(orKey, [{ text }], 6000, gapLim()) : await viaAnthropic(anKey, [{ text }], 6000, gapLim());
+      if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
+      let got = out.cut ? null : parse(out.text);
+      if (!got) { const loose = parseLoose(out.text); if (loose.length || /^\s*(```(json)?)?\s*\[\s*\]/.test(String(out.text || ""))) got = loose;
+        else return res.status(422).json({ error: "Модель ответила не списком: «" + String(out.text || "").replace(/\s+/g, " ").trim().slice(0, 140) + "…». Нажми ещё раз" }); }
+      return res.status(200).json({ wines: gapsPick(got, items, sp), model: out.model });
+    } catch (e) {
+      return res.status(500).json({ error: "Сбой: " + (e && e.message ? e.message : "unknown") });
+    }
+  }
   if (b.mode === "fill") {
     const name = str(b.name, 120);
     if (!name) return res.status(400).json({ error: "Нет названия" });

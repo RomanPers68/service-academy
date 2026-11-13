@@ -128,7 +128,8 @@ describe("v124: экраны", () => {
   it("форма и проверка — сверху, список — где был (корень приложения)", () => {
     expect(L).toContain("export function useInnerTop(key, listKey = \"list\"");   // v129: третий параметр — где был список вкладки
     expect(L).toContain('document.getElementById("root")');
-    expect(E).toContain('useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : "list")');
+    // v151 (Доп. 475): + экран «Дописать пустое» — тоже сверху, список — где был
+    expect(E).toContain('useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : bulk ? "bulk" : "list")');
     expect(L).toContain('useInnerTop(openId ? "card:" + openId');
   });
   it("тренировка: «Вино к блюду», «Опиши за 60 секунд», «Как произносить» (оборот карточки и словарь «Наша карта»)", () => {

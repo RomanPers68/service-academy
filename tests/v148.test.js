@@ -277,7 +277,7 @@ describe("v148: карточка и проводка", () => {
     expect(a).toContain("tip={lessonTip} onTipGo={goTip} onTipLater={laterTip} onTipShown={shownTip}");
     expect(a).toContain('const ids = [...(SCREEN_TIPS[screen === "report" && reportSelf ? "myreport" : screen] || [])];');
     expect(a).toContain("if (pairOpen) ids.push(...(LAYER_TIPS.pair || []));");
-    expect(a).toContain("onOpen={openDest} />");   // «Гид» и совет — одна дорога
+    expect(a).toContain("onOpen={openDest} tips={guideTips} onTipsReset={resetTipsAll} />");   // «Гид» и совет — одна дорога; v156: и «Советы в уроках»
     expect(a).toContain("if (o.screen) openDestRef.current(o.screen);");
     expect(a).toMatch(/if \(o\.ask\) \{ askMentor\(tip\.ask \|\|/);
     expect(a).toMatch(/if \(o\.screen === "reference"\) \{ setRefStart\(tip\.ref \|\| null\); navigate\("reference"\); return; \}/);

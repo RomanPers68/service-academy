@@ -37,7 +37,7 @@ import { readCredits, readGold, saveCredit, saveGold, creditTriedToday, markCred
 import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEarned, newlyEarned, mergeEarned, saveSummary, syncLife, readSeen, markSeen, newTools, isNewTool, mastersIndex, restoreFromCopy, TIERS, MASTER_NEED } from "./lib/mastery";
 import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { MOMENT_AFTER_MS } from "./ui/mastery-card";   // v146 (Доп. 467): момент значка — в первые 10 минут после занятия
-import { pickLessonTip, readTipState, markTipShown, tipLater, markTipUsed, storageKeys, SCREEN_TIPS, LAYER_TIPS } from "./lib/lesson-tips";   // v148 (Доп. 472)
+import { pickLessonTip, readTipState, markTipShown, tipLater, markTipUsed, storageKeys, SCREEN_TIPS, LAYER_TIPS, tipOverview, resetTips } from "./lib/lesson-tips";   // v148 (Доп. 472); v156: «Советы в уроках» в «Гиде»
 import { readAvail, readSeatPlan, rememberSeatPlan, readStages, rememberStage, availCan } from "./lib/tip-avail";   // v149 (Доп. 473): совет — только туда, где есть что открыть
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
@@ -2766,6 +2766,12 @@ function ServiceAcademy() {
     try { return pickLessonTip({ lessonId: activeLesson.id, lessonType: activeLesson.type || "lesson", state: readTipState(ukP), ctx: tipCtx }); } catch (e) { return null; }
   }, [profile, screen, activeLesson, ukP, tipCtx, tipVer]);   // eslint-disable-line react-hooks/exhaustive-deps
   const shownTip = useCallback((tip) => { try { markTipShown(ukP, tip.lesson, tip.id); } catch (e) {} }, [ukP]);
+  // v156 (Доп. 480): «Гид» → «Советы в уроках» (руководителю): что из советов трека ещё покажется, что скрыто и почему
+  const guideTips = useMemo(() => {
+    if (!isLead || screen !== "guide") return null;
+    try { return tipOverview({ lessons: programAllMods.flatMap((m) => (m && m.lessons) || []), state: readTipState(ukP), ctx: tipCtx, titleOf: feedTitleOf }); } catch (e) { return null; }
+  }, [isLead, screen, programAllMods, ukP, tipCtx, tipVer, feedTitleOf]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const resetTipsAll = useCallback(() => { try { resetTips(ukP); } catch (e) {} setTipVer((v) => v + 1); }, [ukP]);
   const laterTip = useCallback((tip) => { vibrate("light"); try { tipLater(ukP, tip.id); } catch (e) {} setTipVer((v) => v + 1); }, [ukP]);
   const goTip = useCallback((tip) => {
     vibrate("light");
@@ -3527,7 +3533,7 @@ function ServiceAcademy() {
             { key:"mis", group:"Моё обучение", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
           ]} compactGroups={true} fold hubId="team" /></div>;   // v110: группы кнопками, внутри строками; было — строками только «Управление»
         })()}
-        {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} focus={guideFocus} onBack={() => goBack("me")} onOpen={openDest} /></Suspense>}
+        {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} focus={guideFocus} onBack={() => goBack("me")} onOpen={openDest} tips={guideTips} onTipsReset={resetTipsAll} /></Suspense>}
         {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}
           avatar={{ initials: (((profile.name || "")[0] || "") + ((profile.surname || "")[0] || "")).toUpperCase(), admin: !!profile.is_admin }}   /* v150 (Доп. 474): у заголовка «Я» — инициалы, как в «Аккаунте» */
           hintKey="me"

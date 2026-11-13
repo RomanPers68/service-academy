@@ -19,6 +19,7 @@ import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } fr
 import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
 import { thxView, cheerView, thxChips, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо», день рождения, годовщина
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист «Опаздываю» открывали — совета про него нет
+import { splitWebLine, siteOf, openOut } from "../lib/ai-web";   // v153 (Доп. 477): ссылки «Нашёл в интернете» у ответа Наставника
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -329,12 +330,18 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
 // ── Наставник в переписке ──
 export function AiMsg({ row, me, hl, onAct, onMenu }) {
   const m = row.m, cards = (m.card && Array.isArray(m.card.cards)) ? m.card.cards : [];
+  // v153: последняя строка «Нашёл в интернете: адрес · адрес» — именами сайтов, касание открывает страницу
+  const wl = splitWebLine(m.body), sites = wl.src.map((x) => siteOf(x.url));
   return (
     <div className={"ch-row in" + (hl ? " hl" : "")} data-chat-msg={m.id} data-chat-ai="">
       <div className="ch-ai-nm" aria-hidden="true"><span className="ch-ai-d">{IC.ai}</span>{AI_NAME}</div>
-      <div className="ch-b ch-in ai" role="group" tabIndex={0} data-chat-bubble="" onClick={() => onMenu(m)} aria-label={AI_NAME + ", " + hhmm(m.at) + ": " + (m.body || "")}>
+      <div className="ch-b ch-in ai" role="group" tabIndex={0} data-chat-bubble="" onClick={() => onMenu(m)} aria-label={AI_NAME + ", " + hhmm(m.at) + ": " + wl.text + (sites.length ? ". Нашёл в интернете: " + sites.join(", ") : "")}>
         {m.reply ? <span className="ch-ai-for" data-chat-ai-q={m.reply.id}>{who(m.reply, me)}: {aiQuestion(quoteText(m.reply, me && me.id))}</span> : null}
-        <span className="ch-tx">{m.body}</span>
+        <span className="ch-tx">{wl.text}</span>
+        {wl.src.length ? (
+          <span data-chat-ai-web={wl.src.length} style={{ display: "block", marginTop: 6, fontSize: "0.86em", opacity: 0.85, lineHeight: 1.5 }}>Нашёл в интернете: {wl.src.map((x, k) => (
+            <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-chat-ai-web-src={x.url} title={x.url} onClick={(e) => { e.stopPropagation(); vibrate("light"); openOut(x.url); }}
+              style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}>{sites[k]}</button></React.Fragment>))}</span>) : null}
         {cards.map((it, i) => (
           <button key={i} type="button" className="ch-mini" data-chat-open={it.kind} onClick={(e) => { e.stopPropagation(); vibrate("light"); onAct(m, "open", it); }}>
             {it.img ? <img src={it.img} alt="" /> : <span className="ic" aria-hidden="true">{kindIc(it.kind)}</span>}

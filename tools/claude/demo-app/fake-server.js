@@ -1488,7 +1488,23 @@ export function makeServer(opts) {
       return { ok: true, now: mine.filter(([, n]) => !n.solo && nbActive(n)).sort((x, y) => (x[1].started < y[1].started ? -1 : 1)).map(([id]) => ({ name: full(who(id)) })),
         led: mine.filter(([, n]) => n.solo).sort((x, y) => (x[1].solo > y[1].solo ? -1 : 1)).slice(0, 20).map(([id, n]) => ({ name: full(who(id)), solo: n.solo.slice(0, 10) })) };
     }
-    if (fn === "chat_ai_post") return { ok: false, error: "no_ai" };
+    // v153 (Доп. 477): Наставник в переписке — как chat_ai_post на сервере (этап 38): вопрос — своё «@Наставник …» не старше
+    // 10 минут; без ответа (p_body пусто) — проверка; с ответом — сообщение kind "ai" с карточками известных видов
+    if (fn === "chat_ai_post") {
+      const c = chatOf(b.p_chat); if (!visible(c, p)) return { ok: false, error: "not_found" };
+      const q = msgOf(b.p_reply), low = lowE(q && q.body);
+      if (!q || q.chat !== c.id || q.del || q.kind !== "text" || q.emp !== p.id || Date.parse(now()) - Date.parse(q.at) > 600000
+        || !(/(^|[^а-яеa-z0-9_])@наставник([^а-яеa-z0-9_]|$)/.test(low) || /^\s*наставник\s*[,:]/.test(low))) return { ok: false, error: "bad_request" };
+      if (S.msgs.some((y) => y.chat === c.id && y.kind === "ai" && y.reply === q.id)) return { ok: false, error: "already" };
+      if (b.p_body == null) return { ok: true, check: true, left: 30 };
+      const body = String(b.p_body || "").replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 2000);
+      if (!body) return { ok: false, error: "bad_request" };
+      const cards = (Array.isArray(b.p_cards) ? b.p_cards : []).slice(0, 3).map((x) => item(x, ["dish", "cocktail", "ref", "lesson", "quiz", "module"])).filter(Boolean);
+      const t = now(), m = { id: ++S.seq, chat: c.id, emp: "ai", name: "Наставник", rest: c.rest || p.restaurant, body, kind: "ai", call: null, photo: null, reply: q.id, reacts: [],
+        edited: false, del: false, at: t, upd: t, card: { t: "ai", cards } };
+      S.msgs.push(m);
+      return { ok: true, msg: smart(m, p) };
+    }
     return { code: "PGRST202", message: "demo: " + fn };
   }
 

@@ -27,6 +27,7 @@ import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
+import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
 import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";
 import { nameParts } from "../../../lib/bar-view.js";   // v128: на «этикетке» — русское название   // v127: крепкое в «Барной карте» демо   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
 
@@ -347,6 +348,27 @@ const demoWebAnswer = (b) => {
   if (b.check) return { ok: true, reply: "Проверил: в ответе всё сходится с тем, что пишут производитель и справочники. Добавлю одно: подавать при 16–18 °C, в бокале «бордо».", sources: src("проверка ответа", "check"), searched: 1 };
   if (/margaux|марго/i.test(q)) return { ok: true, reply: "Château Margaux — первое гран крю (Premier Grand Cru Classé) Медока по классификации 1855 года, апелласьон Марго, Бордо. В основе — каберне совиньон с мерло: кассис, фиалка, кедр, шелковистые танины. Гостю: «одно из пяти великих вин Бордо». В нашей карте его нет — предложи похожее из карты.", sources: src("Château Margaux", "chateau-margaux"), searched: 1 };
   return { ok: true, reply: "В демо интернета нет. В приложении я поищу ответ на сайтах производителей и в справочниках и покажу ссылки.", sources: [], searched: 0 };
+};
+// v153 (Доп. 477): «Пять вариантов описания» в демо — по углам нажатия (lib/dish-desc.js), из названия и состава блюда;
+// ссылка — страница-пример. В приложении модель ищет идеи в интернете и пишет сама.
+const DESC_DEMO = {   // только именительный падеж для {a} и {b}: состав в демо — любые слова
+  taste: ["«{n}»: {a} — для глубины, {b} — для свежести, и вкус раскрывается с каждым кусочком.", "Первое впечатление — {a}, послевкусие — {b}: вкус собранный и очень цельный."],
+  origin: ["Такие блюда родом из домашней кухни: их готовят неспешно, чтобы раскрылся вкус каждого ингредиента. Мы держим этот принцип.", "Рецепт простой и честный, как в домашней кухне: главное — не торопиться, а {a} здесь в главной роли."],
+  play: ["«{n}» — тот случай, когда второй заказ хочется сделать ещё до того, как закончился первый.", "Осторожно: после «{n}» другие блюда раздела кажутся немного скучными."],
+  doubt: ["Если гость сомневается — смело советуйте «{n}»: понятное, тёплое и сытное, а {a} — его изюминка.", "Беспроигрышный выбор: «{n}» нравится и тем, кто пробует впервые, и тем, кто заказывает его каждый раз."],
+  star: ["Главное здесь — {a}, всё остальное только подчёркивает этот вкус.", "Сердце блюда — {a}: именно за этот вкус «{n}» заказывают снова."],
+  craft: ["Готовим «{n}» под заказ: {a} и {b} — на тарелке за минуты до подачи, поэтому вкус яркий и свежий.", "Собираем «{n}» прямо перед подачей, чтобы всё было свежим: {b} — в последний момент."],
+  mood: ["Это блюдо для прохладного вечера или после долгого дня: тёплое, спокойное и очень уютное.", "«{n}» хорошо заходит в компании: его приятно обсуждать и делить на двоих."],
+  simple: ["Если коротко: {a}, {b} и немного терпения на кухне — просто, понятно и очень вкусно.", "Простыми словами: {a}, {b} и точная подача — блюдо, которое хочется доесть до конца."],
+  gourmet: ["Обратите внимание на послевкусие: к концу тарелки появляются новые, более глубокие оттенки.", "Для ценителей: {b} здесь не украшение, а противовес — освежает и держит баланс."],
+  fact: ["Интересно: в «{n}» каждый ингредиент добавляют в свой момент — поэтому вкус собирается слоями.", "Мало кто знает, но порядок, в котором добавляют ингредиенты, меняет вкус сильнее, чем специи."],
+};
+const demoDesc = (b) => {
+  const d = b.dish || {}, n = String(d.name || "блюдо").trim(), ing = (Array.isArray(d.ingredients) ? d.ingredients : [])
+    .map((x) => String(x).replace(/\s*\(.*$/, "").replace(/[()]/g, "").trim().toLowerCase()).filter(Boolean);   // «паштет (осьминог» → «паштет»
+  const a = ing[0] || "главный ингредиент", c = ing[1] || "зелень", round = Math.max(0, Math.floor(Number(b.round) || 0)), k = Math.floor(round / 2) % 2;
+  const variants = descAngles(round).map(([angle, label]) => ({ angle, label, text: DESC_DEMO[angle][k].replace(/\{n\}/g, n).replace(/\{a\}/g, a).replace(/\{b\}/g, c) }));
+  return { ok: true, variants, sources: [{ url: "https://example.com/demo/dish-ideas", title: "Страница-пример (демо): идеи для описания блюд" }], searched: 1 };
 };
 const demoWineAi = (b) => {
   if (b.mode === "taste") return demoTaste(b);   // v132
@@ -874,7 +896,7 @@ window.fetch = function (input, init) {
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
-  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(1500).then(() => json(demoWebAnswer(b))); }   // v152
+  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(1500).then(() => json(b.mode === "desc" ? demoDesc(b) : demoWebAnswer(b))); }   // v152; v153: описания блюд
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));
 };

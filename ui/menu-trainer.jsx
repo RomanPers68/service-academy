@@ -37,6 +37,8 @@ import { SayLine, PronounceScreen } from "./pronounce";
 import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
+import { descPrompt, descParse } from "../lib/dish-desc";   // v153 (Доп. 477): пять вариантов «вкусного описания»
+import { siteOf, openOut } from "../lib/ai-web";   // v153: «Идеи из интернета» — ссылки
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
 const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true|false } (нет ключа — авто: скрыты, если есть меню команды)
@@ -280,7 +282,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v152</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v153</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -1078,30 +1080,44 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   React.useEffect(() => { if (!form) setPhotoState(""); }, [form]); // закрыли форму — подпись не переезжает на следующее блюдо
   // Доп. 166: предпросмотр «как увидит официант» и AI-описание по составу
   const [preview2, setPreview2] = React.useState(false);
-  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiBusy, setAiBusy] = React.useState(false);   // v153: false | "web" (ищет идеи в интернете) | "ai" (Наставник без интернета)
   const [aiErr, setAiErr] = React.useState("");
-  const [aiVariants, setAiVariants] = React.useState([]); // Доп. 167: три варианта на выбор
-  React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); } }, [form]);
+  const [aiVariants, setAiVariants] = React.useState([]); // Доп. 167: варианты на выбор; v153: [{ angle, label, text }], пять за нажатие
+  const [aiWeb, setAiWeb] = React.useState([]);   // v153: откуда идеи — ссылки
+  const descSeen = React.useRef({ texts: [], round: 0 });   // v153: что уже показали и какое нажатие (углы — по кругу)
+  React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); setAiWeb([]); descSeen.current = { texts: [], round: 0 }; } }, [form]);
+  // v153 (Доп. 477), владелец: «будет полезно ассистенту, который дописывает варианты вкусного описания блюд, что бы было
+  // больше и разнообразнее описаний😉». Пять вариантов за нажатие, у каждого свой угол (lib/dish-desc.js); следующее нажатие —
+  // другие углы, показанное не повторяется. Сначала — с идеями из интернета (/api/web-answer, mode "desc"); интернет не
+  // настроен или не ответил — Наставник без интернета (ai-chat), те же пять углов.
   const aiDescribe = () => {
     if (!form || !String(form.name || "").trim() || aiBusy) return;
-    setAiBusy(true); setAiErr("");
-    const ing = String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean).join(", ");
-    const ask = `Напиши три разных «вкусных описания» блюда для гостя ресторана «${restaurant}» — каждое два предложения, тёплым живым языком официанта, без пафоса и без перечисления ингредиентов подряд. Первое — про вкус и текстуру, второе — про происхождение или способ приготовления, третье — короткое и игривое. Блюдо: «${String(form.name || "").trim()}»${form.cat ? ` (раздел: ${form.cat})` : ""}. Состав: ${ing || "не указан"}.${form.note ? ` Важно: ${form.note}` : ""} Формат ответа строго: три абзаца, каждый начинается с «1.», «2.», «3.». Без кавычек, заголовков и пояснений.`;
-    fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: ask }] }),
-    }).then(r => r.json()).then(j => {
+    setAiBusy("web"); setAiErr("");
+    const sr = descSeen.current, round = sr.round;
+    const dish = { name: String(form.name || "").trim(), cat: form.cat || "", ingredients: String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean), note: form.note || "" };
+    const seen = [...sr.texts, form.desc, form.short].map(x => String(x || "").trim()).filter(Boolean).slice(-15);
+    const done = (vars, src) => {
       setAiBusy(false);
-      if (j && j.ok && j.reply) {
-        const raw = String(j.reply).replace(/\[\[[^\]]*\]\]/g, "");
-        const parts = raw.split(/\n?\s*(?:^|\n)\s*[1-3][.)]\s*/m).map(x => x.replace(/^["«»\s*]+|["«»\s*]+$/g, "").trim()).filter(x => x.length > 20).slice(0, 3);
-        if (parts.length >= 2) { setAiVariants(parts); vibrate("success"); }
-        else if (parts.length === 1) { setForm(f => ({ ...f, desc: parts[0] })); vibrate("success"); }
-        else setAiErr("Наставник ответил невнятно. Попробуй ещё раз");
-      }
-      else setAiErr("Наставник не ответил. Попробуй ещё раз");
-    }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
+      if (!vars.length) { setAiErr("Наставник ответил невнятно. Попробуй ещё раз"); return; }
+      descSeen.current = { texts: [...sr.texts, ...vars.map(v => v.text)].slice(-20), round: round + 1 };
+      setAiVariants(vars); setAiWeb(src || []); vibrate("success");
+    };
+    const plain = () => {
+      setAiBusy("ai");
+      fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: descPrompt({ restaurant, dish, seen, round }) }] }),
+      }).then(r => r.json()).then(j => {
+        if (j && j.ok && j.reply) done(descParse(j.reply, round, seen), []);
+        else { setAiBusy(false); setAiErr("Наставник не ответил. Попробуй ещё раз"); }
+      }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
+    };
+    fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), mode: "desc", restaurant, round, seen, dish }) })
+      .then(r => r.json()).catch(() => null).then(w => {
+        if (w && w.ok && Array.isArray(w.variants) && w.variants.length) done(descParse(JSON.stringify(w.variants), round, seen), w.sources);
+        else plain();
+      });
   };
 
   if (form) {
@@ -1206,21 +1222,25 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Одной фразой: первое, что говорит официант (необязательно)" value={form.short || ""} onChange={v => setForm(f => ({ ...f, short: v }))} style={{ fontStyle: "italic" }} />
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Эталонное «вкусное описание» для гостя" value={form.desc} onChange={v => setForm(f => ({ ...f, desc: v }))} rows={3} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "-4px 0 10px" }}>
-            <span onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy ? "Наставник пишет…" : aiVariants.length ? "Ещё три варианта" : "Три варианта описания"}</span>
+            <span data-menu-desc-ai={aiBusy || (aiVariants.length ? "more" : "")} onClick={aiDescribe} {...onActivate(aiDescribe)} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 12.5, cursor: canSave ? "pointer" : "default", border: `1px solid ${gold}88`, color: gold, opacity: canSave && !aiBusy ? 1 : 0.5 }}>{aiBusy === "web" ? "Ищу идеи в интернете…" : aiBusy ? "Наставник пишет…" : aiVariants.length ? "Ещё пять вариантов" : "Пять вариантов описания"}</span>
             {aiErr && <span style={{ fontSize: 12.5, color: red }}>{aiErr}</span>}
           </div>
           {aiVariants.length > 0 && (
-            <div className="sa-fadein" style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
+            <div className="sa-fadein" data-menu-desc-variants={aiVariants.length} style={{ ...glass(T), padding: "10px 12px", marginBottom: 12 }}>
               <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 8 }}>Выбери, потом поправишь</div>
-              {aiVariants.map((v, i) => (
-                <div key={i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 14, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${form.desc === v || form.short === v ? gold : gold + "33"}`, background: form.desc === v || form.short === v ? "rgba(214,178,102,0.12)" : "transparent" }}>
+              {aiVariants.map((x, i) => { const v = x.text, on = form.desc === v || form.short === v; return (
+                <div key={i} data-menu-desc-variant={x.angle || i} style={{ padding: "9px 11px", borderRadius: 12, marginBottom: 6, fontSize: 14, lineHeight: 1.5, color: T.para?.color, border: `1px solid ${on ? gold : gold + "33"}`, background: on ? "rgba(214,178,102,0.12)" : "transparent" }}>
+                  {x.label ? <div data-menu-desc-angle="" style={{ ...labelStyle(12), color: gold, marginBottom: 3 }}>{x.label}</div> : null}
                   <div onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} {...onActivate(() => setForm(f => ({ ...f, desc: v })))} style={{ cursor: "pointer" }}><span style={{ color: gold, marginRight: 6 }}>{i + 1}.</span>{v}</div>
                   <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12.5 }}>
-                    <span onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ в описание</span>
-                    <span onClick={() => { setForm(f => ({ ...f, short: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ одной фразой</span>
+                    <span data-menu-desc-use="desc" onClick={() => { setForm(f => ({ ...f, desc: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ в описание</span>
+                    <span data-menu-desc-use="short" onClick={() => { setForm(f => ({ ...f, short: v })); vibrate("light"); }} style={{ color: gold, cursor: "pointer" }}>→ одной фразой</span>
                   </div>
-                </div>
-              ))}
+                </div>); })}
+              {aiWeb.length ? (
+                <div data-menu-desc-web={aiWeb.length} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Идеи из интернета: {aiWeb.map((x, k) => (
+                  <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-menu-desc-src={x.url} title={x.title || x.url} onClick={() => openOut(x.url)}
+                    style={{ background: "none", border: "none", padding: 0, color: gold, font: "inherit", textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}>{siteOf(x.url)}</button></React.Fragment>))}</div>) : null}
             </div>
           )}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />
@@ -1438,7 +1458,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
               return (
                 <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px", flexWrap: "wrap", opacity: d.stop ? 0.85 : 1 }}>
                   {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0, filter: d.stop ? "grayscale(1)" : "none" }} />}
-                  <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") }))}>
+                  <div data-menu-edit={d.id} style={{ flex: 1, minWidth: 0 }} onClick={() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") })} {...onActivate(() => setForm({ img: "", ...d, name: String(d.name || ""), cat: String(d.cat || ""), ingredients: (d.ingredients || []).join(", ") }))}>
                     <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                     <div style={T.modSub}>{(d.ingredients || []).length} ингр. · {(d.allergens || []).length ? (d.allergens || []).length + " аллерг." : "аллергенов нет"}{changed ? " · не опубликовано" : ""}{isDataImg(d.img) ? " · фото на телефоне" : d.imgLostLocal && !d.img ? " · фото потеряно" : ""}</div>
                   </div>
@@ -1466,7 +1486,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           {vis(orphanShared).map(d => (
             <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
-              <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
+              <div data-menu-edit={d.id} style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}{d.stop ? <span style={{ color: red, fontSize: 11, marginLeft: 8, letterSpacing: 1 }}>В СТОПЕ</span> : null}</div>
                 <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
               </div>
@@ -1506,7 +1526,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           {vis(sampleList).map(d => (
             <div key={d.id} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px", opacity: 0.85 }}>
               {d.img && <img src={d.img} alt="" loading="lazy" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 9, flexShrink: 0 }} />}
-              <div style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
+              <div data-menu-edit={d.id} style={{ flex: 1, minWidth: 0 }} onClick={() => editForeign(d)} {...onActivate(() => editForeign(d))}>
                 <div style={T.modTitle}>{d.name}</div>
                 <div style={T.modSub}>{d.cat || "без категории"} · {(d.ingredients || []).length} ингр.</div>
               </div>

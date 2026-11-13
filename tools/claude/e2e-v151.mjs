@@ -95,14 +95,16 @@ if (want("BULK")) {
   const doneAttr = String(await attr(page, "[data-wine-bulk-done]", "data-wine-bulk-done") || "").split("/").map(Number);
   ok("BULK: итог — «Готово», «Дописано у N позиций, полей: …» с разбивкой по видам", done && /^Дописано у \d+ позиций, полей: \d+ \(вина — \d+, крепкое — \d+\)\.$/.test(String(sum)) && doneAttr[0] >= 14, JSON.stringify({ sum, doneAttr }));
   const none = await textOf(page, "[data-wine-bulk-none]");
-  ok("BULK: «AI не нашёл, что дописать» — своя настойка; «Скопировать названия»", !!none && none.includes("Настойка «Облепиха с мёдом», своя") && doneAttr[1] === 1 && !!(await textOf(page, "[data-wine-bulk-copy]")), none);
+  // v152: в демо ещё кальвадос, которого AI не знает (его находит «Поискать в интернете»), — «не нашёл» не меньше одной
+  ok("BULK: «AI не нашёл, что дописать» — своя настойка; «Скопировать названия»", !!none && none.includes("Настойка «Облепиха с мёдом», своя") && doneAttr[1] >= 1 && !!(await textOf(page, "[data-wine-bulk-copy]")), none);
   await click(page, "[data-wine-bulk-copy]"); await page.waitForTimeout(300);
   ok("BULK: «Скопировать названия» → «Скопировано ✓»", (await textOf(page, "[data-wine-bulk-copy]")) === "Скопировано ✓");
   await page.screenshot({ path: join(OUT, "bulk-3-done.png") });
   const after = await bar(page);
   const byId = Object.fromEntries(after.map((d) => [d.id, d]));
   const kept = before.every((b) => { const a = byId[b.id]; return a && KEEP.every((f) => JSON.stringify(a[f] ?? "") === JSON.stringify(b[f] ?? "")); });
-  const SERVICE = ["ai", "aiTried", "checkedAt", "checkedBy", "updatedAt", "updatedBy", "taste"];   // служебное: отметки проверки и сохранения
+  // служебное: отметки проверки и сохранения; v152 — aiNone (AI своих знаний не хватило) и aiWeb (поиск в интернете)
+  const SERVICE = ["ai", "aiTried", "aiNone", "aiWeb", "checkedAt", "checkedBy", "updatedAt", "updatedBy", "taste"];
   const diffs = [];
   before.forEach((b) => { const a = byId[b.id]; if (!a) { diffs.push(b.name + ": нет"); return; }
     Object.keys(b).filter((f) => !SERVICE.includes(f) && has(b[f])).forEach((f) => { if (JSON.stringify(a[f]) !== JSON.stringify(b[f])) diffs.push(b.name + "." + f); }); });

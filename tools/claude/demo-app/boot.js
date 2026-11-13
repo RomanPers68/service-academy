@@ -213,6 +213,8 @@ const DEMO_SPIRITS = [
   // v151 (Доп. 475): своя настойка бара — в карте только название, порция и цена; AI о ней ничего не знает («Дописать пустое»
   // покажет её в «AI не нашёл, что дописать»)
   { name: "Настойка «Облепиха с мёдом», своя", portion: 50, pricePortion: 350 },
+  // v152 (Доп. 476): кальвадос — в карте только название, порция и цена; AI демо его не знает, а «Поискать в интернете» находит
+  { name: "Кальвадос Pays d’Auge, Christian Drouin", portion: 40, pricePortion: 690 },
 ];
 const SPIRIT_GLASS = { whisky: "amber", cognac: "amber", rum: "amber", liqueur: "amber", bitter: "red", gin: "clear", agave: "clear", vodka: "clear" };
 const SP_PIC = ["Glenfiddich 12", "Hennessy VS", "Hendrick's"], SP_NEW = ["Maker's Mark", "Havana Club 7"];
@@ -325,8 +327,30 @@ const demoGaps = (b) => {
     return out;
   }) };
 };
+// v152 (Доп. 476): «Поискать в интернете» в демо — интернета нет: что «нашлось» бы, лежит здесь, ссылки — на example.com
+// (честно: страница-пример). Своя настойка не находится нигде — как и было бы на самом деле
+const WEB_DEMO = [[/кальвадос|calvados|drouin/i, { cat: "other", style: "кальвадос", country: "Франция", region: "Нормандия, Пеи д’Ож", abv: 40, serve: ["чистым"], glass: "тюльпан",
+  temp: "комнатная", notes: ["печёное яблоко", "груша", "дуб"], short: "Яблочный бренди Нормандии: печёное яблоко и дуб, после ужина.",
+  story: "Кальвадос перегоняют из сидра и выдерживают в дубе. Pays d’Auge — самая строгая апелласьон: двойная перегонка в кубе. Подавай в тюльпане, комнатной температуры.",
+  src: [{ url: "https://example.com/demo/calvados-pays-d-auge", title: "Страница-пример (демо): кальвадос Pays d’Auge" }] }]];
+const demoWebGaps = (b) => ({ wines: (Array.isArray(b.items) ? b.items : []).slice(0, 2).map((x, i) => {
+  const name = String((x && x.name) || ""), out = { i, name }, hit = WEB_DEMO.find(([re]) => re.test(name));
+  if (!hit) return out;
+  for (const f of (x && x.missing) || []) if (hit[1][f] != null) out[f] = hit[1][f];
+  out.src = hit[1].src;
+  return out;
+}) });
+// v152: ассистент с интернетом в демо: «Château Margaux» — ответ как из интернета (ссылки — страницы-примеры), проверка
+// ответа — «сходится»; остальное — честно: в демо интернета нет
+const demoWebAnswer = (b) => {
+  const q = String(b.question || ""), src = (t, u) => [{ url: "https://example.com/demo/" + u, title: "Страница-пример (демо): " + t }];
+  if (b.check) return { ok: true, reply: "Проверил: в ответе всё сходится с тем, что пишут производитель и справочники. Добавлю одно: подавать при 16–18 °C, в бокале «бордо».", sources: src("проверка ответа", "check"), searched: 1 };
+  if (/margaux|марго/i.test(q)) return { ok: true, reply: "Château Margaux — первое гран крю (Premier Grand Cru Classé) Медока по классификации 1855 года, апелласьон Марго, Бордо. В основе — каберне совиньон с мерло: кассис, фиалка, кедр, шелковистые танины. Гостю: «одно из пяти великих вин Бордо». В нашей карте его нет — предложи похожее из карты.", sources: src("Château Margaux", "chateau-margaux"), searched: 1 };
+  return { ok: true, reply: "В демо интернета нет. В приложении я поищу ответ на сайтах производителей и в справочниках и покажу ссылки.", sources: [], searched: 0 };
+};
 const demoWineAi = (b) => {
   if (b.mode === "taste") return demoTaste(b);   // v132
+  if (b.mode === "gaps" && b.web) return demoWebGaps(b);   // v152
   if (b.mode === "gaps") return demoGaps(b);   // v151
   if (b.kind === "spirit") return demoSpiritAi(b);   // v127
   if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
@@ -850,6 +874,7 @@ window.fetch = function (input, init) {
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
+  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(1500).then(() => json(demoWebAnswer(b))); }   // v152
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));
 };

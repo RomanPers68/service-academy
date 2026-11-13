@@ -51,9 +51,12 @@ async function open({ who = "maria", light = false, width = 390, height = 844 } 
     window.open = (u) => { window.__opened.push(String(u)); return null; };
     window.fetch = (u, init) => {
       const url = String(u);
-      if (/\/api\/web-answer/.test(url)) {
-        const b = JSON.parse((init && init.body) || "{}"); window.__web.push(b);
-        if (window.__webFail) return new Promise((ok) => setTimeout(() => ok(new Response(JSON.stringify({ ok: false, error: "server", message: "сбой" }), { status: 200, headers: { "Content-Type": "application/json" } })), 500));
+      if (/\/api\/web-answer/.test(url)) {   // v155: запрос упакован — читаем через window.__demoUnpack (демо)
+        return window.__demoUnpack(JSON.parse((init && init.body) || "{}")).then((b) => {
+          window.__web.push(b);
+          if (window.__webFail) return new Promise((ok) => setTimeout(() => ok(new Response(JSON.stringify({ ok: false, error: "server", message: "сбой" }), { status: 200, headers: { "Content-Type": "application/json" } })), 500));
+          return f(u, init);
+        });
       }
       if (/\/functions\/v1\/ai-chat/.test(url)) { const b = JSON.parse((init && init.body) || "{}"); window.__chat.push(String(((b.messages || []).slice(-1)[0] || {}).content || "")); }
       return f(u, init);

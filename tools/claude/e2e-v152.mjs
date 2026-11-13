@@ -61,10 +61,12 @@ async function prep(page, errs, light) {
         window.__gaps.push({ kind: b.kind || "wine", web: b.web === true, n: (b.items || []).length, names: (b.items || []).map((x) => x.name), missing: (b.items || []).map((x) => x.missing) });
         if (b.web && window.__webFail) return new Promise((ok) => setTimeout(() => ok(new Response("<html>timeout</html>", { status: 504 })), 300));
       }
-      if (/\/api\/web-answer/.test(url)) {
-        const b = JSON.parse((init && init.body) || "{}");
-        window.__web.push({ question: b.question, check: b.check || "", context: b.context || "", token: !!b.token, history: (b.history || []).length });
-        if (window.__answerFail) return new Promise((ok) => setTimeout(() => ok(new Response(JSON.stringify({ ok: false, error: "server", message: "сбой" }), { status: 200, headers: { "Content-Type": "application/json" } })), 900));
+      if (/\/api\/web-answer/.test(url)) {   // v155: запрос упакован — читаем через window.__demoUnpack (демо)
+        return window.__demoUnpack(JSON.parse((init && init.body) || "{}")).then((b) => {
+          window.__web.push({ question: b.question, check: b.check || "", context: b.context || "", token: !!b.token, history: (b.history || []).length });
+          if (window.__answerFail) return new Promise((ok) => setTimeout(() => ok(new Response(JSON.stringify({ ok: false, error: "server", message: "сбой" }), { status: 200, headers: { "Content-Type": "application/json" } })), 900));
+          return f(u, init);
+        });
       }
       if (/\/functions\/v1\/ai-chat/.test(url)) window.__chat++;
       return f(u, init);
@@ -211,7 +213,8 @@ if (want("ASSIST")) {
   await idle(page);
   const b2 = await bubbles(page), w2 = await page.evaluate(() => window.__web);
   ok("ASSIST: новый ответ — «Проверил в интернете: example.com»", b2.length === 2 && b2[1] === "Проверил в интернете: example.com", JSON.stringify(b2));
-  ok("ASSIST: проверка — вопрос «Расскажи про Шабли» и прошлый ответ (check)", w2.length === 2 && w2[1].question === "Расскажи про Шабли" && w2[1].check.length > 20 && w2[1].history >= 2, JSON.stringify(w2[1]));
+  // v155: проверке история не нужна — вопрос и сам ответ
+  ok("ASSIST: проверка — вопрос «Расскажи про Шабли» и прошлый ответ (check), без истории", w2.length === 2 && w2[1].question === "Расскажи про Шабли" && w2[1].check.length > 20 && w2[1].history === 0, JSON.stringify(w2[1]));
   await page.screenshot({ path: join(OUT, "ai-3-checked.png") });
   await page.evaluate(() => { const b = [...document.querySelectorAll("[data-ai-web-src]")].pop(); if (b) b.click(); }); await page.waitForTimeout(300);
   ok("ASSIST: ссылка открывает страницу в браузере", JSON.stringify(await page.evaluate(() => window.__opened)) === JSON.stringify(["https://example.com/demo/check"]), JSON.stringify(await page.evaluate(() => window.__opened)));

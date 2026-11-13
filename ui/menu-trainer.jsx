@@ -38,7 +38,7 @@ import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-not
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
 import { descPrompt, descParse } from "../lib/dish-desc";   // v153 (Доп. 477): пять вариантов «вкусного описания»
-import { siteOf, openOut } from "../lib/ai-web";   // v153: «Идеи из интернета» — ссылки
+import { siteOf, oneSite, openOut, webPost } from "../lib/ai-web";   // v153: «Идеи из интернета» — ссылки; v155: запасной путь
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
 const HIDE_SAMPLES_KEY = "sa_menu_hide_samples"; // { [restaurant]: true|false } (нет ключа — авто: скрыты, если есть меню команды)
@@ -282,7 +282,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v154</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v155</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -1114,11 +1114,11 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         else { setAiBusy(false); setAiErr("Наставник не ответил. Попробуй ещё раз"); }
       }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
     };
-    fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), mode: "desc", restaurant, round, seen, dish }) })
-      .then(r => r.json().catch(() => ({ ok: false, status: r.status }))).catch(() => ({ ok: false, message: "нет связи с сервером" })).then(w => {
+    // v155: с запасным путём через /api/wine-import (lib/ai-web.js: webPost); не вышло — причина под вариантами
+    webPost({ token: saToken(), mode: "desc", restaurant, round, seen, dish }).then(w => {
         if (w && w.ok && Array.isArray(w.variants) && w.variants.length) done(descParse(JSON.stringify(w.variants), round, seen), w.sources);
-        else plain(String((w && (w.message || (w.status ? "сервер ответил кодом " + w.status : w.error))) || "поиск не ответил"));
-      });
+        else plain(String((w && (w.message || (w.status ? "сервер ответил кодом " + w.status + (w.why ? " (" + w.why + ")" : "") : w.error))) || "поиск не ответил"));
+      }, () => plain("нет связи с сервером"));
   };
 
   if (form) {
@@ -1239,7 +1239,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                   </div>
                 </div>); })}
               {aiWeb.length ? (
-                <div data-menu-desc-web={aiWeb.length} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Идеи из интернета: {aiWeb.map((x, k) => (
+                <div data-menu-desc-web={aiWeb.length} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Идеи из интернета: {oneSite(aiWeb).map((x, k) => (
                   <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-menu-desc-src={x.url} title={x.title || x.url} onClick={() => openOut(x.url)}
                     style={{ background: "none", border: "none", padding: 0, color: gold, font: "inherit", textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}>{siteOf(x.url)}</button></React.Fragment>))}</div>) : null}
               {aiMiss ? <div data-menu-desc-miss="" title={aiMiss} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Без интернета: поиск сейчас не ответил ({aiMiss.replace(/\s+/g, " ").slice(0, 140)})</div> : null}

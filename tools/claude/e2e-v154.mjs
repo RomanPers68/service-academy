@@ -51,6 +51,8 @@ async function open({ who = "anna", width = 390, height = 844 } = {}) {
         if (window.__webMode === "why") return new Promise((ok) => setTimeout(() => ok(new Response(JSON.stringify({ ok: false, error: "server", message: why }), { status: 200, headers: { "Content-Type": "application/json" } })), 600));
         if (window.__webMode === "504") return new Promise((ok) => setTimeout(() => ok(new Response("<html><body>An error occurred with your deployment. FUNCTION_INVOCATION_TIMEOUT</body></html>", { status: 504, headers: { "Content-Type": "text/html" } })), 600));
       }
+      // v155: запасной путь (/api/wine-import с via: "web-answer") в режиме 504 отвечает так же
+      if (/\/api\/wine-import/.test(url) && window.__webMode === "504" && /"via":"web-answer"/.test(String((init && init.body) || ""))) return new Promise((ok) => setTimeout(() => ok(new Response("<html><body>An error occurred with your deployment. FUNCTION_INVOCATION_TIMEOUT</body></html>", { status: 504, headers: { "Content-Type": "text/html" } })), 300));
       if (/\/functions\/v1\/ai-chat/.test(url)) window.__chat++;
       return f(u, init);
     };
@@ -84,7 +86,9 @@ if (want("CHECK")) {
   await page.evaluate(() => { const b = document.querySelector("[data-ai-web-check]"); if (b) b.click(); });
   await page.waitForFunction(() => /кодом 504/.test((document.querySelector("[data-ai-error]") || {}).innerText || ""), null, { timeout: 10000 }).catch(() => {});
   const e2 = await txt(page, "[data-ai-error]");
-  ok("CHECK: страница 504 вместо ответа — «сервер ответил кодом 504»", e2 === "Не получилось поискать в интернете: сервер ответил кодом 504. Попробуй ещё раз", e2);
+  // v155: и кто ответил (первые слова страницы), и код запасного пути
+  ok("CHECK: страница 504 вместо ответа — «сервер ответил кодом 504», что на странице и код запасного пути",
+    e2 === "Не получилось поискать в интернете: сервер ответил кодом 504 («An error occurred with your deployment. FUNCTION_INVOCATION_TIMEOUT»), запасной путь — кодом 504. Попробуй ещё раз", e2);
   await page.evaluate(() => { window.__webMode = ""; });
   await page.evaluate(() => { const b = document.querySelector("[data-ai-web-check]"); if (b) b.click(); });
   await page.waitForSelector("[data-ai-web]", { timeout: 15000 }).catch(() => {});

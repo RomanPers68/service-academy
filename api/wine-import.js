@@ -36,6 +36,7 @@ export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
 import { verifySession, rateLimit } from "./_auth.js";
 import { webCall, sourcesOf } from "./_web.js";   // v152: поиск в интернете
+import webAnswer from "./web-answer.js";   // v155: запасной путь для /api/web-answer
 
 const COLORS = ["sparkling", "white", "rose", "orange", "red", "dessert", "fortified"];
 const GLASSES = ["универсальный", "бордо", "бургундия", "флюте", "тюльпан", "десертный"];
@@ -339,6 +340,10 @@ async function viaAnthropic(key, parts, maxTokens = 8000, lim = null) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Только POST" });
+  // v155 (Доп. 479): запасной путь поиска в интернете — ассистент, переписка и описания блюд (lib/ai-web.js: webPost). Хостинг
+  // отказал /api/web-answer (403 не от нашей функции) — приложение шлёт тот же запрос сюда с via: "web-answer": этот маршрут
+  // давно работает у барной карты. Ключ, сессия и лимиты — как у /api/web-answer.
+  if (req.body && req.body.via === "web-answer") return webAnswer(req, res);
   const orKey = process.env.OPENROUTER_API_KEY, anKey = process.env.ANTHROPIC_API_KEY;
   if (!orKey && !anKey) return res.status(500).json({ error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables → Add (после добавления нужен Redeploy)." });
   const b = req.body || {};
@@ -431,6 +436,9 @@ export default async function handler(req, res) {
     let wines = got.filter((w) => w && typeof w === "object").map(sp ? cleanSpirit : clean).filter((w) => w.name).slice(0, 120);
     // с этикетки — одно вино, без цен и подачи бокалом (их на бутылке нет); у крепкого — без цен и порции
     if (b.mode === "label") wines = wines.slice(0, 1).map((w) => (sp ? { ...w, portion: "", pricePortion: "", priceBottle: "" } : { ...w, byGlass: false, priceGlass: "", priceBottle: "" }));
+    // v155 (Доп. 479): «Заполнить по названию», а в карточке уже есть факты — позицию модель знает, просто пустое (выдержка у
+    // виски без возраста и т. п.) по названию не дописать: это не «не узнала», а «нечего дописать» — приложение предложит интернет
+    if (!wines.length && b.mode === "fill" && Object.keys(knownFacts(b.known, sp ? SP_FILL_KEYS : FILL_KEYS)).length) return res.status(200).json({ wines: [], nothing: true, model: out.model });
     if (!wines.length) return res.status(422).json({ error: b.mode === "fill" ? (sp ? "Модель не узнала этот напиток: заполни руками" : "Модель не узнала это вино: заполни руками")
       : b.mode === "label" ? "Этикетку не прочитать: сними бутылку ближе, при свете, этикеткой к камере"
       : sp ? "На листе не нашлось ни одного крепкого напитка: проверь снимок и попробуй ещё раз" : "На листе не нашлось ни одного вина: проверь снимок и попробуй ещё раз" });

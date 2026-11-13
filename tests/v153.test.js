@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { DESC_N, DESC_ANGLES, DESC_LABEL, descAngles, descPrompt, descParse, DESC_SYSTEM, DESC_RULES } from "../lib/dish-desc";
-import { WEB_LINE, webLineText, splitWebLine, openOut } from "../lib/ai-web";
+import { WEB_LINE, webLineText, splitWebLine, openOut, unpackWeb } from "../lib/ai-web";
 import { makeServer } from "../tools/claude/demo-app/fake-server.js";
 
 const rd = (p) => readFileSync(p, "utf8");
@@ -146,8 +146,10 @@ describe("v153: Наставник в переписке ищет в интер�
     localStorage.setItem("sa_menu_shared", JSON.stringify({ "Два моря": [{ id: "sp-1", kind: "spirit", name: "Lagavulin 16", producer: "Lagavulin", cat: "whisky" }] }));
     globalThis.fetch = async (url, init = {}) => {
       const body = JSON.parse(init.body || "{}"); calls.push({ url: String(url), body });
-      if (/\/api\/web-answer/.test(url)) return { json: async () => (webOk ? { ok: true, reply: "Château Margaux — первое гран крю Медока.", sources: [{ url: "https://w.example/margaux", title: "W" }], searched: 1 } : { ok: false, error: "server" }) };
-      return { json: async () => ({ ok: true, reply: "Обычный ответ Наставника." }) };
+      // v155: webPost читает ответ текстом (не JSON — запасной путь), поэтому у ответа есть text()
+      const resp = (j) => ({ status: 200, headers: new Map(), json: async () => j, text: async () => JSON.stringify(j) });
+      if (/\/api\/web-answer/.test(url)) return resp(webOk ? { ok: true, reply: "Château Margaux — первое гран крю Медока.", sources: [{ url: "https://w.example/margaux", title: "W" }], searched: 1 } : { ok: false, error: "server" });
+      return resp({ ok: true, reply: "Обычный ответ Наставника." });
     };
     C = await import("../lib/chat-ai");
   });
@@ -159,8 +161,10 @@ describe("v153: Наставник в переписке ищет в интер�
     const a = await C.chatAi("что за вино Château Margaux?", prof, {});
     expect(a.text).toBe("Château Margaux — первое гран крю Медока.\n\nНашёл в интернете: https://w.example/margaux");
     expect(calls.map((c) => c.url)).toEqual(["/api/web-answer"]);
-    expect(calls[0].body).toMatchObject({ token: "tok", question: "что за вино Château Margaux?", chat: true });
-    expect(calls[0].body.context.startsWith("Ресторан: Два моря.")).toBe(true);
+    // v155: запрос упакован ({ token, z }) — читаем обратно
+    const sent = await unpackWeb(calls[0].body);
+    expect(sent).toMatchObject({ token: "tok", question: "что за вино Château Margaux?", chat: true });
+    expect(sent.context.startsWith("Ресторан: Два моря.")).toBe(true);
     expect(splitWebLine(a.text).src).toEqual([{ url: "https://w.example/margaux" }]);
   });
   it("марка из карты и обычные вопросы — как раньше (ai-chat); интернет не ответил — тоже ai-chat", async () => {
@@ -202,18 +206,20 @@ describe("v153: демо-сервер — chat_ai_post, как этап 38", () 
 describe("v153: экраны", () => {
   const M = rd("ui/menu-trainer.jsx"), CC = rd("ui/chat-cards.jsx");
   it("переписка: строка «Нашёл в интернете» — именами сайтов, касание открывает страницу", () => {
-    expect(CC).toContain('import { splitWebLine, siteOf, openOut } from "../lib/ai-web";');
-    expect(CC).toContain("const wl = splitWebLine(m.body), sites = wl.src.map((x) => siteOf(x.url));");
+    // v155: и по одной ссылке на сайт (oneSite)
+    expect(CC).toContain('import { splitWebLine, siteOf, oneSite, openOut } from "../lib/ai-web";');
+    expect(CC).toContain("const wl0 = splitWebLine(m.body), wl = { ...wl0, src: oneSite(wl0.src) }, sites = wl.src.map((x) => siteOf(x.url));"); 
     expect(CC).toContain('<span className="ch-tx">{wl.text}</span>');
     expect(CC).toContain("data-chat-ai-web={wl.src.length}");
     expect(CC).toContain("onClick={(e) => { e.stopPropagation(); vibrate(\"light\"); openOut(x.url); }}");
   });
   it("редактор меню: «Пять вариантов описания» — сначала с интернетом, без него — Наставник; подпись угла, «Идеи из интернета»", () => {
-    expect(M).toContain('fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), mode: "desc", restaurant, round, seen, dish }) })');
+    // v155: тот же запрос — через webPost (запасной путь через /api/wine-import)
+    expect(M).toContain('webPost({ token: saToken(), mode: "desc", restaurant, round, seen, dish }).then(w => {');
     expect(M).toContain("messages: [{ role: \"user\", content: descPrompt({ restaurant, dish, seen, round }) }]");
     expect(M).toContain('{aiBusy === "web" ? "Ищу идеи в интернете…" : aiBusy ? "Наставник пишет…" : aiVariants.length ? "Ещё пять вариантов" : "Пять вариантов описания"}');
     expect(M).toContain("{x.label ? <div data-menu-desc-angle=\"\"");
-    expect(M).toContain("Идеи из интернета: {aiWeb.map(");
+    expect(M).toContain("Идеи из интернета: {oneSite(aiWeb).map(");   // v155: по одной ссылке на сайт
     expect(M).toContain("descSeen.current = { texts: [...sr.texts, ...vars.map(v => v.text)].slice(-20), round: round + 1 };");
     expect(M).not.toContain("Три варианта описания");
   });

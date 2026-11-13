@@ -228,7 +228,7 @@ describe("v93: экран и приложение", () => {
   it("приложение: чат знает уроки и меню (контекст), открывает карточку на своём месте, Наставник — тем же ИИ", () => {
     const app = rd("App.jsx");
     expect(app).toContain("<ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} appCtx={chatAppCtx}");
-    expect(app).toContain('chatAiRef.current = (q) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner()));');
+    expect(app).toContain('chatAiRef.current = (q, ctx) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner(), ctx));');   // v155: и прошлая пара Наставника
     expect(app).toContain('if (k === "lesson" || k === "quiz") { assistantNavigate({ lesson: id }, true); return; }');
     expect(app).toContain('if (k === "ref") { setRefStart(id); navigate("reference"); return; }');
     expect(rd("ui/chat.jsx")).toContain("const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);");

@@ -35,7 +35,7 @@ import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, 
 import { compressPhoto } from "../lib/chat-photo";
 import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и помощники — общие с умными карточками
 import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, LateSheet, smartErr } from "./chat-cards";
-import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine } from "../lib/chat-smart";
+import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine, mentorContext } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
@@ -1240,7 +1240,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const askMentor = (m, body) => {
     if (!api.aiAsk) return;
     setAiWait((n) => n + 1); stick.current = true;
-    Promise.resolve(api.aiAsk(chat.id, m.id, aiQuestion(body))).then((r) => {
+    Promise.resolve(api.aiAsk(chat.id, m.id, aiQuestion(body), mentorContext(msgsRef.current, m))).then((r) => {
       setAiWait((n) => Math.max(0, n - 1));
       if (r && r.ok && r.msg) { stick.current = true; addMsgs([r.msg], { quiet: true }); heat(); } else flash(smartErr(r));
     }).catch(() => { setAiWait((n) => Math.max(0, n - 1)); flash(smartErr({ error: "net" })); });

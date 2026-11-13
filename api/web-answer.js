@@ -22,13 +22,27 @@ export const config = { api: { bodyParser: { sizeLimit: "1mb" } } };
 import { verifySession, rateLimit } from "./_auth.js";
 import { webCall } from "./_web.js";
 import { DESC_SYSTEM, descPrompt, descParse } from "../lib/dish-desc.js";   // v153: варианты описания блюда
+import zlib from "node:zlib";
+
+// v155 (Доп. 479): запрос приходит упакованным (lib/ai-web.js: packWeb) — { token, z }: сжатый deflate-raw JSON в base64,
+// или { token, p }: JSON в base64; открытый JSON (старое приложение) — как есть. Не прочиталось — { bad: true }.
+export function unpack(b) {
+  if (!b || typeof b !== "object") return {};
+  try {
+    if (typeof b.z === "string") return { ...JSON.parse(zlib.inflateRawSync(Buffer.from(b.z, "base64"), { maxOutputLength: 300000 }).toString("utf8")), token: b.token };
+    if (typeof b.p === "string") return { ...JSON.parse(Buffer.from(b.p, "base64").toString("utf8")), token: b.token };
+  } catch (e) { return { token: b.token, bad: true }; }
+  return b;
+}
 
 export const WEB_MODELS = () => [process.env.OPENROUTER_WEB_MODEL, "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.6"].filter(Boolean);
 export const SYSTEM = `Ты — «Наставник» академии сервиса ресторанной группы: помогаешь официантам, барменам, хостес и менеджерам прямо
 в смене. У тебя есть поиск в интернете. Правила:
 1. Сначала — «Данные приложения», если они есть: карта ресторана, стандарты. Они верны, держись их.
-2. Если уверенно знаешь ответ — отвечай без поиска. Не уверен (редкая марка, конкретная бутылка, производитель, новинка,
-   факт, который легко перепутать) — найди в интернете: сайт производителя, импортёра, винные и барные справочники.
+2. Сюда приходят вопросы, где нужен интернет: попросили поискать или спрашивают о том, чего нет в данных приложения (марка,
+   бутылка, производитель, продукт, рыба, сыр, специя, блюдо). Поищи в интернете хотя бы раз, даже если ответ кажется
+   знакомым: сайт производителя, импортёра, винные, барные и кулинарные справочники. Без поиска — только если «Данные
+   приложения» отвечают полностью. Вопрос короткий («а подробнее?», «найди в сети») — тема в прошлых репликах.
 3. Пиши только то, что подтверждают данные приложения или найденные страницы. Не нашёл — так и скажи, без догадок.
 4. Цены, наличие, скидки и правила ресторана называй только из данных приложения. Аллергены — только по карточкам блюд,
    иначе: «уточни у шефа».
@@ -69,7 +83,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "server", message: "Только POST" });
   const orKey = process.env.OPENROUTER_API_KEY, anKey = process.env.ANTHROPIC_API_KEY;
   if (!orKey && !anKey) return res.status(200).json({ ok: false, error: "not_configured", message: "OPENROUTER_API_KEY не задан в Vercel" });
-  const b = req.body || {};
+  const b = unpack(req.body || {});   // v155: упакованный запрос
+  if (b.bad) return res.status(400).json({ ok: false, error: "server", message: "Запрос не прочитан: обнови приложение" });
   if (b.mode === "desc") return desc(b, res, orKey, anKey);   // v153
   const question = s(b.question, 1200);
   if (!question) return res.status(400).json({ ok: false, error: "server", message: "Пустой вопрос" });

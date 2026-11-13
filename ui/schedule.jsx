@@ -424,7 +424,7 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
  * Нет чата или на сервере ещё нет chat_shift_board — обмен как раньше (swap_*). */
 /* v113 (Доп. 426): в виде «Линза» карточки, кнопки, вкладки, лица в «Сегодня», номера разделов и поля — метками data-lens-*
  * (правила — ui/home-look.jsx, раздел v113); таблица, буквы смен, фильтры, полоски и кнопки с предупреждением — прежние. */
-export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null }) {
+export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null, startToday = false }) {
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -452,7 +452,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [wiz, setWiz] = React.useState(null);           // null | { step, preset, need, rows }
   const wizDone = () => { try { return localStorage.getItem("sa_sched_wizard_" + (profile?.restaurant || "")) === "1"; } catch (e) { return true; } };
   const markWizDone = () => { try { localStorage.setItem("sa_sched_wizard_" + (profile?.restaurant || ""), "1"); } catch (e) {} };
-  const [todayOpen, setTodayOpen] = React.useState(false); // Доп. 150/262: «Сегодня» свёрнуто — пульс дня даёт полоска недели
+  const [todayOpen, setTodayOpen] = React.useState(!!startToday); // Доп. 150/262: «Сегодня» свёрнуто — пульс дня даёт полоска недели; v149: из совета «Звонок в один тап» — раскрыто
+  // v149 (Доп. 473): «Сегодня» раскрыли — лица и номера смены человек видел, совета «Звонок в один тап» больше нет
+  React.useEffect(() => { if (todayOpen) { try { if (!localStorage.getItem("sa_call_seen")) localStorage.setItem("sa_call_seen", "1"); } catch (e) {} } }, [todayOpen]);
+  const todayRef = React.useRef(null), todayShown = React.useRef(false);
   // Месяц не влезает в ширину экрана, а горизонтальный жест в Telegram
   // работает через раз. Поэтому показываем неделю целиком, без прокрутки.
   const [weekIdx, setWeekIdx] = React.useState(null);   // null — весь месяц
@@ -551,6 +554,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [calView, setCalViewS] = React.useState(() => { try { return localStorage.getItem("sa_sched_view") === "list" ? "list" : "cal"; } catch (e) { return "cal"; } });
   const setCalView = (v) => { setCalViewS(v); try { localStorage.setItem("sa_sched_view", v); } catch (e) {} };
   const [daySheet, setDaySheet] = React.useState(0);    // v46: лист дня по тапу в календаре сотрудника
+  // v149 (Доп. 473): «С тобой в смене» открыли — номера коллег человек видел, совета «Звонок в один тап» больше нет;
+  // из совета сотруднику лист ближайшей смены открывается сам (руководителю — «Сегодня» раскрыто)
+  React.useEffect(() => { if (daySheet) { try { if (!localStorage.getItem("sa_call_seen")) localStorage.setItem("sa_call_seen", "1"); } catch (e) {} } }, [daySheet]);
+  const matesShown = React.useRef(false);
   const [sheetCall, setSheetCall] = React.useState(null); // чей телефон раскрыт в листе дня
   const [sheetMore, setSheetMore] = React.useState(false); // «отдыхают» других позиций раскрыты
 
@@ -3128,6 +3135,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             setOpenDay(nd);
             setTimeout(() => { try { const el = document.querySelector('[data-list-day="' + nd + '"]'); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 80);
           };
+          // v149 (Доп. 473): пришли из совета «Звонок в один тап» — сразу «Кто со мной» (один раз)
+          if (startToday && !matesShown.current) { matesShown.current = true; setTimeout(openMates, 350); }
           return (
             <ShiftHero a11y={a11y} card={card} d={nd} sh={nx.sh} when={nd === todayD ? "сегодня" : nd === todayD + 1 ? "завтра" : ""}
               dowName={DOWF[dow(nd)]} dowShort={DOWL[dow(nd)]} monthR={MONTHS_R[M]} isToday={nd === todayD}
@@ -4937,7 +4946,11 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     {msg ? <div style={{ textAlign:"center", fontSize:12.5, color:P.sub, marginTop:8 }}>{msg}</div> : null}
 
     {today ? (
-      <div data-lens-edge="" style={card}>
+      <div data-lens-edge="" data-sched-today={todayOpen ? "open" : "closed"} ref={(el) => {
+        todayRef.current = el;
+        // v149: пришли из совета — карточку «Сегодня» показать на экране один раз, когда она появилась
+        if (el && startToday && !todayShown.current) { todayShown.current = true; setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 250); }
+      }} style={card}>
         {/* Шапка. Стрелка сидела в конце строки «старший: ФАМИЛИЯ ИМЯ», строка
             переносилась, и стрелка уезжала под текст отдельным огрызком —
             целиться в неё было нечем. Теперь она в кружке фиксированного

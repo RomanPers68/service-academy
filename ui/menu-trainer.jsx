@@ -35,6 +35,7 @@ import { labelStyle } from "./tokens";
 import { VoicePill, VoiceRecorder, VoicesList } from "./voice-note";
 import { SayLine, PronounceScreen } from "./pronounce";
 import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
 
 const CUSTOM_KEY = "sa_menu_custom";     // { [restaurant]: Dish[] }
@@ -172,6 +173,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
     if (!startMode || modeStartedRef.current === startMode) return; modeStartedRef.current = startMode;
     if (startMode === "allergens") setMode("sprint"); else if (startMode === "reverse-menu" || startMode === "know-menu") { setFocusNew(false); setMode("cards"); }
     else if (["60sec", "voices", "say", "quiz"].includes(startMode)) setMode(startMode);   // v148 (Доп. 472): совет в уроке открывает тренажёр сразу
+    else if (startMode === "cards" || startMode === "print" || (startMode === "edit" && canEdit)) { setFocusNew(false); setMode(startMode); }   // v149 (Доп. 473): «Пищевая ценность», «Меню для печати», редактор
   }, [startMode]);
   React.useEffect(() => {
     if (!startDishId || startedRef.current === startDishId) return;
@@ -277,7 +279,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v148</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v149</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -749,6 +751,7 @@ function MenuQuiz({ T, gold, green, red, dishes, Head, restaurant }) {
 function Describe60({ T, gold, green, dishes, Head, restaurant, a11y }) {
   const [dish, setDish] = React.useState(() => dishes[Math.floor(Math.random() * dishes.length)]);
   const [phase, setPhase] = React.useState("ready"); // ready | speaking | compare
+  React.useEffect(() => { if (phase === "compare") traceUse("sa_60sec_done"); }, [phase]);   // v149: описал хоть раз — совета больше нет
   const [timerKey, setTimerKey] = React.useState(0);
 
   const nextDish = () => {
@@ -936,6 +939,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   };
   // Доп. 166: стоп-лист. Один тап — блюдо помечено «сегодня нет» и это сразу уходит команде.
   const toggleStop = (d) => {
+    traceUse("sa_stop_set");   // v149 (Доп. 473): стоп-листом пользовались — совета про него больше нет
     const stopped = !d.stop;
     const upd = { ...d, stop: stopped ? { since: Date.now() } : null, stopAt: Date.now() };   // v93: stopAt — кто новее, свой или из чата
     const own = custom[restaurant] || []; // все свои, включая архив — иначе setCustom стёр бы архив

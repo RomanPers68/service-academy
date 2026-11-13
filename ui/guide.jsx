@@ -116,13 +116,19 @@ export const GUIDE = [
   ]},
 ];
 
-export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
+export function GuideScreen({ T, a11y, profile, onBack, onOpen, focus = null }) {
   const gold = a11y ? "#7A5D2A" : "#D2A85A";
   const text = T.modTitle?.color || (a11y ? "#2A1F0E" : "#EFE4C8");
   const sub = T.modSub?.color || (a11y ? "#6B5B40" : "#9C8760");
   const staff = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
   const admin = !!profile?.is_admin;
-  const [open, setOpen] = React.useState(null);
+  // v149 (Доп. 473): из совета в уроке («Опаздываю») — сразу нужный пункт, раскрытый и на экране
+  const [open, setOpen] = React.useState(focus || null);
+  React.useEffect(() => {
+    if (!focus) return undefined;
+    const t = setTimeout(() => { try { const el = document.querySelector('[data-guide-key="' + focus + '"]'); if (el) el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 200);
+    return () => clearTimeout(t);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const [reset, setReset] = React.useState(null);
   const frost = {
     background: a11y ? "rgba(250,242,222,0.62)" : "rgba(226,186,116,0.09)",
@@ -173,7 +179,7 @@ export function GuideScreen({ T, a11y, profile, onBack, onOpen }) {
                   const toggle = () => { vibrate("light"); setOpen(isOpen ? null : it.key); };
                   return (
                     <div key={it.key} data-lens-card="" style={{ ...frost, borderRadius: 14, overflow: "hidden" }}>
-                      <div onClick={toggle} {...onActivate(toggle)} aria-expanded={isOpen} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+                      <div onClick={toggle} {...onActivate(toggle)} aria-expanded={isOpen} data-guide-key={it.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
                         <div style={{ flex: 1, fontFamily: "Georgia, serif", fontSize: 16, color: text }}>{it.title}</div>
                         <span style={{ color: gold, fontSize: 18, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .3s cubic-bezier(.25,.8,.25,1)" }}>›</span>
                       </div>

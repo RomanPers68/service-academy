@@ -32,8 +32,11 @@ const DECKS = ["menu", "faq", "sprint", "describe", "voices", "say", "cocktails"
 const NOT_USED = { "Живой диалог": ["dialogue"], "Свежесть тем": ["fresh"], "Раунд мастера": ["gold"], "Радио в дорогу": ["radio"],
   "Живой гость": ["guest"], "Колоды и тренажёры": DECKS, "Квест смены": ["quest"], "Навыки в зале": ["hall"] };
 const TODAY = "2026-11-13";
+// v149 (Доп. 473): и всё, куда ведут советы, у заведения есть (меню, записи шефа, вина, схема зала, график, чат…)
 const ctx0 = (x = {}) => ({ isLead: false, seen: {}, famUsed: new Set(), keys: [],
-  can: { mistakes: true, faded: true, goldable: true, warmup: true, shift: true, passed: true }, ...x });
+  can: { mistakes: true, faded: true, goldable: true, warmup: true, shift: true, passed: true,
+    menu: true, voices: true, chefVoice: true, somVoice: true, kbju: true, wines: true, spirits: true, noBarcard: true, seat: true, sched: true,
+    chat: true, about: true, thanks: true, cases: true }, ...x });
 const pick = (lessonId, st, x, today = TODAY) => pickLessonTip({ lessonId, state: readTipState("_a", st), ctx: ctx0(x), today });
 
 describe("v148: советы — в «своих» уроках, ничего из списка «Не пользуется» не упущено", () => {
@@ -85,7 +88,7 @@ describe("v148: советы — в «своих» уроках, ничего и
       expect(text, at).not.toContain("!");
       expect(text.split(/(?<=[.?…])\s+(?=[А-ЯЁA-Z«])/).length, at).toBeLessThanOrEqual(2);
       expect(/[.?»]$/.test(text), at).toBe(true);
-      if (x) for (const k of Object.keys(x)) expect(["ask", "ref", "cta", "tab"], at).toContain(k);
+      if (x) for (const k of Object.keys(x)) expect(["ask", "ref", "cta", "tab", "can", "open", "icon"], at).toContain(k);   // v149: + свой флаг, дорога, значок
     }
   });
   it("готовые вопросы Наставнику — вопросы; главы Справочника и вкладки «Барной карты» существуют", () => {
@@ -124,7 +127,7 @@ describe("v148: кнопка совета ведёт туда, куда обещ
   });
   it("тренажёр меню открывается сразу в нужном режиме: аллергены, колода, 60 секунд, голоса, произношение", () => {
     const mt = rd("ui/menu-trainer.jsx");
-    for (const f of Object.values(TIP_FEATURES)) if (f.open.menu) expect(["allergens", "know-menu", "reverse-menu", "60sec", "voices", "say", "quiz"]).toContain(f.open.menu);
+    for (const f of Object.values(TIP_FEATURES)) if (f.open.menu) expect(["allergens", "know-menu", "reverse-menu", "60sec", "voices", "say", "quiz", "kbju", "edit", "print"]).toContain(f.open.menu);   // v149: + КБЖУ, редактор, печать
     expect(mt).toContain('if (startMode === "allergens") setMode("sprint")');
     expect(mt).toContain('else if (["60sec", "voices", "say", "quiz"].includes(startMode)) setMode(startMode);');
     for (const m of ["60sec", "voices", "say"]) expect(mt).toContain(`mode === "${m}"`);

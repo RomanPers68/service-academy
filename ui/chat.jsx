@@ -43,6 +43,7 @@ import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";  
 import { searchQuery, searchSnippet } from "../lib/chat-search";   // v99: поиск по переписке
 import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наставник новичков» в карточке коллеги
 import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
+import { traceUse } from "../lib/tip-avail";
 import { isFemaleName } from "../lib/utils";
 
 let pokeAt = 0;   // v108: когда приложение последний раз просило поставить карточки праздников
@@ -806,6 +807,7 @@ const thxErr = (r) => {
     : e === "not_found" ? "Не нашёл этого коллегу в команде заведения." : e === "missing" ? "На сервере ещё нет этапа 42. Руководителю: обновить сервер." : smartErr(r);
 };
 function ThanksSheet({ me, api, to0 = null, locked = false, text0 = "", onClose, onDone }) {
+  React.useEffect(() => { traceUse("sa_thx_seen"); }, []);   // v149 (Доп. 473): «Спасибо коллеге» знаком — совета про него больше нет
   const [to, setTo] = React.useState(to0);
   const [text, setText] = React.useState(text0);
   const [busy, setBusy] = React.useState(false);

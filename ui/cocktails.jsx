@@ -1,6 +1,7 @@
 import React from "react";
 import { COCKTAILS } from "../data/cocktails";
 import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, cocktailFaqSmart, familyOf, dishLinks, bumpDaily } from "../lib/deck-extras";
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): «Наоборот» и «Родня» — след для советов в уроках
 import { rpc, saToken } from "../api/supabase";
 import { loadMastery, buildScenario } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
@@ -41,7 +42,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint, onShareChat = null }) {
+export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint, onShareChat = null, startReverse = false }) {
   // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -70,7 +71,8 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
     rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) }).then(res => setPubMsg(res && res.ok ? "Карта бара обновлена у всех ✓" : "Не сохранилось. Проверь связь")).catch(() => setPubMsg("Не сохранилось. Нет связи"));
     setTimeout(() => setPubMsg(""), 2500);
   };
-  const [reverse, setReverse] = React.useState(false);
+  const [reverse, setReverse] = React.useState(!!startReverse);   // v149: из совета «Наоборот» — колода сразу без названий
+  React.useEffect(() => { if (reverse) traceUse("sa_reverse_on"); }, [reverse]);
   const [onlyCard, setOnlyCard] = React.useState(true);
   const [faqOpen, setFaqOpen] = React.useState(null);
   const [sr, setSr] = React.useState(loadSR);
@@ -350,7 +352,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
                 <div style={{ marginTop:10 }}>
                   <div style={{ ...labelStyle(13), color:GOLD, marginBottom:4 }}>{fam.title}</div>
                   <div style={{ fontSize:12.5, color:glass.sub, lineHeight:1.45, marginBottom:6 }}>{fam.note}</div>
-                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); jumpTo(x.id); }} data-lens-btn="soft" style={{ ...pill(false), fontSize:11, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:6, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>{fam.items.map(x => <span key={x.id} onClick={(e) => { e.stopPropagation(); traceUse("sa_kin_seen"); jumpTo(x.id); }} data-lens-btn="soft" style={{ ...pill(false), fontSize:11, color:glass.tx, display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:10, height:10, borderRadius:6, background:`linear-gradient(180deg, ${x.color[0]}, ${x.color[1]})` }} />{x.name} ›</span>)}</div>
                 </div>) : null; })()}
               {(() => { const links = dishLinks(c.pair, shared); return links.length && onOpenDish ? (
                 <div style={{ marginTop:8 }}>

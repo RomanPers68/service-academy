@@ -18,6 +18,7 @@ import { IC, stop, posName } from "./chat-kit";
 import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } from "../lib/late";   // v99 (Доп. 412): «Опаздываю»
 import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
 import { thxView, cheerView, thxChips, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо», день рождения, годовщина
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист «Опаздываю» открывали — совета про него нет
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -625,6 +626,7 @@ export function ShareSheet({ app, api, chat, onClose, onDone }) {
 // в смене пишет бот с кнопкой «Принято». Смена сегодня — из графика (chat_shift_mine): «буду в 10:15» считается от её
 // начала, если оно ещё не наступило
 export function LateSheet({ api, chat, onClose, onDone }) {
+  React.useEffect(() => { traceUse("sa_late_seen"); }, []);
   const [min, setMin] = React.useState(15);
   const [note, setNote] = React.useState("");
   const [shift, setShift] = React.useState(undefined);   // undefined — грузим, null — смены сегодня нет

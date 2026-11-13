@@ -84,7 +84,8 @@ export const S = {
 
   para: { color:SAND_DEEP, fontSize:15, lineHeight:1.85, marginBottom:5 },
   bold: { color:CREAM, fontSize:15, fontWeight:"bold", marginBottom:6, marginTop:16, letterSpacing:0.1 },
-  bullet: { color:"#C8BEA8", fontSize:15, lineHeight:1.8, paddingLeft:2, marginBottom:4 },
+  // v150 (Доп. 474): висячий отступ — перенос строки встаёт под текст, а не под «•» (как у нумерованных пунктов)
+  bullet: { color:"#C8BEA8", fontSize:15, lineHeight:1.8, paddingLeft:"calc(2px + 0.6em)", textIndent:"-0.6em", marginBottom:4 },
   check: { color:GREEN, fontSize:15, lineHeight:1.8, marginBottom:4 },
   forbidden: { color:RED, fontSize:15, marginBottom:4, lineHeight:1.7 },
   good: { color:GREEN, fontSize:15, marginBottom:4, lineHeight:1.7 },

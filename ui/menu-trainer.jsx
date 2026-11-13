@@ -103,6 +103,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const [mStep, setMStep] = React.useState(0);
   const mSteps = hintsFor(hintKey("menu", mBoss));
   const green = "#5DBB8A";
+  const greenInk = a11y ? "#2A6B45" : green;   // v150 (Доп. 474): зелёные числа на светлом — темнее (GREEN_DARK; было ≈1,8 контраста)
   const red = "#E07878";
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
   const canEdit = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
@@ -279,14 +280,14 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: green }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v149</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v150</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
           const have = dishes.length - miss.length;
           return (
             <div style={{ marginTop: 4 }}>
-              <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : green }}>{have}</b> из {dishes.length}</span>
+              <span style={{ fontSize: 12.5 }}>Пищевая ценность: <b style={{ color: miss.length ? gold : greenInk }}>{have}</b> из {dishes.length}</span>
               {miss.length > 0 && canEdit && <span onClick={() => setShowNoNut(v => !v)} {...onActivate(() => setShowNoNut(v => !v))} style={{ color: gold, cursor: "pointer", fontSize: 12.5, marginLeft: 8 }}>{showNoNut ? "скрыть" : `у ${miss.length} нет, дописать`}</span>}
               {showNoNut && miss.length > 0 && (
                 <div className="sa-fadein" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>

@@ -158,7 +158,7 @@ describe("v113: «Команда»", () => {
     expect(T).toContain('<div key={e.id} className="sa-btn" data-lens-card="" onClick=');
   });
   it("карточка сотрудника: аватар с кольцом, «Сбросить код», «Выдать», «Сохранить» — плашки, «Изменить», «Отмена» — стекло", () => {
-    expect(T).toContain('<div data-lens="avatar" style={{ width:50, height:50, borderRadius:"50%"');
+    expect(T).toContain('<div data-lens="disc" style={avatarLens(a11y, 50)}>');   // v150 (Доп. 474): линза, инициалы золотом
     expect(T).toContain('<button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={() => setConfirm("reset")}>');
     expect(T).toContain('<button className="sa-btn" data-lens-btn="main" style={{ ...goldBtn, flex:1 }} disabled={busy} onClick={doReset}>');
     expect(T).toContain('<button className="sa-btn" data-lens-btn="main" disabled={busy} onClick={doRename}');

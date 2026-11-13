@@ -30,6 +30,12 @@ import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
 import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 
+// v150 (Доп. 474): кружок сотрудника — линза, как у «Я» в шапке: стекло с золотым ободком, инициалы (у владельца — корона)
+// золотом. Был золотой круг с белыми буквами; владелец (13.11): «Может иконку сотрудника тоже линзой сделаем?» — «Да, пожалуйста»
+const avatarInk = (a11y) => (a11y ? "#7A5D2A" : "#D2A85A");
+const avatarLens = (a11y, size) => ({ width:size, height:size, borderRadius:"50%", flexShrink:0, boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center",
+  background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border:`1px solid ${avatarInk(a11y)}55` });
+
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
   const [list, setList] = React.useState(null);           // null = загрузка
@@ -389,11 +395,9 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         </div>
         <div style={{ flex:1, padding:"18px 18px 110px" }}>
           <div data-lens-card="" style={{ ...T.modCard, gap:12, marginBottom:12 }}>
-            <div data-lens="avatar" style={{ width:50, height:50, borderRadius:"50%", flexShrink:0,
-              background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)",
-              display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ color:"#fff", fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
-                {selected.is_admin ? UI_SVG.crown("#fff", 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
+            <div data-lens="disc" style={avatarLens(a11y, 50)}>
+              <span style={{ color:avatarInk(a11y), fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
+                {selected.is_admin ? UI_SVG.crown(avatarInk(a11y), 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
               </span>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
@@ -836,9 +840,9 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
       {/* v57: снизу 24 (было 40); v59: ещё плотнее (16/20, заметка и карточки ближе) — с четвёртой настройкой экран по-прежнему помещается целиком */}
       <div style={{ flex:1, padding:"16px 18px 20px" }}>
         <div ref={acRefCard} data-lens-card="" style={{ ...T.modCard, gap:12, marginBottom:12 }}>
-          <div data-lens="avatar" style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(135deg, #C8A96E 0%, #7A5D2A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 10px rgba(200,160,80,0.3)" }}>
-            <span style={{ color:"#fff", fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
-              {profile?.is_admin ? UI_SVG.crown("#fff", 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
+          <div data-lens="disc" data-account-avatar="" style={avatarLens(a11y, 54)}>
+            <span style={{ color:avatarInk(a11y), fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
+              {profile?.is_admin ? UI_SVG.crown(avatarInk(a11y), 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
@@ -883,7 +887,9 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
 
         {!confirmOut ? (
           <button className="sa-btn" data-lens-btn="danger" onClick={() => setConfirmOut(true)}
-            style={{ width:"100%", padding:"14px", borderRadius:14, border:"1px solid rgba(224,120,120,0.45)", background:"rgba(224,120,120,0.10)", color:RED, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
+            /* v150 (Доп. 474): на светлом — тёмно-красный (RED на светлом фоне читался плохо, контраст ≈2) */
+            style={{ width:"100%", padding:"14px", borderRadius:14, border: a11y ? "1px solid rgba(139,48,32,0.42)" : "1px solid rgba(224,120,120,0.45)",
+              background: a11y ? "rgba(139,48,32,0.06)" : "rgba(224,120,120,0.10)", color: a11y ? RED_DARK : RED, fontSize:14, fontFamily:"Georgia, serif", cursor:"pointer" }}>
             Выйти с этого устройства
           </button>
         ) : (
@@ -897,7 +903,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
                 Остаться
               </button>
               <button className="sa-btn" data-lens-btn="danger" onClick={onLogout}
-                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background:RED, color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
+                style={{ flex:1, padding:"13px", borderRadius:14, border:"none", background: a11y ? RED_DARK : RED, color:"#fff", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer" }}>
                 Выйти
               </button>
             </div>

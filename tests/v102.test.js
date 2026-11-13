@@ -78,7 +78,8 @@ describe("v102: что стало линзой", () => {
     expect(rd("ui/screens-exam.jsx")).toContain('<div data-lens="disc" style={{ width:36, height:36, borderRadius:"50%", background:`${color}22`');
     expect(rd("ui/screens-exam.jsx")).toContain('"--tint": color + "55" }}>');
     expect(rd("ui/guestbook.jsx")).toContain('<div data-lens="disc" style={{ width: 42, height: 42, borderRadius: "50%"');
-    expect(rd("ui/screens-team.jsx")).toContain('<div data-lens="avatar" style={{ width:54, height:54, borderRadius:"50%"');
+    // v150 (Доп. 474): аватар «Аккаунта» — линза с инициалами золотом (был золотой круг с белыми буквами)
+    expect(rd("ui/screens-team.jsx")).toContain('<div data-lens="disc" data-account-avatar="" style={avatarLens(a11y, 54)}>');
     expect(rd("ui/screens-team.jsx")).toContain('<div data-lens="disc" style={{ width:34, height:34, borderRadius:"50%"');
     expect(rd("ui/screens-gamification.jsx")).toContain('<div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%"');
     expect(rd("ui/screens-gamification.jsx")).toContain('<div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%"');
@@ -94,7 +95,10 @@ describe("v102: что стало линзой", () => {
     // v111 (Доп. 424): линзы — только значки кнопок-групп (свёрнутая группа и группа из одного раздела) и «Жизни команды»;
     // строки внутри групп и плитки — без кружков, как было
     const src = rd("ui/home-hubs.jsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");   // без комментариев
-    expect((src.match(/data-lens="disc"/g) || []).length).toBe(3);
+    // v150 (Доп. 474): + знак в шапке хаба вместо мелкого логотипа — линза, как у кнопок-групп («Смена», «Команда» — значок
+    // вкладки, «Я» — инициалы)
+    expect((src.match(/data-lens="disc"/g) || []).length).toBe(4);
+    expect((src.match(/data-hub-mark=\{meMark \? "avatar" : hubId\} data-lens="disc"/g) || []).length).toBe(1);
     expect((src.match(/data-lens="disc" data-hub-disc=""/g) || []).length).toBe(2);
     const rows = src.slice(src.indexOf("function rowList(group)"), src.indexOf("const toggle = (name, names)"));
     expect(rows).toContain("data-hub-ic");

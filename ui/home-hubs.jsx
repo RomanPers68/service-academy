@@ -5,6 +5,7 @@ import { ensureTableCss } from "./table-css";
 import { ymd } from "../lib/streak";
 import { EmptyState, useHintOnce, HintBubble } from "./widgets";
 import { LOGO_SRC_DARK } from "../assets/logo";
+import { NAV_ICONS, UI_SVG } from "./icons";   // v150 (Доп. 474): значок вкладки у заголовка — как в панели вкладок
 import { WEEKDAY, MONTH_GEN } from "../lib/dates";
 import { onActivate, vibrate, isFemaleName } from "../lib/utils";
 import { ROLE_TITLE, masterKey } from "../lib/mastery";
@@ -101,7 +102,10 @@ export function groupBadge(run) {
 
 // v114 (Доп. 427): карточки хаба въезжают все разом (без очереди по 45 мс: «как будто подгружается», владелец, 30.10);
 // общего въезда экрана у вкладок-хабов нет (App.jsx, HUB_TABS) — карточка въезжает один раз, а не дважды
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "" }) {
+// v150 (Доп. 474): у заголовка вкладки — её значок из панели вкладок в линзе (в 44×36 логотип с надписью читался пятном);
+// у «Я» — инициалы, как в «Аккаунте» (руководителю-владельцу — корона). Логотип остаётся для хаба без своего значка.
+const HUB_MARK = { shift: "daily", team: "team" };
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "", avatar = null }) {
   // v110 (Доп. 423): fold — группы кнопками (владелец, 30.10: «кнопка «На смене», нажимаешь — и там всё, что связано со
   // сменой»): нажал — группа развернулась строками, ещё раз — свернулась; что открыто, помнится
   const hid = hubId || String(title || "");
@@ -130,10 +134,19 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
       ? "inset 0 0 26px rgba(255,255,255,0.55), inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 18px rgba(120,85,25,0.14)"
       : "inset 0 0 26px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.45)",
   };
+  // v150 (Доп. 474): знак у заголовка — линза, как значки групп ниже: у «Смены» и «Команды» — значок вкладки, у «Я» — инициалы
+  // (у владельца — корона). Владелец (13.11) про золотой круг с инициалами: «Может иконку сотрудника тоже линзой сделаем?»
+  const meMark = hubId === "me" && avatar && (avatar.admin || avatar.initials)
+    ? (avatar.admin ? UI_SVG.crown(gold, 20) : <span style={{ color: gold, fontSize: 16, fontWeight: "bold", fontFamily: "Georgia, serif", letterSpacing: 0.5, lineHeight: 1 }}>{avatar.initials}</span>)
+    : null;
+  const markIc = meMark || (HUB_MARK[hubId] && NAV_ICONS[HUB_MARK[hubId]] ? NAV_ICONS[HUB_MARK[hubId]](gold) : null);
   return (
     <div style={T.screen} className="sa-screen sa-hubscreen">
       <div style={{ padding: "18px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
-        <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" decoding="sync" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
+        {markIc ? (
+          <span data-hub-mark={meMark ? "avatar" : hubId} data-lens="disc" aria-hidden="true" style={{ width: 44, height: 44, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
+            background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border: `1px solid ${gold}55` }}>{markIc}</span>
+        ) : <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" decoding="sync" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>{title}</div>
           {subtitle && <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{subtitle}</div>}

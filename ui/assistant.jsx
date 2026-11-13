@@ -17,7 +17,7 @@ import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клави
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
 import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf, webAsked, webCheckable, drinkAssistantContext } from "../lib/reference-context";   // v130: и вина с крепким; v152: интернет
-import { siteOf } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»
+import { siteOf, webErrText } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»; v154: причина ошибки поиска
 import { WINE, SPIRIT } from "../lib/drinks";
 import { titleParts } from "../lib/bar-view";
 import { cleanReply } from "../lib/reply-clean";   // v76–v77: разметка, которую чат не показывает («###», «-», «---»), — обычным текстом
@@ -33,16 +33,16 @@ import { ACCENT_SERIF } from "./styles";
 // «Барной карте», и «найди в интернете…» (lib/reference-context.js: webAsked) — в /api/web-answer (Vercel): модель отвечает
 // по данным приложения, а не уверена — ищет и отдаёт ссылки; под ответом — «Нашёл в интернете: сайт · сайт». Под ответом о
 // напитке — «Проверить в интернете». Интернет не ответил — обычный ответ ассистента (ai-chat), как раньше.
+// v154: ответ не JSON (страница Vercel 500/504) и нет связи — тоже с причиной, а не null
 const askWeb = (body) => fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), ...body }) })
-  .then((r) => r.json()).catch(() => null);
+  .then((r) => r.json().catch(() => ({ ok: false, error: "http", status: r.status }))).catch(() => ({ ok: false, error: "net" }));
 const openOut = (url) => {
   try { const tg = window.Telegram && window.Telegram.WebApp; if (tg && tg.initData && typeof tg.openLink === "function") { tg.openLink(url); return; } } catch (e) { /* */ }
   try { window.open(url, "_blank", "noopener"); } catch (e) { /* */ }
 };
 // значок «интернет»: глобус
 const WEB_ICON = (c) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>;
-const WEB_ERR = { rate_limit: "Поиск в интернете: лимит на час исчерпан, попробуй позже", not_configured: "Поиск в интернете ещё не подключён на сервере (OPENROUTER_API_KEY в Vercel)",
-  auth: "Сессия устарела: войди в приложение заново", timeout: "Интернет отвечал слишком долго. Попробуй ещё раз" };
+// v154 (Доп. 478): текст ошибки поиска — с причиной (lib/ai-web.js: webErrText)
 
 const STORE = "sa_ai_chats_v2"; // сессии чатов: { uid: { sessions: [...], activeId } }
 const OLD_STORE = "sa_ai_chat_v1";
@@ -293,7 +293,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     const sid = active.id;   // v34 (ревью): ответ — в этот чат
     updMsgs(next);
     setSending(true);
-    const chat = () => fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+    const chat = (miss = "") => fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -310,7 +310,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       .then(r => r.json())
       .then(d => {
         if (d?.ok && d.reply) {
-          const done = [...next, { role: "assistant", content: d.reply, t: Date.now() }];
+          const done = [...next, { role: "assistant", content: d.reply, t: Date.now(), ...(miss ? { webMiss: miss } : {}) }];   // v154: поиск не вышел — ответ без него
           updMsgsOf(sid, done);
           vibrate("light");
           if (typeof d.remaining === "number") setRemaining(d.remaining);
@@ -329,7 +329,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
         updMsgsOf(sid, [...next, { role: "assistant", content: w.reply, t: Date.now(), web: w.sources || [], viaWeb: true }]);
         vibrate("light"); setSending(false); return;
       }
-      chat();
+      chat(webErrText(w));
     });
   }, [input, msgs, sending, uid, updMsgs, updMsgsOf, active.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -345,7 +345,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     askWeb({ question: q, check: cleanReply(parseCards(parseNav(a).clean).clean), history: base.slice(-6).map(m => ({ role: m.role, content: m.content })), context: webContextOf(q) }).then((w) => {
       setWebBusy(false); setSending(false);
       if (w && w.ok && w.reply) { updMsgsOf(sid, [...base, { role: "assistant", content: w.reply, t: Date.now(), web: w.sources || [], viaWeb: true, check: true }]); vibrate("light"); return; }
-      setError(WEB_ERR[w && w.error] || "Не получилось поискать в интернете. Попробуй ещё раз");
+      setError(webErrText(w));
     });
   };
 
@@ -729,6 +729,10 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                         <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-ai-web-src={s.url} onClick={() => openOut(s.url)} title={s.title || s.url}
                           style={{ background: "none", border: "none", padding: 0, color: gold, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", font: "inherit" }}>{siteOf(s.url)}</button></React.Fragment>))}
                     </div>) : null}
+                  {/* v154: искали в интернете, но поиск не ответил — ответ без него (причина — по «Проверить в интернете») */}
+                  {m.role === "assistant" && m.webMiss ? (
+                    <div data-ai-web-miss="" title={m.webMiss} style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, fontSize: a11y ? 13.5 : 12.5, color: sub, lineHeight: 1.5 }}>
+                      {WEB_ICON(sub)}<span>Ответ без интернета: поиск сейчас не ответил</span></div>) : null}
                   {/* v152: последний ответ о напитке — проверить в интернете (каждый поиск стоит денег: только по нажатию) */}
                   {m.role === "assistant" && !m.viaWeb && i === msgs.length - 1 && !sending && webCheckable((msgs.slice(0, i).reverse().find(x => x.role === "user") || {}).content) ? (
                     <button type="button" className="sa-btn" data-lens-btn="soft" data-ai-web-check="" onClick={() => checkWeb(i)}
@@ -776,7 +780,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
 
         {error && (
           <div className="sa-pagein" style={{ ...glass, padding: "12px 14px", borderColor: `${RED}66` }}>
-            <div style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginBottom: lastUser ? 10 : 0 }}>{error}</div>
+            <div data-ai-error="" style={{ color: sub, fontSize: 12.5, lineHeight: 1.55, marginBottom: lastUser ? 10 : 0 }}>{error}</div>
             {lastUser && (
               <button className="sa-btn" data-lens-btn="soft" onClick={() => send(lastUser.content)}
                 style={{ padding: "9px 14px", borderRadius: RADIUS.pill, cursor: "pointer", border: `1px solid ${gold}55`, background: "transparent", color: gold, fontFamily: "Georgia, serif", fontSize: 12.5, fontWeight: "bold" }}>

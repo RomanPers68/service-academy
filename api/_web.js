@@ -12,12 +12,28 @@
 // баланса, что и остальной AI. Выдержки Exa — до WEB_MAX_CHARS знаков на страницу (без предела Exa отдаёт 2–4 тыс.): модель
 // перечитывает их после каждого поиска, а токены — главная часть цены. Прикидка: позиция барной карты (Claude Sonnet, до 2
 // поисков) — 3–6 ₽, вопрос ассистенту с поиском (Gemini Flash, до 3 поисков) — около 1–2 ₽.
+//
+// v154 (Доп. 478): владелец прислал снимок «Не получилось поискать в интернете. Попробуй ещё раз» под «Проверить в интернете».
+// Причину приложение не показывало. Теперь: OpenRouter не принял запрос (400, 422) — та же модель проще (инструмент без
+// настроек, потом старый плагин web), только потом следующая; поиски ограничивает max_uses инструмента (у Chat Completions
+// max_tool_calls не в счёт); ответа хватает и «думающим» моделям (max_tokens больше); причина — в тексте ошибки и в журнале
+// Vercel ([web-search]).
 
 export const WEB_MAX_SEARCHES = 3;
 export const WEB_MAX_CHARS = 2000;
 export const webEngine = () => process.env.OPENROUTER_WEB_ENGINE || "exa";
-/** Запись в tools запроса OpenRouter: результатов на поиск и знаков выдержки на страницу (Exa, Parallel, Perplexity). */
-export const webTool = (maxResults = 5, maxChars = WEB_MAX_CHARS) => ({ type: "openrouter:web_search", parameters: { engine: webEngine(), max_results: maxResults, max_characters: maxChars } });
+/** Запись в tools запроса OpenRouter: результатов на поиск, знаков выдержки на страницу (Exa, Parallel, Perplexity) и
+ *  v154: поисков на запрос (max_uses — у Chat Completions поиски ограничивает он, max_tool_calls там не в счёт). */
+export const webTool = (maxResults = 5, maxChars = WEB_MAX_CHARS, maxUses = WEB_MAX_SEARCHES) => ({ type: "openrouter:web_search",
+  parameters: { engine: webEngine(), max_results: maxResults, max_characters: maxChars, max_uses: maxUses } });
+/** v154: запросы к одной модели по очереди — инструмент с настройками; без настроек; старый плагин web. via — что сработало. */
+export const orAsks = (model, base, maxResults = 5, maxSearches = WEB_MAX_SEARCHES) => [
+  { via: "tool", body: { ...base, model, tools: [webTool(maxResults, WEB_MAX_CHARS, maxSearches)], max_tool_calls: maxSearches } },
+  { via: "tool-plain", body: { ...base, model, tools: [{ type: "openrouter:web_search" }] } },
+  { via: "plugin", body: { ...base, model, plugins: [{ id: "web", max_results: maxResults }] } },
+];
+// v154: в журнал Vercel (Deployments → Functions → Logs) — почему поиск не вышел
+const logWeb = (m) => { try { console.error("[web-search] " + m); } catch (e) { /* */ } };
 
 const s = (v, n) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
 const okUrl = (u) => /^https?:\/\/[^\s"'<>]+$/i.test(String(u || "")) && String(u).length <= 400;
@@ -67,32 +83,38 @@ export async function webCall({ orKey, anKey, models = [], system = "", user = "
     const headers = { Authorization: "Bearer " + orKey, "Content-Type": "application/json", "X-Title": "Service Academy web search" };
     if (process.env.VERCEL_URL) headers["HTTP-Referer"] = "https://" + process.env.VERCEL_URL;
     let lastErr = "ни одна модель не ответила", late = 0, tried = 0;
-    const list = models.filter(Boolean);
+    const list = models.filter(Boolean), base = { max_tokens: maxTokens, temperature: 0.2, messages: msgs };
     for (let i = 0; i < list.length; i++) {
-      const left = lim.total - (Date.now() - t0);
-      if (left < 3000) break;
-      const wait = i === list.length - 1 ? left : Math.min(lim.each, left);
-      const ac = new AbortController(), timer = setTimeout(() => ac.abort(), wait);
-      let r, data;
-      tried++;
-      try {
-        r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers, signal: ac.signal,
-          body: JSON.stringify({ model: list[i], max_tokens: maxTokens, temperature: 0.2, messages: msgs, tools: [webTool(maxResults)], max_tool_calls: maxSearches }) });
-        data = await r.json();
-      } catch (e) {
-        if (ac.signal.aborted) { late++; lastErr = list[i] + ": не ответила за " + Math.round(wait / 1000) + " с"; continue; }
-        lastErr = list[i] + ": сеть — " + (e && e.message ? e.message : "unknown"); continue;
-      } finally { clearTimeout(timer); }
-      const err = (data && data.error) || (data && data.choices && data.choices[0] && data.choices[0].error);
-      if (r.ok && !err) {
-        const text = orText(data), fin = data && data.choices && data.choices[0] && data.choices[0].finish_reason;
-        if (text.trim()) return { ok: true, text, sources: orCitations(data), model: (data && data.model) || list[i], searches: orSearches(data), cut: fin === "length" };
-        lastErr = list[i] + ": пустой ответ"; continue;
+      // v154: OpenRouter не принял запрос (400, 422) — тот же вопрос той же модели проще: инструмент без настроек, потом
+      // старый плагин web. Другая ошибка (нет модели, 5xx, молчит, пусто) — сразу следующая модель.
+      const asks = orAsks(list[i], base, maxResults, maxSearches);
+      for (let v = 0; v < asks.length; v++) {
+        const left = lim.total - (Date.now() - t0);
+        if (left < 3000) { i = list.length; break; }
+        const wait = i === list.length - 1 ? left : Math.min(lim.each, left);
+        const ac = new AbortController(), timer = setTimeout(() => ac.abort(), wait);
+        let r, data;
+        tried++;
+        try {
+          r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers, signal: ac.signal, body: JSON.stringify(asks[v].body) });
+          data = await r.json();
+        } catch (e) {
+          if (ac.signal.aborted) { late++; lastErr = list[i] + ": не ответила за " + Math.round(wait / 1000) + " с"; logWeb(lastErr); break; }
+          lastErr = list[i] + ": " + (r ? "HTTP " + r.status + ", ответ не JSON" : "сеть — " + (e && e.message ? e.message : "unknown")); logWeb(lastErr); break;
+        } finally { clearTimeout(timer); }
+        const err = (data && data.error) || (data && data.choices && data.choices[0] && data.choices[0].error);
+        if (r.ok && !err) {
+          const text = orText(data), fin = data && data.choices && data.choices[0] && data.choices[0].finish_reason;
+          if (text.trim()) return { ok: true, text, sources: orCitations(data), model: (data && data.model) || list[i], searches: orSearches(data), cut: fin === "length", via: asks[v].via };
+          lastErr = list[i] + ": пустой ответ" + (fin ? " (" + fin + ")" : ""); logWeb(lastErr); break;
+        }
+        const status = r.status || (err && err.code) || 0;
+        if (status === 401) return { ok: false, status: 502, error: "OpenRouter не принял ключ (401). Проверь OPENROUTER_API_KEY в Vercel → Settings → Environment Variables и сделай Redeploy." };
+        if (status === 402) return { ok: false, status: 502, error: "На OpenRouter закончились кредиты (402): пополни баланс на openrouter.ai → Credits." };
+        lastErr = list[i] + " (" + asks[v].via + "): " + s((err && err.message) || "HTTP " + status, 300) + (err && err.metadata && err.metadata.raw ? " — " + s(err.metadata.raw, 200) : "");
+        logWeb(lastErr);
+        if (!(status === 400 || status === 422)) break;
       }
-      const status = r.status || (err && err.code) || 0;
-      if (status === 401) return { ok: false, status: 502, error: "OpenRouter не принял ключ (401). Проверь OPENROUTER_API_KEY в Vercel → Settings → Environment Variables и сделай Redeploy." };
-      if (status === 402) return { ok: false, status: 502, error: "На OpenRouter закончились кредиты (402): пополни баланс на openrouter.ai → Credits." };
-      lastErr = list[i] + ": " + ((err && err.message) || "HTTP " + status);
     }
     if (late && late === tried) return { ok: false, status: 504, error: "AI не успел найти ответ: нажми ещё раз. Если повторится, подожди минуту" };
     return { ok: false, status: 502, error: "Ошибка OpenRouter: " + lastErr };

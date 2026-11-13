@@ -97,7 +97,8 @@ describe("v154: ошибка поиска — с причиной (lib/ai-web.js
 describe("v154: экраны", () => {
   const A = rd("ui/assistant.jsx"), M = rd("ui/menu-trainer.jsx");
   it("ассистент: страница вместо JSON и нет связи — тоже с причиной; ошибка «Проверить в интернете» — webErrText; поиск не вышел — «Ответ без интернета»", () => {
-    expect(A).toContain('.then((r) => r.json().catch(() => ({ ok: false, error: "http", status: r.status }))).catch(() => ({ ok: false, error: "net" }));');
+    // v155: страница вместо JSON и нет связи — в webPost (lib/ai-web.js), с запасным путём
+    expect(A).toContain("const askWeb = (body) => webPost({ token: saToken(), ...body });");
     expect(A).toContain("setError(webErrText(w));");
     expect(A).toContain("chat(webErrText(w));");
     expect(A).toContain("...(miss ? { webMiss: miss } : {})");
@@ -105,7 +106,8 @@ describe("v154: экраны", () => {
     expect(A).not.toContain('"Не получилось поискать в интернете. Попробуй ещё раз"');
   });
   it("описания блюда: без интернета — «Без интернета: поиск сейчас не ответил (причина)»", () => {
-    expect(M).toContain('else plain(String((w && (w.message || (w.status ? "сервер ответил кодом " + w.status : w.error))) || "поиск не ответил"));');
+    // v155: и кто отказал (w.why)
+    expect(M).toContain('else plain(String((w && (w.message || (w.status ? "сервер ответил кодом " + w.status + (w.why ? " (" + w.why + ")" : "") : w.error))) || "поиск не ответил"));');
     expect(M).toContain("Без интернета: поиск сейчас не ответил ({aiMiss.replace(");
   });
 });

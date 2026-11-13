@@ -1629,7 +1629,7 @@ function ServiceAcademy() {
   const [callBusy, setCallBusy] = useState(false);
   // v93 (Доп. 406): Наставник в переписке — ответ ИИ (lib/chat-ai.js, грузится, только когда его позвали)
   const chatAiRef = useRef(null);
-  const chatApiObj = useMemo(() => chatApi(undefined, { ai: (q) => (chatAiRef.current ? chatAiRef.current(q) : Promise.resolve({ text: "", error: "no_ai" })) }), []);
+  const chatApiObj = useMemo(() => chatApi(undefined, { ai: (q, ctx) => (chatAiRef.current ? chatAiRef.current(q, ctx) : Promise.resolve({ text: "", error: "no_ai" })) }), []);   // v155: и прошлая пара Наставника
   const chatAskRef = useRef({ at: 0, off: false, seen: new Set() });
   const chatOpenRef = useRef(false); chatOpenRef.current = chatOpen != null;   // открытый чат сам спрашивает список (chat_list)
   const loadChatInfo = useCallback((force) => {
@@ -2992,7 +2992,7 @@ function ServiceAcademy() {
       });
     }
   };
-  chatAiRef.current = (q) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner()));
+  chatAiRef.current = (q, ctx) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner(), ctx));
   const dueMistakes = mistakeBank.filter(m => !m.due || m.due <= Date.now()).length;
   useEffect(() => {
     if (welcome || !profile) return;

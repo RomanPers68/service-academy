@@ -50,7 +50,7 @@ import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, 
   touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName, uncheckedQueue, reviewRows,
   GAPS, gapTest, gapCounts, FORM_PARTS, partFill, fieldHints } from "../lib/wine";
 import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply, webAsk, webPlan, webApply } from "../lib/drinks";   // v127: вина и крепкое; v151: «Дописать пустое»; v152: интернет
-import { siteOf } from "../lib/ai-web";   // v152: ссылки «Нашлось в интернете»
+import { siteOf, oneSite } from "../lib/ai-web";   // v152: ссылки «Нашлось в интернете»
 import { SPIRIT_CATS, SERVE_MODES, SPIRIT_GLASSES, PORTIONS, TEMP_HINT_SP } from "../lib/spirit";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -155,6 +155,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiErr, setAiErr] = React.useState("");
   const [aiNote, setAiNote] = React.useState("");       // v134: «Дописано: …», «AI не знает больше…», «Дописывать нечего…»
+  const [webOffer, setWebOffer] = React.useState(false);   // v155: «Заполнить по названию» ничего не дописал — предложить поиск в интернете
   const [imp, setImp] = React.useState(null);           // импорт: { stage: pick | text | names | work | review, … }
   const [q, setQ] = React.useState("");
   const [only, setOnly] = React.useState("all");        // all | unchecked | glass | stop | archive
@@ -169,7 +170,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const remember = useInnerTop(form ? "form:" + (form.id || form._nid) : rev ? "rev:" + rev.i : bulk ? "bulk" : "list");   // форма — сверху, список — где был
   const wines = React.useMemo(() => K.records(shared), [shared, K]);
   const formKey = form ? form.id || form._nid : "";
-  React.useEffect(() => { setPic(null); setAiNote(""); picCleared.current = false; }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
+  React.useEffect(() => { setPic(null); setAiNote(""); setWebOffer(false); picCleared.current = false; }, [formKey]);   // другое вино в форме — снимок прежнего не переносится
   const formRef = React.useRef(null); formRef.current = form;   // v134: с чем сравнить ответ AI (что дописано сейчас)
   const live = wines.filter((w) => !w.archived);
   const dishes = React.useMemo(() => { try { return (dishesOf(restaurant) || []).filter((d) => d && d.id && d.name); } catch (e) { return []; } }, [restaurant, shared]);
@@ -291,7 +292,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   const aiTag = <span data-wine-ai="" style={{ marginLeft: 6, fontSize: 11, fontStyle: "normal", padding: "0 6px", borderRadius: 999, border: `1px solid ${amber}99`, color: amber }}>AI</span>;
   // v152: что нашлось в интернете — ссылки на страницы (открываются в браузере)
   const webLine = (w, extra = {}) => (w && w.aiWeb && w.aiWeb.src && w.aiWeb.src.length ? (
-    <div data-wine-web-src={w.aiWeb.src.length} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 6, ...extra }}>Нашлось в интернете: {w.aiWeb.src.map((x, k) => (
+    <div data-wine-web-src={w.aiWeb.src.length} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 6, ...extra }}>Нашлось в интернете: {oneSite(w.aiWeb.src).map((x, k) => (
       <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-wine-web-link={x.url} onClick={() => openOut(x.url)} title={x.title || x.url}
         style={{ background: "none", border: "none", padding: 0, color: gold, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", font: "inherit" }}>{siteOf(x.url)}</button></React.Fragment>))}</div>) : null);
   const note = msg ? <div role="status" style={{ fontSize: 13, color: /Не |Нет /.test(msg) ? red : gold, margin: "8px 2px 0", lineHeight: 1.45 }}>{msg}</div> : null;
@@ -307,15 +308,41 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
       const cur = formRef.current || form, added = K.aiAdded(cur, K.mergeAi(cur, g));
       return added.length ? "Дописано: " + added.map((f) => K.FIELD_RU[f] || f).join(", ") : "AI не знает об этой позиции больше, чем уже вписано";
     };
+    // v155 (Доп. 479), владелец (снимок «Джек Дэниелс / Jack Daniels» с красной строкой «Модель не узнала этот напиток:
+    // заполни руками»): «ассистент не узнал самый популярный виски из Теннесси🥺 И не предложил поиск в сети». Узнал: всё
+    // остальное в карточке он и вписал. Пустым осталось то, чего по названию не сказать (выдержка у виски без возраста), а
+    // ответ без новых полей приложение называло «не узнала». Теперь: что осталось пустым — словами, и рядом «Поискать в
+    // интернете» (как в «Дописать пустое»: api/wine-import.js, "gaps" с web: true, найденное — с «AI» и ссылками).
+    const emptyRu = (cur) => webAsk(K, cur).missing.map((f) => K.FIELD_RU[f] || f).join(", ");
     const fill = () => {
       const name = String(form.name || "").trim();
       if (!name) { setAiErr("Сначала название"); return; }
       // v134: что вписано, уходит AI фактами (known), он пишет только пустое; пустого нет, запрос не нужен
       const { known, missing } = K.fillAsk(form);
       if (!missing.length) { setAiErr(""); setAiNote("Дописывать нечего: всё, что AI знает по названию, уже вписано"); vibrate("light"); return; }
-      setAiBusy(true); setAiErr(""); setAiNote(""); vibrate("light");
-      askAi({ mode: "fill", name, known }).then((got) => { setAiBusy(false); const g = got[0] || {}; setAiNote(noteOf(g)); setForm((x) => K.mergeAi(x, g)); vibrate("success"); })
-        .catch((e) => { setAiBusy(false); setAiErr(e.message); });
+      setAiBusy(true); setAiErr(""); setAiNote(""); setWebOffer(false); vibrate("light");
+      askAi({ mode: "fill", name, known }).then((got) => {
+        setAiBusy(false);
+        const g = got[0] || {}, cur = formRef.current || form, next = K.mergeAi(cur, g), added = K.aiAdded(cur, next);
+        if (added.length) { setAiNote(noteOf(g)); setForm((x) => K.mergeAi(x, g)); vibrate("success"); return; }
+        const left = emptyRu(cur);
+        setAiNote(left ? "По названию AI больше ничего не знает: пусто — " + left + ". Можно поискать в интернете" : "AI не знает об этой позиции больше, чем уже вписано");
+        setWebOffer(!!left); vibrate("light");
+      }).catch((e) => { setAiBusy(false); setAiErr(e.message); setWebOffer(/не узнала/.test(String(e.message)) && !!emptyRu(formRef.current || form)); });
+    };
+    // v155: поиск в интернете для одной позиции — то, что пусто (кроме года, объёма, цен и порции); найденное — с «AI» и ссылками
+    const webFill = () => {
+      const cur = formRef.current || form, name = String(cur.name || "").trim(), { known, missing } = webAsk(K, cur);
+      if (!name || !missing.length || aiBusy) return;
+      setAiBusy("web"); setAiErr(""); setAiNote(""); vibrate("light");
+      askAiK({ mode: "gaps", web: true, items: [{ name, known, missing }] }).then((j) => {
+        setAiBusy(false); setWebOffer(false);
+        const g = ((j && j.wines) || [])[0] || {}, { i: _i, name: _n, src, ...fields } = g;
+        const now = formRef.current || form, next = K.mergeAi(now, fields), added = K.aiAdded(now, next);
+        if (!added.length) { setAiNote("В интернете ничего подходящего не нашлось: заполни руками"); vibrate("light"); return; }
+        setForm((x) => ({ ...K.mergeAi(x, fields), aiWeb: { at: Date.now(), src: (Array.isArray(src) ? src : []).slice(0, 3) } }));
+        setAiNote("Нашлось в интернете: " + added.map((f) => K.FIELD_RU[f] || f).join(", ") + ". Проверь и подтверди"); vibrate("success");
+      }).catch((e) => { setAiBusy(false); setAiErr(e.message); });
     };
     // этикетка: AI читает снимок (до 1800 px); пустое название берёт с этикетки, остальное — только в пустые поля
     const readLabel = (file) => {
@@ -397,7 +424,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
               <div role="status" data-wine-pic-note="" style={{ fontSize: 12.5, color: pic && pic.state === "err" ? red : sub, lineHeight: 1.45 }}>{picNote}</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                 <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-pic-take="" onClick={() => picRef.current && picRef.current.click()} style={pill(false, { color: gold })}>{picSrc ? "Заменить" : "Сфотографировать"}</button>
-                {pic && pic.file ? <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-label="" onClick={() => readLabel(pic.file)} disabled={aiBusy} style={pill(false, { color: gold, opacity: aiBusy ? 0.6 : 1 })}>{aiBusy ? "AI читает…" : "Заполнить по этикетке"}</button> : null}
+                {pic && pic.file ? <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-label="" onClick={() => readLabel(pic.file)} disabled={!!aiBusy} style={pill(false, { color: gold, opacity: aiBusy ? 0.6 : 1 })}>{aiBusy ? "AI читает…" : "Заполнить по этикетке"}</button> : null}
                 {picSrc ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-pic-del="" onClick={() => { setPic(null); picCleared.current = true; setForm((x) => ({ ...x, img: "" })); vibrate("light"); }} style={pill(false, { color: text })}>Убрать</button> : null}
               </div>
             </div>
@@ -406,12 +433,17 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           {label("Название, как в карте")}
           <input data-lens-field="" data-wine-field="name" style={inputSt} placeholder={K.t.namePh} value={form.name} onChange={(e) => set("name", e.target.value)} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-            <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-fill="" onClick={fill} disabled={aiBusy}
-              style={{ ...pill(false), color: gold, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy ? "AI думает…" : "Заполнить по названию"}</button>
+            <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-fill="" onClick={fill} disabled={!!aiBusy}
+              style={{ ...pill(false), color: gold, opacity: aiBusy ? 0.6 : 1 }}>{aiBusy === "web" ? "Ищу в интернете…" : aiBusy ? "AI думает…" : "Заполнить по названию"}</button>
             <span style={{ fontSize: 12.5, color: sub, lineHeight: 1.4, flex: "1 1 160px" }}>AI допишет пустые поля, заполненное не тронет</span>
           </div>
           {aiErr ? <div role="alert" style={{ fontSize: 13, color: red, marginTop: 6, lineHeight: 1.45 }}>{aiErr}</div> : null}
           {aiNote && !aiErr ? <div role="status" data-wine-ai-note="" style={{ fontSize: 13, color: gold, marginTop: 6, lineHeight: 1.45 }}>{aiNote}</div> : null}
+          {webOffer && !aiBusy && webAsk(K, form).missing.length ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+              <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-fill-web="" onClick={webFill} style={pill(false, { color: gold })}>Поискать в интернете</button>
+              <span data-wine-fill-web-cost="" style={{ fontSize: 12.5, color: sub, lineHeight: 1.4, flex: "1 1 160px" }}>около 3–6 ₽ с баланса OpenRouter; найденное — с «AI» и ссылками</span>
+            </div>) : null}
           {webLine(form)}
           {unchecked(form) ? (
             <div data-lens-card="warn" data-wine-check="" style={{ ...card, marginTop: 12, borderColor: amber }}>
@@ -762,7 +794,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
                 : web ? "В интернете ничего подходящего не нашлось." : "Дописать ничего не получилось."}</div>
               {web && bulk.list.length ? (
                 <div data-wine-web-found="" style={{ fontSize: 13, color: sub, marginTop: 8, lineHeight: 1.55 }}>{bulk.list.slice(0, 6).map((a, k) => (
-                  <div key={k}>{a.name}{a.src && a.src.length ? ": " + a.src.map((x) => siteOf(x.url)).join(", ") : ""}</div>))}</div>) : null}
+                  <div key={k}>{a.name}{a.src && a.src.length ? ": " + oneSite(a.src).map((x) => siteOf(x.url)).join(", ") : ""}</div>))}</div>) : null}
               {bulk.none.length ? <>
                 <div data-wine-bulk-none={bulk.none.length} style={{ fontSize: 13.5, color: sub, marginTop: 10, lineHeight: 1.5 }}>{web ? "Не нашлось и в интернете у " : "AI не нашёл, что дописать, у "}{posGen(bulk.none.length)}: {bulk.none.slice(0, 6).join(", ")}{bulk.none.length > 6 ? " и ещё " + (bulk.none.length - 6) : ""}. Их можно заполнить руками.</div>
                 <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-bulk-copy={bulk.copied ? "1" : ""} onClick={() => copyNames(bulk.none)} style={pill(!!bulk.copied, { marginTop: 8, color: gold })}>{bulk.copied ? "Скопировано ✓" : "Скопировать названия"}</button>

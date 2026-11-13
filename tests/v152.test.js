@@ -163,7 +163,7 @@ describe("v152: api/web-answer.js — ассистент с интернетом
     expect(H.WEB_MODELS()).toContain("anthropic/claude-sonnet-4.6");
     expect(b.tools[0].type).toBe("openrouter:web_search");
     expect(b.messages[0]).toEqual({ role: "system", content: H.SYSTEM });
-    expect(H.SYSTEM).toContain("Если уверенно знаешь ответ — отвечай без поиска");
+    expect(H.SYSTEM).toContain("Поищи в интернете хотя бы раз, даже если ответ кажется");   // v155: ищет всегда, раз позвали
     expect(H.SYSTEM).toContain("Цены, наличие, скидки и правила ресторана называй только из данных приложения");
     const last = b.messages[b.messages.length - 1].content;
     expect(last).toContain("Данные приложения:\nРесторан: Два моря.");
@@ -266,8 +266,9 @@ describe("v152: когда ассистенту искать в интернет
 describe("v152: экраны", () => {
   const A = rd("ui/assistant.jsx"), E = rd("ui/wine-editor.jsx");
   it("ассистент: в интернет — /api/web-answer, не вышло — обычный ответ; ссылки под ответом; «Проверить в интернете»; «Ищу в интернете…»", () => {
-    expect(A).toContain('const askWeb = (body) => fetch("/api/web-answer", { method: "POST"');
-    expect(A).toContain("if (!webAsked(text, profile?.restaurant)) { chat(); return; }");
+    // v155: запрос — webPost (lib/ai-web.js): /api/web-answer, хостинг отказал — запасной путь через /api/wine-import
+    expect(A).toContain("const askWeb = (body) => webPost({ token: saToken(), ...body });");
+    expect(A).toContain("if (!webAsked(text, profile?.restaurant) && !webMore(text, prevQ, profile?.restaurant)) { chat(); return; }");   // v155: и «а подробнее?»
     expect(A).toContain("updMsgsOf(sid, [...next, { role: \"assistant\", content: w.reply, t: Date.now(), web: w.sources || [], viaWeb: true }]);");
     expect(A).toContain('{m.check ? "Проверил в интернете:" : "Нашёл в интернете:"}');
     expect(A).toContain('data-ai-web-check=""');

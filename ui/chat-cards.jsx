@@ -19,7 +19,7 @@ import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } fr
 import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
 import { thxView, cheerView, thxChips, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо», день рождения, годовщина
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист «Опаздываю» открывали — совета про него нет
-import { splitWebLine, siteOf, openOut } from "../lib/ai-web";   // v153 (Доп. 477): ссылки «Нашёл в интернете» у ответа Наставника
+import { splitWebLine, siteOf, oneSite, openOut } from "../lib/ai-web";   // v153 (Доп. 477): ссылки «Нашёл в интернете» у ответа Наставника
 
 export const CARDS_CSS = `
 /* v93: умные карточки */
@@ -331,7 +331,7 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
 export function AiMsg({ row, me, hl, onAct, onMenu }) {
   const m = row.m, cards = (m.card && Array.isArray(m.card.cards)) ? m.card.cards : [];
   // v153: последняя строка «Нашёл в интернете: адрес · адрес» — именами сайтов, касание открывает страницу
-  const wl = splitWebLine(m.body), sites = wl.src.map((x) => siteOf(x.url));
+  const wl0 = splitWebLine(m.body), wl = { ...wl0, src: oneSite(wl0.src) }, sites = wl.src.map((x) => siteOf(x.url));   // v155: по одной ссылке на сайт
   return (
     <div className={"ch-row in" + (hl ? " hl" : "")} data-chat-msg={m.id} data-chat-ai="">
       <div className="ch-ai-nm" aria-hidden="true"><span className="ch-ai-d">{IC.ai}</span>{AI_NAME}</div>

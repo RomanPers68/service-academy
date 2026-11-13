@@ -16,8 +16,8 @@ import { MicButton } from "./mic";
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone (общая с чатом)
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
 import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
-import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf, webAsked, webCheckable, drinkAssistantContext } from "../lib/reference-context";   // v130: и вина с крепким; v152: интернет
-import { siteOf, webErrText } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»; v154: причина ошибки поиска
+import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf, webAsked, webMore, webCheckable, drinkAssistantContext } from "../lib/reference-context";   // v130: и вина с крепким; v152: интернет
+import { siteOf, oneSite, webErrText, webPost, slimHistory } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»; v154: причина ошибки поиска
 import { WINE, SPIRIT } from "../lib/drinks";
 import { titleParts } from "../lib/bar-view";
 import { cleanReply } from "../lib/reply-clean";   // v76–v77: разметка, которую чат не показывает («###», «-», «---»), — обычным текстом
@@ -33,9 +33,9 @@ import { ACCENT_SERIF } from "./styles";
 // «Барной карте», и «найди в интернете…» (lib/reference-context.js: webAsked) — в /api/web-answer (Vercel): модель отвечает
 // по данным приложения, а не уверена — ищет и отдаёт ссылки; под ответом — «Нашёл в интернете: сайт · сайт». Под ответом о
 // напитке — «Проверить в интернете». Интернет не ответил — обычный ответ ассистента (ai-chat), как раньше.
-// v154: ответ не JSON (страница Vercel 500/504) и нет связи — тоже с причиной, а не null
-const askWeb = (body) => fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), ...body }) })
-  .then((r) => r.json().catch(() => ({ ok: false, error: "http", status: r.status }))).catch(() => ({ ok: false, error: "net" }));
+// v154: ответ не JSON (страница Vercel 500/504) и нет связи — тоже с причиной, а не null; v155: хостинг отказал — запасной
+// путь через /api/wine-import (lib/ai-web.js: webPost), в ошибке — кто отказал
+const askWeb = (body) => webPost({ token: saToken(), ...body });
 const openOut = (url) => {
   try { const tg = window.Telegram && window.Telegram.WebApp; if (tg && tg.initData && typeof tg.openLink === "function") { tg.openLink(url); return; } } catch (e) { /* */ }
   try { window.open(url, "_blank", "noopener"); } catch (e) { /* */ }
@@ -321,9 +321,11 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
       .catch(() => setError(ERRORS.network))
       .finally(() => setSending(false));
     // v152: марка напитка, которой нет в карте, или «найди в интернете…» — ответ с поиском; не вышло — обычный ответ
-    if (!webAsked(text, profile?.restaurant)) { chat(); return; }
+    // v155: и о продукте, которого нет в меню («что за рыба чавыча?»), и «а подробнее?» после ответа из интернета
+    const prevQ = ((next.slice(0, -1).reverse().find(m => m.role === "user")) || {}).content;
+    if (!webAsked(text, profile?.restaurant) && !webMore(text, prevQ, profile?.restaurant)) { chat(); return; }
     setWebBusy(true);
-    askWeb({ question: text, history: next.slice(-7, -1).map(m => ({ role: m.role, content: m.content })), context: webContextOf(text) }).then((w) => {
+    askWeb({ question: text, history: slimHistory(next.slice(0, -1)), context: webContextOf(text) }).then((w) => {   // v155: история — коротко, без служебных меток
       setWebBusy(false);
       if (w && w.ok && w.reply) {
         updMsgsOf(sid, [...next, { role: "assistant", content: w.reply, t: Date.now(), web: w.sources || [], viaWeb: true }]);
@@ -334,7 +336,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   }, [input, msgs, sending, uid, updMsgs, updMsgsOf, active.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // v152: что знает приложение о вопросе — ресторан и «Барная карта» (позиции рядом с вопросом); модель держится этого
-  const webContextOf = (q) => [profile?.restaurant ? "Ресторан: " + profile.restaurant + "." : "", drinkAssistantContext(q, profile?.restaurant) || ""].filter(Boolean).join("\n");
+  const webContextOf = (q) => [profile?.restaurant ? "Ресторан: " + profile.restaurant + "." : "", drinkAssistantContext(q, profile?.restaurant) || ""].filter(Boolean).join("\n").slice(0, 1500);
   // v152: «Проверить в интернете» под ответом — модель проверяет свой ответ по найденным страницам, новый ответ — со ссылками
   const checkWeb = (i) => {
     if (sending) return;
@@ -342,7 +344,8 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     if (!q || !a) return;
     const sid = active.id, base = msgs;
     vibrate("light"); setError(null); setSending(true); setWebBusy(true);
-    askWeb({ question: q, check: cleanReply(parseCards(parseNav(a).clean).clean), history: base.slice(-6).map(m => ({ role: m.role, content: m.content })), context: webContextOf(q) }).then((w) => {
+    // v155: проверке история не нужна — вопрос и сам ответ (запрос короче, фильтр хостинга его пропускает)
+    askWeb({ question: q, check: cleanReply(parseCards(parseNav(a).clean).clean).slice(0, 1500), context: webContextOf(q) }).then((w) => {
       setWebBusy(false); setSending(false);
       if (w && w.ok && w.reply) { updMsgsOf(sid, [...base, { role: "assistant", content: w.reply, t: Date.now(), web: w.sources || [], viaWeb: true, check: true }]); vibrate("light"); return; }
       setError(webErrText(w));
@@ -725,7 +728,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
                   {m.role === "assistant" && Array.isArray(m.web) && m.web.length ? (
                     <div data-ai-web={m.web.length} style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${gold}33`, fontSize: a11y ? 14 : 13, color: sub, lineHeight: 1.6 }}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "-2px" }}>{WEB_ICON(gold)}{m.check ? "Проверил в интернете:" : "Нашёл в интернете:"}</span>{" "}
-                      {m.web.map((s, k) => (
+                      {oneSite(m.web).map((s, k) => (
                         <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-ai-web-src={s.url} onClick={() => openOut(s.url)} title={s.title || s.url}
                           style={{ background: "none", border: "none", padding: 0, color: gold, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", font: "inherit" }}>{siteOf(s.url)}</button></React.Fragment>))}
                     </div>) : null}

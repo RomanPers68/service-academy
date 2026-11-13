@@ -28,6 +28,8 @@ import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «�
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
 import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
+import { unpackWeb } from "../../../lib/ai-web.js";   // v155: запросы поиска упакованы
+if (typeof window !== "undefined") window.__demoUnpack = unpackWeb;   // v155: e2e читают упакованные запросы
 import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";
 import { nameParts } from "../../../lib/bar-view.js";   // v128: на «этикетке» — русское название   // v127: крепкое в «Барной карте» демо   // v120: винная карта демо и AI-импорт вместо сервера   // v107: памятка новичку накануне первой смены
 
@@ -346,6 +348,10 @@ const demoWebGaps = (b) => ({ wines: (Array.isArray(b.items) ? b.items : []).sli
 const demoWebAnswer = (b) => {
   const q = String(b.question || ""), src = (t, u) => [{ url: "https://example.com/demo/" + u, title: "Страница-пример (демо): " + t }];
   if (b.check) return { ok: true, reply: "Проверил: в ответе всё сходится с тем, что пишут производитель и справочники. Добавлю одно: подавать при 16–18 °C, в бокале «бордо».", sources: src("проверка ответа", "check"), searched: 1 };
+  // v155 (Доп. 479): продукт не из меню — «что за рыба такая Чавыча?»; «а подробнее?» / «найди в сети» — тема из прошлых реплик
+  const hist = (Array.isArray(b.history) ? b.history : []).map((m) => String((m && m.content) || "")).join(" ");
+  if (/чавыч/i.test(q)) return { ok: true, reply: "Чавыча — самый крупный из тихоокеанских лососей, в Америке её зовут «королевским лососем». Ловят у Камчатки и Аляски. Мясо оранжево-красное и самое жирное среди тихоокеанских лососей: нежное, сочное, с мягким сливочным вкусом. Гостю: «король тихоокеанских лососей — очень нежная дикая рыба».", sources: src("чавыча", "chinook-salmon"), searched: 1 };
+  if (/подробн|сет[иь]|интернет/i.test(q) && /чавыч/i.test(hist)) return { ok: true, reply: "Подробнее о чавыче: на нерест она идёт первой из лососей — в реки Камчатки в начале лета, поэтому свежая чавыча бывает коротким сезоном. Из-за жирности мясо не пересыхает: хорошо стейком на гриле и запечённой. Гостю можно сказать: «дикая камчатская рыба короткого сезона, самая сочная из лососей».", sources: src("чавыча: сезон и кухня", "chinook-season"), searched: 1 };
   if (/margaux|марго/i.test(q)) return { ok: true, reply: "Château Margaux — первое гран крю (Premier Grand Cru Classé) Медока по классификации 1855 года, апелласьон Марго, Бордо. В основе — каберне совиньон с мерло: кассис, фиалка, кедр, шелковистые танины. Гостю: «одно из пяти великих вин Бордо». В нашей карте его нет — предложи похожее из карты.", sources: src("Château Margaux", "chateau-margaux"), searched: 1 };
   return { ok: true, reply: "В демо интернета нет. В приложении я поищу ответ на сайтах производителей и в справочниках и покажу ссылки.", sources: [], searched: 0 };
 };
@@ -371,6 +377,7 @@ const demoDesc = (b) => {
   return { ok: true, variants, sources: [{ url: "https://example.com/demo/dish-ideas", title: "Страница-пример (демо): идеи для описания блюд" }], searched: 1 };
 };
 const demoWineAi = (b) => {
+  if (b.via === "web-answer") return b.mode === "desc" ? demoDesc(b) : demoWebAnswer(b);   // v155: запасной путь поиска, как в api/wine-import.js
   if (b.mode === "taste") return demoTaste(b);   // v132
   if (b.mode === "gaps" && b.web) return demoWebGaps(b);   // v152
   if (b.mode === "gaps") return demoGaps(b);   // v151
@@ -895,8 +902,10 @@ window.fetch = function (input, init) {
   if (/\/functions\/v1\/push-send\?init=1/.test(url)) return wait(300).then(() => json({ ok: true, key: srv.rpc("push_status", { p_token: tokOf(me.id) }).key || "" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139
-  if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(b))); }   // v120
-  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(1500).then(() => json(b.mode === "desc" ? demoDesc(b) : demoWebAnswer(b))); }   // v152; v153: описания блюд
+  if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+    return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
+  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+    return unpackWeb(b).then((x) => wait(1500).then(() => json(x.mode === "desc" ? demoDesc(x) : demoWebAnswer(x)))); }   // v152; v153: описания блюд; v155: упакованный запрос
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));
 };

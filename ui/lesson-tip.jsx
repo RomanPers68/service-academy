@@ -45,7 +45,7 @@ export function LessonTip({ tip, T, color = "#C8A96E", a11y = false, onGo, onLat
       <div style={{ flex: 1, minWidth: 0 }}>
         <div data-tip-label="" style={{ ...labelStyle(a11y ? 13.5 : 12.5), color: sub }}>Совет · {tip.name}</div>
         <div data-tip-text="" style={{ fontFamily: "Georgia, 'PT Serif', serif", fontSize: a11y ? 16 : 14.5, lineHeight: 1.42, color: ink, marginTop: 3 }}>{tie(tip.text)}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", columnGap: 14, rowGap: 2, marginTop: 10, flexWrap: "wrap" }}>   {/* v149: на узком экране «Не сейчас» уходит под кнопку — без лишнего зазора */}
           <button type="button" data-tip-go="" data-lens-btn="soft" data-lens-ink="" onClick={go}
             style={{ fontFamily: "Georgia, 'PT Serif', serif", fontWeight: "bold", fontSize: a11y ? 15 : 13.5, color: ink, padding: "6px 14px", borderRadius: 999, cursor: "pointer",
               background: color + (a11y ? "1F" : "26"), border: `1px solid ${color}${a11y ? "8C" : "80"}`, WebkitTapHighlightColor: "transparent" }}>{tip.cta}</button>

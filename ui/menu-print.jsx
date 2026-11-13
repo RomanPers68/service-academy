@@ -4,6 +4,7 @@ import { GOLD, labelStyle } from "./tokens";
 import { allergenLabel } from "../lib/deck-extras";
 import { groupByCat } from "../lib/menu-sections";
 import { dishNutrition, nutritionLine } from "../lib/nutrition";
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист открывали — совета «Меню для печати» больше нет
 
 // ── Дополнение 261: меню для печати ────────────────────────────────────────────
 // Тот же путь, что у карты бара: рисуем лист на canvas и отдаём PNG постранично.
@@ -17,6 +18,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
   const [hint, setHint] = React.useState("");
   const [withPhoto, setWithPhoto] = React.useState(true);
   const list = React.useMemo(() => (dishes || []).filter(d => d && d.name && !d.archived), [dishes]);
+  React.useEffect(() => { traceUse("sa_menu_print"); }, []);
   const PER_PAGE = 8;
 
   const loadImg = (src) => new Promise(res => {

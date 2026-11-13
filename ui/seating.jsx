@@ -17,6 +17,7 @@ import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { briefRoster } from "../lib/briefing";
+import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1 } from "../lib/seating";
@@ -450,8 +451,8 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const [zone, setZone] = React.useState(() => { try { return localStorage.getItem("sa_seat_zone") || ""; } catch (e) { return ""; } });   // v88: зал на доске
   const restaurant = (profile && profile.restaurant) || "";
   const load = React.useCallback(() => rpc("seat_board", { p_token: saToken() }).then((r) => {
-    if (rpcMissing(r)) { setSt({ status: "missing" }); if (onMissing) onMissing(); }
-    else if (r && r.ok) setSt({ status: "ok", ...r, at: Date.now() });
+    if (rpcMissing(r)) { setSt({ status: "missing" }); rememberSeatPlan(restaurant, null, undefined, true); if (onMissing) onMissing(); }
+    else if (r && r.ok) { setSt({ status: "ok", ...r, at: Date.now() }); rememberSeatPlan(restaurant, r); }   // v149: есть ли схема — для советов в уроках
     else setSt((s) => (s.status === "ok" ? s : { status: r && r.error === "no_restaurant" ? "norest" : "error" }));
   }).catch(() => setSt((s) => (s.status === "ok" ? { ...s, offline: true } : { status: "offline" }))), []);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
@@ -519,7 +520,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         {st.status === "norest" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
         {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
           <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} data-lens-btn="soft" style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
-        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
+        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}

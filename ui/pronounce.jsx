@@ -15,6 +15,7 @@ import { stressText, plainText, findPronounce, searchPronounce, hasStress, sylla
 import { PRON_CATS } from "../data/pronounce";
 import { recordClip, canRecord } from "../lib/voice-note";
 import { playUrl, stopVoice } from "./voice-note";
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): слушал произношение — совета «Как произносить» больше нет
 
 // язык оригинала → голос телефона (если живых голосов нет)
 const LANG = { "фр.": "fr-FR", "ит.": "it-IT", "исп.": "es-ES", "катал.": "ca-ES", "нем.": "de-DE", "порт.": "pt-PT", "англ.": "en-US", "яп.": "ja-JP", "венг.": "hu-HU", "нидерл.": "nl-NL", "тайск.": "th-TH", "араб.": "ar-SA", "гавайск.": "en-US" };
@@ -47,6 +48,7 @@ export function SayButton({ w, o, lang, orig = false, slow = false, gold, sub, a
     vibrate("light");
     const text = orig ? String(o || "") : stressText(w);
     if (!text) return;
+    traceUse("sa_say_heard");
     if (live) {
       setSt("load");
       playUrl(voiceUrl(orig ? "say_o" : "say", text), {

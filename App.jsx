@@ -6,7 +6,7 @@ import React from "react";
 import { rpc, saToken, rpcSync, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
-import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread } from "./lib/concept";   // v139 (Доп. 454): «О нас»
+import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread, conceptHas } from "./lib/concept";   // v139 (Доп. 454): «О нас»
 import { setCustomProgram } from "./data/modules";
 import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
@@ -38,6 +38,7 @@ import { masteryFacts, masteryState, stepOfDay, stepLineText, readEarned, saveEa
 import { BadgeToast, StepLine, masteryChip } from "./ui/mastery-card";
 import { MOMENT_AFTER_MS } from "./ui/mastery-card";   // v146 (Доп. 467): момент значка — в первые 10 минут после занятия
 import { pickLessonTip, readTipState, markTipShown, tipLater, markTipUsed, storageKeys, SCREEN_TIPS, LAYER_TIPS } from "./lib/lesson-tips";   // v148 (Доп. 472)
+import { readAvail, readSeatPlan, rememberSeatPlan, readStages, rememberStage, availCan } from "./lib/tip-avail";   // v149 (Доп. 473): совет — только туда, где есть что открыть
 import { tablePool } from "./lib/table-pick";
 import { tasksFor, markQuestDone, questDays } from "./lib/quest";
 import { playlist } from "./lib/radio";
@@ -445,7 +446,7 @@ function ServiceAcademy() {
   const [navStack, setNavStack] = useState([]);
   const navRef = useRef([]);                 // источник истины для push/pop
   const screenRef = useRef("roleSelect");    // текущий экран для императивных переходов
-  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); if (screen !== "wineEditor") setWineEdit(null); if (screen !== "wines") { setWineStart(null); setBarTab(null); setBarNote(""); setBarSom(false); } if (!["cocktails", "barLab", "ckEditor"].includes(screen)) setBarBack(null); }, [screen]);
+  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); if (screen !== "wineEditor") setWineEdit(null); if (screen !== "wines") { setWineStart(null); setBarTab(null); setBarNote(""); setBarSom(false); } if (!["cocktails", "barLab", "ckEditor"].includes(screen)) setBarBack(null); if (screen !== "schedule") setSchedToday(false); if (screen !== "guide") setGuideFocus(null); if (screen !== "cocktails") setCkReverse(false); }, [screen]);
   const commitStack = useCallback((arr) => { navRef.current = arr; setNavStack(arr); }, []);
   const prevScreen = navStack.length ? navStack[navStack.length - 1] : null;
   const setPrevScreen = useCallback((x) => { if (x) commitStack([...navRef.current, x].slice(-24)); }, [commitStack]);
@@ -492,6 +493,11 @@ function ServiceAcademy() {
   const [barBack, setBarBack] = useState(null);     // v128: из карточки коктейля — в колоду, лабораторию, редактор; «назад» вернёт в неё
   const [barOpenN, setBarOpenN] = useState(0);      // v130: карточку открыли из чата, а «Барная карта» уже на экране — открыть заново
   const [barSom, setBarSom] = useState(false);       // v148 (Доп. 472): «Барную карту» открыли из совета «Сомелье» — сразу подбор
+  // v149 (Доп. 473): совет открывает функцию там, где она есть: «Сегодня» в графике раскрыто, «Гид» — на нужном пункте,
+  // «Колода бармена» — сразу «Наоборот»
+  const [schedToday, setSchedToday] = useState(false);
+  const [guideFocus, setGuideFocus] = useState(null);
+  const [ckReverse, setCkReverse] = useState(false);
   // Доп. 246: ссылка ?print=bar из Telegram — сразу карта бара для печати
   useEffect(() => { try { if (new URLSearchParams(location.search).get("print") === "bar") navigate("barPrint"); } catch (e) {} }, []);
   const [menuMode, setMenuMode] = useState(null); // Доп. 210: режим дня → тренажёр меню
@@ -1601,8 +1607,9 @@ function ServiceAcademy() {
       if (Date.now() - seatAskRef.current < 55e3) return;
       seatAskRef.current = Date.now();
       rpc("seat_board", { p_token: saToken() }).then((r) => {
-        if (rpcMissing(r)) { setSeatOn(false); return; }
+        if (rpcMissing(r)) { setSeatOn(false); rememberSeatPlan(profile.restaurant, null, undefined, true); return; }
         if (r && r.ok) setSeatBoard(r);
+        if (r && r.ok) rememberSeatPlan(profile.restaurant, r);   // v149 (Доп. 473): есть ли схема зала — для советов в уроках
         if (r && r.ok) setMyTables(myTablesOf(r, profile.id));
       }).catch(() => { seatAskRef.current = 0; });
     };
@@ -1632,6 +1639,7 @@ function ServiceAcademy() {
     rpc("chat_unread", { p_token: saToken() }).then((r) => {
       if (rpcMissing(r)) { st.off = true; setChatOn(false); return; }
       if (r && r.ok) setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] });
+      if (r && r.ok) rememberStage("chat", true);   // v149 (Доп. 473): чат есть — совет про него знает это и при следующем запуске
     }).catch(() => { st.at = 0; });
   }, [profile]);
   // первый раз — через 4 секунды после старта: старт остаётся одним запросом (v64, app_bootstrap)
@@ -2730,13 +2738,29 @@ function ServiceAcademy() {
   const openDestRef = useRef(openDest); openDestRef.current = openDest;
   // Только в «своих» уроках функции, только неиспользованное и доступное сейчас, не больше одного в день.
   const [tipVer, setTipVer] = useState(0);
+  // v149 (Доп. 473): и только туда, где есть что открыть — записи шефа, вина и крепкое в карте, схема зала, график, чат, «О нас»
+  const chatLive = !!(chatOn && chatInfo);
   const tipCtx = useMemo(() => {
     const famUsed = new Set(((mState && mState.families) || []).filter((f) => Number(f.value) > 0).map((f) => f.id));
     const workToday = !!(shiftToday && !shiftToday.off);
     const passed = programModules.some((m) => moduleDone(m, completed, quizDone));
+    const rest = (profile && profile.restaurant) || "";
+    const about = conceptHas(concept, role) || !!(isLead && concept && concept.can && (concept.can.net || concept.can.venue));
+    const stages = readStages();   // «Спасибо от гостей» и «Случаи» — только когда этап на сервере точно есть (lib/tip-sync.js)
+    const has = availCan({ avail: readAvail(rest), seatPlan: seatOn ? readSeatPlan(rest) : "", isLead, sched: !!shiftToday, chat: chatOn && (chatLive || stages.chat === "1"), about,
+      thanks: thanksOn && stages.thanks === "1", cases: casesOn && stages.cases === "1" });
     return { isLead, seen: mSeen || {}, famUsed, keys: storageKeys(),
-      can: { mistakes: dueNow > 0, faded: fadedIds.size > 0, goldable: !!goldReady, warmup: workToday && warmSits.length >= 2, shift: workToday, passed } };
-  }, [isLead, mState, mSeen, shiftToday, programModules, completed, quizDone, dueNow, fadedIds, goldReady, warmSits.length, tipVer, screen]);   // eslint-disable-line react-hooks/exhaustive-deps
+      can: { mistakes: dueNow > 0, faded: fadedIds.size > 0, goldable: !!goldReady, warmup: workToday && warmSits.length >= 2, shift: workToday, passed, ...has } };
+  }, [isLead, mState, mSeen, shiftToday, programModules, completed, quizDone, dueNow, fadedIds, goldReady, warmSits.length, tipVer, screen, profile, concept, role, seatOn, chatOn, chatLive, thanksOn, casesOn]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // тихо раз в день: меню команды и схема зала — чтобы совет знал, есть ли записи шефа, вина в карте и схема (lib/tip-sync.js)
+  React.useEffect(() => {
+    if (!profile || !storageLoaded || !profile.restaurant) return undefined;
+    let alive = true;
+    const t = setTimeout(() => {
+      retryImport(() => import("./lib/tip-sync")).then((m) => m.syncTipData(rpc, saToken(), profile)).then((ch) => { if (alive && ch) setTipVer((v) => v + 1); }).catch(() => {});
+    }, 5000);
+    return () => { alive = false; clearTimeout(t); };
+  }, [profile, storageLoaded]);
   const lessonTip = useMemo(() => {
     if (!profile || screen !== "lesson" || !activeLesson) return null;
     try { return pickLessonTip({ lessonId: activeLesson.id, lessonType: activeLesson.type || "lesson", state: readTipState(ukP), ctx: tipCtx }); } catch (e) { return null; }
@@ -2750,16 +2774,21 @@ function ServiceAcademy() {
     const o = tip.open || {};
     if (o.ask) { askMentor(tip.ask || "Как применить на смене то, что было в уроке «" + ((activeLesson && activeLesson.title) || "") + "»?"); return; }
     if (o.go) { runMasteryGo(o.go, { mod: activeModule ? activeModule.id : null }); return; }   // «Свежесть» и «Раунд мастера» — сразу по теме урока, если можно
+    if (o.menu === "kbju") { const a = readAvail((profile && profile.restaurant) || ""); setMenuStart(a && a.kbju ? a.kbju : null); setMenuMode("cards"); navigate("menuTrainer"); return; }   // v149: колода — на блюде с КБЖУ
     if (o.menu) { setMenuStart(null); setMenuMode(o.menu); navigate("menuTrainer"); return; }
     if (o.layer === "cal") { setCalOpen(true); return; }
     if (o.layer === "remind") { setRemindOpen(true); return; }
+    if (o.chat === "thx") { if (openChatWithRef.current) openChatWithRef.current({ kind: "thx" }); return; }   // v149: сразу «Спасибо коллеге» в «Вся команда»
     if (o.chat) { openDestRef.current("chat"); return; }
     if (o.screen === "reference") { setRefStart(tip.ref || null); navigate("reference"); return; }
     if (o.screen === "wines") { setBarBack(null); setBarNote(""); setWineStart(null); setBarTab(tip.tab || (tip.id === "sommelier" ? "wine" : null)); setBarSom(tip.id === "sommelier"); setBarOpenN((n) => n + 1); navigate("wines"); return; }
     if (o.screen === "barLab") { setLabStart(null); navigate("barLab"); return; }
+    if (o.screen === "schedule") { setSchedToday(tip.id === "call"); navigate("schedule"); return; }   // v149: «Звонок в один тап» — «Сегодня» раскрыто
+    if (o.screen === "guide") { setGuideFocus(tip.id); navigate("guide"); return; }                     // v149: «Опаздываю» — пункт «Гида» открыт
+    if (o.screen === "cocktails") { setRefStart(null); setCkStart(null); setCkReverse(tip.id === "reverse"); navigate("cocktails"); return; }   // v149: «Наоборот» у бармена
     if (o.screen === "home") { navigate(role ? "home" : "roleSelect"); return; }
     if (o.screen) openDestRef.current(o.screen);   // «Мой отчёт», «Свеча на двоих», «Спасибо от гостей» — как из «Гида»
-  }, [ukP, activeLesson, activeModule, askMentor, runMasteryGo, navigate, role]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ukP, activeLesson, activeModule, askMentor, runMasteryGo, navigate, role, profile]);   // eslint-disable-line react-hooks/exhaustive-deps
   // функцию открыли откуда угодно (экран или лист) — совета про неё больше нет
   React.useEffect(() => {
     if (!profile) return;
@@ -2767,6 +2796,9 @@ function ServiceAcademy() {
     if (mentorAsk != null) ids.push(...(LAYER_TIPS.mentor || []));
     if (pairOpen) ids.push(...(LAYER_TIPS.pair || []));
     if (chatOpen != null) ids.push(...(LAYER_TIPS.chat || []));
+    const intentKind = chatOpen && chatOpen.intent && chatOpen.intent.kind;   // v149 (Доп. 473): лист «Опаздываю» и «Спасибо коллеге» в чате
+    if (intentKind === "late") ids.push("late");
+    if (intentKind === "thx") ids.push("peerThanks");
     if (calOpen) ids.push(...(LAYER_TIPS.cal || []));
     if (remindOpen) ids.push(...(LAYER_TIPS.remind || []));
     if (!ids.length) return;
@@ -3230,7 +3262,7 @@ function ServiceAcademy() {
           if (finished === true) navigate("guestbook", { replace: true }); else goBack();
         }} pro={true} /></Suspense>}
         {screen === "schedule" && <Suspense fallback={<ScreenLoader T={T} />}>
-          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()} chat={schedChat}
+          <ScheduleScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack()} chat={schedChat} startToday={schedToday}
             dueCount={dueMistakes} onMistakes={() => navigate("mistakes")} onChecklist={() => navigate("checklist")} onCal={() => setCalOpen(true)} />
         </Suspense>}
         {screen === "team" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} /></Suspense>}
@@ -3495,7 +3527,7 @@ function ServiceAcademy() {
             { key:"mis", group:"Моё обучение", icon:"mistakes", label:"Работа над ошибками", sub: dueM ? `${dueM} к повторению` : "Вопросы, где ошибался", badge: dueM ? String(dueM) : null, onClick:() => navigate("mistakes") },
           ]} compactGroups={true} fold hubId="team" /></div>;   // v110: группы кнопками, внутри строками; было — строками только «Управление»
         })()}
-        {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("me")} onOpen={openDest} /></Suspense>}
+        {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} focus={guideFocus} onBack={() => goBack("me")} onOpen={openDest} /></Suspense>}
         {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}
           hintKey="me"
           hintSteps={hintsFor("me")}
@@ -3558,7 +3590,7 @@ function ServiceAcademy() {
         {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} /></Suspense></div>}
         {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} concept={concept} onAbout={() => { setAboutEdit(false); navigate("about"); }} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} onShareChat={chatShare} /></Suspense></div>}
-        {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} onShareChat={chatShare} /></Suspense></div>}
+        {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen startReverse={ckReverse} onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onBasics={(id) => { setRefStart(id); navigate("reference"); }} onShareChat={chatShare} /></Suspense></div>}
         {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
         {screen === "sos" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
         {lessonLockMsg && (

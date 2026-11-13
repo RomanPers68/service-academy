@@ -10,6 +10,8 @@ import { report as reportAch } from "../lib/achievements";
 import { suggestAllergens } from "../lib/menu-sections";
 import { dishShareItem } from "../lib/share-items";   // v97: «Поделиться в чат»
 import { CHAT_SHARE_IC } from "./share-chat";
+import { dishNutrition } from "../lib/nutrition";
+import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): «Наоборот», «Гость спрашивает», «Пищевая ценность» — след для советов
 
 // ── Дополнение 161: Колода меню — та же механика, что у Колоды бармена ────────
 // Свайп 1:1 с продолжением движения, тап — переворот, поиск и разделы за лупой,
@@ -44,6 +46,9 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   const pool = React.useMemo(() => groupByCat(dishes.filter(d => dishMatches(d, q) && (!cat || normCat(d.cat) === cat))).flatMap(g => g.items), [dishes, q, cat]);
   const list = mode === "quiz" ? due.filter(d => pool.includes(d)) : pool;
   const d = list[Math.min(idx, Math.max(0, list.length - 1))];
+  // v149: чем человек уже пользовался — советы в уроках про это молчат
+  React.useEffect(() => { if (reverse) traceUse("sa_reverse_on"); }, [reverse]);
+  React.useEffect(() => { if (flip && d) { try { if (dishNutrition(d)) traceUse("sa_kbju_seen"); } catch (e) {} } }, [flip, d && d.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const total = list.length;
   React.useEffect(() => { const i = startId ? pool.findIndex(x => String(x.id) === String(startId)) : -1; setIdx(i >= 0 ? i : 0); setFlip(false); }, [q, cat, mode]);
   // Доп. 181: искать блюдо в том списке, который реально листается (pool — по разделам), а не в исходном
@@ -219,7 +224,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
                   <div style={{ marginTop: 10 }}>
                     <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Гость спрашивает</div>
                     {dishFaq(d).map((f, k) => (
-                      <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === d.id + k ? null : d.id + k); vibrate("light"); }} style={{ marginBottom: 6, cursor: "pointer" }}>
+                      <div key={k} onClick={(e) => { e.stopPropagation(); setFaqOpen(faqOpen === d.id + k ? null : d.id + k); traceUse("sa_faq_seen"); vibrate("light"); }} style={{ marginBottom: 6, cursor: "pointer" }}>
                         <div style={{ display: "inline-block", padding: "6px 11px", borderRadius: "14px 14px 14px 4px", background: a11y ? "rgba(139,106,48,0.12)" : "rgba(255,248,230,0.08)", border: `1px solid ${bd}`, fontSize: 12.5, color: text }}>«{f.q}»</div>
                         {faqOpen === d.id + k && <div className="sa-fadein" style={{ marginTop: 4, marginLeft: 14, padding: "6px 11px", borderRadius: "14px 4px 14px 14px", background: "rgba(214,178,102,0.14)", border: `1px solid ${gold}66`, fontSize: 12.5, color: text, display: "inline-block" }}>{f.a}</div>}
                       </div>

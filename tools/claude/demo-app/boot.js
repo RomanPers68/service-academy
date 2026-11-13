@@ -210,6 +210,9 @@ const DEMO_SPIRITS = [
   // v134 (Доп. 447): как у владельца на снимке: из карты пришли вид, страна, выдержка, порция и цена (помечены «AI»), остальное
   // пусто; «Заполнить по названию» допишет остальное и вписанное не тронет
   { name: "АБЕРФЕЛДИ 12 ЛЕТ / ABERFELDY 12 YEARS", cat: "whisky", country: "Шотландия", age: "12 лет", portion: 40, pricePortion: 700, ai: ["cat", "country", "age", "portion", "pricePortion"] },
+  // v151 (Доп. 475): своя настойка бара — в карте только название, порция и цена; AI о ней ничего не знает («Дописать пустое»
+  // покажет её в «AI не нашёл, что дописать»)
+  { name: "Настойка «Облепиха с мёдом», своя", portion: 50, pricePortion: 350 },
 ];
 const SPIRIT_GLASS = { whisky: "amber", cognac: "amber", rum: "amber", liqueur: "amber", bitter: "red", gin: "clear", agave: "clear", vodka: "clear" };
 const SP_PIC = ["Glenfiddich 12", "Hennessy VS", "Hendrick's"], SP_NEW = ["Maker's Mark", "Havana Club 7"];
@@ -301,8 +304,30 @@ const demoTaste = (b) => {
   return { tastes: (b.items || []).slice(0, 25).map((x, i) => { const v = TASTE_BY[sp ? x.cat : x.color] || [3, 3, 2, 1, 2];
     const t = Object.fromEntries(keys.map((k, j) => [k, v[j]])); if (sp && /торф|айла|islay/i.test([x.style, x.region, x.name].join(" "))) t.smoke = 5; if (!sp && /полусух|полуслад/.test(x.sweet || "")) t.sweet = 3; return { i, ...t }; }) };
 };
+// v151 (Доп. 475): «Дописать пустое» в демо — без нейросети: те же догадки по названию (у вин ещё крепость и рассказ по цвету);
+// в ответе только то, чего не хватало, с номером позиции (как сервер, api/wine-import.js: gapsPick). Название, по которому
+// догадки нет (своя настойка), — без полей: «AI не нашёл, что дописать»
+const ABV_BY = { sparkling: 12, white: 12.5, rose: 12.5, orange: 12.5, red: 13.5, dessert: 5.5, fortified: 19 };
+const STORY_BY = { sparkling: "Игристое со вторичным брожением: пузырьки, свежесть, тонкая кислотность. Предложи для начала вечера и к закускам.",
+  white: "Свежее белое: ведут фрукты и кислотность. Хорошо к рыбе, морепродуктам и салатам.", rose: "Сухое розовое: лёгкое, с ягодами и цитрусом. Летний выбор к закускам.",
+  orange: "Оранжевое вино: белый виноград, настоянный на кожице. Плотнее белого, с лёгкой терпкостью.", red: "Красное со спелой ягодой и мягкими танинами. Предложи к мясу и выдержанным сырам.",
+  dessert: "Сладкое и ароматное: к десерту и фруктам. Подавай охлаждённым, небольшой порцией.", fortified: "Креплёное: крепче обычного вина, с сухофруктами и орехом. К сыру, десерту или после ужина." };
+const demoGaps = (b) => {
+  const sp = b.kind === "spirit";
+  return { wines: (Array.isArray(b.items) ? b.items : []).slice(0, 6).map((x, i) => {
+    const name = String((x && x.name) || ""), known = (x && x.known) || {}, out = { i, name };
+    const knows = sp ? SPIRIT_GUESS.some(([re]) => re.test(name)) || HOUSES.some(([re]) => re.test(name)) || !!known.cat : WINE_GUESS.some(([re]) => re.test(name)) || !!known.color;
+    if (!knows) return out;
+    let g;
+    if (sp) g = guessSpirit(name, known);
+    else { const w = guessWine(name), color = known.color || w.color; g = { ...w, color, abv: ABV_BY[color] || 13, story: STORY_BY[color] || "" }; }
+    for (const f of (x && x.missing) || []) { const v = g[f]; if (Array.isArray(v) ? v.length : v !== "" && v != null && v !== false) out[f] = v; }
+    return out;
+  }) };
+};
 const demoWineAi = (b) => {
   if (b.mode === "taste") return demoTaste(b);   // v132
+  if (b.mode === "gaps") return demoGaps(b);   // v151
   if (b.kind === "spirit") return demoSpiritAi(b);   // v127
   if (b.mode === "fill") return { wines: [guessWine(String(b.name || ""))] };
   if (b.mode === "label") { const [name, producer, country, region, vintage] = LABELS[labelN++ % LABELS.length]; return { wines: [{ ...guessWine(name), producer, country, region, vintage }] }; }

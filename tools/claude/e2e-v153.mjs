@@ -152,7 +152,9 @@ if (want("DESC")) {
   const c = await page.evaluate(() => window.__chat);
   ok("DESC: интернет не ответил — Наставник без интернета: правила, углы нажатия, «показанное»", c.length === 1 && c[0].startsWith("Напиши «вкусные описания» блюда для гостя") && /Уже показаны/.test(c[0])
     && /1\. про вкус и текстуру/.test(c[0]) && /Упоминай только ингредиенты из состава/.test(c[0]), (c[0] || "").slice(0, 300));
-  ok("DESC: и без интернета вариант на месте, без «Идей из интернета» и без ошибки", (await variants(page)).length >= 1 && !(await page.$("[data-menu-desc-web]")) && !/не ответил|невнятно|Нет связи/.test(await page.evaluate(() => document.body.innerText)));
+  // v154: под вариантами без интернета — «Без интернета: поиск сейчас не ответил (причина)», ошибки Наставника нет
+  ok("DESC: и без интернета вариант на месте, без «Идей из интернета» и без ошибки", (await variants(page)).length >= 1 && !(await page.$("[data-menu-desc-web]"))
+    && !/Наставник не ответил|невнятно|Нет связи с Наставником/.test(await page.evaluate(() => document.body.innerText)));
   ok("DESC: без ошибок страницы", !errs.length, errs.join(" | "));
   await ctx.close();
 }

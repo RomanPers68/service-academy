@@ -282,7 +282,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v153</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v154</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -1084,8 +1084,9 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const [aiErr, setAiErr] = React.useState("");
   const [aiVariants, setAiVariants] = React.useState([]); // Доп. 167: варианты на выбор; v153: [{ angle, label, text }], пять за нажатие
   const [aiWeb, setAiWeb] = React.useState([]);   // v153: откуда идеи — ссылки
+  const [aiMiss, setAiMiss] = React.useState("");   // v154: поиск не ответил — варианты без интернета (причина — в подсказке)
   const descSeen = React.useRef({ texts: [], round: 0 });   // v153: что уже показали и какое нажатие (углы — по кругу)
-  React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); setAiWeb([]); descSeen.current = { texts: [], round: 0 }; } }, [form]);
+  React.useEffect(() => { if (!form) { setPreview2(false); setAiErr(""); setAiVariants([]); setAiWeb([]); setAiMiss(""); descSeen.current = { texts: [], round: 0 }; } }, [form]);
   // v153 (Доп. 477), владелец: «будет полезно ассистенту, который дописывает варианты вкусного описания блюд, что бы было
   // больше и разнообразнее описаний😉». Пять вариантов за нажатие, у каждого свой угол (lib/dish-desc.js); следующее нажатие —
   // другие углы, показанное не повторяется. Сначала — с идеями из интернета (/api/web-answer, mode "desc"); интернет не
@@ -1096,27 +1097,27 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     const sr = descSeen.current, round = sr.round;
     const dish = { name: String(form.name || "").trim(), cat: form.cat || "", ingredients: String(form.ingredients || "").split(",").map(x => x.trim()).filter(Boolean), note: form.note || "" };
     const seen = [...sr.texts, form.desc, form.short].map(x => String(x || "").trim()).filter(Boolean).slice(-15);
-    const done = (vars, src) => {
+    const done = (vars, src, miss = "") => {
       setAiBusy(false);
       if (!vars.length) { setAiErr("Наставник ответил невнятно. Попробуй ещё раз"); return; }
       descSeen.current = { texts: [...sr.texts, ...vars.map(v => v.text)].slice(-20), round: round + 1 };
-      setAiVariants(vars); setAiWeb(src || []); vibrate("success");
+      setAiVariants(vars); setAiWeb(src || []); setAiMiss(miss); vibrate("success");
     };
-    const plain = () => {
+    const plain = (miss) => {
       setAiBusy("ai");
       fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
         body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: descPrompt({ restaurant, dish, seen, round }) }] }),
       }).then(r => r.json()).then(j => {
-        if (j && j.ok && j.reply) done(descParse(j.reply, round, seen), []);
+        if (j && j.ok && j.reply) done(descParse(j.reply, round, seen), [], miss);
         else { setAiBusy(false); setAiErr("Наставник не ответил. Попробуй ещё раз"); }
       }).catch(() => { setAiBusy(false); setAiErr("Нет связи с Наставником"); });
     };
     fetch("/api/web-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), mode: "desc", restaurant, round, seen, dish }) })
-      .then(r => r.json()).catch(() => null).then(w => {
+      .then(r => r.json().catch(() => ({ ok: false, status: r.status }))).catch(() => ({ ok: false, message: "нет связи с сервером" })).then(w => {
         if (w && w.ok && Array.isArray(w.variants) && w.variants.length) done(descParse(JSON.stringify(w.variants), round, seen), w.sources);
-        else plain();
+        else plain(String((w && (w.message || (w.status ? "сервер ответил кодом " + w.status : w.error))) || "поиск не ответил"));
       });
   };
 
@@ -1241,6 +1242,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 <div data-menu-desc-web={aiWeb.length} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Идеи из интернета: {aiWeb.map((x, k) => (
                   <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-menu-desc-src={x.url} title={x.title || x.url} onClick={() => openOut(x.url)}
                     style={{ background: "none", border: "none", padding: 0, color: gold, font: "inherit", textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}>{siteOf(x.url)}</button></React.Fragment>))}</div>) : null}
+              {aiMiss ? <div data-menu-desc-miss="" title={aiMiss} style={{ fontSize: 12.5, color: T.modSub.color, lineHeight: 1.5, marginTop: 4 }}>Без интернета: поиск сейчас не ответил ({aiMiss.replace(/\s+/g, " ").slice(0, 140)})</div> : null}
             </div>
           )}
           <EditorField inputSt={inputSt} textColor={textColor} a11y={a11y} placeholder="Сочетание (вино, напитки)" value={form.pairing} onChange={v => setForm(f => ({ ...f, pairing: v }))} />

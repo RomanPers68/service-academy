@@ -55,7 +55,7 @@ async function desc(b, res, orKey, anKey) {
   const round = Math.max(0, Math.floor(Number(b.round) || 0)), seen = (Array.isArray(b.seen) ? b.seen : []).map((x) => s(x, 300)).filter(Boolean).slice(-15);
   try {
     const out = await webCall({ orKey, anKey, models: WEB_MODELS(), system: DESC_SYSTEM, user: descPrompt({ restaurant: s(b.restaurant, 80), dish, seen, round, web: true }),
-      maxTokens: 1500, lim: lim(), maxSearches: 2 });
+      maxTokens: 2500, lim: lim(), maxSearches: 2 });
     if (!out.ok) return res.status(200).json({ ok: false, error: out.status === 504 ? "timeout" : "server", message: out.error });
     const variants = descParse(out.text, round, seen);
     if (!variants.length) return res.status(200).json({ ok: false, error: "server", message: "AI ответил не по формату" });
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
   if (!rateLimit("web:" + b.token, 20, 3600_000)) return res.status(429).json({ ok: false, error: "rate_limit", message: "Слишком много поисков подряд: попробуй через час" });
   const history = (Array.isArray(b.history) ? b.history : []).slice(-6).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: s(m && m.content, 1500) })).filter((m) => m.content);
   try {
-    const out = await webCall({ orKey, anKey, models: WEB_MODELS(), system: SYSTEM, user: webPrompt({ question, context: b.context, check: b.check, chat: b.chat === true }), history, maxTokens: 900,
+    const out = await webCall({ orKey, anKey, models: WEB_MODELS(), system: SYSTEM, user: webPrompt({ question, context: b.context, check: b.check, chat: b.chat === true }), history, maxTokens: 1800,
       lim: lim() });
     if (!out.ok) return res.status(200).json({ ok: false, error: out.status === 504 ? "timeout" : "server", message: out.error });
     const reply = String(out.text || "").trim();

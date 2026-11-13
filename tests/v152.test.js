@@ -47,11 +47,12 @@ describe("v152: api/_web.js — поиск в интернете", () => {
     expect(out).toMatchObject({ ok: true, text: "Ответ", sources: [{ url: "https://x.com", title: "X" }], searches: 2, model: "m1" });
     const b = calls[0].body;
     expect(calls[0].url).toBe("https://openrouter.ai/api/v1/chat/completions");
-    expect(b.tools).toEqual([{ type: "openrouter:web_search", parameters: { engine: "exa", max_results: 5, max_characters: 2000 } }]);
+    // v154: ещё max_uses — у Chat Completions поиски ограничивает он
+    expect(b.tools).toEqual([{ type: "openrouter:web_search", parameters: { engine: "exa", max_results: 5, max_characters: 2000, max_uses: 3 } }]);
     expect(b.max_tool_calls).toBe(3);
     expect(b.messages.map((m) => m.role)).toEqual(["system", "user", "user"]);
     process.env.OPENROUTER_WEB_ENGINE = "parallel";
-    expect(W.webTool(3)).toEqual({ type: "openrouter:web_search", parameters: { engine: "parallel", max_results: 3, max_characters: 2000 } });
+    expect(W.webTool(3)).toEqual({ type: "openrouter:web_search", parameters: { engine: "parallel", max_results: 3, max_characters: 2000, max_uses: 3 } });
   });
   it("первая модель с ошибкой — следующая; 402 — «закончились кредиты»; без ключей — понятная ошибка", async () => {
     mock();

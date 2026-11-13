@@ -44,8 +44,10 @@ const WaxSealMini = ({ size = 15, rot = 0 }) => (
     <ellipse cx="8.6" cy="6.6" rx="3" ry="1.7" fill="rgba(255,235,210,0.28)" transform="rotate(-28 8.6 6.6)" />
   </svg>
 );
+// v150 (Доп. 474): на тёмной плитке пустые печати почти сливались с фоном — тонкое золотое кольцо (размер тот же: border-box)
 const EmptySealSlot = ({ a11y }) => (
-  <div style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.28)", boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35)" }} />
+  <div data-seal-empty="" style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box", background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.28)",
+    border: a11y ? "none" : "1px solid rgba(200,169,110,0.42)", boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35)" }} />
 );
 // Оправы (проба золота): full — герой, mid — рабочие элементы
 // «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,

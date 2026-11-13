@@ -20,6 +20,7 @@ import { TRACKS } from "../lib/tracks";
 import { RESTAURANTS } from "../data/roles";
 import { compressPhoto } from "../lib/chat-photo";
 import { CN_KINDS, CN_LIMITS, kindOf, blockFor, conceptUnread, blankBlock, blockPayload, blockProblem, conceptErr, cleanQuestion, normConcept } from "../lib/concept";
+import { typo } from "../lib/typo";
 import { ConceptPhotos, conceptPhotoRemember } from "./concept-photo";
 
 const P = (a11y) => (a11y
@@ -37,7 +38,7 @@ const inline = (s, st) => (s.includes("**") ? s.split(/(\*\*[^*]+\*\*)/g).filter
 /** Текст блока: строки как в уроках — заголовок в звёздочках, «• » список, «ёлочки» — фраза гостю. */
 export function BlockText({ text, T }) {
   return (<div>{String(text || "").split("\n").map((ln, i) => {
-    const t = ln.trim();
+    const t = typo(ln.trim());   // v150 (Доп. 474): неразрывные пробелы, как в уроках
     if (!t) return <div key={i} style={{ height: 8 }} />;
     if (/^\*\*[^*]+\*\*$/.test(t)) return <div key={i} style={{ ...T.bold, marginTop: 6 }}>{t.slice(2, -2)}</div>;
     if (t.startsWith("• ")) return <div key={i} style={T.bullet}>{inline(t, T.bullet)}</div>;

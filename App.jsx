@@ -3529,6 +3529,7 @@ function ServiceAcademy() {
         })()}
         {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} focus={guideFocus} onBack={() => goBack("me")} onOpen={openDest} /></Suspense>}
         {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}
+          avatar={{ initials: (((profile.name || "")[0] || "") + ((profile.surname || "")[0] || "")).toUpperCase(), admin: !!profile.is_admin }}   /* v150 (Доп. 474): у заголовка «Я» — инициалы, как в «Аккаунте» */
           hintKey="me"
           hintSteps={hintsFor("me")}
           title={profile.name} subtitle={profile.restaurant || "Service Academy"}
@@ -3582,7 +3583,7 @@ function ServiceAcademy() {
         {/* Экран трека — когда модули роли приехали (правка 163): при первом входе с нового устройства и на медленной сети он открывался раньше и падал */}
         {/* Доп. 307: трек и раздел — один экран: меню темы, темы листаются свайпом. Раздел из чужой
             роли (открыт через Наставника) — прежним отдельным экраном ниже */}
-        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={homeMods} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => { setTracksWanted(true); navigate("roleSelect"); }} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customOwn} onSearch={() => navigate("search")} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
+        {(screen === "home" || (screen === "module" && inPages(activeModule))) && MODULES[role] && <div className="sa-tabpad"><HomeScreen role={ROLES.find(r=>r.id===role)} modules={homeMods} completed={completed} quizDone={quizDone} progress={progress} doneCount={doneCount} totalLessons={totalLessons} onModule={openModule} onChangeRole={() => { setTracksWanted(true); navigate("roleSelect"); }} T={T} streak={streak} a11y={a11y} profile={profile} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} mistakeBank={mistakeBank} onMistakes={() => navigate("mistakes")} customModules={customOwn} dayGoal={{ steps: todaySteps, goal }} marks={marks} topicActs={topicActs}
           focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}

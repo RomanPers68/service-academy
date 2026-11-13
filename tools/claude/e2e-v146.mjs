@@ -220,7 +220,7 @@ if (want("LESSON")) {
     const card = document.querySelector("[data-lesson-glass]");
     const cr = cov && cov.getBoundingClientRect(), kr = card && card.getBoundingClientRect();
     return { cover: cov ? cov.getAttribute("data-lp-cover") : null, img: !!(img && img.naturalWidth > 0), edit: !!document.querySelector("[data-lp-edit]"), add: !!document.querySelector("[data-lp-add]"),
-      first: first ? first.textContent : "", fs: first ? parseFloat(getComputedStyle(first).fontSize) : 0, edge: cr && kr ? [Math.round(cr.left - kr.left), Math.round(kr.right - cr.right), Math.round(cr.top - kr.top)] : null };
+      first: first ? first.textContent.replace(/\u00A0/g, " ") : "",   /* v150: в тексте урока неразрывные пробелы (lib/typo.js) */ fs: first ? parseFloat(getComputedStyle(first).fontSize) : 0, edge: cr && kr ? [Math.round(cr.left - kr.left), Math.round(kr.right - cr.right), Math.round(cr.top - kr.top)] : null };
   });
   ok("LESSON: Анна — фото сети над текстом, к краям карточки", l.cover === "net" && l.img && l.edge && l.edge.every((v) => Math.abs(v) <= 1.5), JSON.stringify(l));
   ok("LESSON: первая мысль крупно (19,5 px)", /^Сеть «Два моря» выросла из одного зала/.test(l.first) && l.fs >= 19, l.first.slice(0, 40) + " " + l.fs);

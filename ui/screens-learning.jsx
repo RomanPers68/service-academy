@@ -41,6 +41,7 @@ const stripEm = (t) => String(t || "").replace(/^[\p{Extended_Pictographic}\uFE0
 import { ensureTableCss } from "./table-css";
 import { ModuleMenu } from "./module-menu";
 import { LessonTip } from "./lesson-tip";   // v148 (Доп. 472): совет в конце урока
+import { typo } from "../lib/typo";   // v150 (Доп. 474): тире не начинает строку, «3 см» не разрывается
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
 import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
 import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): трек шире, глоссарий в две колонки на широком экране
@@ -789,6 +790,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
             {role.beta && <span style={{ ...labelStyle(12.5), padding:"1px 6px", borderRadius:999, color:role.color, border:`1px solid ${role.color}66`, opacity:0.85, lineHeight:1.4, flexShrink: 0 }}>бета</span>}
           </div>
           <span style={{ flex: 1 }} />
+          {/* v150 (Доп. 474): App сюда onSearch больше не передаёт — лупа одна, в верхней панели (было две рядом: обе вели в поиск) */}
           {onSearch && <button style={{ ...T.changeRoleBtn, display:"inline-flex", alignItems:"center", justifyContent:"center", flexShrink: 0 }} data-lens-btn="soft" onClick={onSearch} aria-label="Поиск">{GAME_SVG.search(a11y ? "#5a4a35" : "#c8b898", 15)}</button>}
           <button style={{ ...T.changeRoleBtn, flexShrink: 0 }} data-lens-btn="soft" data-lens-ink="" onClick={onChangeRole}>Сменить</button>
         </div>
@@ -1300,16 +1302,17 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
     const lineData = processedLines.find(l =>
       l.parts.map(p => p.text).join("") === text
     );
-    if (!lineData) return <span>{text}</span>;
+    // v150 (Доп. 474): неразрывные пробелы (lib/typo.js) — уже при выводе: поиск строки идёт по исходному тексту
+    if (!lineData) return <span>{typo(text)}</span>;
     return (
       <span>
         {lineData.parts.map((part, idx) => {
-          if (part.isPlain) return <span key={idx}>{part.text}</span>;
+          if (part.isPlain) return <span key={idx}>{typo(part.text)}</span>;
           return (
             <span key={idx}
               onClick={e => { e.stopPropagation(); setTermPopup({ term: part.term.term, def: part.term.def, x: e.clientX, y: e.clientY }); }}
               style={{ color, borderBottom:`1.5px dotted ${color}`, cursor:"pointer", fontWeight:"bold" }}>
-              {part.text}
+              {typo(part.text)}
             </span>
           );
         })}
@@ -1482,7 +1485,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
               const hi = T.a11y ? "#7A5A1E" : "#E8C983";
               const lead = leadInfo.lead.includes("**")
                 ? leadInfo.lead.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, k) => (part.startsWith("**") && part.endsWith("**")
-                  ? <span key={k} style={{ color: hi }}>{part.slice(2, -2)}</span> : <React.Fragment key={k}>{highlightTerms(part)}</React.Fragment>))
+                  ? <span key={k} style={{ color: hi }}>{typo(part.slice(2, -2))}</span> : <React.Fragment key={k}>{highlightTerms(part)}</React.Fragment>))
                 : highlightTerms(leadInfo.lead);
               return (
                 <React.Fragment key={i}>

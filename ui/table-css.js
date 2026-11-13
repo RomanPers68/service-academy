@@ -129,8 +129,10 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-fresh-t{min-width:0}
 .tbm-fresh-t>span{white-space:nowrap}
 .tbm-actrow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+/* v150 (Доп. 474): плитки «Освежить», «Я это умею», «Раунд мастера» и «Погреб тем ›» — тем же шрифтом с засечками, что вся
+   карточка темы (были системным без засечек — единственные на экране) */
 .tbm-act{display:flex;align-items:center;gap:8px;min-width:0;min-height:56px;padding:9px 10px 9px 8px;border-radius:16px;cursor:pointer;text-align:left;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;border:1.5px solid var(--role-edge,rgba(214,178,102,.5));background:rgba(226,186,116,.05);color:var(--role-ink,#D9B87C);transition:transform .12s}
+  font-family:var(--font-body);border:1.5px solid var(--role-edge,rgba(214,178,102,.5));background:rgba(226,186,116,.05);color:var(--role-ink,#D9B87C);transition:transform .12s}
 .tbm-act:active:not([disabled]){transform:scale(.97)}
 .tbm-act-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(214,178,102,.14)}
 .tbm-act-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -147,7 +149,7 @@ html.sa-light .tbm-act.hot{color:#2A1F0E}
 .tbm-act[disabled] .tbm-act-ic{background:var(--track)}
 .tbm-act:focus-visible,.tbm-cellar:focus-visible{outline:2px solid #D9B87C;outline-offset:2px}
 .tbm-cellar{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:999px;border:1.5px solid var(--edge-gold);background:transparent;cursor:pointer;
-  color:var(--gold-ink);font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:0;text-transform:none;white-space:nowrap;transition:transform .12s}
+  color:var(--gold-ink);font:600 14px/1.2 var(--font-body);letter-spacing:0;text-transform:none;white-space:nowrap;transition:transform .12s}
 .tbm-cellar:active{transform:scale(.97)}
 @media (max-width:340px){.tbm-actrow{grid-auto-flow:row}}
 html.sa-light .tbm-fresh{color:#6E5E40}html.sa-light .tbm-fresh.fading{color:#7A5A16}html.sa-light .tbm-fresh.faded{color:#8F3E20}html.sa-light .tbm-fresh.upd{color:#2F5A86}
@@ -285,7 +287,7 @@ html.sa-light .tbp-mist span:first-of-type{color:#2A1F0E}
 .tbp-peek{position:absolute;z-index:20;top:calc(100% + 6px);left:0;box-sizing:border-box;max-width:min(270px,calc(100% - 8px));padding:8px 12px 9px;border-radius:12px;pointer-events:none;
   background:#241C10;box-shadow:inset 0 0 0 1px rgba(214,178,102,.45),0 12px 28px rgba(0,0,0,.5);color:#EFE4C8;font:14px/1.3 Georgia,serif;animation:tbpPeekIn .16s ease-out}
 .tbp-peek b{display:block;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tbp-peek span{display:block;margin-top:3px;font:12px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#B9AB8C}
+.tbp-peek span{display:block;margin-top:3px;font:italic 12.5px/1.3 Georgia,'Times New Roman',serif;color:#B9AB8C}
 .tbp-peek .ar{position:absolute;top:-5px;left:0;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:#241C10;box-shadow:inset 1px 1px 0 rgba(214,178,102,.45)}
 @keyframes tbpPeekIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 .tbp-pin{position:fixed;z-index:330;top:0;left:50%;width:100%;max-width:430px;box-sizing:border-box;transform:translateX(-50%);

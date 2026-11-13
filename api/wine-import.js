@@ -28,10 +28,14 @@
 // у каждой позиции — что вписано (факты) и чего не хватает; модель пишет только недостающее, ответ — { wines: [{ i, …поля }] }
 // (i — номер позиции в запросе). Год урожая, объём, цены, порцию и «бокалом» не спрашиваем и не берём (владелец: «без года
 // урожая, его уже вручную вобью»). Позицию модель не узнала — её нет в ответе или у неё только i и name.
+// v152 (Доп. 476): "gaps" с web: true — «Поискать в интернете» для позиций, о которых AI своих знаний не хватило: до 2 за
+// раз, модель ищет на сайтах производителей, импортёров и в справочниках (api/_web.js) и пишет только подтверждённое;
+// у позиции — src: до 3 ссылок, откуда взято (видно при проверке).
 
 export const config = { api: { bodyParser: { sizeLimit: "15mb" } } };
 
 import { verifySession, rateLimit } from "./_auth.js";
+import { webCall, sourcesOf } from "./_web.js";   // v152: поиск в интернете
 
 const COLORS = ["sparkling", "white", "rose", "orange", "red", "dessert", "fortified"];
 const GLASSES = ["универсальный", "бордо", "бургундия", "флюте", "тюльпан", "десертный"];
@@ -171,16 +175,19 @@ const gapLim = () => ({ each: Number(process.env.WINE_AI_GAPS_EACH_MS) || 45000,
 // ── v151 (Доп. 475): «Дописать пустое» ──
 export const GAP_SKIP = ["vintage", "volume", "byGlass", "priceGlass", "priceBottle", "portion", "pricePortion"];
 export const GAP_MAX = 6;
+export const GAP_WEB_MAX = 2;   // v152: с поиском в интернете — по 1–2 позиции за запрос (каждую ищут отдельно)
+export const GAP_WEB_SEARCHES = 2;   // v152: поисков на запрос — не больше двух: цена позиции предсказуема (3–6 ₽)
+const gapWebLim = () => ({ each: Number(process.env.WINE_AI_WEB_EACH_MS) || 48000, total: Number(process.env.WINE_AI_WEB_TOTAL_MS) || 54000 });
 /** Позиции из запроса: название, что вписано (факты), чего не хватает (только из полей «по названию», без GAP_SKIP).
  *  Номера сохраняются: позиция без названия или без пустых полей остаётся в списке, но в подсказку модели не идёт. */
-export function gapItems(raw, sp) {
+export function gapItems(raw, sp, max = GAP_MAX) {
   const keys = sp ? SP_FILL_KEYS : FILL_KEYS, ask = keys.filter((f) => !GAP_SKIP.includes(f));
-  return (Array.isArray(raw) ? raw : []).slice(0, GAP_MAX).map((x) => ({
+  return (Array.isArray(raw) ? raw : []).slice(0, max).map((x) => ({
     name: str(x && x.name, 120), known: knownFacts(x && x.known, keys),
     missing: (Array.isArray(x && x.missing) ? x.missing : []).filter((f, i, a) => ask.includes(f) && a.indexOf(f) === i),
   }));
 }
-export function gapsPrompt(items, sp) {
+export function gapsPrompt(items, sp, web = false) {
   const rows = items.map((x, i) => (x.name && x.missing.length
     ? i + ". «" + x.name + "»" + (Object.keys(x.known).length ? " — вписано: " + JSON.stringify(x.known) : "") + "; не хватает: " + x.missing.join(", ") : "")).filter(Boolean);
   return `Ты — ${sp ? "бармен" : "сомелье"} ресторанной академии. Ниже ${sp ? "крепкие напитки из барной карты ресторана" : "вина из винной карты ресторана"}: номер,
@@ -189,7 +196,10 @@ export function gapsPrompt(items, sp) {
 по образцу:
 ${sp ? SP_SHAPE : SHAPE}
 ${sp ? SP_RULES : RULES}
-Год урожая, объём, цены${sp ? " и порцию" : " и подачу бокалом"} не пиши. Позицию не узнаёшь — верни для неё только "i" и "name".
+Год урожая, объём, цены${sp ? " и порцию" : " и подачу бокалом"} не пиши. Позицию не узнаёшь — верни для неё только "i" и "name".${web ? `
+Своих знаний о них не хватило: найди каждую в интернете — сайт производителя, импортёра или дистрибьютора, винные и барные
+справочники. Пиши только то, что подтверждает найденная страница; не нашёл — оставь поле пустым, ничего не додумывай. В поле
+"src" — до 3 адресов страниц, откуда взял (массив строк).` : ""}
 Ответ — JSON-массив в том же порядке.
 
 ${sp ? "Напитки" : "Вина"}:
@@ -197,8 +207,9 @@ ${rows.join("\n")}`;
 }
 const hasV = (v) => (Array.isArray(v) ? v.length > 0 : v !== "" && v != null && v !== false);
 const nameKey = (x) => String(x || "").toLowerCase().replace(/[^a-zа-яё0-9]+/gi, " ").trim();
-/** Ответ модели → [{ i, name, …только недостающие поля этой позиции }]: позиция — по "i", иначе по названию, иначе по порядку. */
-export function gapsPick(got, items, sp) {
+/** Ответ модели → [{ i, name, …только недостающие поля этой позиции }]: позиция — по "i", иначе по названию, иначе по порядку.
+ *  v152: web — у позиции ещё src (ссылки из ответа; при одной позиции — и ссылки, которые OpenRouter приложил к ответу). */
+export function gapsPick(got, items, sp, opts = {}) {
   const byName = new Map();
   items.forEach((x, i) => { const k = nameKey(x.name); if (k && !byName.has(k)) byName.set(k, i); });
   const ok = (i) => Number.isInteger(i) && i >= 0 && i < items.length && !!items[i].name && items[i].missing.length > 0;
@@ -213,6 +224,7 @@ export function gapsPick(got, items, sp) {
     seen.add(i);
     const c = (sp ? cleanSpirit : clean)({ ...g, name: items[i].name }), w = { i, name: items[i].name };
     for (const f of items[i].missing) if (hasV(c[f])) w[f] = c[f];
+    if (opts.web) { const src = sourcesOf([...(Array.isArray(g.src) ? g.src : []), ...(items.length === 1 ? opts.cites || [] : [])], 3); if (src.length) w.src = src; }
     out.push(w);
   });
   return out.sort((a, b) => a.i - b.i);
@@ -366,16 +378,18 @@ export default async function handler(req, res) {
   const sp = b.kind === "spirit", P = sp ? SP_PROMPTS : PROMPTS;   // v127: крепкое
   // v151 (Доп. 475): «Дописать пустое» — пачка позиций, ответ с номерами; ничего не узнал — пустой список, а не ошибка
   if (b.mode === "gaps") {
-    const items = gapItems(b.items, sp);
+    const web = b.web === true;   // v152: «Поискать в интернете»
+    const items = gapItems(b.items, sp, web ? GAP_WEB_MAX : GAP_MAX);
     if (!items.some((x) => x.name && x.missing.length)) return res.status(400).json({ error: "Нечего дописывать" });
     try {
-      const text = gapsPrompt(items, sp);
-      const out = orKey ? await viaOpenRouter(orKey, [{ text }], 6000, gapLim()) : await viaAnthropic(anKey, [{ text }], 6000, gapLim());
+      const text = gapsPrompt(items, sp, web);
+      const out = web ? await webCall({ orKey, anKey, models: OPENROUTER_MODELS, user: text, maxTokens: 4000, lim: gapWebLim(), maxResults: 5, maxSearches: GAP_WEB_SEARCHES })
+        : orKey ? await viaOpenRouter(orKey, [{ text }], 6000, gapLim()) : await viaAnthropic(anKey, [{ text }], 6000, gapLim());
       if (!out.ok) return res.status(out.status || 502).json({ error: out.error });
       let got = out.cut ? null : parse(out.text);
       if (!got) { const loose = parseLoose(out.text); if (loose.length || /^\s*(```(json)?)?\s*\[\s*\]/.test(String(out.text || ""))) got = loose;
         else return res.status(422).json({ error: "Модель ответила не списком: «" + String(out.text || "").replace(/\s+/g, " ").trim().slice(0, 140) + "…». Нажми ещё раз" }); }
-      return res.status(200).json({ wines: gapsPick(got, items, sp), model: out.model });
+      return res.status(200).json({ wines: gapsPick(got, items, sp, { web, cites: out.sources }), model: out.model, ...(web ? { searches: out.searches || 0 } : {}) });
     } catch (e) {
       return res.status(500).json({ error: "Сбой: " + (e && e.message ? e.message : "unknown") });
     }

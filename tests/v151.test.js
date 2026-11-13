@@ -145,7 +145,8 @@ describe("v151: api/wine-import.js — mode \"gaps\"", () => {
 describe("v151: редактор барной карты — «Дописать пустое»", () => {
   const E = rd("ui/wine-editor.jsx");
   it("кнопка в сводке: число позиций всей карты, только когда меню с сервера пришло и импорт закрыт", () => {
-    expect(E).toContain('import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply } from "../lib/drinks";');
+    // v152: к импорту добавились webAsk, webPlan, webApply («Поискать в интернете»)
+    expect(E).toContain('import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply, webAsk, webPlan, webApply } from "../lib/drinks";');
     expect(E).toContain("const plan = React.useMemo(() => bulkPlan(shared, K.kind), [shared, K]);");
     expect(E).toContain("{bulkN && loaded && !imp ? (");
     expect(E).toContain('data-wine-bulk={bulkN}');
@@ -153,8 +154,10 @@ describe("v151: редактор барной карты — «Дописать 
   });
   it("пачки по 4, по 3 запроса сразу; после круга — сохранение в меню команды; ушли с экрана — новых пачек нет", () => {
     expect(E).toContain("const BULK_BATCH = 4, BULK_PAR = 3;");
-    expect(E).toContain('return askAiFull({ mode: "gaps", items: items.map(({ name, known, missing }) => ({ name, known, missing })), ...(job.kind === "spirit" ? { kind: "spirit" } : {}) })');
-    expect(E).toContain("const KK = drinkOf(r.job.kind), a = bulkApply(KK, cur, r.items, r.got);");
+    // v152: тот же запрос, у поиска в интернете — ещё web: true
+    expect(E).toContain('return askAiFull({ mode: "gaps", items: items.map(({ name, known, missing }) => ({ name, known, missing })), ...(job.kind === "spirit" ? { kind: "spirit" } : {}), ...(web ? { web: true } : {}) })');
+    // v152: у поиска в интернете ответ ложится через webApply (ещё ссылки aiWeb)
+    expect(E).toContain("const KK = drinkOf(r.job.kind), a = web ? webApply(KK, cur, r.items, r.got, Date.now()) : bulkApply(KK, cur, r.items, r.got);");
     expect(E).toContain("saveMenu(cur).then((ok) => { if (ok) go(); else finish(true); });");
     expect(E).toContain("React.useEffect(() => () => { bulkStop.current = true; }, []);");
     expect(E).toContain('const saveMenu = (next) => rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) })');
@@ -163,7 +166,8 @@ describe("v151: редактор барной карты — «Дописать 
     expect(E).toContain("Год урожая, объём, цены и порции. Уже вписанное не меняет.");
     expect(E).toContain("пока не проверишь, позиция не идёт в тренировку");
     expect(E).toContain('data-wine-bulk-stop=""');
-    expect(E).toContain("AI не нашёл, что дописать, у {posGen(bulk.none.length)}");
+    // v152: у поиска в интернете своя строка («Не нашлось и в интернете у …»)
+    expect(E).toContain('{web ? "Не нашлось и в интернете у " : "AI не нашёл, что дописать, у "}{posGen(bulk.none.length)}');
     expect(E).toContain('{bulk.copied ? "Скопировано ✓" : "Скопировать названия"}');
     expect(E).toContain("AI не ответил по {posDat(bulk.failed)}");
     expect(E).toContain('onKind(other, "@review")');

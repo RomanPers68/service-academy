@@ -34,6 +34,10 @@
 // "gaps") и пишет только в пустые поля, с пометкой «AI». Год урожая, объём, цены, порцию и «бокалом» не трогает (lib/drinks.js:
 // BULK_SKIP). После каждого круга — сохранение: закрыли экран, остановили — готовое не пропадает. Что AI не знал, помнится
 // (aiTried) и в следующий раз не спрашивается. В конце — «Проверка подряд» здесь и «Проверить крепкое ›» (onKind).
+// v152 (Доп. 476), владелец (13.11): «Мы можем дать моему ассистенту выход в интернет, что бы он мог просмотреть или найти
+// инфу которую он к примеру не знает?» — «Да, давай сделаем». «Поискать в интернете» — для позиций, о которых AI своих знаний
+// не хватило («AI не нашёл»): по одной, BULK_PAR сразу (api/wine-import.js, "gaps" с web: true); нашлось — поля с пометкой
+// «AI» и ссылки, откуда взято (видно в «Проверке подряд» и в форме); не нашлось — позиция больше не предлагается.
 import React from "react";
 import { TasteEdit } from "./taste";   // v132: вкус по шкалам
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
@@ -45,7 +49,8 @@ import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./w
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,
   touched, confirmWine, unchecked, wineTitle, wineLine, winePrice, groupByColor, findWines, sameWine, splitNames, bottlePlan, applyBottles, normName, uncheckedQueue, reviewRows,
   GAPS, gapTest, gapCounts, FORM_PARTS, partFill, fieldHints } from "../lib/wine";
-import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply } from "../lib/drinks";   // v127: вина и крепкое; v151: «Дописать пустое»
+import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply, webAsk, webPlan, webApply } from "../lib/drinks";   // v127: вина и крепкое; v151: «Дописать пустое»; v152: интернет
+import { siteOf } from "../lib/ai-web";   // v152: ссылки «Нашлось в интернете»
 import { SPIRIT_CATS, SERVE_MODES, SPIRIT_GLASSES, PORTIONS, TEMP_HINT_SP } from "../lib/spirit";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -54,6 +59,12 @@ const MAX_SHOTS = 40;   // v122: снимков бутылок за одну п�
 const BULK_BATCH = 4, BULK_PAR = 3;   // v151: «Дописать пустое» — позиций в запросе и запросов сразу (ответ укладывается в 50 с)
 const posGen = (n) => n + " " + (n % 10 === 1 && n % 100 !== 11 ? "позиции" : "позиций");     // у 1 позиции, у 5 позиций
 const posDat = (n) => n + " " + (n % 10 === 1 && n % 100 !== 11 ? "позиции" : "позициям");   // по 1 позиции, по 5 позициям
+// v152: открыть ссылку: в Telegram — его openLink, иначе новая вкладка
+const openOut = (url) => {
+  try { const tg = window.Telegram && window.Telegram.WebApp; if (tg && tg.initData && typeof tg.openLink === "function") { tg.openLink(url); return; } } catch (e) { /* */ }
+  try { window.open(url, "_blank", "noopener"); } catch (e) { /* */ }
+};
+const posAcc = (n) => { const m10 = n % 10, m100 = n % 100; return n + " " + (m10 === 1 && m100 !== 11 ? "позицию" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "позиции" : "позиций"); };   // v152: поищет 1 позицию, 3 позиции
 const newId = (K) => (K ? K.prefix : "wn-") + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 // _nid — id нового вина заранее: под ним фото ложится в хранилище ещё до сохранения
 const blankWine = () => ({ id: "", _nid: newId(), name: "", producer: "", country: "", region: "", grapes: "", color: "", sweet: "", vintage: "", abv: "", byGlass: false,
@@ -191,6 +202,8 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   React.useEffect(() => () => { bulkStop.current = true; }, []);
   const plan = React.useMemo(() => bulkPlan(shared, K.kind), [shared, K]);
   const bulkN = bulkTotal(plan);
+  const wplan = React.useMemo(() => webPlan(shared, K.kind), [shared, K]);   // v152: «Поискать в интернете» — кого AI не знал
+  const webN = bulkTotal(wplan);
 
   const persist = (next, okText, after) => {
     setBusy(true); setMsg("");
@@ -205,24 +218,25 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   // только в пустые поля (lib/drinks.js: bulkApply), что AI не знал — в aiTried. Ошибка пачки — дальше, в конце «не ответил по N».
   const saveMenu = (next) => rpc("menu_set", { p_token: saToken(), p_restaurant: restaurant, p_dishes: JSON.stringify(next) })
     .then((res) => { if (res && res.ok === true) { setShared(next); rememberSharedMenu(restaurant, next); return true; } return false; }, () => false);
-  const runBulk = () => {
-    const pl = bulkPlan(sharedRef.current, K.kind), jobs = bulkJobs(pl, BULK_BATCH), total = bulkTotal(pl);
+  const runBulk = (mode = "gaps") => {
+    const web = mode === "web";   // v152: «Поискать в интернете» — по одной позиции, с поиском
+    const pl = web ? webPlan(sharedRef.current, K.kind) : bulkPlan(sharedRef.current, K.kind), jobs = bulkJobs(pl, web ? 1 : BULK_BATCH), total = bulkTotal(pl);
     if (!jobs.length) { setBulk(null); return; }
     bulkStop.current = false;
     let cur = sharedRef.current, k = 0, done = 0;
     const st = { list: [], none: [], failed: 0, err: "", byKind: {} };
-    setBulk({ stage: "work", total, done: 0, added: 0, kind: jobs[0].kind });
+    setBulk({ mode, stage: "work", total, done: 0, added: 0, kind: jobs[0].kind });
     vibrate("light");
     const one = (job) => {
       const KK = drinkOf(job.kind);
       const items = job.ids.map((id) => KK.records(cur).find((x) => x.id === id)).filter(Boolean)
-        .map((r) => ({ id: r.id, name: r.name, ...bulkAsk(KK, r) })).filter((x) => x.missing.length);
+        .map((r) => ({ id: r.id, name: r.name, ...(web ? webAsk(KK, r) : bulkAsk(KK, r)) })).filter((x) => x.missing.length);
       if (!items.length) return Promise.resolve({ job, items, got: [] });
-      return askAiFull({ mode: "gaps", items: items.map(({ name, known, missing }) => ({ name, known, missing })), ...(job.kind === "spirit" ? { kind: "spirit" } : {}) })
+      return askAiFull({ mode: "gaps", items: items.map(({ name, known, missing }) => ({ name, known, missing })), ...(job.kind === "spirit" ? { kind: "spirit" } : {}), ...(web ? { web: true } : {}) })
         .then((j) => ({ job, items, got: j.wines }), (e) => ({ job, items, err: (e && e.message) || "AI не ответил" }));
     };
     const finish = (saveErr = false) => {
-      setBulk({ stage: "done", total, done, stopped: bulkStop.current && done < total, saveErr, list: st.list, none: st.none, failed: st.failed, err: st.err,
+      setBulk({ mode, stage: "done", total, done, stopped: bulkStop.current && done < total, saveErr, list: st.list, none: st.none, failed: st.failed, err: st.err,
         byKind: st.byKind, fields: st.list.reduce((n, a) => n + a.fields.length, 0) });
       vibrate(st.failed || saveErr ? "error" : "success");
     };
@@ -235,7 +249,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
         for (const r of res) {
           done += r.job.ids.length;
           if (r.err) { st.failed += r.items.length; st.err = r.err; continue; }
-          const KK = drinkOf(r.job.kind), a = bulkApply(KK, cur, r.items, r.got);
+          const KK = drinkOf(r.job.kind), a = web ? webApply(KK, cur, r.items, r.got, Date.now()) : bulkApply(KK, cur, r.items, r.got);
           cur = a.shared; changed = true;
           st.list.push(...a.added.map((x) => ({ ...x, kind: r.job.kind }))); st.none.push(...a.none);
           st.byKind[r.job.kind] = (st.byKind[r.job.kind] || 0) + a.added.length;
@@ -275,6 +289,11 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
     </div>
   );
   const aiTag = <span data-wine-ai="" style={{ marginLeft: 6, fontSize: 11, fontStyle: "normal", padding: "0 6px", borderRadius: 999, border: `1px solid ${amber}99`, color: amber }}>AI</span>;
+  // v152: что нашлось в интернете — ссылки на страницы (открываются в браузере)
+  const webLine = (w, extra = {}) => (w && w.aiWeb && w.aiWeb.src && w.aiWeb.src.length ? (
+    <div data-wine-web-src={w.aiWeb.src.length} style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, marginTop: 6, ...extra }}>Нашлось в интернете: {w.aiWeb.src.map((x, k) => (
+      <React.Fragment key={k}>{k ? " · " : ""}<button type="button" data-wine-web-link={x.url} onClick={() => openOut(x.url)} title={x.title || x.url}
+        style={{ background: "none", border: "none", padding: 0, color: gold, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", font: "inherit" }}>{siteOf(x.url)}</button></React.Fragment>))}</div>) : null);
   const note = msg ? <div role="status" style={{ fontSize: 13, color: /Не |Нет /.test(msg) ? red : gold, margin: "8px 2px 0", lineHeight: 1.45 }}>{msg}</div> : null;
 
   // ─────────────────────────────── ФОРМА ВИНА
@@ -393,6 +412,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           </div>
           {aiErr ? <div role="alert" style={{ fontSize: 13, color: red, marginTop: 6, lineHeight: 1.45 }}>{aiErr}</div> : null}
           {aiNote && !aiErr ? <div role="status" data-wine-ai-note="" style={{ fontSize: 13, color: gold, marginTop: 6, lineHeight: 1.45 }}>{aiNote}</div> : null}
+          {webLine(form)}
           {unchecked(form) ? (
             <div data-lens-card="warn" data-wine-check="" style={{ ...card, marginTop: 12, borderColor: amber }}>
               <div style={{ fontSize: 13.5, color: text, lineHeight: 1.5 }}>AI дописал: {form.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}. Проверь: где не так, исправь руками, остальное подтверди.</div>
@@ -688,58 +708,73 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   // Вопрос (что впишет, что не тронет, сколько ждать) → работа (сколько готово, «Остановить») → итог (сколько дописано, что
   // AI не нашёл — списком с «Скопировать названия», кто не ответил; «Проверка подряд», «Проверить крепкое ›», «К списку»)
   if (bulk) {
+    const web = bulk.mode === "web";   // v152: «Поискать в интернете»
     const other = K.kind === "spirit" ? "wine" : "spirit", K2 = drinkOf(other);
     const kindRu = (kind) => (kind === "spirit" ? "крепкое" : "вина");
     const close = () => {
       if (bulk.stage === "work") { bulkStop.current = true; setBulk((b) => (b ? { ...b, stopping: true } : b)); vibrate("light"); return; }
       setBulk(null); setMsg("");
     };
-    const mins = Math.max(1, Math.round((Math.ceil(bulkN / (BULK_BATCH * BULK_PAR)) * 25) / 60));
+    const askN = web ? webN : bulkN, askPlan = web ? wplan : plan;
+    const mins = web ? Math.max(1, Math.round((Math.ceil(webN / BULK_PAR) * 30) / 60)) : Math.max(1, Math.round((Math.ceil(bulkN / (BULK_BATCH * BULK_PAR)) * 25) / 60));
     const hereN = live.filter(unchecked).length, otherN = K2.records(shared).filter((w) => w && !w.archived && unchecked(w)).length;
     const label = (t, extra) => <div style={{ ...labelStyle(12.5), color: gold, margin: "14px 0 4px", ...extra }}>{t}</div>;
     const pct = bulk.total ? Math.round((bulk.done / bulk.total) * 100) : 0;
+    const title = web ? "Поискать в интернете" : "Дописать пустое";
     return (
-      <div style={T.screen} className="sa-screen" data-wine-bulk-screen={bulk.stage}>
-        {Head("Дописать пустое", close)}
+      <div style={T.screen} className="sa-screen" data-wine-bulk-screen={bulk.stage} data-wine-bulk-mode={web ? "web" : "gaps"}>
+        {Head(title, close)}
         <div style={{ padding: "4px 16px 150px" }}>
           {bulk.stage === "ask" ? <>
-            <div data-lens-card="" data-wine-bulk-ask={bulkN} style={{ ...card, padding: "14px 16px" }}>
-              <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.3 }}>{bulkN ? "AI допишет пустые поля у " + posGen(bulkN) : "Дописывать нечего"}</div>
-              {plan.length ? <div data-wine-bulk-plan="" style={{ fontSize: 13.5, color: sub, marginTop: 4, lineHeight: 1.45 }}>{plan.map((p) => kindRu(p.kind) + " — " + p.ids.length).join(", ")}</div> : null}
-              {label("Что впишет")}
-              <div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>Производителя, страну и регион, сорт или вид, стиль, крепость, подачу и бокал, ноты, фразу гостю и рассказ. Только туда, где пусто.</div>
+            <div data-lens-card="" data-wine-bulk-ask={askN} style={{ ...card, padding: "14px 16px" }}>
+              <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.3 }}>{!askN ? "Искать нечего" : web ? "AI поищет в интернете " + posAcc(askN) : "AI допишет пустые поля у " + posGen(askN)}</div>
+              {askPlan.length ? <div data-wine-bulk-plan="" style={{ fontSize: 13.5, color: sub, marginTop: 4, lineHeight: 1.45 }}>{askPlan.map((p) => kindRu(p.kind) + " — " + p.ids.length).join(", ")}</div> : null}
+              {web ? <>
+                <div style={{ fontSize: 14, color: text, lineHeight: 1.5, marginTop: 10 }}>О них AI своих знаний не хватило. Поищет на сайтах производителей, импортёров и в винных и барных справочниках и впишет только то, что подтверждает найденная страница.</div>
+                {label("Откуда взято")}
+                <div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>Ссылки на страницы сохранятся в позиции: их видно в «Проверке подряд».</div>
+              </> : <>
+                {label("Что впишет")}
+                <div style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>Производителя, страну и регион, сорт или вид, стиль, крепость, подачу и бокал, ноты, фразу гостю и рассказ. Только туда, где пусто.</div>
+              </>}
               {label("Не трогает", { marginTop: 12 })}
               <div data-wine-bulk-keep="" style={{ fontSize: 14, color: text, lineHeight: 1.5 }}>Год урожая, объём, цены и порции. Уже вписанное не меняет.</div>
-              <div style={{ fontSize: 13, color: sub, lineHeight: 1.5, marginTop: 12 }}>Дописанное будет с пометкой «AI»: пока не проверишь, позиция не идёт в тренировку. Займёт около {mins} мин, готовое сохраняется по ходу.</div>
+              {web ? <div data-wine-web-cost="" style={{ fontSize: 13, color: text, lineHeight: 1.5, marginTop: 12 }}>Поиск стоит денег: около 3–6 ₽ за позицию, с баланса OpenRouter.</div> : null}
+              <div style={{ fontSize: 13, color: sub, lineHeight: 1.5, marginTop: 12 }}>{web ? "Найденное тоже будет с пометкой «AI» и ждёт проверки." : "Дописанное будет с пометкой «AI»: пока не проверишь, позиция не идёт в тренировку."} Займёт около {mins} мин, готовое сохраняется по ходу.</div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-bulk-cancel="" onClick={close} style={{ ...softBtn, flex: 1, padding: "12px" }}>Отмена</button>
-              <button type="button" className="sa-btn" data-lens-btn="main" data-wine-bulk-go="" disabled={!bulkN || busy} onClick={runBulk} style={{ ...mainBtn, flex: 1.3, padding: "12px", opacity: bulkN ? 1 : 0.55 }}>Дописать</button>
+              <button type="button" className="sa-btn" data-lens-btn="main" data-wine-bulk-go="" disabled={!askN || busy} onClick={() => runBulk(web ? "web" : "gaps")} style={{ ...mainBtn, flex: 1.3, padding: "12px", opacity: askN ? 1 : 0.55 }}>{web ? "Искать" : "Дописать"}</button>
             </div>
           </> : bulk.stage === "work" ? <>
             <div data-lens-card="" data-wine-bulk-work={bulk.done + "/" + bulk.total} style={{ ...card, padding: "18px 16px", textAlign: "center" }}>
-              <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.3 }}>{bulk.stopping ? "Останавливаю…" : "AI дописывает " + kindRu(bulk.kind)}</div>
+              <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.3 }}>{bulk.stopping ? "Останавливаю…" : (web ? "AI ищет в интернете: " : "AI дописывает ") + kindRu(bulk.kind)}</div>
               <div style={{ height: 6, borderRadius: 4, background: gold + "26", overflow: "hidden", margin: "14px 0 0" }}><div style={{ width: Math.max(pct, 3) + "%", height: "100%", background: gold, transition: "width .4s" }} /></div>
-              <div data-wine-bulk-count="" style={{ fontSize: 13.5, color: sub, marginTop: 8 }}>{bulk.done} из {bulk.total}{bulk.added ? " · дописано у " + posGen(bulk.added) : ""}</div>
-              <div style={{ fontSize: 12.5, color: sub, marginTop: 10, lineHeight: 1.5 }}>Готовое сохраняется по ходу. Остановишь — останется то, что уже дописано.</div>
+              <div data-wine-bulk-count="" style={{ fontSize: 13.5, color: sub, marginTop: 8 }}>{bulk.done} из {bulk.total}{bulk.added ? (web ? " · нашлось у " : " · дописано у ") + posGen(bulk.added) : ""}</div>
+              <div style={{ fontSize: 12.5, color: sub, marginTop: 10, lineHeight: 1.5 }}>Готовое сохраняется по ходу. Остановишь — останется то, что уже {web ? "нашлось" : "дописано"}.</div>
             </div>
             <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-bulk-stop="" disabled={!!bulk.stopping} onClick={close} style={{ ...softBtn, width: "100%", marginTop: 14, padding: "12px", opacity: bulk.stopping ? 0.6 : 1 }}>Остановить</button>
           </> : <>
             <div data-lens-card="" data-wine-bulk-done={bulk.list.length + "/" + bulk.none.length + "/" + bulk.failed} style={{ ...card, padding: "16px" }}>
               <div style={{ fontFamily: SERIF, fontSize: 19, color: text }}>{bulk.saveErr ? "Не всё сохранилось" : bulk.stopped ? "Остановлено" : "Готово"}</div>
               <div data-wine-bulk-sum="" style={{ fontSize: 14.5, color: text, marginTop: 8, lineHeight: 1.5 }}>{bulk.list.length
-                ? "Дописано у " + posGen(bulk.list.length) + ", полей: " + bulk.fields + (Object.keys(bulk.byKind).filter((k) => bulk.byKind[k]).length > 1 ? " (" + ["wine", "spirit"].filter((k) => bulk.byKind[k]).map((k) => kindRu(k) + " — " + bulk.byKind[k]).join(", ") + ")" : "") + "."
-                : "Дописать ничего не получилось."}</div>
+                ? (web ? "Нашлось в интернете у " : "Дописано у ") + posGen(bulk.list.length) + ", полей: " + bulk.fields + (Object.keys(bulk.byKind).filter((k) => bulk.byKind[k]).length > 1 ? " (" + ["wine", "spirit"].filter((k) => bulk.byKind[k]).map((k) => kindRu(k) + " — " + bulk.byKind[k]).join(", ") + ")" : "") + "."
+                : web ? "В интернете ничего подходящего не нашлось." : "Дописать ничего не получилось."}</div>
+              {web && bulk.list.length ? (
+                <div data-wine-web-found="" style={{ fontSize: 13, color: sub, marginTop: 8, lineHeight: 1.55 }}>{bulk.list.slice(0, 6).map((a, k) => (
+                  <div key={k}>{a.name}{a.src && a.src.length ? ": " + a.src.map((x) => siteOf(x.url)).join(", ") : ""}</div>))}</div>) : null}
               {bulk.none.length ? <>
-                <div data-wine-bulk-none={bulk.none.length} style={{ fontSize: 13.5, color: sub, marginTop: 10, lineHeight: 1.5 }}>AI не нашёл, что дописать, у {posGen(bulk.none.length)}: {bulk.none.slice(0, 6).join(", ")}{bulk.none.length > 6 ? " и ещё " + (bulk.none.length - 6) : ""}. Их можно заполнить руками.</div>
+                <div data-wine-bulk-none={bulk.none.length} style={{ fontSize: 13.5, color: sub, marginTop: 10, lineHeight: 1.5 }}>{web ? "Не нашлось и в интернете у " : "AI не нашёл, что дописать, у "}{posGen(bulk.none.length)}: {bulk.none.slice(0, 6).join(", ")}{bulk.none.length > 6 ? " и ещё " + (bulk.none.length - 6) : ""}. Их можно заполнить руками.</div>
                 <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-bulk-copy={bulk.copied ? "1" : ""} onClick={() => copyNames(bulk.none)} style={pill(!!bulk.copied, { marginTop: 8, color: gold })}>{bulk.copied ? "Скопировано ✓" : "Скопировать названия"}</button>
               </> : null}
-              {bulk.failed ? <div data-wine-bulk-failed={bulk.failed} style={{ fontSize: 13.5, color: red, marginTop: 10, lineHeight: 1.5 }}>AI не ответил по {posDat(bulk.failed)}: {bulk.err}. Нажми «Дописать пустое» ещё раз — он возьмёт только оставшееся.</div> : null}
-              {bulk.saveErr ? <div data-wine-bulk-save-err="" style={{ fontSize: 13.5, color: red, marginTop: 10, lineHeight: 1.5 }}>Последняя пачка не сохранилась: проверь связь и права и нажми «Дописать пустое» ещё раз.</div> : null}
-              {bulk.stopped && !bulk.saveErr ? <div style={{ fontSize: 13, color: sub, marginTop: 10, lineHeight: 1.5 }}>Остальное допишется, если нажать «Дописать пустое» ещё раз.</div> : null}
-              {bulk.list.length ? <div style={{ fontSize: 13, color: sub, marginTop: 10, lineHeight: 1.5 }}>Дописанное помечено «AI». Проверь — и позиции вернутся в тренировку.</div> : null}
+              {bulk.failed ? <div data-wine-bulk-failed={bulk.failed} style={{ fontSize: 13.5, color: red, marginTop: 10, lineHeight: 1.5 }}>AI не ответил по {posDat(bulk.failed)}: {bulk.err}. Нажми «{title}» ещё раз — он возьмёт только оставшееся.</div> : null}
+              {bulk.saveErr ? <div data-wine-bulk-save-err="" style={{ fontSize: 13.5, color: red, marginTop: 10, lineHeight: 1.5 }}>Последняя пачка не сохранилась: проверь связь и права и нажми «{title}» ещё раз.</div> : null}
+              {bulk.stopped && !bulk.saveErr ? <div style={{ fontSize: 13, color: sub, marginTop: 10, lineHeight: 1.5 }}>Остальное {web ? "поищется" : "допишется"}, если нажать «{title}» ещё раз.</div> : null}
+              {bulk.list.length ? <div style={{ fontSize: 13, color: sub, marginTop: 10, lineHeight: 1.5 }}>{web ? "Найденное помечено «AI», ссылки — в «Проверке подряд»." : "Дописанное помечено «AI»."} Проверь — и позиции вернутся в тренировку.</div> : null}
             </div>
-            {hereN ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-bulk-review={hereN} onClick={() => { setBulk(null); startReview(); }} style={{ ...mainBtn, width: "100%", marginTop: 14, padding: "12px" }}>Проверка подряд · {hereN}</button> : null}
+            {!web && webN ? <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-bulk-web={webN} onClick={() => { setBulk({ mode: "web", stage: "ask" }); vibrate("light"); }}
+              style={{ ...softBtn, width: "100%", marginTop: 14, padding: "12px", color: gold }}>Поискать в интернете · {webN}</button> : null}
+            {hereN ? <button type="button" className="sa-btn" data-lens-btn="main" data-wine-bulk-review={hereN} onClick={() => { setBulk(null); startReview(); }} style={{ ...mainBtn, width: "100%", marginTop: !web && webN ? 8 : 14, padding: "12px" }}>Проверка подряд · {hereN}</button> : null}
             {onKind && otherN && bulk.byKind[other] ? <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-bulk-other={other} onClick={() => { vibrate("light"); onKind(other, "@review"); }}
               style={{ ...softBtn, width: "100%", marginTop: 8, padding: "12px" }}>{other === "spirit" ? "Проверить крепкое" : "Проверить вина"} · {otherN} ›</button> : null}
             <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-bulk-end="" onClick={close} style={{ ...softBtn, width: "100%", marginTop: 8, padding: "12px" }}>К списку</button>
@@ -769,6 +804,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
                 {cur.img ? <img src={cur.img} alt="" style={{ width: 58, height: 78, objectFit: "cover", borderRadius: 9, border: `1px solid ${gold}44`, flexShrink: 0, display: "block" }} /> : null}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: SERIF, fontSize: 18, color: text, lineHeight: 1.25 }}>{K.title(cur)}</div>
+                  {webLine(cur, { marginTop: 4 })}
                   {unchecked(cur) ? <div data-wine-review-ai="" style={{ fontSize: 12.5, color: amber, marginTop: 4, lineHeight: 1.45 }}>AI дописал: {cur.ai.map((f) => K.FIELD_RU[f] || f).join(", ")}</div>
                     : <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>Уже проверено</div>}
                 </div>
@@ -825,6 +861,10 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
             {bulkN && loaded && !imp ? (
               <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-bulk={bulkN} onClick={() => { remember(); setBulk({ stage: "ask" }); setMsg(""); vibrate("light"); }}
                 style={{ ...softBtn, width: "100%", marginTop: uncheckedN ? 8 : 12, padding: "10px", fontSize: 14, color: gold }}>Дописать пустое · {bulkN}</button>) : null}
+            {/* v152 (Доп. 476): о ком AI своих знаний не хватило — поиск в интернете (стоит денег: только по нажатию) */}
+            {webN && loaded && !imp ? (
+              <button type="button" className="sa-btn" data-lens-btn="soft" data-lens-ink="" data-wine-web={webN} onClick={() => { remember(); setBulk({ mode: "web", stage: "ask" }); setMsg(""); vibrate("light"); }}
+                style={{ ...softBtn, width: "100%", marginTop: uncheckedN || bulkN ? 8 : 12, padding: "10px", fontSize: 14, color: gold }}>Поискать в интернете · {webN}</button>) : null}
             {K.GAPS.some(([k]) => gaps[k]) ? <>
               <div style={{ ...labelStyle(12.5), color: gold, margin: "12px 0 6px" }}>Что дописать</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>

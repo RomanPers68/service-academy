@@ -28,6 +28,9 @@ import { attnDays, holesIn, conflictsIn, holeShiftOf, planChanges, changesText, 
 import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон лёжа и компьютер
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardErr } from "../lib/schedule-chat";   // v97: смены в чате
+import { mateName, rowsSurnameFirst } from "../lib/shift-mates";   // v158 (Доп. 483): буквы в кружках — имя, потом фамилия
+import { FaceImg } from "./staff-photo";   // v158: фото сотрудника поверх букв (этап 52)
+import { staffPhotoListNow } from "../lib/staff-photo";
 import { cheersDue, yearsWord } from "../lib/team-warm";   // v108 (Доп. 421): годовщины в «Сегодня»
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
@@ -71,12 +74,12 @@ const mergeCfg = (saved) => {
 // имя переносится на вторую строку и удваивает высоту ряда. На девятнадцати
 // людях это лишний экран прокрутки. Полное имя остаётся в подсказке и во
 // всех остальных местах — сокращаем только сетку.
-// Инициалы для кружка: «Старченко Анна» → «СА». Одна буква, если слово одно.
-const initialsOf = (full) => {
-  const p = String(full || "").trim().split(/\s+/).filter(Boolean);
-  if (!p.length) return "?";
-  return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase();
-};
+// Инициалы для кружка: «Старченко Анна» → «АС». Одна буква, если слово одно.
+// v158 (Доп. 483): имя, потом фамилия — как в чате, «Смене» и «Команде» (было «СА»: один и тот же человек в «Графике» был
+// «КМ», а в остальных местах «МК»). Порядок слов в строках этого графика — SUR_FIRST: его выставляет ScheduleScreen по
+// строке самого сотрудника (lib/shift-mates.js rowsSurnameFirst); обычно фамилия первая.
+let SUR_FIRST = true;
+const initialsOf = (full) => mateName(full, SUR_FIRST).ini.toUpperCase();
 
 const shortName = (full) => {
   const p = String(full || "").trim().split(/\s+/).filter(Boolean);
@@ -992,6 +995,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // человека С месяца, не трогая прошлое (прод-урок владельца: удаление
   // в октябре стирало и сентябрь). Редактор видит всех (staffAll).
   const staffAll = cfg?.staff || [];
+  // v158: порядок слов в строках графика — для букв в кружках: по своей строке, а нет её — по коллегам, чьи имена известны
+  const knownPeople = staffPhotoListNow();
+  SUR_FIRST = rowsSurnameFirst(staffAll, profile, knownPeople && knownPeople !== "missing" ? (knownPeople.items || []).filter((x) => !profile || !x.restaurant || x.restaurant === profile.restaurant) : []);
   const staff = staffAll.filter(q => (!q.till || mkey <= q.till) && (!q.since || mkey >= q.since));
   const [wishNote, setWishNote] = React.useState(null);   // { d, text } — отказ очереди в раскрытом дне
   // Очередь жёстких «не смогу выйти»: мест на день ровно столько, чтобы
@@ -3140,7 +3146,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           return (
             <ShiftHero a11y={a11y} card={card} d={nd} sh={nx.sh} when={nd === todayD ? "сегодня" : nd === todayD + 1 ? "завтра" : ""}
               dowName={DOWF[dow(nd)]} dowShort={DOWL[dow(nd)]} monthR={MONTHS_R[M]} isToday={nd === todayD}
-              lead={lead ? lead.name : null} callNode={lead && lead.phone ? <CallName who={lead} label={lead.name} color={P.acc} round /> : null}
+              lead={lead ? lead.name : null} leadIni={lead ? initialsOf(lead.name) : ""} leadFace={lead ? <FaceImg who={{ full: lead.name }} /> : null} callNode={lead && lead.phone ? <CallName who={lead} label={lead.name} color={P.acc} round /> : null}
               mates={mates} onMates={openMates} onChecklist={kT && onChecklist ? onChecklist : null}
               due={(kT || kN) && dueCount > 0 && onMistakes ? { n: dueCount, onMistakes } : null} />
           );
@@ -3606,10 +3612,10 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 <div key={x.id} data-sheet-face={x.id} onClick={() => { setSheetCall(on ? null : x.id); vibrate("light"); }} {...onActivate(() => setSheetCall(on ? null : x.id))}
                   style={{ width:56, textAlign:"center", cursor:"pointer", borderRadius:12, padding:"3px 0", background: on ? "rgba(214,178,102,0.12)" : "transparent" }}>
                   <div style={{ position:"relative", width:36, margin:"0 auto 4px" }}>
-                    <div style={{ width:36, height:36, borderRadius:"50%", display:"grid", placeItems:"center", fontFamily:serif, fontSize:12.5, color:P.text,
+                    <div style={{ position:"relative", width:36, height:36, borderRadius:"50%", display:"grid", placeItems:"center", fontFamily:serif, fontSize:12.5, color:P.text,
                       background: isLead ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))" : (a11y ? "rgba(250,242,222,0.85)" : "linear-gradient(180deg,rgba(255,250,238,0.09),rgba(255,250,238,0.03))"),
                       border:`1px solid ${isLead ? GOLD : (a11y ? "rgba(150,112,40,0.42)" : "rgba(145,108,40,0.42)")}`, boxShadow: isLead ? "0 0 0 3px rgba(214,178,102,0.16)" : "inset 0 1px 0 rgba(255,255,255,0.12)" }}>
-                      {initialsOf(x.name)}</div>
+                      {initialsOf(x.name)}<FaceImg who={{ full: x.name }} /></div>
                     {c2 ? <span style={{ position:"absolute", right:-3, bottom:-2, width:15, height:15, borderRadius:5, display:"grid", placeItems:"center", fontFamily:mono, fontSize:8.5,
                       color: a11y ? c2.fgL : c2.fg, background: a11y ? c2.bgL : "#2A1F0E", border:`1px solid ${a11y ? c2.bdL : c2.bd}` }}>{xs.k}</span> : null}
                   </div>
@@ -4383,9 +4389,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         <div onClick={() => setPersonSheet(null)} style={veil(false)}>
           <div data-person-sheet={s.id} onClick={e => e.stopPropagation()} className="sa-fadein" style={sheetBox}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <span aria-hidden="true" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontSize:15, color:P.text,
+              <span aria-hidden="true" style={{ position:"relative", width:46, height:46, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontSize:15, color:P.text,
                 border:`1.5px solid ${GOLD}`, boxShadow:"0 0 0 3px rgba(214,178,102,0.12)",
-                background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}</span>
+                background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}<FaceImg who={{ full: s.name }} /></span>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ ...labelStyle(11.5), color:P.acc }}>{MONTHS_N[M]} {Y}</div>
                 <div data-person-name="" style={{ fontFamily:serif, fontSize:18, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
@@ -5020,7 +5026,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                               : (a11y ? "rgba(250,242,222,0.85)" : "#2A1F0E"),
                             border:`1px solid ${lead ? GOLD : (a11y ? "rgba(150,112,40,0.4)" : "rgba(145,108,40,0.5)")}`,
                             boxShadow:"inset 0 1px 0 rgba(255,255,255,0.12)" })}>
-                            {initialsOf(o.who.name)}
+                            {initialsOf(o.who.name)}<FaceImg who={{ full: o.who.name }} />
                             {lt ? <span data-today-late={o.who.id} aria-hidden="true" style={{ position:"absolute", top:-4, left:-4, width:15, height:15, borderRadius:"50%",
                               display:"grid", placeItems:"center", background: a11y ? "#FFF6EE" : "#2A1F0E", border:`1px solid ${P.warn}` }}><IcoLate size={10} color={P.warn} /></span> : null}
                           </span>
@@ -5124,7 +5130,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       borderRadius:12, padding:"3px 0",
                       background: on ? (a11y ? "rgba(214,178,102,0.16)" : "rgba(214,178,102,0.10)") : "transparent" }}>
                     <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
-                      <div data-lens={lead ? "ring" : "person"} style={{ width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
+                      <div data-lens={lead ? "ring" : "person"} style={{ position:"relative", width:44, height:44, borderRadius:"50%", display:"grid", placeItems:"center",
                           fontFamily:serif, fontSize:14, color:P.text,
                           background: lead
                             ? "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))"
@@ -5133,7 +5139,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                           boxShadow: lead
                             ? "inset 0 0 14px rgba(255,240,205,0.14), inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 3px rgba(214,178,102,0.16)"
                             : (a11y ? "inset 0 0 14px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.8)" : "inset 0 0 14px rgba(255,248,230,0.07), inset 0 1px 0 rgba(255,255,255,0.12)") }}>
-                        {initialsOf(c.who.name)}
+                        {initialsOf(c.who.name)}<FaceImg who={{ full: c.who.name }} />
                       </div>
                       {lateOf(c.who.id, today) ? <span data-today-late={c.who.id} aria-hidden="true" style={{ position:"absolute", left:-3, top:-2, width:17, height:17, borderRadius:"50%",
                         display:"grid", placeItems:"center", background: a11y ? "#FFF6EE" : "#2A1F0E", border:`1px solid ${P.warn}` }}><IcoLate size={11} color={P.warn} /></span> : null}

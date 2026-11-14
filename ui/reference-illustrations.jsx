@@ -306,6 +306,28 @@ Object.keys(REFERENCE_PHOTOS).forEach((k) => { ILL[k] = () => (k.indexOf("wine_"
 
 export const renderIll = (key, gold, dark) => (ILL[key] ? ILL[key](gold, dark) : null);
 
+// ── v158 (Доп. 483): миниатюра главы для списка глав ──
+// Один-два предмета из рисунков главы, в размер плитки 52 px (сцену целиком в плитку не уместить: линии слипаются).
+// Толщина линий — в стилях плитки (.ref-mini, ui/css.js): одна на все рисунки, сколько бы их ни уменьшали.
+const MiniRow = ({ children, gap = 3, end = false }) => <div style={{ display: "flex", alignItems: end ? "flex-end" : "center", justifyContent: "center", gap }}>{children}</div>;
+export const ILL_MINI = {
+  preset_table: (c) => <MiniRow><Util kind="fork" c={c} size={8} /><Plate kind="dinner" c={c} size={24} /><Util kind="knife" c={c} size={8} /></MiniRow>,
+  charger_plate: (c) => <Plate kind="charger" c={c} size={40} />,
+  plates_sizes: (c) => <Plate kind="sizes" c={c} size={40} />,
+  basic_flatware: (c) => <MiniRow gap={4}><Util kind="fork" c={c} size={10} /><Util kind="knife" c={c} size={10} /><Util kind="spoon" c={c} size={10} /></MiniRow>,
+  wine_glasses_chart: (c) => <MiniRow gap={2} end><MiniGlass type="red" c={c} size={19} /><MiniGlass type="flute" c={c} size={15} /></MiniRow>,
+  glass_red: (c) => <MiniGlass type="red" c={c} size={21} />,
+  espresso_cup: (c, d) => <EspressoCup c={c} dark={d} size={42} />,
+  milk_pitcher: (c, d) => <Pitcher c={c} dark={d} size={42} />,
+  coffee_ratio: (c, d) => <CoffeeCup c={c} dark={d} size={42} foam={0.3} coffee={0.55} />,
+  cocktail_aperitif: (c, d) => <CkRocks c={c} dark={d} liq={d ? "rgba(200,70,40,0.5)" : "rgba(190,60,35,0.4)"} orange size={42} />,
+  cocktail_sour: (c, d) => <CkCoupe c={c} dark={d} liq={d ? "rgba(200,215,140,0.4)" : "rgba(170,190,100,0.35)"} lime size={42} />,
+  cocktail_strong: (c, d) => <CkCoupe c={c} dark={d} liq={d ? "rgba(160,50,50,0.5)" : "rgba(140,40,40,0.4)"} cherry size={42} />,
+  cocktail_zero: (c, d) => <CkHigh c={c} dark={d} liq={d ? "rgba(200,230,210,0.25)" : "rgba(170,210,180,0.3)"} mint straw bubbles size={42} />,
+};
+export const hasIllMini = (key) => !!ILL_MINI[key];
+export const renderIllMini = (key, gold, dark) => (ILL_MINI[key] ? ILL_MINI[key](gold, dark) : null);
+
 
 // ── Флаги стран для заголовков «Школы сервировки» ──────────────────────────
 // Мини-SVG вместо эмодзи-флагов: выглядят одинаково на iOS/Android/desktop,

@@ -14,6 +14,9 @@ import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModul
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
 import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
+import { warmLessonPhotos } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске
+import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158: фото сотрудников в кружках (этап 52)
+import { MyFaceLayer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
 import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
@@ -1159,6 +1162,11 @@ function ServiceAcademy() {
   }, [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v157 (Доп. 481): кто сегодня со мной — из той же копии графика; пересчёт — когда и смена (день, экран, свежий график)
   const shiftCrew = useMemo(() => (profile ? shiftMates(profile, new Date()) : null), [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v158 (Доп. 483): фото, скачанные раньше, лежат на телефоне — превью поднимаем в память сразу, обложки встают без задержки
+  useEffect(() => { warmLessonPhotos(); warmStaffPhotos(); }, []);
+  // список «у кого есть фото» — один запрос за заход, как только известно, кто вошёл (кружки в «Смене» и «Графике» уже с фото)
+  const profId = profile ? profile.id || profile.name : null;
+  useEffect(() => { if (profId) loadStaffPhotos(); }, [profId]);
   const shiftText = shiftToday && !shiftToday.off ? (shiftToday.label || shiftLabel(shiftToday)) : "";
   // ── v30 (Доп. 313, 315, 316): свежесть тем, зачёт на опыт, золотая тема — на телефоне ──
   // v31: логика вынесена в хук lib/use-day.js (useFreshMarks)
@@ -2111,7 +2119,10 @@ function ServiceAcademy() {
           const behind = cur > 0 && !quiet ? seq.slice(0, cur).filter(x => !(activeModule && activeModule.custom) || x.mod.id === activeModule.id) : [];
           const skipped = behind.find(x => !isDone(x.lesson)) || null;
           const skippedCount = behind.filter(x => !isDone(x.lesson)).length;
-          setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id, done: isDone(nx.lesson) } : null, skipped: skipped ? { ...skipped, count: skippedCount } : null });
+          // v158 (Доп. 483): сколько шагов раздела ещё не пройдено — строка под кнопкой «Далее» (ui/lesson-done.jsx)
+          const modSteps = ((activeModule && activeModule.lessons) || []).filter((l) => l && l.type !== "result");
+          const left = modSteps.length ? modSteps.filter((l) => !isDone(l)).length : null;
+          setLessonDone({ next: nx ? { ...nx, other: nx.mod && activeModule && nx.mod.id !== activeModule.id, done: isDone(nx.lesson) } : null, skipped: skipped ? { ...skipped, count: skippedCount } : null, left });
         } else {
           setTimeout(() => setScreen("module"), 50);
         }
@@ -3538,7 +3549,7 @@ function ServiceAcademy() {
         })()}
         {screen === "guide" && profile && <Suspense fallback={<ScreenLoader T={T} />}><GuideScreen T={T} a11y={a11y} profile={profile} focus={guideFocus} onBack={() => goBack("me")} onOpen={openDest} tips={guideTips} onTipsReset={resetTipsAll} /></Suspense>}
         {screen === "me" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y}
-          avatar={{ initials: (((profile.name || "")[0] || "") + ((profile.surname || "")[0] || "")).toUpperCase(), admin: !!profile.is_admin }}   /* v150 (Доп. 474): у заголовка «Я» — инициалы, как в «Аккаунте» */
+          avatar={{ initials: (((profile.name || "")[0] || "") + ((profile.surname || "")[0] || "")).toUpperCase(), admin: !!profile.is_admin }} avatarLayer={<MyFaceLayer profile={profile} a11y={a11y} />}   /* v150 (Доп. 474): у заголовка «Я» — инициалы, как в «Аккаунте» */
           hintKey="me"
           hintSteps={hintsFor("me")}
           title={profile.name} subtitle={profile.restaurant || "Service Academy"}
@@ -3640,7 +3651,7 @@ function ServiceAcademy() {
               T={T} color={activeModule?.color} onClose={completeLesson} onResult={recordBuildResult} />
           </Suspense>
         , document.body)}
-        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } goBack("module"); /* Доп. 306: туда, откуда пришёл */ }} onComplete={completeLesson} done={!!lessonDone} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T}
+        {screen === "lesson" && activeLesson?.type !== "dialogue" && activeLesson?.type !== "build" && <LessonScreen key={gameKey} lesson={activeLesson} color={activeModule?.color} onBack={() => { if (activeLesson?.type === "quiz" && profile) { try { const sk = loopExit(loopUk, activeLesson.id); if (sk) logSkip(activeLesson.id, sk); } catch (e) {} } goBack("module"); /* Доп. 306: туда, откуда пришёл */ }} onComplete={completeLesson} done={!!lessonDone} modLeft={lessonDone ? lessonDone.left : null} next={lessonDone ? lessonDone.next : undefined} onToModule={() => navigate("module")} skipped={lessonDone ? lessonDone.skipped : null} onSkipped={() => { const sk = lessonDone && lessonDone.skipped; if (!sk) return; setLessonDone(null); if (sk.mod && sk.mod.id !== activeModule?.id) setActiveModule(sk.mod); openLesson(sk.lesson); }} onNext={() => { const nx = lessonDone && lessonDone.next; setLessonDone(null); if (nx) { if (nx.mod && nx.mod.id !== activeModule?.id) setActiveModule(nx.mod); openLesson(nx.lesson); } else { navigate("module"); } }} quizState={quizState} onQuiz={handleQuiz} practiceState={practiceState} setPracticeState={setPracticeState} onPracticeChoice={handlePracticeChoice} onPracticeNext={handlePracticeNext} T={T}
           mod={activeModule} profile={profile} streak={streak} mistakeBank={mistakeBank} onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake}
           wasCompleted={!!(activeLesson && completed[activeLesson.id])}
           tip={lessonTip} onTipGo={goTip} onTipLater={laterTip} onTipShown={shownTip} a11y={a11y}

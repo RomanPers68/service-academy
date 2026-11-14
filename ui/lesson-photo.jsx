@@ -41,7 +41,8 @@ export function useLessonPhotos() {
  * Обложка урока. Ставится первой строкой внутрь стеклянной карточки урока (отступы карточки — 20 и 18 px, фото к краям).
  * Нет фото: руководителю — строка «Добавить фото к уроку», остальным — ничего.
  */
-export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false, color }) {
+// v158 (Доп. 483): kind="chapter" — глава Справочника: те же фото и тот же лист, слова — про главу
+export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false, color, kind = "lesson" }) {
   const list = useLessonPhotos();
   const missing = list === "missing";
   const info = missing ? null : photoOf(list, lessonId);
@@ -64,14 +65,16 @@ export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false,
   }, [lessonId, ver]);
   const open = (e) => { if (e) e.stopPropagation(); vibrate("light"); setSheet(true); };
   const sub = a11y ? "#6B5A3E" : "#A99B7E";
-  const sheetEl = sheet ? <LessonPhotoSheet lessonId={lessonId} lessonTitle={lessonTitle} profile={profile} a11y={a11y} list={list} onClose={() => setSheet(false)} /> : null;
+  const chapter = kind === "chapter";
+  const sheetEl = sheet ? <LessonPhotoSheet kind={chapter ? "chapter" : "lesson"} lessonId={lessonId} lessonTitle={lessonTitle} profile={profile} a11y={a11y} list={list} onClose={() => setSheet(false)} /> : null;
+  if (!lessonId) return null;
   if (!info || (gone && !src)) {
     if (!canEdit) return null;
     return (<>
       <button type="button" data-lp-add="" onClick={open} onTouchStart={(e) => e.stopPropagation()}
         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", margin: "-4px 0 14px", padding: "9px 12px", borderRadius: 12,
           border: "1px dashed " + (color || "#C8A96E") + "77", background: "transparent", color: sub, fontFamily: SERIF, fontStyle: "italic", fontSize: a11y ? 14.5 : 13.5, cursor: "pointer" }}>
-        <CamIcon s={17} />Добавить фото к уроку
+        <CamIcon s={17} />{chapter ? "Добавить фото к главе" : "Добавить фото к уроку"}
       </button>
       {sheetEl}
     </>);
@@ -85,7 +88,7 @@ export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false,
       <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "45%", pointerEvents: "none",
         background: a11y ? "linear-gradient(180deg, rgba(250,244,230,0) 0%, rgba(250,244,230,0.55) 100%)" : "linear-gradient(180deg, rgba(20,16,9,0) 0%, rgba(28,22,13,0.75) 100%)" }} />
       {canEdit ? (
-        <button type="button" data-lp-edit="" data-lens="disc" aria-label="Сменить фото урока" onClick={open} onTouchStart={(e) => e.stopPropagation()}
+        <button type="button" data-lp-edit="" data-lens="disc" aria-label={chapter ? "Сменить фото главы" : "Сменить фото урока"} onClick={open} onTouchStart={(e) => e.stopPropagation()}
           style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center", border: 0, cursor: "pointer",
             color: "#F4E9CF", background: "rgba(20,15,8,0.55)", boxShadow: "inset 0 0 0 1px rgba(232,201,131,0.55), 0 4px 12px rgba(0,0,0,0.35)",
             WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}><CamIcon s={18} /></button>
@@ -100,6 +103,8 @@ export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false,
 const SHEET_WORDS = {
   lesson: { title: "Фото урока", of: "урока", at: "у урока", drop: "Да, убрать фото у урока",
     tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное — фото встанет над текстом урока" },
+  chapter: { title: "Фото главы", of: "главы", at: "у главы", drop: "Да, убрать фото у главы",
+    tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное: фото встанет над текстом главы и плиткой в списке глав" },
   section: { title: "Фото раздела", of: "раздела", at: "у раздела", drop: "Да, убрать фото у раздела",
     tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное: фото встанет обложкой раздела" },
 };

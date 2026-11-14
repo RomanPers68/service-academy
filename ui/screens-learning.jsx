@@ -43,7 +43,8 @@ import { ModuleMenu } from "./module-menu";
 import { LessonTip } from "./lesson-tip";   // v148 (Доп. 472): совет в конце урока
 import { typo } from "../lib/typo";   // v150 (Доп. 474): тире не начинает строку, «3 см» не разрывается
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
-import { Flame, Wine } from "./day-emblems";   // v43: вместо свечи и стакана из ./table-bits
+import { Flame, Wine } from "./day-emblems";
+import { DoneNote } from "./lesson-done";   // v158 (Доп. 483): строка под кнопкой после «Урок пройден»   // v43: вместо свечи и стакана из ./table-bits
 import { useWide, useColumn, splitAt } from "./viewport";   // v52 (Доп. 365): трек шире, глоссарий в две колонки на широком экране
 import { ymd } from "../lib/streak";
 import { topicShade, inkOnColor } from "../lib/topic-tint";
@@ -1127,7 +1128,7 @@ function TapAnchored({ x, y, T, children }) {
 
 export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quizState, onQuiz, practiceState, setPracticeState, onPracticeChoice, onPracticeNext, T, done, next, onNext, onToModule, skipped, onSkipped,
   mod = null, profile = null, streak = null, mistakeBank = [], onMistakes, onResolveMistake, onFailMistake, wasCompleted = false,
-  modules = null, mentorName = "", goal = null, onAskMentor, onActivity, onContents, onShareChat = null,
+  modules = null, mentorName = "", goal = null, modLeft = null, onAskMentor, onActivity, onContents, onShareChat = null,
   tip = null, onTipGo, onTipLater, onTipShown, a11y = false }) {
   // Доп. 299–303: повтор пройденного — меньше нажатий (автопереход), шпаргалка из уроков
   // раздела, подпись настоящего наставника, стакан «цель дня» в чеке, вопрос Наставнику.
@@ -1167,6 +1168,8 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
         ) : (
           <button className="sa-btn" data-lens-btn="main" style={{ ...T.doneBtn, background: color, width: "100%" }} onClick={onNext}>{next === null ? "Дальше ›" : "К модулю ›"}</button>
         )}
+        {/* v158 (Доп. 483): тихий отклик на месте — бокал цели дня и сколько осталось в разделе; кнопка стоит где стояла */}
+        <DoneNote goal={goal} left={modLeft} a11y={a11y || !!T.a11y} sub={T.modSub.color} />
         <div onClick={onToModule} {...onActivate(onToModule)} style={{ textAlign: "center", fontSize: 12.5, color: T.modSub.color, marginTop: 10, cursor: "pointer" }}>К модулю{next ? ` · ${kind}${next.lesson.minutes ? " · " + next.lesson.minutes + " мин" : ""}` : ""}</div>
         {/* v97 (Доп. 410): пройденный урок — в чат команды карточкой, коллега откроет его у себя */}
         {onShareChat ? <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>

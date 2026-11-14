@@ -368,7 +368,8 @@ describe("v157: вечерние огни на главной (ui/screens-rolese
 describe("v157: метка и журнал", () => {
   it("метка «сборка v157», Дополнение 481 со словами владельца, e2e-v157 и запуск тестов в README", () => {
     const n = [...rd("ui/menu-trainer.jsx").matchAll(/· сборка v(\d+)<\/span>/g)].map((m) => Number(m[1]));
-    expect(n).toEqual([157]);
+    expect(n.length).toBe(1);
+    expect(n[0]).toBeGreaterThanOrEqual(157);   // номер в метке — последней версии (сторож — tests/v145.test.js)
     const c = rd("CHANGES.md");
     expect(c).toMatch(/# Дополнение 481 — .*\(v157\)/);
     expect(c).toContain("было приятно им пользоваться и было желание остаться в нем подольше");

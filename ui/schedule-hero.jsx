@@ -122,7 +122,7 @@ export function MonthMedals({ a11y, cells, note, payMain, style, compact }) {
 // Ближайшая смена главной карточкой. when — «сегодня»/«завтра»/«» (тогда пишется «вт · 21 октября»),
 // dowName — полный день недели, leadNode — капсула старшего со звонком (CallName из графика), mates — сколько
 // человек с тобой в смене, due — { n, onMistakes } — вопросы на повтор перед сменой.
-export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, isToday, now, lead, leadNode, callNode, mates, onMates, onChecklist, due }) {
+export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, isToday, now, lead, leadNode, callNode, mates, onMates, onChecklist, due, leadIni = "", leadFace = null }) {
   const [, tick] = React.useState(0);
   React.useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 60000); return () => clearInterval(t); }, []);
   const p = palette(a11y);
@@ -154,9 +154,10 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
       {lead ? (
         <div data-hero-lead="" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 13, padding: "9px 11px", borderRadius: 12,
           background: a11y ? "rgba(255,252,244,0.6)" : "rgba(255,250,238,0.035)", border: `1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.28)"}` }}>
-          <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0, fontFamily: serif, fontSize: 12.5, color: p.text,
+          <span aria-hidden="true" data-hero-lead-disc="" style={{ position: "relative", width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0, fontFamily: serif, fontSize: 12.5, color: p.text,
             background: "linear-gradient(180deg,rgba(214,178,102,0.26),rgba(214,178,102,0.10))", border: `1px solid ${p.gold}`, boxShadow: "0 0 0 3px rgba(214,178,102,0.16)" }}>
-            {String(lead).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+            {/* v158 (Доп. 483): буквы — имя, потом фамилия (их и фото поверх даёт график: leadIni, leadFace) */}
+            {leadIni || String(lead).trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}{leadFace}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ ...eyebrow, fontSize: 13, color: p.sub }}>Старший смены</div>

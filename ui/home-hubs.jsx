@@ -12,6 +12,7 @@ import { ROLE_TITLE, masterKey } from "../lib/mastery";
 import { useViewport, useColumn } from "./viewport";
 import { matesLine, matesNote } from "../lib/shift-mates";   // v157 (Доп. 481): «кто сегодня со мной»
 import { Medal, tierText } from "./mastery-card";               // v157: полка значков на вкладке «Я»
+import { FaceImg } from "./staff-photo";   // v158 (Доп. 483): фото сотрудника поверх букв в кружке
 import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи — курсивом, без моноширинного капса   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
@@ -107,7 +108,7 @@ export function groupBadge(run) {
 // v150 (Доп. 474): у заголовка вкладки — её значок из панели вкладок в линзе (в 44×36 логотип с надписью читался пятном);
 // у «Я» — инициалы, как в «Аккаунте» (руководителю-владельцу — корона). Логотип остаётся для хаба без своего значка.
 const HUB_MARK = { shift: "daily", team: "team" };
-export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "", avatar = null }) {
+export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, hintKey, hintSteps, compactGroups = null, groupOrder = null, fold = false, hubId = "", avatar = null, avatarLayer = null }) {
   // v110 (Доп. 423): fold — группы кнопками (владелец, 30.10: «кнопка «На смене», нажимаешь — и там всё, что связано со
   // сменой»): нажал — группа развернулась строками, ещё раз — свернулась; что открыто, помнится
   const hid = hubId || String(title || "");
@@ -146,8 +147,8 @@ export function HubScreen({ T, a11y, title, subtitle, items = [], footer, hero, 
     <div style={T.screen} className="sa-screen sa-hubscreen">
       <div style={{ padding: "18px 16px 8px", display: "flex", alignItems: "center", gap: 12 }}>
         {markIc ? (
-          <span data-hub-mark={meMark ? "avatar" : hubId} data-lens="disc" aria-hidden="true" style={{ width: 44, height: 44, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
-            background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border: `1px solid ${gold}55` }}>{markIc}</span>
+          <span data-hub-mark={meMark ? "avatar" : hubId} data-lens="disc" aria-hidden={meMark && avatarLayer ? undefined : "true"} style={{ width: 44, height: 44, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center",
+            background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border: `1px solid ${gold}55`, ...(meMark && avatarLayer ? { position: "relative" } : null) }}>{markIc}{/* v158 (Доп. 483): своё фото и лист «Моё фото» (ui/staff-photo.jsx MyFaceLayer) */}{meMark && avatarLayer ? avatarLayer : null}</span>
         ) : <img src={LOGO_SRC_DARK} alt="" aria-hidden="true" decoding="sync" style={{ width: 44, height: 36, objectFit: "contain", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 25, color: text, lineHeight: 1.15 }}>{title}</div>
@@ -340,11 +341,12 @@ export function SkeletonCard({ a11y, h = 74, style }) {
 const DAYS = WEEKDAY, MONTHS = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
 // v157 (Доп. 481): кружок коллеги — стекло с буквами, как «АС» у заголовка «Я»; у старшего ободок ярче
-const MateDisc = ({ a11y, text, lead = false, more = false }) => (
-  <span data-lens="disc" data-mate={lead ? "lead" : more ? "more" : "one"} style={{ width: lead ? 34 : 30, height: lead ? 34 : 30, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0,
+// v158 (Доп. 483): who — строка графика («Ким Мария»): есть у человека фото — оно ложится поверх букв (ui/staff-photo.jsx)
+const MateDisc = ({ a11y, text, lead = false, more = false, who = null }) => (
+  <span data-lens="disc" data-mate={lead ? "lead" : more ? "more" : "one"} style={{ position: "relative", width: lead ? 34 : 30, height: lead ? 34 : 30, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0,
     display: "grid", placeItems: "center", fontFamily: "Georgia, serif", fontSize: lead ? 12.5 : 11.5, lineHeight: 1, letterSpacing: 0.2, color: a11y ? "#7A5D2A" : "#E8C983",
     background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)",
-    border: "1px solid " + (a11y ? (lead ? "rgba(122,93,42,0.8)" : "rgba(139,106,48,0.42)") : (lead ? "rgba(232,201,131,0.85)" : "rgba(214,178,102,0.4)")) }}>{text}</span>
+    border: "1px solid " + (a11y ? (lead ? "rgba(122,93,42,0.8)" : "rgba(139,106,48,0.42)") : (lead ? "rgba(232,201,131,0.85)" : "rgba(214,178,102,0.4)")) }}>{text}{who && !more ? <FaceImg who={who} /> : null}</span>
 );
 
 /** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
@@ -374,7 +376,7 @@ export function ShiftHero({ a11y, onOpen, shift = null, mates = null }) {
         {crew ? (
           <div data-shift-mates={crew.mates.length} style={{ marginTop: 12, paddingTop: 11, borderTop: "1px dashed " + (a11y ? "rgba(122,93,42,0.25)" : "rgba(214,178,102,0.2)"), display: "flex", alignItems: "center", gap: 11 }}>
             <span aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-              {crew.mates.slice(0, crew.mates.length > 3 ? 2 : 3).map((m) => <MateDisc key={m.id} a11y={a11y} text={m.ini} lead={m.lead} />)}
+              {crew.mates.slice(0, crew.mates.length > 3 ? 2 : 3).map((m) => <MateDisc key={m.id} a11y={a11y} text={m.ini} lead={m.lead} who={{ full: m.full }} />)}
               {crew.mates.length > 3 ? <MateDisc a11y={a11y} text={"+" + (crew.mates.length - 2)} more /> : null}
             </span>
             <span style={{ minWidth: 0 }}>
@@ -457,7 +459,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
           return (
             /* v58 (Доп. 371): медальон над именем — имени достаётся вся ширина ячейки, «Ангели…» больше нет */
             <div key={i} data-leader="" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textAlign: "center" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55` }}>{ini}</div>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55`, position: "relative" }}>{ini}<FaceImg who={{ name: p.name, surname: p.surname, restaurant: p.restaurant || (profile && profile.restaurant) || "" }} /></div>
               <div style={{ minWidth: 0, maxWidth: "100%" }}>
                 <div data-leader-name="" style={{ fontSize: 12.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.2 }}>{p.name}</div>
                 <div style={{ fontSize: 11, color: sub }}>{p.avg}%</div>

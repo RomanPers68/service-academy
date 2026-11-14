@@ -6,7 +6,7 @@ import { COCKTAILS } from "../data/cocktails";
 import React from "react";
 import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
-import { Ico, renderIll, splitLeadingFlag } from "./reference-illustrations";
+import { Ico, renderIll, splitLeadingFlag, hasIllMini, renderIllMini } from "./reference-illustrations";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { SearchScreen } from "./search";
 import { onActivate } from "../lib/utils";
@@ -17,8 +17,9 @@ import { CHAT_SHARE_IC } from "./share-chat";
 import { cachedShared } from "../lib/deck-extras";   // v120 (Доп. 433): винная карта заведения
 import { wineRecords } from "../lib/wine";
 import { barCounts, barLine } from "../lib/bar-card";   // v127: «Барная карта»
-import { useLessonPhotos, useCoverSrc, canEditCovers, CoverEditButton } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов
-import { refCoverId, photoOf, REF_COVER_DEFAULT } from "../lib/lesson-photo";
+import { useLessonPhotos, useCoverSrc, useCover, canEditCovers, CoverEditButton, LessonCover } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов; v158: фото главы
+import { refCoverId, photoOf, REF_COVER_DEFAULT, lessonPhotoId } from "../lib/lesson-photo";
+import { chapterThumb } from "../lib/reference-thumb";   // v158 (Доп. 483): плитка главы в списке глав
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -165,8 +166,40 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
   </div>);
 }
 
+// ── v158 (Доп. 483): плитка главы в списке глав ───────────────────────────────────────────────────────────
+// Владелец (14.11): «Давай все пять». Строка главы была номером и словом «Глава». Теперь слева плитка 52 px: своё фото
+// главы (ставит руководитель в самой главе — тот же лист и этап 51, что у фото уроков), а нет — первое фото из главы,
+// а нет — маленький рисунок из её иллюстраций, а нет — номер, как раньше. С картинкой номер уходит в подпись «Глава 3».
+function ChapterTile({ lesson, n, isQuiz, photos, T, gold, dark }) {
+  const id = lessonPhotoId(lesson.id);
+  const own = id && photos && photos !== "missing" ? photoOf(photos, id) : null;
+  const { src: ownSrc, gone } = useCover(own ? id : null, own ? own.ver : "", false);
+  const th = isQuiz ? null : chapterThumb(lesson, hasIllMini);
+  const kind = isQuiz ? "quiz" : own && !gone ? "own" : th ? th.kind : "num";
+  const edge = isQuiz ? "rgba(200,169,110,0.5)" : dark ? "rgba(214,178,102,0.36)" : "rgba(139,106,48,0.42)";
+  const photo = kind === "own" ? ownSrc : kind === "photo" ? th.src : null;
+  return (
+    <div data-ref-tile={kind} aria-hidden="true" style={{ position: "relative", width: 52, height: 52, borderRadius: 14, flexShrink: 0, overflow: "hidden", display: "grid", placeItems: "center",
+      background: dark ? "rgba(200,169,110,0.07)" : "rgba(139,106,48,0.07)", color: isQuiz ? gold : (T.lessNumColor || "#C8B898") }}>
+      {kind === "own" || kind === "photo"
+        ? (photo ? <img src={photo} alt="" loading="lazy" decoding="async" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          : <div className="sa-skel" style={{ position: "absolute", inset: 0 }} />)
+        : kind === "art" ? <div className="ref-mini" style={{ display: "grid", placeItems: "center", lineHeight: 0 }}>{renderIllMini(th.key, gold, dark)}</div>
+        : kind === "quiz" ? Ico.cam(gold, 20)
+        : <span style={{ fontFamily: SERIF, fontSize: T.lessNumColor ? 21 : 19, fontWeight: T.lessNumColor ? "bold" : "normal", lineHeight: 1 }}>{n}</span>}
+      <div style={{ position: "absolute", inset: 0, borderRadius: 14, boxShadow: "inset 0 0 0 1px " + edge, pointerEvents: "none" }} />
+    </div>
+  );
+}
+/** Есть ли у главы картинка для плитки (тогда номер главы — в подписи) */
+const chapterHasPic = (lesson, photos) => {
+  const id = lessonPhotoId(lesson.id);
+  return !!(id && photos && photos !== "missing" && photoOf(photos, id)) || !!chapterThumb(lesson, hasIllMini);
+};
+
 // ── Курс ──
-function Course({ T, gold, course, openLesson, onBack }) {
+function Course({ T, gold, dark, course, openLesson, onBack }) {
+  const photos = useLessonPhotos();   // v158: свои фото глав — из того же списка, что фото уроков
   return (<div style={T.screen}>
     <Head T={T} title="Справочник" onBack={onBack} />
     <div style={{ padding: "14px 18px 4px" }}>
@@ -177,13 +210,12 @@ function Course({ T, gold, course, openLesson, onBack }) {
     <div className="sa-g2" style={T.lessList}>
       {course.lessons.map((l, i) => {
         const isQuiz = l.type === "quiz";
-        return (<div key={l.id} style={T.lessCard} onClick={() => openLesson(l)} {...onActivate(() => openLesson(l))} aria-label={l.title}>
-          <div style={{ ...T.lessNum, color: isQuiz ? gold : (T.lessNumColor || "#C8B898"), fontWeight: T.lessNumColor ? "bold" : "normal", border: isQuiz ? "1.5px solid rgba(200,169,110,0.5)" : (T.lessNumBorder || "1.5px solid rgba(200,185,152,0.35)") }}>
-            {isQuiz ? Ico.cam(gold, 15) : i + 1}
-          </div>
+        const pic = !isQuiz && chapterHasPic(l, photos);
+        return (<div key={l.id} data-ref-chapter={l.id} style={T.lessCard} onClick={() => openLesson(l)} {...onActivate(() => openLesson(l))} aria-label={l.title}>
+          <ChapterTile lesson={l} n={i + 1} isQuiz={isQuiz} photos={photos} T={T} gold={gold} dark={dark} />
           <div style={{ ...T.lessInfo, display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ ...T.lessTitle, marginBottom: 2, color: isQuiz ? gold : T.lessTitle.color }}>{l.title}</div>
-            <div style={{ ...labelStyle(13), color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "Фото-тест" : "Глава"}</div>
+            <div style={{ ...labelStyle(13), color: isQuiz ? gold : "#7C9E87", marginTop: 2 }}>{isQuiz ? "Фото-тест" : pic ? "Глава " + (i + 1) : "Глава"}</div>
           </div>
           <div style={T.lessArrow}>›</div>
         </div>);
@@ -193,7 +225,7 @@ function Course({ T, gold, course, openLesson, onBack }) {
 }
 
 // ── Глава ──
-function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = null }) {
+function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = null, profile = null, a11y = false }) {
   const bodyRef = R.useRef(null);
   R.useEffect(() => {
     if (typeof document !== "undefined") { try { (document.getElementById("root") || window).scrollTo(0, 0); } catch (e) {} }
@@ -204,6 +236,8 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = nu
     <div ref={bodyRef} style={{ ...T.lessBody, padding: "14px 14px 40px" }}>
       {lesson.images && lesson.images.map((k, i) => <Figure key={i} T={T}>{renderIll(k, gold, dark)}</Figure>)}
       <div style={{ background: T.lessGlass.bg, border: T.lessGlass.border, borderTop: T.lessGlass.borderTop, borderRadius: 22, boxShadow: T.lessGlass.shadow, padding: "20px 18px", backdropFilter: T.lessGlass.blur, WebkitBackdropFilter: T.lessGlass.blur }}>
+        {/* v158 (Доп. 483): своё фото главы — сверху, как у урока; руководителю — «Добавить фото к главе». Оно же — плитка в списке глав */}
+        <LessonCover kind="chapter" lessonId={lessonPhotoId(lesson.id) || ""} lessonTitle={lesson.title} profile={profile} a11y={a11y} color={gold} />
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
       </div>
       {/* v97 (Доп. 410): глава — в чат команды карточкой, коллега откроет её в своём Справочнике */}
@@ -313,10 +347,10 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
         onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
         onClose={rHintDone} />
     ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onWines={onWines} restaurant={(profile && profile.restaurant) || ""} onSearch={() => setView("search")} onExit={onExit} />;
-  if (view === "course") return <Course T={T} gold={gold} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
+  if (view === "course") return <Course T={T} gold={gold} dark={dark} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
-  return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel}
+  return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} profile={profile} a11y={a11y}
     onShare={onShareChat ? () => onShareChat(refShareItem(lesson, course.title)) : null} />;
 }
 

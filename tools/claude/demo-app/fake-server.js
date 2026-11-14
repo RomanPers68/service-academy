@@ -747,6 +747,55 @@ export function makeServer(opts) {
     return undefined;
   }
 
+  // ── v158 (Доп. 483, этап 52): фото сотрудников — как supabase-stage52-staff-photos.sql. opts.staffPhotos: { номер сотрудника:
+  // { full, thumb } } — нарисованные портреты демо; в состоянии (S.sp) — только поставленное и убранное в демо (null — убрано).
+  // Своё ставит и убирает сам сотрудник; чужое — руководитель у своего заведения, сеть — у любого. opts.noStage52 — этапа нет
+  if (!S.sp) S.sp = {};
+  const spSeed = opts.staffPhotos || {};
+  const spAll = () => {
+    const out = {};
+    for (const [k, x] of Object.entries(spSeed)) out[k] = { ...x, ver: x.ver || lpHash(x.full), at: x.at || new Date(clock() - 3 * 864e5).toISOString() };
+    for (const [k, x] of Object.entries(S.sp)) { if (x) out[k] = x; else delete out[k]; }
+    return out;
+  };
+  const spActive = (id) => PEOPLE.find((e) => String(e.id) === String(id) && (e.status || "active") === "active") || null;
+  const spTouch = (p, t) => !!p && (cnNet(p) || (!!t && String(t.id) === String(p.id)) || (!!t && isLead(p) && t.restaurant === p.restaurant));
+  function staffPhotos(fn, p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    const all = spAll();
+    if (fn === "staff_photos") {
+      const items = Object.entries(all).map(([id, x]) => { const e = spActive(id); return e ? { id: String(id), name: e.name || "", surname: e.surname || "", restaurant: e.restaurant || "", ver: x.ver, at: x.at || null } : null; })
+        .filter(Boolean).sort((a, b2) => a.restaurant.localeCompare(b2.restaurant) || a.name.localeCompare(b2.name) || a.surname.localeCompare(b2.surname));
+      return { ok: true, me: String(p.id), restaurant: p.restaurant || null, items, can: { network: cnNet(p), lead: isLead(p) } };
+    }
+    if (fn === "staff_photo") {
+      const f = !!b.p_full;
+      const ids = (Array.isArray(b.p_ids) ? b.p_ids : []).slice(0, f ? 1 : 24).map(String);
+      const items = ids.filter((id, i) => ids.indexOf(id) === i && all[id] && spActive(id)).sort().map((id) => ({ id, ver: all[id].ver, mime: "image/jpeg", data: f ? all[id].full : all[id].thumb }));
+      return { ok: true, items };
+    }
+    const target = String(b.p_emp == null ? "" : b.p_emp).trim() || String(p.id);
+    if (fn === "staff_photo_set") {
+      if (target !== String(p.id)) {
+        const t = spActive(target);
+        if (!t) return { ok: false, error: "not_found" };
+        if (!spTouch(p, t)) return { ok: false, error: "forbidden" };
+      }
+      const ok64 = (v) => typeof v === "string" && /^[A-Za-z0-9+/]+={0,2}$/.test(v);
+      if (!ok64(b.p_full) || !ok64(b.p_thumb) || b.p_full.length > 200000 || b.p_thumb.length > 40000 || b.p_full.length < 100 || b.p_thumb.length < 40) return { ok: false, error: "bad_photo" };
+      const ver = lpHash(b.p_full);
+      S.sp[target] = { full: b.p_full, thumb: b.p_thumb, ver, by: full(p), at: new Date(clock()).toISOString() };
+      return { ok: true, id: target, ver };
+    }
+    if (fn === "staff_photo_del") {
+      if (target !== String(p.id) && !spTouch(p, spActive(target))) return { ok: false, error: "forbidden" };
+      const had = !!all[target];
+      S.sp[target] = null;
+      return { ok: true, id: target, removed: had ? 1 : 0 };
+    }
+    return undefined;
+  }
+
   function rpc(fn, b) {
     b = b || {};
     const p = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
@@ -756,7 +805,8 @@ export function makeServer(opts) {
     if (fn === "cms_list_lessons") return [];
     if (/^concept_/.test(fn)) { if (opts.noStage49) return { code: "PGRST202", message: "Could not find the function" }; const r = concept(fn, p, b); if (r !== undefined) return r; }   // v139: этап 49
     if (/^lesson_photo/.test(fn)) { if (opts.noStage51) return { code: "PGRST202", message: "Could not find the function" }; const r = lessonPhotos(fn, p, b); if (r !== undefined) return r; }   // v146: этап 51
-    if (fn === "team_scores") return { ok: true, rows: [] };
+    if (/^staff_photo/.test(fn)) { if (opts.noStage52) return { code: "PGRST202", message: "Could not find the function" }; const r = staffPhotos(fn, p, b); if (r !== undefined) return r; }   // v158: этап 52
+    if (fn === "team_scores") return p ? { ok: true, rows: clone(opts.scores || []) } : { ok: false, error: "auth" };   // v158: opts.scores — сданные тесты команды (рейтинг и «Лидеры ресторана»)
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };
     // v113: «Команда» у владельца — список сотрудников заведения (раньше в демо: «Не получилось загрузить список»).

@@ -95,6 +95,17 @@ const MOOD_TITLE = { good: "Хорошая смена", ok: "Ровная сме
 const FIT_MEMO = { w: 0, h: 0, fit: FIT_NONE, fail: null };
 const fitStart = () => (typeof window !== "undefined" && FIT_MEMO.w === window.innerWidth && FIT_MEMO.h === window.innerHeight ? FIT_MEMO.fit : FIT_NONE);
 
+// v157 (Доп. 481): вечерние огни на главной. Строка: x %, y % (от слоя), размер px, цвет, сила, период с, задержка с,
+// сдвиг x и y px, ночью тоже. Над логотипом и текстом огней нет: они по бокам и сверху. Цвет — золото приложения.
+export const EVE_LIGHTS = [
+  [12, 42, 54, "232,201,131", 0.11, 8.5, 0, 3, -2, 0], [85, 28, 44, "232,190,120", 0.12, 7, 1.2, -3, 2, 1], [94, 78, 60, "232,201,131", 0.07, 9.5, 0.6, -2, -3, 0],
+  [6, 86, 30, "232,190,120", 0.09, 6.5, 2.1, 2, 2, 0], [27, 15, 22, "244,220,160", 0.12, 6, 0.4, 2, 3, 1], [69, 13, 18, "240,205,140", 0.13, 7.5, 1.8, -2, 2, 0],
+  [78, 60, 14, "244,226,176", 0.10, 5.5, 2.6, 2, -2, 0], [41, 5, 14, "244,224,170", 0.10, 8, 3.1, -2, 2, 1], [20, 68, 14, "240,212,150", 0.09, 7, 1.5, 3, -1, 0],
+  [62, 92, 12, "244,226,176", 0.08, 6.5, 0.9, -2, -2, 1],
+];
+/** Режим огней по часу: "evening" (18–24), "night" (0–6) или null (день, «Для чтения») */
+export const eveLightsMode = (hour, light) => (light ? null : hour >= 18 ? "evening" : hour < 6 ? "night" : null);
+
 export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
   const isAdmin = !!profile?.is_admin;
   // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
@@ -248,6 +259,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
       </span>
     </div>
   );
+  // v157 (Доп. 481): вечерние огни — в тёмной теме с 18:00 до 06:00 (ночью — «night»: реже и тише)
+  const eveLights = eveLightsMode(new Date().getHours(), a11y);
+  const eveH = (short ? 104 : F.logoPadTop + F.logoH + F.logoPadBottom) + 56;   // логотип и строка приветствия
   return (
     // v50 (Доп. 363): широкий экран — две колонки (sa-home2, правила в ui/css.js): слева шапка дня, справа треки.
     // Телефон лёжа — логотип меньше, чтобы под ним сразу было видно день.
@@ -267,8 +281,22 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             <div style={{ position:"absolute", top:100, right:-60, width:190, height:190, borderRadius:"50%", background:`radial-gradient(circle, ${al(L.b, 0.13 * L.k)} 0%, transparent 70%)`, pointerEvents:"none", transition:"background 1.2s" }} />
           </>);
         })()}
+        {/* v157 (Доп. 481): вечерний свет зала — мягкие огни вокруг логотипа (вечером; ночью — реже и тише). Фон и свет
+            снизу не трогаем: рыжий отсвет внизу из наброска владельцу не понравился («не нравится цвет в выделенной
+            зоне») — остались только огни сверху, золотом приложения. Слой заканчивается под приветствием и к низу тает;
+            логотип и приветствие в этот час стоят над ним. «Для чтения» — без огней. */}
+        {eveLights ? (
+          <div className="sa-evl" data-eve-lights={eveLights} aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height: eveH, pointerEvents:"none", overflow:"hidden",
+            WebkitMaskImage:"linear-gradient(180deg,#000 0%,#000 78%,transparent 100%)", maskImage:"linear-gradient(180deg,#000 0%,#000 78%,transparent 100%)" }}>
+            {EVE_LIGHTS.filter((l) => eveLights === "evening" || l[9]).map(([x, y, sz, rgb, al, d, dl, dx, dy], i) => { const k = eveLights === "night" ? 0.6 : 1; return (
+              <i key={i} style={{ left:`calc(${x}% - ${sz / 2}px)`, top:`calc(${y}% - ${sz / 2}px)`, width:sz, height:sz, "--d": d + "s", "--dl": dl + "s", "--dx": dx + "px", "--dy": dy + "px",
+                background:`radial-gradient(circle at 50% 50%, rgba(${rgb},${(al * k).toFixed(3)}) 0%, rgba(${rgb},${(al * k).toFixed(3)}) 48%, rgba(${rgb},${(al * k * 0.6).toFixed(3)}) 62%, rgba(${rgb},0) 74%)`,
+                boxShadow:`inset 0 0 0 1px rgba(${rgb},${(al * k * 0.3).toFixed(3)})` }} />
+            ); })}
+          </div>
+        ) : null}
         {/* v56 (Доп. 369): логотип на четверть меньше (198 → 152 px) — первым на экране «что сделать», а не знак */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : F.logoPadTop + "px 24px " + F.logoPadBottom + "px" }}>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding: short ? "6px 24px 4px" : F.logoPadTop + "px 24px " + F.logoPadBottom + "px", position: eveLights ? "relative" : undefined }}>
           <img src={LOGO_SRC_DARK /* тёмная версия читается на обеих темах;
                     если для светлой захочется LOGO_SRC — менять здесь */} alt="Service Academy" data-home-logo="" decoding="sync" style={{ width: short ? 118 : F.logoW, height: short ? 94 : F.logoH, objectFit:"contain", display:"block", filter: a11y ? "none" : "brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
         </div>
@@ -289,7 +317,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const roleObj = role ? ROLES.find(r => r.id === role) : null;
           const RCg = roleObj ? (inkOf(roleObj.color, a11y) || (a11y ? "#4E7A58" : "#8FB890")) : null;
           return (
-            <div style={{ padding:"2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10 }}>
+            <div style={{ padding:"2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, position: eveLights ? "relative" : undefined }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}

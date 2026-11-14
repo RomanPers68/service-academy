@@ -10,6 +10,8 @@ import { WEEKDAY, MONTH_GEN } from "../lib/dates";
 import { onActivate, vibrate, isFemaleName } from "../lib/utils";
 import { ROLE_TITLE, masterKey } from "../lib/mastery";
 import { useViewport, useColumn } from "./viewport";
+import { matesLine, matesNote } from "../lib/shift-mates";   // v157 (Доп. 481): «кто сегодня со мной»
+import { Medal, tierText } from "./mastery-card";               // v157: полка значков на вкладке «Я»
 import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи — курсивом, без моноширинного капса   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
@@ -337,8 +339,16 @@ export function SkeletonCard({ a11y, h = 74, style }) {
 
 const DAYS = WEEKDAY, MONTHS = MONTH_GEN;   // v59: один словарь дат (lib/dates.js)
 
+// v157 (Доп. 481): кружок коллеги — стекло с буквами, как «АС» у заголовка «Я»; у старшего ободок ярче
+const MateDisc = ({ a11y, text, lead = false, more = false }) => (
+  <span data-lens="disc" data-mate={lead ? "lead" : more ? "more" : "one"} style={{ width: lead ? 34 : 30, height: lead ? 34 : 30, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0,
+    display: "grid", placeItems: "center", fontFamily: "Georgia, serif", fontSize: lead ? 12.5 : 11.5, lineHeight: 1, letterSpacing: 0.2, color: a11y ? "#7A5D2A" : "#E8C983",
+    background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)",
+    border: "1px solid " + (a11y ? (lead ? "rgba(122,93,42,0.8)" : "rgba(139,106,48,0.42)") : (lead ? "rgba(232,201,131,0.85)" : "rgba(214,178,102,0.4)")) }}>{text}</span>
+);
+
 /** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
-export function ShiftHero({ a11y, onOpen, shift = null }) {
+export function ShiftHero({ a11y, onOpen, shift = null, mates = null }) {
   const t = new Date();
   const key = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
   let label = null;
@@ -349,6 +359,7 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
   const off = label === "выходной";
   const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const go = () => { vibrate("light"); onOpen && onOpen(); };
+  const crew = !off && label && mates && Array.isArray(mates.mates) && mates.mates.length ? mates : null;
   return (
     <div className="sa-card sa-pagein" data-lens-card="" onClick={go} {...onActivate(go)} style={{ ...frostOf(a11y), borderRadius: 18, padding: "14px 16px", cursor: "pointer", marginBottom: 4 }}>
       <div style={tagStyle(a11y)}>Сегодня · {DAYS[t.getDay()]}, {t.getDate()} {MONTHS[t.getMonth()]}</div>
@@ -358,9 +369,24 @@ export function ShiftHero({ a11y, onOpen, shift = null }) {
             {off ? "Выходной" : label}
           </div>
         </div>
-        <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>
-          {off ? "Отдыхай, а завтра загляни в график" : "Тап покажет, кто в смене с тобой и кто старший"}
-        </div>
+        {/* v157 (Доп. 481): кто сегодня со мной — кружки коллег и кто старший, из копии графика на телефоне (lib/shift-mates.js);
+            копии нет или сегодня один — прежняя строка */}
+        {crew ? (
+          <div data-shift-mates={crew.mates.length} style={{ marginTop: 12, paddingTop: 11, borderTop: "1px dashed " + (a11y ? "rgba(122,93,42,0.25)" : "rgba(214,178,102,0.2)"), display: "flex", alignItems: "center", gap: 11 }}>
+            <span aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+              {crew.mates.slice(0, crew.mates.length > 3 ? 2 : 3).map((m) => <MateDisc key={m.id} a11y={a11y} text={m.ini} lead={m.lead} />)}
+              {crew.mates.length > 3 ? <MateDisc a11y={a11y} text={"+" + (crew.mates.length - 2)} more /> : null}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span data-shift-mates-names="" style={{ display: "block", fontFamily: "Georgia, serif", fontSize: a11y ? 15 : 14, lineHeight: 1.25, color: text }}>{matesLine(crew.mates)}</span>
+              <span data-shift-mates-note="" style={{ display: "block", ...tagStyle(a11y), fontSize: a11y ? 13.5 : 12.5, lineHeight: 1.3, marginTop: 2 }}>{matesNote(crew)}</span>
+            </span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 12.5, color: sub, marginTop: 4 }}>
+            {off ? "Отдыхай, а завтра загляни в график" : "Тап покажет, кто в смене с тобой и кто старший"}
+          </div>
+        )}
       </>) : (
         /* «Смена не найдена» читалось как ошибка приложения, хотя это просто
            выходной или ещё не составленный график. Общий пустой вид и человечная
@@ -466,6 +492,88 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
         <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
           {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию: заходи каждый день"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── v157 (Доп. 481): «Я» — полка значков и неделя ───────────────────────────────────────────────────────────────
+// Владелец (14.11) на набросок («Сейчас до значков два нажатия и прокрутка, а низ вкладки пустой. Полка показывает
+// полученные и следующие значки и отметки за неделю»): «Да, все прекрасно, мне нравится». Значки — те же, что в «Пути
+// мастера» (ui/mastery-card.jsx, Medal): сначала полученные (старшая ступень первой), потом те, что ближе к бронзе.
+// Неделя — дни с занятием из серии (lib/streak.js: days — отмечен, frozen — выходной по графику, серию не рвёт).
+const SHELF_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+/** Значки для полки: полученные, потом ближайшие; не больше n */
+export function shelfBadges(state, n = 5) {
+  const fams = state && Array.isArray(state.families) ? state.families.filter(Boolean) : [];
+  const got = fams.filter((f) => f.tier > 0).sort((a, b) => b.tier - a.tier);
+  const next = fams.filter((f) => !(f.tier > 0)).sort((a, b) => (Number(b.pct) || 0) - (Number(a.pct) || 0));
+  return [...got, ...next].slice(0, n);
+}
+/** Неделя с понедельника: [{ key, dow, state: "done" | "today" | "off" | "past" | "ahead" }] */
+export function shelfWeek(streak, now = new Date()) {
+  const days = new Set((streak && streak.days) || []), frozen = new Set((streak && streak.frozen) || []);
+  const today = ymd(now), mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  return SHELF_DAYS.map((dow, i) => {
+    const d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i), key = ymd(d);
+    return { key, dow, state: days.has(key) ? "done" : key === today ? "today" : key > today ? "ahead" : frozen.has(key) ? "off" : "past" };
+  });
+}
+/** Подпись под «Эта неделя» */
+export function shelfWeekNote(streak, now = new Date()) {
+  const n = Math.max(0, Math.floor(Number(streak && streak.count) || 0));
+  if (streak && streak.last === ymd(now)) return "сегодня уже есть";
+  return n > 0 ? "сегодня будет " + (n + 1) + "-й\u00A0подряд" : "начни серию сегодня";
+}
+export function MeShelf({ a11y, state, streak, onOpen, now }) {
+  const list = shelfBadges(state, 5);
+  if (!list.length) return null;
+  const at = now || new Date();
+  const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
+  const line = a11y ? "rgba(122,93,42,0.25)" : "rgba(214,178,102,0.2)";
+  const go = () => { vibrate("light"); onOpen && onOpen(); };
+  const week = shelfWeek(streak, at);
+  const note = shelfWeekNote(streak, at), noteCut = note.lastIndexOf(" ");
+  const dot = (st) => {
+    const base = { width: 20, height: 20, borderRadius: "50%", display: "grid", placeItems: "center", boxSizing: "border-box" };
+    if (st === "done") return <span style={{ ...base, background: a11y ? "rgba(122,93,42,0.16)" : "rgba(214,178,102,0.20)", boxShadow: "inset 0 0 0 1px " + (a11y ? "rgba(122,93,42,0.55)" : "rgba(214,178,102,0.6)") }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>;
+    if (st === "today") return <span style={{ ...base, boxShadow: "inset 0 0 0 1.5px " + gold + ", 0 0 0 3px " + (a11y ? "rgba(122,93,42,0.14)" : "rgba(214,178,102,0.16)") }} />;
+    if (st === "off") return <span style={{ ...base, border: "1px dashed " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.38)") }} />;
+    return <span style={{ ...base, boxShadow: "inset 0 0 0 1px " + (a11y ? "rgba(122,93,42,0.22)" : "rgba(214,178,102,0.2)"), opacity: st === "ahead" ? 0.55 : 1 }} />;
+  };
+  const said = { done: "занятие было", today: "сегодня", off: "выходной", past: "без занятия", ahead: "впереди" };
+  return (
+    <div className="sa-card sa-pagein" data-lens-card="" data-me-shelf="" onClick={go} {...onActivate(go)} aria-label={"Мои значки: " + state.bronze + " из " + state.total + ". Открыть «Путь мастера»"}
+      style={{ ...frostOf(a11y), borderRadius: 18, padding: "13px 16px 13px", cursor: "pointer", marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+        <div style={tagStyle(a11y)}>Мои значки</div>
+        <div style={{ fontSize: a11y ? 13.5 : 12.5, color: sub, whiteSpace: "nowrap" }}>{state.bronze} из {state.total} <span style={{ color: gold }}>›</span></div>
+      </div>
+      <div data-me-badges="" style={{ display: "flex", justifyContent: "space-between", gap: 4, marginTop: 11 }}>
+        {list.map((f) => (
+          <div key={f.id} data-me-badge={f.id} data-me-tier={f.tier || 0} style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+            <Medal id={f.id} tier={f.tier} size={52} a11y={a11y} pct={f.pct} ring />
+            <div style={{ fontFamily: "Georgia, serif", fontSize: a11y ? 12 : 11, lineHeight: 1.15, textAlign: "center", color: f.tier ? tierText(f.tier, a11y) : sub, textWrap: "balance",
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.title}</div>
+          </div>
+        ))}
+      </div>
+      {/* на узком экране (320 px) подпись и кружки дней встают в два ряда */}
+      <div data-me-week="" style={{ marginTop: 12, paddingTop: 11, borderTop: "1px dashed " + line, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 10px" }}>
+        <div style={{ flex: "1 1 104px", minWidth: 0 }}>
+          <div style={tagStyle(a11y)}>Эта неделя</div>
+          {/* хвост подписи («4-й подряд») не рвётся по дефису */}
+          <div data-me-week-note="" style={{ fontSize: a11y ? 13 : 12, color: sub, marginTop: 2, lineHeight: 1.25 }}>{noteCut > 0 ? <>{note.slice(0, noteCut)} <span style={{ whiteSpace: "nowrap" }}>{note.slice(noteCut + 1)}</span></> : note}</div>
+        </div>
+        <div role="img" aria-label={"Неделя. " + week.map((d) => d.dow + ": " + said[d.state]).join(", ")} style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {week.map((d) => (
+            <span key={d.key} data-me-day={d.state} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+              {dot(d.state)}
+              <span style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: a11y ? 11.5 : 10.5, lineHeight: 1, color: d.state === "today" ? gold : sub }}>{d.dow}</span>
+            </span>
+          ))}
         </div>
       </div>
     </div>

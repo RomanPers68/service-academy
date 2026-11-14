@@ -17,12 +17,12 @@ import {
 } from "../lib/lesson-photo";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
-const CamIcon = ({ s = 18, c = "currentColor" }) => (
+export const CamIcon = ({ s = 18, c = "currentColor" }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M4 8.5h3l1.6-2.3h6.8L17 8.5h3a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.3" r="3.6" />
   </svg>
 );
-const isBoss = (p) => !!p && (!!p.is_admin || isLeadPos(String(p.position || "")));
+export const isBoss = (p) => !!p && (!!p.is_admin || isLeadPos(String(p.position || "")));
 const isOwner = (p) => !!p && (!!p.is_admin || String(p.position || "") === "senior");
 const fullName = (p) => (p ? [p.name, p.surname].filter(Boolean).join(" ") : "");
 
@@ -96,7 +96,15 @@ export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false,
 }
 
 /** Лист «Фото урока»: выбрать с телефона, убрать, куда ставить (сеть или своё заведение) */
-export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, onClose }) {
+// v157 (Доп. 481): тот же лист — для обложек разделов («Справочник», раздел трека): kind="section", слова свои
+const SHEET_WORDS = {
+  lesson: { title: "Фото урока", of: "урока", at: "у урока", drop: "Да, убрать фото у урока",
+    tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное — фото встанет над текстом урока" },
+  section: { title: "Фото раздела", of: "раздела", at: "у раздела", drop: "Да, убрать фото у раздела",
+    tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное: фото встанет обложкой раздела" },
+};
+export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, onClose, kind = "lesson", note = "" }) {
+  const W = SHEET_WORDS[kind] || SHEET_WORDS.lesson;
   const missing = list === "missing" || !list;
   const e = !missing && list.map ? list.map[lessonId] || null : null;
   const [scope, setScope] = React.useState(() => (missing ? null : defaultScope(list, lessonId)));
@@ -158,20 +166,20 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
   };
   const body = (
     <div data-lp-sheet="" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9600, background: c.veil, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div role="dialog" aria-modal="true" aria-label="Фото урока" data-lens-card="" data-lens-float="" onClick={(ev) => ev.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={W.title} data-lp-kind={kind} data-lens-card="" data-lens-float="" onClick={(ev) => ev.stopPropagation()}
         className="sa-panel-in"
         style={{ position: "relative", width: "100%", maxWidth: 520, borderRadius: "22px 22px 0 0", padding: "16px 16px calc(18px + env(safe-area-inset-bottom, 0px))", fontFamily: SERIF,
           backgroundColor: c.base, backgroundImage: c.bg, border: "1px solid " + c.edge, borderBottom: 0, boxShadow: "0 -12px 40px rgba(0,0,0,0.45)", color: c.text }}>
         <button type="button" aria-label="Закрыть" data-lens="disc" data-lens-x="" onClick={onClose}
           style={{ position: "absolute", top: 8, right: 8, width: 40, height: 40, borderRadius: "50%", border: 0, background: "none", color: c.sub, fontSize: 22, lineHeight: 1, cursor: "pointer" }}>×</button>
-        <div style={{ fontSize: 19, fontWeight: "bold", paddingRight: 40 }}>Фото урока</div>
+        <div style={{ fontSize: 19, fontWeight: "bold", paddingRight: 40 }}>{W.title}</div>
         {lessonTitle ? <div style={{ fontSize: 13.5, fontStyle: "italic", color: c.sub, marginTop: 2, paddingRight: 40 }}>{lessonTitle}</div> : null}
         {two ? <div style={{ display: "flex", gap: 8, marginTop: 14 }}>{seg("", "Вся сеть")}{seg(list.restaurant, "«" + list.restaurant + "»")}</div> : null}
         {!here && seen ? (
           <div data-lp-other="" style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 14 }}>
             {scope && !seen.scope
-              ? "Сейчас у урока фото всей сети" + (seen.by ? " (поставил(а) " + seen.by + ")" : "") + ". Новое заменит его для «" + scope + "»."
-              : "У «" + seen.scope + "» своё фото урока — его там и видят. Фото сети увидят остальные заведения."}
+              ? "Сейчас " + W.at + " фото всей сети" + (seen.by ? " (поставил(а) " + seen.by + ")" : "") + ". Новое заменит его для «" + scope + "»."
+              : "У «" + seen.scope + "» своё фото " + W.of + " — его там и видят. Фото сети увидят остальные заведения."}
           </div>
         ) : null}
         {here ? (
@@ -183,8 +191,10 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
           </div>
         ) : null}
         <div style={{ fontSize: 14, lineHeight: 1.5, color: c.sub, marginTop: 14 }}>
-          {missing ? null : "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное — фото встанет над текстом урока" + (scope === "" ? " у всей сети." : scope ? " у «" + scope + "»." : ".")}
+          {missing ? null : W.tip + (scope === "" ? " у всей сети." : scope ? " у «" + scope + "»." : ".")}
         </div>
+        {/* v157: что на обложке сейчас, если это не своё фото раздела (фото урока или снимок из справочника) */}
+        {note && !missing && !here ? <div data-lp-note="" style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 8 }}>{note}</div> : null}
         {msg ? <div data-lp-msg="" role="status" style={{ fontSize: 14, lineHeight: 1.45, color: list === "missing" ? c.text : c.err, marginTop: 10 }}>{msg}</div> : null}
         {busy ? <div data-lp-busy="" role="status" style={{ fontSize: 14, fontStyle: "italic", color: c.gold, marginTop: 10 }}>{busy}</div> : null}
         {!missing && scope !== null ? (
@@ -197,7 +207,7 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
             {here ? (
               <button type="button" data-lp-drop={sure ? "sure" : ""} data-lens-btn="soft" onClick={drop} disabled={!!busy}
                 style={{ minHeight: 44, borderRadius: 999, border: "1px solid " + (sure ? c.err : c.edge), background: "transparent", color: sure ? c.err : c.sub, fontFamily: SERIF, fontSize: 15, cursor: "pointer" }}>
-                {sure ? "Да, убрать фото у урока" : "Убрать фото"}</button>
+                {sure ? W.drop : "Убрать фото"}</button>
             ) : null}
           </div>
         ) : null}
@@ -206,4 +216,53 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
   );
   if (typeof document === "undefined" || !document.body) return body;
   return createPortal(body, document.body);
+}
+
+// ── v157 (Доп. 481): обложки разделов — «Справочник» и раздел трека ─────────────────────────────────────────
+/**
+ * Фото по номеру и версии: сначала превью, потом целиком (память — lib/lesson-photo.js). → { src, gone }.
+ * wantFull = false — только превью (соседняя страница трека: фото видно краем, целое не тянем).
+ * gone — фото не пришло совсем (нет связи): место под обложку не держим. Нет версии — { src: null, gone: false }.
+ */
+export function useCover(id, ver, wantFull = true) {
+  const first = () => (id && ver ? (wantFull ? lessonPhotoCached(id, ver, true) : null) || lessonPhotoCached(id, ver, false) || lessonPhotoCached(id, ver, true) : null);
+  const [st, setSt] = React.useState(() => ({ src: first(), gone: false }));
+  React.useEffect(() => {
+    const put = (src, gone) => setSt((x) => (x.src === src && x.gone === gone ? x : { src, gone }));   // то же самое — без лишней перерисовки
+    if (!id || !ver) { put(null, false); return undefined; }
+    let live = true;
+    const full = lessonPhotoCached(id, ver, true);
+    if (full && wantFull) { put(full, false); return undefined; }
+    const have = lessonPhotoCached(id, ver, false) || full;
+    put(have, false);
+    const a = lessonPhotoUrl(id, ver, false).then((u) => { if (live && u) setSt((x) => (x.src ? x : { src: u, gone: false })); return u; });
+    const b = wantFull ? lessonPhotoUrl(id, ver, true).then((u) => { if (live && u) put(u, false); return u; }) : Promise.resolve(null);
+    Promise.all([a, b]).then(([x, y]) => { if (live && !x && !y && !have) put(null, true); });
+    return () => { live = false; };
+  }, [id, ver, wantFull]);
+  return st;
+}
+/** То же, только само фото (карточки «Справочника»: высота карточки от фото не зависит) */
+export const useCoverSrc = (id, ver) => useCover(id, ver).src;
+/** Может ли человек ставить обложки: по списку с сервера, а без этапа 51 — руководителю покажем, что обновить */
+export const canEditCovers = (list, profile) => (list === "missing" ? isBoss(profile) : canEditPhotos(list));
+/**
+ * Кнопка с фотоаппаратом у обложки раздела (видит только тот, кто может ставить фото) и лист «Фото раздела».
+ * Стоит внутри карточки-кнопки, поэтому нажатие дальше не идёт.
+ */
+export function CoverEditButton({ id, title = "", profile, a11y = false, list, note = "", onPhoto = false, passive = false, style }) {
+  const [sheet, setSheet] = React.useState(false);
+  if (!id || !canEditCovers(list, profile)) return null;
+  const open = (e) => { if (e) { e.stopPropagation(); if (e.preventDefault) e.preventDefault(); } vibrate("light"); setSheet(true); };
+  const stop = (e) => e.stopPropagation();
+  return (<>
+    <button type="button" data-cover-edit={id} data-lens={onPhoto ? undefined : "disc"} aria-label={"Фото раздела «" + title + "»"} onClick={passive ? undefined : open} onKeyDown={stop} onTouchStart={stop}
+      tabIndex={passive ? -1 : undefined} aria-hidden={passive ? "true" : undefined}
+      style={{ position: "absolute", top: 9, right: 9, zIndex: 2, width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", border: 0, cursor: "pointer", padding: 0,
+        color: onPhoto ? "#F4E9CF" : (a11y ? "#7A5D2A" : "#E8C983"), background: onPhoto ? "rgba(20,15,8,0.55)" : (a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)"),
+        boxShadow: onPhoto ? "inset 0 0 0 1px rgba(232,201,131,0.55), 0 4px 12px rgba(0,0,0,0.35)" : "inset 0 0 0 1px " + (a11y ? "rgba(139,106,48,0.42)" : "rgba(214,178,102,0.4)"),
+        pointerEvents: passive ? "none" : undefined, ...style }}>
+      <CamIcon s={16} /></button>
+    {sheet ? <span onClick={stop} onKeyDown={stop}><LessonPhotoSheet kind="section" lessonId={id} lessonTitle={title} profile={profile} a11y={a11y} list={list} note={note} onClose={() => setSheet(false)} /></span> : null}
+  </>);
 }

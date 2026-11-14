@@ -725,7 +725,7 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         {/* v32 (Доп. 333): соседняя страница рисуется тем же составом, что и текущая (кнопки
             «Освежить», «Я это умею — зачёт на опыт», «Раунд мастера» — те же, только не нажимаются),
             поэтому после свайпа ничего не появляется и не сдвигается */}
-        <ModuleMenu embedded passive={passive} mod={m} tint={i >= 0 ? shadeAt(i) : null} completed={completed} quizDone={quizDone} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins}
+        <ModuleMenu embedded passive={passive} mod={m} tint={i >= 0 ? shadeAt(i) : null} completed={completed} quizDone={quizDone} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins} profile={profile}
           onLesson={passive ? () => {} : (l) => (onLesson ? onLesson(l, m) : onModule && onModule(m))}
           topic={topicOf(m)} acts={topicActs ? (passive ? PASSIVE_ACTS : { onRefresh: () => topicActs.refresh(m), onCredit: () => topicActs.credit(m), onGold: () => topicActs.gold(m), onCellar: topicActs.cellar }) : null} />
         {/* Доп. 308: в конце меню — тихая ссылка на следующую тему (для тех, кто листает вниз, а не вбок) */}
@@ -1064,7 +1064,7 @@ export function ModuleNextCard({ mod, next, onNext, finish, T, a11y = false }) {
 
 }
 
-export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false }) {
+export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, T, next, onNext, finish, a11y = false, profile = null }) {
   // Доп. 292: модуль (раздел) — «меню раздела»: строки с отточием, «пройден» от руки,
   // тест под сургучом, текущий шаг — карточка. Прежняя информация вся на месте
   // (см. ui/module-menu.jsx); код формата «у стола» начинает грузиться фоном уже здесь.
@@ -1072,7 +1072,7 @@ export function ModuleScreen({ mod, completed, quizDone = {}, onBack, onLesson, 
   useColumn(useWide() ? 820 : 0);   // v52 (Доп. 365): меню раздела — как страница трека
   return (
     <div style={T.screen} className="sa-slide-r">
-      <ModuleMenu mod={mod} completed={completed} quizDone={quizDone} onLesson={onLesson} onBack={onBack} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins} />
+      <ModuleMenu mod={mod} completed={completed} quizDone={quizDone} onLesson={onLesson} onBack={onBack} a11y={a11y} estMins={_estMins} fmtMins={_fmtMins} profile={profile} />
       {/* Доп. 196: следующий шаг — не искать глазами, куда идти дальше */}
       <ModuleNextCard mod={mod} next={next} onNext={onNext} finish={finish} T={T} a11y={a11y} />
     </div>

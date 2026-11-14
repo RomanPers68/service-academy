@@ -81,6 +81,18 @@ html.sa-light .tb,html.sa-light .tbm,html.sa-light .tbv{--bg:#E8DEC8;--bg-2:#EFE
 .tbm-eyebrow{${LABEL_CSS};font-size:13px}
 .tbm-title{font-family:var(--font-display);font-size:21.5px;font-weight:700;line-height:1.15;margin:6px 0 3px;text-wrap:balance;color:var(--text)}
 .tbm-sub{margin:0;color:var(--sub);font-style:italic;font-size:13px;line-height:1.3;text-wrap:balance}
+/* v157 (Доп. 481): обложка раздела — фото сверху карточки, к низу тает в стекло; шапка раздела стоит на его нижней, тёмной
+   части (в «Для чтения» — светлой). Ленточка и печать — поверх фото. Фото и кнопку ставит ui/module-menu.jsx. */
+.tbm-cover{position:absolute;left:0;right:0;top:0;height:178px;border-radius:21px 21px 0 0;overflow:hidden;pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 34%,rgba(0,0,0,.72) 58%,rgba(0,0,0,.28) 82%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0%,#000 34%,rgba(0,0,0,.72) 58%,rgba(0,0,0,.28) 82%,transparent 100%)}
+.tbm-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%;display:block;filter:brightness(.86) saturate(1.05)}
+.tbm-cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,17,9,.10) 0%,rgba(22,17,9,.42) 40%,rgba(22,17,9,.86) 78%,rgba(22,17,9,.9) 100%)}
+html.sa-light .tbm-cover img{filter:none;opacity:.96}
+html.sa-light .tbm-cover::after{background:linear-gradient(180deg,rgba(248,241,226,0) 0%,rgba(248,241,226,.30) 40%,rgba(248,241,226,.86) 78%,rgba(248,241,226,.9) 100%)}
+.tbm-menu.covered .tbm-head{position:relative;padding-top:84px}
+.tbm-menu.covered.sealed .tbm-head{padding-top:66px}
+.tbm-menu.covered .tbm-list{position:relative}
 .tbm-orn{display:flex;align-items:center;gap:10px;max-width:180px;margin:9px auto 5px;color:var(--gold-ink);font-size:10.5px;line-height:1}
 .tbm-orn i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--edge-gold))}
 .tbm-orn i:last-child{background:linear-gradient(90deg,var(--edge-gold),transparent)}

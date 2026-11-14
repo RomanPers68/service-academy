@@ -159,7 +159,8 @@ describe("v156: экран и проводка", () => {
 describe("v156: метка и журнал", () => {
   it("метка «сборка v156», Дополнение 480 со словами владельца, e2e-v156 в README", () => {
     const n = [...rd("ui/menu-trainer.jsx").matchAll(/· сборка v(\d+)<\/span>/g)].map((m) => Number(m[1]));
-    expect(n).toEqual([156]);
+    expect(n.length).toBe(1);
+    expect(n[0]).toBeGreaterThanOrEqual(156);   // v157: метка дальше — номер последней версии сверяет tests/v157.test.js
     const c = rd("CHANGES.md");
     expect(c).toMatch(/# Дополнение 480 — .*\(v156\)/);
     expect(c).toContain("Прошел уже 2 урока, и пока не одной подсказки не увидел");

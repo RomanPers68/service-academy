@@ -12,7 +12,8 @@ import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
 import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModules, allLessonIds, roleOfLessonId } from "./data/modules";
 import { useContentVersion } from "./lib/use-content";
-import { HubScreen, ShiftHero, TeamHero, MeHero, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
+import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
+import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
 import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
@@ -1156,6 +1157,8 @@ function ServiceAcademy() {
     } catch (e) {}
     return null;
   }, [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v157 (Доп. 481): кто сегодня со мной — из той же копии графика; пересчёт — когда и смена (день, экран, свежий график)
+  const shiftCrew = useMemo(() => (profile ? shiftMates(profile, new Date()) : null), [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   const shiftText = shiftToday && !shiftToday.off ? (shiftToday.label || shiftLabel(shiftToday)) : "";
   // ── v30 (Доп. 313, 315, 316): свежесть тем, зачёт на опыт, золотая тема — на телефоне ──
   // v31: логика вынесена в хук lib/use-day.js (useFreshMarks)
@@ -3467,7 +3470,7 @@ function ServiceAcademy() {
         {/* ═══ Доп. 133: вкладки-хабы. Ничего нового — только адресация существующих экранов ═══ */}
         {screen === "shift" && profile && <div className="sa-tabpad"><HubScreen T={T} a11y={a11y} title="Смена" /* v78 (Доп. 391): без слогана под названием */
           hintKey={hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position))}
-          hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} onOpen={() => navigate("schedule")} />
+          hintSteps={hintsFor(hintKey("shift", !!profile?.is_admin || ["manager","senior"].includes(profile?.position)))} hero={<><ShiftHero a11y={a11y} shift={shiftToday} mates={shiftCrew} onOpen={() => navigate("schedule")} />
             {/* v110 (Доп. 423): новичку (этап 41) — «Первая неделя» карточкой с прогрессом под сменой (была группа с одним пунктом) */}
             {nbOn && nbInfo.newbie ? <NewbieHero a11y={a11y} done={nbDoneCount(nbInfo)} total={nbTotalCount(nbInfo)} onOpen={() => navigate("newbie")}
               line={nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования"} /> : null}
@@ -3539,9 +3542,11 @@ function ServiceAcademy() {
           hintKey="me"
           hintSteps={hintsFor("me")}
           title={profile.name} subtitle={profile.restaurant || "Service Academy"}
-          hero={<MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
+          hero={<><MeHero a11y={a11y} streak={streak} roleLabel={ROLES.find(r => r.id === role)?.label} total={totalLessons}
             done={programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result" && (l.type === "quiz" ? quizDone[l.id] : completed[l.id])).length, 0)}
-            onOpen={() => navigate("stats")} />} items={[
+            onOpen={() => navigate("stats")} />
+            {/* v157 (Доп. 481): полка значков и неделя — под кольцом прогресса; тап — «Путь мастера» */}
+            {mShown ? <MeShelf a11y={a11y} state={mShown} streak={streakLive} onOpen={() => navigate("mastery")} /> : null}</>} items={[
           // v40: «Путь мастера» — значки и главная награда; «новое», пока не открывали
           // v71: группами; итоги и настройки — строками в одной карточке
           thanksOn && { key:"thanks", group:"Мой путь", icon:"thanks", label:"Спасибо от гостей", sub: thanksSub(thanksInfo), onClick:() => openThanks("mine") },   // v84
@@ -3616,7 +3621,7 @@ function ServiceAcademy() {
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
           learner={assistantLearner()} onBack={() => goBack()} onNavigate={(dest) => assistantNavigate(dest, false)} /></Suspense>}
         {screen === "mentor" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} onInbox={setHallInbox} extraSkills={customSkills} /></Suspense></div>}
-        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div className="sa-tabpad"><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y}
+        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div className="sa-tabpad"><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y} profile={profile}
           next={moduleNextFor(activeModule)} onNext={moduleOnNext} finish={moduleFinishFor()} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}

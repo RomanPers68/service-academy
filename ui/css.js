@@ -1110,6 +1110,14 @@ export const injectStyles = () => {
        последние карточки поднимаются выше кнопки и не прячутся под ней. */
     html.sa-fabon { --sa-fab: calc(104px + env(safe-area-inset-bottom, 0px)); }
     html.sa-fabon .sa-col { padding-bottom: var(--sa-fab); box-sizing: border-box; }
+
+    /* ══ v157 (Доп. 481) ════════════════════════════════════════════
+       Вечерние огни на главной (ui/screens-roleselect.jsx, EVE_LIGHTS): огонёк медленно дышит и чуть плывёт;
+       «меньше движения» — стоит на месте. Кружок старшего в «Смене» (ui/home-hubs.jsx): в «Линзе» ободок ярче. */
+    @keyframes saEvl { 0%, 100% { opacity: .58; transform: translate3d(0, 0, 0); } 50% { opacity: 1; transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0); } }
+    .sa-evl > i { position: absolute; display: block; border-radius: 50%; animation: saEvl var(--d, 7s) ease-in-out var(--dl, 0s) infinite; }
+    @media (prefers-reduced-motion: reduce) { .sa-evl > i { animation: none; } }
+    html.sa-lens [data-lens="disc"][data-mate="lead"] { box-shadow: inset 0 0 0 1.5px var(--lk-hi), inset 0 0 12px var(--lk-glow), inset 0 1.5px 0 var(--lk-hl) !important; }
   `;
   document.head.appendChild(style);
 

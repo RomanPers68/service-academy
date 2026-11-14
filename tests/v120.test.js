@@ -165,7 +165,9 @@ describe("v120: экраны", () => {
     expect(R).toContain('onWines ? { id: "barcard", art: "winelist", t: "Барная карта"');
   });
   it("«Справочник»: у «Нашей винной карты» — свой витраж, как у курсов (владелец: «выглядит как что-то инородное»)", () => {
-    expect(R).toContain('{["serving","wine","coffee","cocktails","winelist"].includes(c.art || c.id)');   // v127: у «Барной карты» — витраж винной карты
+    // v127: у «Барной карты» — витраж винной карты; v157 (Доп. 481): карточка раздела — обложка (RefCard), витраж — там, где нет фото
+    expect(R).toContain('const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist"].includes(art);');
+    expect(R).toContain('<RefArt kind={art} light={!!a11y} size={76} />');
     const A = rd("ui/reference-art.jsx");
     expect(A).toContain("const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList };");
     expect(A).toMatch(/function WineList\(\{ light \}\) \{[\s\S]*viewBox="0 0 120 120"/);
@@ -179,7 +181,7 @@ describe("v120: экраны", () => {
     expect(E).toContain('data-lens-btn="danger" data-wine-del=""');
     expect(count(E, 'data-lens-field=""')).toBeGreaterThanOrEqual(5);
     expect(R).toContain('aria-label={c.t} data-lens-card="" data-ref-card={c.id}');
-    expect(R).toContain('<div data-lens="disc" style={T.modIcon}>{c.icon(gold, 24)}</div>');
+    expect(R).toContain('<div data-lens="disc" style={{ ...T.modIcon, position: "absolute", right: 50, top: 14 }}>{c.icon(gold, 24)}</div>');   // v157: значок без витража — справа сверху, как рисунок
   });
   it("импорт: фото (несколько снимков, ужимаются до 1800 px), PDF, списком по 15; ошибки — понятным текстом", () => {
     expect(E).toContain('accept="image/*" multiple');

@@ -17,6 +17,8 @@ import { CHAT_SHARE_IC } from "./share-chat";
 import { cachedShared } from "../lib/deck-extras";   // v120 (Доп. 433): винная карта заведения
 import { wineRecords } from "../lib/wine";
 import { barCounts, barLine } from "../lib/bar-card";   // v127: «Барная карта»
+import { useLessonPhotos, useCoverSrc, canEditCovers, CoverEditButton } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов
+import { refCoverId, photoOf, REF_COVER_DEFAULT } from "../lib/lesson-photo";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -73,7 +75,50 @@ function Figure({ T, children }) {
 }
 
 // ── Хаб ──
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant }) {
+// ── v157 (Доп. 481): раздел Справочника — карточка-обложка ───────────────────────────────────────────────────
+// Владелец (14.11) на набросок «Справочник с фотографиями»: «Да, все прекрасно, мне нравится»; «Фото… их можно будет самому
+// загрузить, верно?» — да: у руководителя на карточке фотоаппарат, лист «Фото раздела» (тот же, что у фото урока: вся сеть
+// или своё заведение, этап 51). Своего фото нет — снимок из приложения («Сервировка», «Вина»), а где и его нет («Кофе»,
+// «Барная карта») — прежний рисунок-витраж, крупнее и справа. Фото — фоном во всю карточку, слева гаснет под текст.
+function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
+  const id = refCoverId(c.id);
+  const own = id && photos && photos !== "missing" ? photoOf(photos, id) : null;
+  const ownSrc = useCoverSrc(id, own ? own.ver : "");
+  const def = REF_COVER_DEFAULT[c.id] || null;
+  const photo = own && ownSrc ? { src: ownSrc, pos: "50% 50%" } : def;
+  const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist"].includes(art);
+  const ink = dark ? "#F4ECD8" : "#2A1F0E", sub = dark ? "#C9BB9C" : "#5E4E34";
+  const veil = dark
+    ? "linear-gradient(90deg, rgba(24,18,10,.95) 0%, rgba(24,18,10,.84) 30%, rgba(24,18,10,.28) 62%, rgba(24,18,10,.04) 82%), linear-gradient(0deg, rgba(24,18,10,.6) 0%, rgba(24,18,10,0) 55%)"
+    : "linear-gradient(90deg, rgba(246,238,220,.96) 0%, rgba(246,238,220,.86) 30%, rgba(246,238,220,.25) 62%, rgba(246,238,220,0) 80%), linear-gradient(0deg, rgba(246,238,220,.55) 0%, rgba(246,238,220,0) 55%)";
+  const note = own ? "" : def ? "Сейчас на обложке снимок из справочника. Своё фото встанет вместо него." : "";
+  return (
+    <div onClick={c.on ? onGo : undefined} {...onActivate(c.on ? onGo : undefined)} aria-label={c.t} data-lens-card="" data-ref-card={c.id} data-ref-cover={own && ownSrc ? "own" : photo ? "app" : "art"}
+      style={{ ...T.modCard, gap: 0, alignItems: "stretch", minHeight: 112, padding: "0 16px", cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
+      {photo ? (<>
+        <img src={photo.src} alt="" loading="lazy" draggable={false} data-ref-photo="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: photo.pos, display: "block",
+          filter: dark ? "brightness(.92) saturate(1.06)" : "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: veil, pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 22px rgba(255,248,230,.07)" }} />
+      </>) : hasArt ? (
+        <div aria-hidden="true" style={{ position: "absolute", right: 44, top: 8, pointerEvents: "none" }}><RefArt kind={art} light={!!a11y} size={76} /></div> /* Доп. 147: витражи для курсов; подпись проходит под рисунком */
+      ) : (
+        <div data-lens="disc" style={{ ...T.modIcon, position: "absolute", right: 50, top: 14 }}>{c.icon(gold, 24)}</div>
+      )}
+      <div style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "0 0 14px" }}>
+        {/* v78 (Доп. 391): метки «Курс» и «Колода» над названием убраны — и так понятно; «Скоро» — у закрытого */}
+        {c.tag || !c.on ? <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || "Скоро"}</div> : null}
+        <div style={{ ...T.modTitle, fontSize: a11y ? 20 : 19, marginBottom: 3, color: photo ? ink : T.modTitle.color }}>{c.t}</div>
+        <div style={{ ...T.modSub, fontSize: a11y ? 14.5 : 12.5, color: photo ? sub : T.modSub.color, display: "flex", alignItems: "center", gap: 4 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
+      </div>
+      <div style={{ ...T.modArrow, position: "relative", zIndex: 1, alignSelf: "flex-end", paddingBottom: 16, fontSize: 18, color: photo ? (dark ? "rgba(244,236,216,0.75)" : "#5E4E34") : T.modArrow.color }}>{c.on ? "›" : ""}</div>
+      <CoverEditButton id={id} title={c.t} profile={profile} a11y={!!a11y} list={photos} note={note} onPhoto={!!photo} />
+    </div>
+  );
+}
+
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant, profile = null }) {
+  const photos = useLessonPhotos();   // v157: свои фото разделов — из того же списка, что фото уроков
   const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
   const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
@@ -113,18 +158,8 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     </div>
     <div className="sa-g2" style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
-        <div key={c.id} onClick={c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined} {...onActivate(c.on ? () => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id)) : undefined)} aria-label={c.t} data-lens-card="" data-ref-card={c.id} style={{ ...T.modCard, gap: 12, cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
-          {["serving","wine","coffee","cocktails","winelist"].includes(c.art || c.id)
-            ? <RefArt kind={c.art || c.id} light={!!a11y} size={56} /> /* Доп. 147: витражи для курсов */
-            : <div data-lens="disc" style={T.modIcon}>{c.icon(gold, 24)}</div>}
-          <div style={{ flex: 1 }}>
-            {/* v78 (Доп. 391): метки «Курс» и «Колода» над названием убраны — и так понятно; «Скоро» — у закрытого */}
-            {c.tag || !c.on ? <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || "Скоро"}</div> : null}
-            <div style={T.modTitle}>{c.t}</div>
-            <div style={{ ...T.modSub, display: "flex", alignItems: "center", gap: 4 }}>{!c.on && Ico.lock(T.modSub.color, 12)}{c.s}</div>
-          </div>
-          <div style={T.modArrow}>{c.on ? "›" : ""}</div>
-        </div>
+        <RefCard key={c.id} c={c} T={T} gold={gold} dark={dark} a11y={a11y} photos={photos} profile={profile}
+          onGo={() => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id))} />
       ))}
     </div>
   </div>);
@@ -271,7 +306,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
     scopeText={onBarItem ? "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию, меню ресторана и барной карте." : "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию и меню ресторана."}
     onCocktail={onBarItem ? (id) => onBarItem("cocktail", id) : undefined} onDrink={onBarItem || undefined}
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab}
+  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} profile={profile}
     hintNode={rHint && rSteps.length ? (
       <HintBubble a11y={a11y} text={rSteps[rStep]} arrow="up"
         step={rStep + 1} total={rSteps.length}

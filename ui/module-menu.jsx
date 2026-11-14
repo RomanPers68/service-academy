@@ -14,6 +14,8 @@ import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
 import { GOLD_N, CREDIT_N } from "../lib/marks";
 import { practicePool, quizPool } from "../lib/table-pick";
 import { INFO_NOTE } from "../lib/info-topics";   // v144 (Доп. 465): тема «для ознакомления» — записка под названием
+import { useLessonPhotos, useCover, CoverEditButton } from "./lesson-photo";   // v157 (Доп. 481): обложка раздела
+import { moduleCover, modCoverId } from "../lib/lesson-photo";
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
 const DONE_WORD = { lesson: "пройден", quiz: "сдан", practice: "сыграно", dialogue: "пройден", build: "собрано" };
@@ -103,12 +105,21 @@ function freshLine(f) {
   return "тема свежая" + (f.dueIn ? " · ещё " + f.dueIn + " " + plural(f.dueIn, "день", "дня", "дней") : "");
 }
 
-export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBack, a11y = false, estMins, fmtMins, embedded = false, passive = false, tint = null, topic = null, acts = null }) {
+export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBack, a11y = false, estMins, fmtMins, embedded = false, passive = false, tint = null, topic = null, acts = null, profile = null }) {
   // passive — соседняя страница в листаемом треке (видна краем): ничего не отмечает
   // «увиденным» — ни печать, ни «пройден» от руки; анимации сыграют, когда страница станет текущей
   // tint (Доп. 308) — оттенок темы в треке: ленточка, значок и отметка текущего шага; текст — цвета трека
   const deco = tint || mod.color;
   ensureTableCss();
+  // v157 (Доп. 481): обложка раздела — своё фото раздела («mod:<раздел>»), а нет — фото первого урока, у которого оно есть.
+  // Владелец (14.11) на набросок «то же у раздела в треке»: «Да, все прекрасно, мне нравится»; ставит руководитель —
+  // фотоаппарат справа сверху (лист «Фото раздела», как у фото урока). Соседняя страница трека рисуется так же, но не нажимается.
+  const photos = useLessonPhotos();
+  const cov = moduleCover(photos, mod);
+  // место под обложку — сразу, как известно, что фото есть (пока едет — мерцающий силуэт): шапка раздела не прыгает.
+  // Соседней странице хватает превью; фото не пришло совсем (нет связи) — карточка прежняя.
+  const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", !passive);
+  const covered = !!cov && !covGone;
   const est = (l) => { try { return estMins ? estMins(l) : 1; } catch (e) { return 1; } };
   const fmt = (m) => (fmtMins ? fmtMins(m) : m + " мин");
   const lessons = mod.lessons || [];
@@ -151,8 +162,11 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
       {/* v40: печать висит на верхнем левом углу меню, над строкой «урок · шаги» — место под неё
           (.sealed) зависит только от того, пройден ли раздел: у соседней страницы оно то же,
           даже пока сама печать ещё не «опустилась» */}
-      <div className={"tbm-menu" + (sealed ? " sealed" : "")}>
+      <div className={"tbm-menu" + (sealed ? " sealed" : "") + (covered ? " covered" : "")} data-mod-cover={covered ? (cov.own ? "own" : "lesson") : undefined}>
+        {covered ? <div className="tbm-cover" aria-hidden="true">{covSrc ? <img src={covSrc} alt="" draggable={false} /> : <span className="sa-skel" style={{ position: "absolute", inset: 0 }} />}</div> : null}
         <span className="tbm-lasse" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent 40%,rgba(0,0,0,.28))," + (deco || "#8B3020") }} />
+        <CoverEditButton id={modCoverId(mod.id)} title={mod.title} profile={profile} a11y={a11y} list={photos} onPhoto={covered} passive={passive} style={{ top: 10, right: 46 }}
+          note={cov && !cov.own ? "Сейчас на обложке фото урока «" + cov.lesson + "». Своё фото раздела встанет вместо него." : ""} />
         {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={46} /></span> : null}
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}

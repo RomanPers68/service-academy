@@ -97,7 +97,9 @@ describe("v102: что стало линзой", () => {
     const src = rd("ui/home-hubs.jsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1");   // без комментариев
     // v150 (Доп. 474): + знак в шапке хаба вместо мелкого логотипа — линза, как у кнопок-групп («Смена», «Команда» — значок
     // вкладки, «Я» — инициалы)
-    expect((src.match(/data-lens="disc"/g) || []).length).toBe(4);
+    // v157 (Доп. 481): + кружок коллеги в «Смене» («кто сегодня со мной») — линза с буквами, как инициалы у «Я»
+    expect((src.match(/data-lens="disc"/g) || []).length).toBe(5);
+    expect((src.match(/<span data-lens="disc" data-mate=\{lead \? "lead" : more \? "more" : "one"\}/g) || []).length).toBe(1);
     expect((src.match(/data-hub-mark=\{meMark \? "avatar" : hubId\} data-lens="disc"/g) || []).length).toBe(1);
     expect((src.match(/data-lens="disc" data-hub-disc=""/g) || []).length).toBe(2);
     const rows = src.slice(src.indexOf("function rowList(group)"), src.indexOf("const toggle = (name, names)"));

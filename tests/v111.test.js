@@ -187,7 +187,8 @@ describe("v111: вкладки «Смена», «Команда», «Я»", () =
     expect(R(h(NewbieHero, { a11y: false, line: "Первая смена: сегодня, 12:00", done: 1, total: 12, onOpen: noop }))).toContain('data-nb-hero="" data-lens-card=""');
     expect(R(h(MeHero, { a11y: false, done: 7, total: 85, streak: { count: 0 }, roleLabel: "Новичок" }))).toContain('data-lens-card=""');
     const hubs = code(rd("ui/home-hubs.jsx"));
-    expect((hubs.match(/data-lens-card=""/g) || []).length).toBe(11);
+    expect((hubs.match(/data-lens-card=""/g) || []).length).toBe(12);   // v157 (Доп. 481): + полка значков на «Я» (MeShelf)
+    expect(hubs).toContain('<div className="sa-card sa-pagein" data-lens-card="" data-me-shelf=""');
     expect(hubs).toContain('<div className="sa-card sa-pagein" data-ms-banner="" data-lens-card="" role="button"');
     expect(hubs).toContain('<div className="sa-card sa-pagein" data-team-feed="" data-lens-card="" style=');
     expect(hubs).toContain('<span aria-hidden="true" data-lens="disc" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%"');

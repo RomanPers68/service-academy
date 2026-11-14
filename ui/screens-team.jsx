@@ -28,7 +28,7 @@ import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-car
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
-import { FaceImg } from "./staff-photo";   // v160 (Доп. 485): фото в карточке сотрудника и в «Аккаунте», по нажатию — крупно
+import { FaceImg, useStaffPhotos } from "./staff-photo";   // v160 (Доп. 485): фото в карточке сотрудника и в «Аккаунте», по нажатию — крупно; v162: лица в строках списка
 import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 
 // v150 (Доп. 474): кружок сотрудника — линза, как у «Я» в шапке: стекло с золотым ободком, инициалы (у владельца — корона)
@@ -39,6 +39,10 @@ const avatarLens = (a11y, size) => ({ position:"relative", width:size, height:si
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [view, setView] = React.useState("list");        // list | add | card | code
+  // v162 (Доп. 487): в строках списка — лица (фото или буквы), когда на сервере есть фото сотрудников (этап 52);
+  // этапа нет — строка как была: точка статуса, имя, должность
+  const facesList = useStaffPhotos();
+  const faceOn = !!facesList && facesList !== "missing";
   const [list, setList] = React.useState(null);           // null = загрузка
   const [loadError, setLoadError] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -596,7 +600,21 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 return (
                   <div key={e.id} className="sa-btn" data-lens-card="" onClick={() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); }} {...onActivate(() => { vibrate("light"); setSelected(e); setConfirm(null); setActionError(null); setView("card"); })}
                     style={{ ...T.modCard, gap:12, cursor:"pointer", padding:"13px 14px" }}>
-                    <span style={{ width:9, height:9, borderRadius:6, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
+                    {faceOn ? (
+                      // v162 (Доп. 487): лицо сотрудника (фото или буквы, у владельца без фото — корона, как в его
+                      // карточке); статус — точкой на кружке. Строка открывает карточку, фото крупно — уже там.
+                      <span data-emp-face="" aria-hidden="true" style={{ position:"relative", flexShrink:0, display:"inline-flex" }}>
+                        <span data-lens="disc" style={avatarLens(a11y, 38)}>
+                          <span style={{ color:avatarInk(a11y), fontSize:13, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
+                            {e.is_admin ? UI_SVG.crown(avatarInk(a11y), 17) : `${e.name?.[0] || ""}${(e.surname||"")[0]||""}`.toUpperCase()}
+                          </span>
+                          <FaceImg who={{ id: e.id }} />
+                        </span>
+                        <span data-emp-dot="" style={{ position:"absolute", right:-1, bottom:-1, width:11, height:11, borderRadius:"50%", background:st.color, boxShadow:`0 0 0 2px ${a11y ? "#FBF5E6" : "#1B150B"}, 0 0 8px ${st.color}55` }} />
+                      </span>
+                    ) : (
+                      <span style={{ width:9, height:9, borderRadius:6, flexShrink:0, background:st.color, boxShadow:`0 0 8px ${st.color}55` }} />
+                    )}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:T.modTitle.color, fontSize:14, fontWeight:"bold", fontFamily:"Georgia, serif", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {e.name} {e.surname}
@@ -690,7 +708,8 @@ export function CodeLoginScreen({ T, onSuccess }) {
 
   return (
     <div style={{ ...T.screen, justifyContent:"center", alignItems:"center", padding:"32px 24px",
-      background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"calc(100vh - var(--sa-st, 0px))" }} className="sa-screen">
+      background:"linear-gradient(160deg, #2A1F0E 0%, #1A1008 55%, #1A1008 100%)", minHeight:"calc(100vh - var(--sa-st, 0px))" }} className="sa-screen" data-lens-dark="">
+      {/* v162: экран входа тёмный в обеих темах — data-lens-dark держит на нём тёмную линзу и в виде «Для чтения» (ui/home-look.jsx) */}
       <img src={LOGO_SRC_DARK} alt="Service Academy" decoding="sync" style={{ width:180, marginBottom:8, filter:"brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(400%) hue-rotate(340deg) brightness(98%)" }} />
       <div style={{ color:CREAM, fontSize:21, fontWeight:"bold", fontFamily:ACCENT_SERIF, marginBottom:8, textAlign:"center" }}>
         Вход по приглашению
@@ -714,7 +733,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
         value={code}
         onChange={e => { setCode(format(e.target.value)); setError(null); }}
         onKeyDown={e => { if (e.key === "Enter") submit(); }}
-        placeholder="Введите код"
+        placeholder="Введи код"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
@@ -730,7 +749,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
           {error}
         </div>
       )}
-      <button className="sa-btn sa-btn-pulse" onClick={submit}
+      <button className="sa-btn sa-btn-pulse" data-lens-btn="main" onClick={submit}
         disabled={busy}
         style={{ marginTop:20, width:"100%", maxWidth:280, padding:"15px", borderRadius:14, border:"none",
           fontSize:16, fontFamily:"Georgia, serif", fontWeight:"bold", cursor: busy ? "default" : "pointer",

@@ -16,8 +16,8 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { masterRolesOf } from "../lib/mastery";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371): без «этап 24» у сотрудника
-import { RankFace, useStaffPhotos } from "./staff-photo";   // v160: лицо с номером места в строках лиги
-import { staffPhotoOf } from "../lib/staff-photo";
+import { RankFace, FaceImg, useStaffPhotos } from "./staff-photo";   // v160: лицо с номером места в строках лиги; v162: лица на подиуме
+import { staffPhotoOf, initialsOfPerson } from "../lib/staff-photo";
 import { POSITION_LABEL } from "../data/positions";
 
 const MEDAL = ["#E8C56A", "#C9C9C9", "#C89A6E"];
@@ -133,6 +133,8 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   // с полным именем под ним не показываем. Колонка места шире, если у кого-то в списке фото есть
   const faceOf = (r) => (r && (r.me || (!!myRest && (r.restaurant || "") === myRest)) ? { id: r.id } : null);
   const anyFace = sorted.slice(0, 100).some((r) => !!staffPhotoOf(faceList, faceOf(r)));
+  // v162 (Доп. 487): на подиуме — лица тройки (фото или буквы), если фото есть хотя бы у одного; иначе подиум как был
+  const podFace = podium.some((r) => !!staffPhotoOf(faceList, faceOf(r)));
   const mv = (r, i) => moveOf(i + 1, r[prevKey]);
   const arrow = (m) => !m ? null : m.same ? <span style={{ color: sub, fontSize: 11 }} aria-label="место то же">=</span>
     : <span style={{ color: m.up ? (a11y ? "#2F6B45" : "#8FB890") : (a11y ? "#8F3520" : "#E0A08A"), fontSize: 11, fontFamily: "monospace" }} aria-label={(m.up ? "выше на " : "ниже на ") + m.n}>{m.up ? "▲" : "▼"}{m.n}</span>;
@@ -184,7 +186,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
               </div>
             ) : null}
             {podium.length >= 2 ? (
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8, margin: "4px 0 14px" }} role="group" aria-label="Подиум недели">
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8, margin: podFace ? "14px 0 14px" : "4px 0 14px" }} role="group" aria-label="Подиум недели">
                 {[1, 0, 2].filter((k) => podium[k]).map((k) => {
                   const r = podium[k]; const h = [74, 56, 44][k];
                   const nameSt = { fontSize: 12.5, color: r.me ? text : sub, fontWeight: r.me ? "bold" : "normal", textAlign: "center", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
@@ -192,6 +194,13 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                   const mr = leagueMasterRoles(masters, r, profile);   // v40: знак «Мастер роли» после имени
                   return (
                     <div key={r.id} style={{ flex: "0 1 110px", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      {podFace ? (
+                        <span data-lg-pod-face="" aria-hidden="true" style={{ position: "relative", width: k === 0 ? 58 : 46, height: k === 0 ? 58 : 46, marginBottom: 6, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
+                          fontFamily: "Georgia, serif", fontSize: k === 0 ? 18 : 14.5, fontWeight: "bold", color: medal[k], background: `${medal[k]}1F`, boxShadow: `0 0 0 2px ${medal[k]}` }}>
+                          {initialsOfPerson(r.name, r.surname)}
+                          <FaceImg who={faceOf(r)} zoom quiet sub={POSITION_LABEL[r.position] || ""} />
+                        </span>
+                      ) : null}
                       {mr ? (
                         <div style={{ ...nameSt, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
                           <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{nm}</span><MasterMark roles={mr} a11y={a11y} size={12} />

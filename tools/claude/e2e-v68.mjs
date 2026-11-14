@@ -138,8 +138,8 @@ if (want("HEAL")) {
 if (want("LOGIN")) {
   // на телефоне — серия 7 дней (вчера); вход по коду без перезапуска приложения
   const o = await open({ noToken: true, steps: 0, streak: { count: 7, best: 7, last: YDAY, days: [YDAY] } });
-  ok("LOGIN: без входа — экран кода", !!(await o.page.$('input[placeholder="Введите код"]')));
-  await o.page.fill('input[placeholder="Введите код"]', "ROMAN-1");
+  ok("LOGIN: без входа — экран кода", !!(await o.page.$('input[placeholder="Введи код"]')));
+  await o.page.fill('input[placeholder="Введи код"]', "ROMAN-1");
   await o.page.locator("button.sa-btn-pulse").click(); await sleep(2500);
   const c = await chips(o.page);
   ok("LOGIN: после входа — серия с телефона: «7 дней», а не 0", /^7 дней/i.test(c || ""), c);

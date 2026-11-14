@@ -12,7 +12,8 @@ import { ROLE_TITLE, masterKey } from "../lib/mastery";
 import { useViewport, useColumn } from "./viewport";
 import { matesLine, matesNote } from "../lib/shift-mates";   // v157 (Доп. 481): «кто сегодня со мной»
 import { Medal, tierText } from "./mastery-card";               // v157: полка значков на вкладке «Я»
-import { FaceImg } from "./staff-photo";   // v158 (Доп. 483): фото сотрудника поверх букв в кружке
+import { FaceImg, useStaffPhotos } from "./staff-photo";   // v158 (Доп. 483): фото сотрудника поверх букв в кружке; v162: лица в «Жизни команды»
+import { initialsOfPerson } from "../lib/staff-photo";   // v162 (Доп. 487): буквы в кружке ленты «Жизнь команды»
 import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи — курсивом, без моноширинного капса   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
@@ -637,14 +638,18 @@ export function MastersBanner({ a11y, rows = [], onOpen }) {
 // ── v57 (Доп. 370): «Жизнь команды» — события коллег своего заведения за две недели (lib/team-feed.js):
 // сданные тесты, мастера роли, рекорды тренажёров и печати Сборки, «спасибо команде». Пусто — карточки нет.
 const FEED_ICON = {
-  test: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>),
-  master: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill={c}><path d="M12 2.5l2.1 6.4 6.4 2.1-6.4 2.1L12 19.5l-2.1-6.4-6.4-2.1 6.4-2.1z" /></svg>),
-  record: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z" /></svg>),
-  thanks: (c) => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>),
+  test: (c, s = 13) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>),
+  master: (c, s = 13) => (<svg width={s} height={s} viewBox="0 0 24 24" fill={c}><path d="M12 2.5l2.1 6.4 6.4 2.1-6.4 2.1L12 19.5l-2.1-6.4-6.4-2.1 6.4-2.1z" /></svg>),
+  record: (c, s = 13) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z" /></svg>),
+  thanks: (c, s = 13) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>),
 };
 export function TeamFeed({ a11y, items = [], now = Date.now(), first = 3 }) {
   const [open, setOpen] = React.useState(false);
+  // v162 (Доп. 487): чьё событие — видно в лицо. Лица стоят, когда на сервере есть фото сотрудников (этап 52): у кого
+  // фото нет — буквы, как в чате и «Смене». Этапа 52 нет — лента как была, со значком события.
+  const faces = useStaffPhotos();
   if (!Array.isArray(items) || !items.length) return null;
+  const faceOn = !!faces && faces !== "missing";
   const text = a11y ? "#2A1F0E" : "#EFE4C8", sub = a11y ? "#6B5B40" : "#9C8760", gold = a11y ? "#7A5D2A" : "#D2A85A";
   const line = a11y ? "rgba(139,106,48,0.18)" : "rgba(255,255,255,0.07)";
   const shown = open ? items : items.slice(0, first);
@@ -655,10 +660,22 @@ export function TeamFeed({ a11y, items = [], now = Date.now(), first = 3 }) {
       {shown.map((it, i) => (
         <div key={i} data-feed-item={it.kind} className={i >= first ? "sa-fadein" : undefined}
           style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderTop: i ? "1px solid " + line : "none" }}>
-          <span aria-hidden="true" data-lens="disc" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
-            border: "1px solid " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.4)"), background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.07)" }}>
-            {(FEED_ICON[it.kind] || FEED_ICON.test)(gold)}
-          </span>
+          {faceOn && it.face && it.face.name ? (
+            // v162: кружок с лицом — буквы человека, поверх фото (касание открывает его крупно), значок события в углу
+            <span aria-hidden="true" data-lens="disc" data-feed-face="" style={{ position: "relative", width: 32, height: 32, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
+              fontFamily: "Georgia, serif", fontSize: 11.5, fontWeight: "bold", color: gold,
+              border: "1px solid " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.4)"), background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.07)" }}>
+              {initialsOfPerson(it.face.name, it.face.surname)}
+              <FaceImg who={it.face} zoom quiet />
+              <span data-feed-kind={it.kind} style={{ position: "absolute", right: -5, bottom: -4, width: 16, height: 16, borderRadius: "50%", display: "grid", placeItems: "center", pointerEvents: "none",
+                background: a11y ? "#FBF5E6" : "#241B0E", boxShadow: "0 0 0 1px " + (a11y ? "rgba(122,93,42,0.5)" : "rgba(214,178,102,0.5)") }}>{(FEED_ICON[it.kind] || FEED_ICON.test)(gold, 10)}</span>
+            </span>
+          ) : (
+            <span aria-hidden="true" data-lens="disc" style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center",
+              border: "1px solid " + (a11y ? "rgba(122,93,42,0.4)" : "rgba(214,178,102,0.4)"), background: a11y ? "rgba(255,250,238,0.6)" : "rgba(214,178,102,0.07)" }}>
+              {(FEED_ICON[it.kind] || FEED_ICON.test)(gold)}
+            </span>
+          )}
           <div style={{ flex: 1, minWidth: 0, fontFamily: "Georgia, serif", fontSize: a11y ? 14.5 : 13.5, lineHeight: 1.4, color: text }}>
             <b style={{ color: it.me ? gold : text }}>{it.who}</b> {it.text}
           </div>

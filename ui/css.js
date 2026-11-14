@@ -258,6 +258,10 @@ export const injectStyles = () => {
     input::placeholder, textarea::placeholder { color: rgba(200, 180, 152, 0.65); opacity: 1; }
     .sa-light input, .sa-light textarea, .sa-light select { caret-color: #7A5D2A; }
     .sa-light input::placeholder, .sa-light textarea::placeholder { color: rgba(90, 70, 50, 0.62); opacity: 1; }
+    /* v162 (Доп. 487): экран входа тёмный и в «Для чтения» (data-lens-dark) — подсказка и каретка в поле кода светлые,
+       как в тёмной теме: тёмно-коричневая подсказка на тёмном поле была почти не видна */
+    .sa-light [data-lens-dark] input { caret-color: #C8A96E; }
+    .sa-light [data-lens-dark] input::placeholder { color: rgba(200, 180, 152, 0.65); opacity: 1; }
     /* Поля чатов (Наставник, AI-интервью): инеевый плейсхолдер в тёмной —
        в тон ледяным пузырям */
     .sa-aiinput-dark::placeholder { color: rgba(216, 206, 190, 0.58); opacity: 1; }

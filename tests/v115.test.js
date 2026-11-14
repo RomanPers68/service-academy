@@ -115,8 +115,11 @@ describe("v115: разметка «Учусь»", () => {
     const E = rd("ui/screens-exam.jsx");
     expect(E).toContain('<div key={id} data-lens-card="" style={{ ...T.modCard, padding:"14px 16px"');
     expect(count(E, 'data-lens-btn="danger"')).toBe(1);
-    expect(count(E, 'data-lens-btn="soft"')).toBe(1);
-    expect(count(E, 'data-lens-btn="main"')).toBe(1);
+    // v162 (Доп. 487): + две кнопки на листе сертификата — «Поделиться картинкой» (плашка) и «Поделиться текстом» (стекло)
+    expect(count(E, 'data-lens-btn="soft"')).toBe(2);
+    expect(count(E, 'data-lens-btn="main"')).toBe(2);
+    expect(E).toContain('className="sa-btn" data-lens-btn="main" data-cert-sharepic=""');
+    expect(E).toContain('className="sa-btn" data-lens-btn="soft" data-cert-sharetext=""');
   });
   it("путеводитель: пункты и «Показать подсказки заново» — карточки, «Открыть ›» — стекло", () => {
     const G = rd("ui/guide.jsx");

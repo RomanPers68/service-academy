@@ -70,7 +70,7 @@ function Moods({ color, sub, onMood, stop, size = 28 }) {
 // Сургучная печать — как в «Книге отзывов» (ui/screens-roleselect.jsx WaxSealMini), крупнее и со значком
 const WAX = "M12 1.9c2.3-.3 4.5.7 6.1 2.2 1.6 1.5 2.9 3.5 3.5 5.6.6 2.2.2 4.6-1 6.5-1.1 1.9-3 3.5-5.1 4.4-2.1.9-4.6 1-6.7.1-2.1-.8-3.9-2.5-5-4.5-1.1-2-1.5-4.4-.9-6.6C3.5 7.4 5 5.4 6.9 4 8.4 2.9 10.2 2.1 12 1.9Z";
 let waxSeq = 0;
-function WaxSeal({ size = 50, icon = "clock" }) {
+export function WaxSeal({ size = 50, icon = "clock" }) {   // v162: печать стоит и на сертификате (ui/screens-exam.jsx)
   const id = React.useMemo(() => "nhw" + (++waxSeq), []);
   return (
     <span aria-hidden="true" data-now-seal="" style={{ position: "relative", width: size, height: size, display: "inline-grid", placeItems: "center", flexShrink: 0, filter: "drop-shadow(0 2px 2px rgba(60,20,8,0.45))" }}>

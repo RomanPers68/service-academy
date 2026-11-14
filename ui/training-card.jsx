@@ -169,7 +169,7 @@ export function TrainingCardScreen({ T, a11y, profile, completed = {}, quizDone 
 
       {/* Кнопка печати — на экране, но не на бумаге */}
       <div style={{ padding: "0 16px 26px" }} className="sa-no-print">
-        <button className="sa-btn" onClick={doPrint} {...onActivate(doPrint)}
+        <button className="sa-btn" data-lens-btn="main" onClick={doPrint} {...onActivate(doPrint)}
           style={{ width: "100%", padding: "13px", borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${GOLD}, #7A5D2A)`, color: "#1A1008", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 14, cursor: "pointer" }}>
           <span style={{ display: "inline-flex", verticalAlign: "-3px", marginRight: 8 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1008" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h10v6H7z"/><path d="M5 9h14a2 2 0 0 1 2 2v6h-4v4H7v-4H3v-6a2 2 0 0 1 2-2z"/><path d="M7 15h10"/></svg>

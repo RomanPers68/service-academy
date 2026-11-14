@@ -190,7 +190,11 @@ if (want("ME")) {
     ok("ME: под кольцом прогресса — карточка «Мои значки · 1 из 14»", !!s && s.lens && /Мои значки/.test(s.t) && /1 из 14/.test(s.t) && s.top > s.hero, JSON.stringify(s && [s.t, s.top, s.hero]));
     ok("ME: пять значков, первый — полученная «Свеча» (бронза), остальные — ещё не получены", !!s && s.badges.length === 5 && s.badges[0].id === "streak" && s.badges[0].tier === 1 && /Свеча — бронза/.test(s.badges[0].label) && s.badges.slice(1).every((b) => b.tier === 0 && /ещё не получен/.test(b.label)), JSON.stringify(s && s.badges));
     ok("ME: значки — 52 px", !!s && s.badges.every((b) => b.w === 52));
-    ok("ME: неделя с понедельника: ср, чт, пт — отмечены, суббота — сегодня, воскресенье — впереди", !!s && s.dows.join() === "пн,вт,ср,чт,пт,сб,вс" && s.days.join() === "past,past,done,done,done,today,ahead", JSON.stringify(s && [s.dows, s.days]));
+    // v162: проверка не зависит от дня недели (писалась в субботу: «ср, чт, пт — отмечены, суббота — сегодня»). В демо у Анны
+    // серия три дня до сегодня: они отмечены (те, что попали в эту неделю), раньше — «прошло», сегодня — «сегодня», дальше — впереди
+    const dowNow = await page.evaluate(() => (new Date().getDay() + 6) % 7);   // пн = 0
+    const weekWant = Array.from({ length: 7 }, (_, i) => (i === dowNow ? "today" : i > dowNow ? "ahead" : i >= dowNow - 3 ? "done" : "past"));
+    ok("ME: неделя с понедельника: три дня до сегодня отмечены, сегодня — «сегодня», дальше — впереди", !!s && s.dows.join() === "пн,вт,ср,чт,пт,сб,вс" && s.days.join() === weekWant.join(), JSON.stringify(s && [s.dows, s.days, weekWant]));
     ok("ME: подпись — «сегодня будет 4-й подряд», «4-й подряд» не разорвано", !!s && s.note.replace(/ /g, " ") === "сегодня будет 4-й подряд" && s.noteH <= 32, JSON.stringify(s && [s.note, s.noteH]));
     await page.screenshot({ path: join(OUT, "me-anna.png") });
     await page.locator("[data-me-shelf]").click(); await page.waitForTimeout(1500);

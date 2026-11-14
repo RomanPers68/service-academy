@@ -542,7 +542,7 @@ if (want("LOGIN")) {
   // вход по коду: после входа — тоже одним запросом, с новым токеном
   const o = await withCalls({ noToken: true, w: W, h: H, dsf: 1, rpcs: (fn, body) => fn === "redeem_code" ? { ok: true, token: "tok-new", employee: { ...ANNA, id: "u-login" } } : bootOf({ ...ANNA, id: "u-login" }, { rpcs: schedRpcs(FX, null) })(fn, body), fixedTime: at(14, 20) });
   const p = o.page; await sleep(1500);
-  await p.locator('input[placeholder="Введите код"]').fill("ABCD-1234");
+  await p.locator('input[placeholder="Введи код"]').fill("ABCD-1234");
   await p.locator("button", { hasText: /^Войти$/ }).click(); await sleep(2500); await dismissToasts(p);
   const boots = o.calls.filter((c) => c.fn === "app_bootstrap");
   ok("LOGIN: после входа — app_bootstrap с новым токеном, стартовые функции отдельно не звали", boots.length >= 1 && boots[boots.length - 1].body.p_token === "tok-new" && count(o, "my_state") === 0 && count(o, "whoami") === 0, JSON.stringify({ boots: boots.map((b) => b.body.p_token), ms: count(o, "my_state") }));

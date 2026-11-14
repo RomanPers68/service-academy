@@ -198,6 +198,13 @@ html.sa-lens.sa-light [data-lens-btn="main"]{background:radial-gradient(120% 160
   box-shadow:inset 0 0 0 1px rgba(139,106,48,0.6),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 3px 10px rgba(120,85,25,0.16)!important}
 html.sa-lens [data-lens-btn="main"]::after{content:"";position:absolute;inset:-3.5px;border-radius:999px;border:1px solid var(--lk-ring);pointer-events:none}
 html.sa-lens.sa-light [data-lens-btn="main"]::after{border-color:rgba(139,106,48,0.45)}
+/* v162 (Доп. 487): экран, который всегда тёмный (вход), — линза на нём тёмная и в виде «Для чтения»: светлая линза на тёмном
+   фоне выходила блёклой, с плохо читаемыми буквами */
+html.sa-lens.sa-light [data-lens-dark]{--lk-gold:#C8A96E;--lk-hi:#E8C983;--lk-glass:rgba(200,169,110,0.12);--lk-rim:rgba(214,178,102,0.45);--lk-glow:rgba(255,230,170,0.12);
+  --lk-hl:rgba(255,255,255,0.18);--lk-ring:rgba(214,178,102,0.44)}
+html.sa-lens.sa-light [data-lens-dark] [data-lens-btn="main"]{background:radial-gradient(120% 160% at 50% 0%,rgba(232,201,131,0.24),rgba(200,169,110,0.12) 62%)!important;
+  box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 18px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),0 4px 14px rgba(0,0,0,0.28)!important}
+html.sa-lens.sa-light [data-lens-dark] [data-lens-btn="main"]::after{border-color:var(--lk-ring)}
 html.sa-lens [data-lens-btn="soft"]{background:var(--lk-glass)!important;border-color:transparent!important;
   box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 1.5px 0 var(--lk-hl)!important}
 html.sa-lens [data-lens-btn="soft"][data-lens-hi]{box-shadow:inset 0 0 0 1px var(--lk-hi),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl)!important}

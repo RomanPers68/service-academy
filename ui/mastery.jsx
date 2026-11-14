@@ -291,7 +291,8 @@ export function MasteryScreen({ T, a11y, profile, role, state, step, earned, see
           </div>
         </div>
         <div aria-hidden="true" style={{ display: "flex", gap: 4, marginTop: 12 }}>
-          {fw.items.map((it) => <span key={it.id} style={{ flex: 1, height: 5, borderRadius: 3, background: it.done ? tierColor(3, a11y) : c.faint }} />)}
+          {/* v162 (Доп. 487): полоска — сколько шагов сделано, слева направо (раньше горел сегмент своего шага, и один сделанный шаг мог светиться в конце) */}
+          {fw.items.map((it, i) => <span key={it.id} style={{ flex: 1, height: 5, borderRadius: 3, background: i < fw.done ? tierColor(3, a11y) : c.faint }} />)}
         </div>
         <div role="list" style={{ marginTop: 6 }}>
           {fw.items.map((it, i) => {

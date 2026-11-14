@@ -19,6 +19,7 @@ import { LATE_MINS, LATE_NOTE_MAX, lateChip, lateEta, lateMinText, lateView } fr
 import { helloView, soloView } from "../lib/newbie";   // v107 (Доп. 420): «Знакомьтесь» и «Первая самостоятельная смена»
 import { thxView, cheerView, thxChips, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо», день рождения, годовщина
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист «Опаздываю» открывали — совета про него нет
+import { FaceImg, useFace } from "./staff-photo";   // v162 (Доп. 487): лицо на корешке карточки о человеке
 import { splitWebLine, siteOf, oneSite, openOut } from "../lib/ai-web";   // v153 (Доп. 477): ссылки «Нашёл в интернете» у ответа Наставника
 
 export const CARDS_CSS = `
@@ -135,6 +136,14 @@ export const CARDS_CSS = `
 .ch-tl-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;box-shadow:inset 0 0 0 1px rgba(26,16,8,0.2)}
 .ch-card.stopc .ch-tl-box img{filter:grayscale(1)}
 .ch-tl-i i{margin-top:6px;font-style:normal;font-size:10px;line-height:1.15;letter-spacing:1.2px;text-transform:uppercase}
+/* v162 (Доп. 487): корешок с лицом — карточки о человеке («Знакомьтесь», «Спасибо», день рождения, годовщина) */
+.ch-tl-face{position:relative;display:block;width:48px;height:48px;border-radius:50%;background:rgba(26,16,8,0.2);box-shadow:0 0 0 1.5px rgba(26,16,8,0.6),0 0 0 3.5px rgba(255,255,255,0.28)}
+.ch-tl-fb{position:absolute;right:-6px;bottom:-4px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#2A1F0A;color:var(--gold-hi);box-shadow:0 0 0 1.5px rgba(255,236,196,0.6);pointer-events:none}
+.ch-tl-fb svg{width:11px;height:11px}
+.ch-tl-fb.num{width:auto;min-width:20px;padding:0 5px;box-sizing:border-box;border-radius:999px;font:700 12.5px/1 'Piazzolla',Georgia,serif;font-variant-numeric:tabular-nums}
+.ch-tl-f i{margin-top:7px;font-style:normal;font-size:10.5px;line-height:1.15;letter-spacing:.9px;text-transform:uppercase;white-space:nowrap}
+.ch-tl-f i b{font-family:'Piazzolla',Georgia,serif;font-size:14.5px;letter-spacing:0;margin-right:4px}
+.lt .ch-tl-fb{background:#3A2A0E;color:#F4E3B5}
 /* карточки в ответе Наставника — с золотым значком, как корешок */
 .ch-mini .ic{background:linear-gradient(165deg,var(--gold-hi),var(--gold));color:var(--on-gold)}
 .ch-toast{position:absolute;left:50%;bottom:calc(84px + var(--sa-sb,env(safe-area-inset-bottom,0px)));transform:translateX(-50%);z-index:30;max-width:88%;padding:9px 14px;border-radius:14px;background:var(--card);border:1px solid var(--edge-gold);
@@ -169,6 +178,21 @@ function RingTile({ n, of }) {
     </span>);
 }
 const IcoTile = ({ ic, img, cap: c }) => <span className="ch-tl ch-tl-i" aria-hidden="true"><span className="ch-tl-box">{img ? <img src={img} alt="" /> : ic}</span>{c ? <i>{c}</i> : null}</span>;
+/**
+ * v162 (Доп. 487): корешок с лицом. Карточка говорит о человеке — на корешке его фото (касание открывает фото крупно,
+ * меню карточки при этом не открывается), значок карточки уходит в угол кружка. Число при слове («1 год», «5 дней») —
+ * в подписи; счётчик («3 спасибо») — числом в углу вместо значка, подпись остаётся словом. Фото нет (человек его не
+ * ставил, на сервере нет этапа 52) — прежний корешок (fallback): карточка выглядит как раньше.
+ */
+export function FaceTile({ emp, ic = null, count = null, cap: c = "", n = null, word = "", fallback = null }) {
+  const e = useFace(emp != null && emp !== "" ? { id: String(emp) } : null);
+  if (!e) return fallback;
+  return (
+    <span className="ch-tl ch-tl-f" aria-hidden="true" data-chat-card-face={e.id}>
+      <span className="ch-tl-face"><FaceImg who={{ id: e.id }} zoom quiet />{count != null ? <span className="ch-tl-fb num" data-chat-card-n="">{count}</span> : ic ? <span className="ch-tl-fb">{ic}</span> : null}</span>
+      {n != null ? <i><b>{n}</b>{word}</i> : c ? <i>{c}</i> : null}
+    </span>);
+}
 const NumTile = ({ ic, n, word }) => <span className="ch-tl ch-tl-d" aria-hidden="true"><span className="ch-tl-ic">{ic}</span><b>{n}</b><i>{word}</i></span>;
 const yearWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "год" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "года" : "лет"; };
 const dayWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? "день" : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? "дня" : "дней"; };
@@ -296,7 +320,8 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
     // v107 (Доп. 420): новичок. «Знакомьтесь»: кто, должность, первая смена, наставник; «Поздороваться» — один раз.
     // «Первая самостоятельная смена»: за сколько дней, наставник; «Поздравить». Сам новичок видит, кто поздоровался.
     const hello = c.t === "hello", v = hello ? helloView(c, me) : soloView(c, me), days = Number(c.days) || 0;
-    const tile = hello ? <IcoTile ic={IC.person} cap="новичок" /> : days > 0 ? <NumTile ic={IC.star} n={days} word={dayWord(days)} /> : <IcoTile ic={IC.star} cap="сам" />;
+    const tile0 = hello ? <IcoTile ic={IC.person} cap="новичок" /> : days > 0 ? <NumTile ic={IC.star} n={days} word={dayWord(days)} /> : <IcoTile ic={IC.star} cap="сам" />;
+    const tile = hello ? <FaceTile emp={c.emp} cap="новичок" fallback={tile0} /> : <FaceTile emp={c.emp} ic={IC.star} n={days > 0 ? days : null} word={dayWord(days)} cap="сам" fallback={tile0} />;
     return wrap("", tile, <>
       <Head k={hello ? "Знакомьтесь" : "Самостоятельная смена"} m={m} me={me} />
       <div className="ch-card-t" data-chat-nb={c.t}>{hello ? c.name : v.title}</div>
@@ -308,7 +333,8 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
   if (c.t === "thx") {
     // v108 (Доп. 421): «Спасибо коллеге»: кому и за что; «Тоже спасибо» — раз; ни автор, ни тот, кому спасибо, — нет
     const v = thxView(c, me, m.emp);
-    return wrap("", v.n > 1 ? <NumTile ic={IC.thx} n={v.n} word="спасибо" /> : <IcoTile ic={IC.thx} cap="спасибо" />, <>
+    const tile0 = v.n > 1 ? <NumTile ic={IC.thx} n={v.n} word="спасибо" /> : <IcoTile ic={IC.thx} cap="спасибо" />;
+    return wrap("", <FaceTile emp={c.to && c.to.id} ic={IC.thx} count={v.n > 1 ? v.n : null} cap="спасибо" fallback={tile0} />, <>
       <Head k="Спасибо" m={m} me={me} />
       <div className="ch-card-t" data-chat-thx-to={c.to && c.to.id}>{v.title}</div>
       {v.sub ? <div className="ch-card-n" data-chat-thx-text="">«{v.sub}»</div> : null}
@@ -319,7 +345,8 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
   if (c.t === "bday" || c.t === "anniv") {
     // v108: день рождения и годовщина — «Поздравить» одной кнопкой, раз; сам — видит, кто поздравил
     const v = cheerView(c, me), bday = c.t === "bday";
-    return wrap("", bday ? <IcoTile ic={IC.gift} cap="праздник" /> : <NumTile ic={IC.star} n={v.years} word={yearWord(v.years)} />, <>
+    const tile0 = bday ? <IcoTile ic={IC.gift} cap="праздник" /> : <NumTile ic={IC.star} n={v.years} word={yearWord(v.years)} />;
+    return wrap("", <FaceTile emp={c.emp} ic={bday ? IC.gift : IC.star} n={bday ? null : v.years} word={yearWord(v.years)} cap="праздник" fallback={tile0} />, <>
       <Head k={bday ? "День рождения" : "Годовщина"} m={m} me={me} />
       <div className="ch-card-t" data-chat-cheer={c.t}>{v.title}</div>
       {v.sub ? <div className="ch-card-s">{v.sub}</div> : null}

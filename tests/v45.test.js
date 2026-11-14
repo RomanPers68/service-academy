@@ -68,20 +68,24 @@ describe("v45: плитка — листок календаря и нить су
   it("смена: листок с сегодняшним числом, жирный заголовок, «Вечер · 17:00–24:00» — время золотом и неразрывно", () => {
     const now = at(19, 30);
     const html = T({ label: "Вечер · 17:00–24:00", now });
-    expect(html).toMatch(/data-tile="schedule" aria-label="График смен. Сегодня: Вечер, 17:00–24:00" role="button" tabindex="0" style="flex:1 1 150px;min-width:0/);
+    // v159 (Доп. 484): в 19:30 смена идёт — в подписи «смена идёт», на плитке вместо «Вечер» — «Идёт» (tests/v159.test.js)
+    expect(html).toMatch(/data-tile="schedule" aria-label="График смен. Сегодня: Вечер, 17:00–24:00, смена идёт" role="button" tabindex="0" style="flex:1 1 150px;min-width:0/);
+    expect(T({ label: "Вечер · 17:00–24:00", now: at(10, 30) })).toMatch(/data-tile="schedule" aria-label="График смен. Сегодня: Вечер, 17:00–24:00" role="button" tabindex="0" style="flex:1 1 150px;min-width:0/);
     expect(html).toContain('data-sched-page=""');
     expect(html).toContain("linear-gradient(180deg, #C2533A, #8A3220)");                        // красная планка
     expect(html).toMatch(new RegExp('data-sched-day=""[^>]*color:#E2C484">' + now.getDate() + "<"));
     expect(html).toMatch(/font-weight:bold">График смен</);
     expect(html).toMatch(/data-when-time="" style="[^"]*white-space:nowrap;font-family:'Piazzolla', Georgia, serif;font-weight:700;font-size:11.5px;color:#E2C484/);
     expect(html).toMatch(/aria-hidden="true" data-when-dot="" style="position:absolute;left:-7.5px[^"]*">·</);
-    expect(text(html)).toContain("График сменВечер·17:00–24:00");
+    expect(text(html)).toContain("График сменИдёт·17:00–24:00");                                   // v159: смена идёт
+    expect(text(T({ label: "Вечер · 17:00–24:00", now: at(10, 30) }))).toContain("График сменВечер·17:00–24:00");   // до смены — название
   });
   it("нить суток: отрезок 17–24 справа; на 19:30 риска светится, в 10:30 — золотая без сияния левее отрезка", () => {
     const html = T({ label: "Вечер · 17:00–24:00", now: at(19, 30) });
     expect(html).toContain('data-sched-thread=""');
     expect(html).toMatch(/data-seg="17-24" style="position:absolute;top:0;bottom:0;left:70.83%;width:29.17%/);
-    expect(html).toMatch(/data-now="on" style="position:absolute;bottom:0;left:calc\(81.25% - 1px\);width:2px;height:7px[^"]*background:#FFF6DC;box-shadow:0 0 6px/);
+    // v159 (Доп. 484): пока смена идёт, риска зелёная (была светлая #FFF6DC)
+    expect(html).toMatch(/data-now="on" style="position:absolute;bottom:0;left:calc\(81.25% - 1px\);width:2px;height:7px[^"]*background:#8AD8AF;box-shadow:0 0 6px/);
     const early = T({ label: "Вечер · 17:00–24:00", now: at(10, 30) });
     expect(early).toMatch(/data-now="off" style="[^"]*left:calc\(43.75% - 1px\)[^"]*background:#E2C484;box-shadow:none/);
   });
@@ -113,11 +117,13 @@ describe("v45: плитка — листок календаря и нить су
     expect(html).toMatch(/data-when-time=""[^>]*color:#7A5A22/);
     expect(html).toContain("background:#FFFCF4");
     expect(html).toContain('color:#2A1F0E;white-space:nowrap;font-family:Georgia, serif;font-weight:bold">График смен<');
-    expect(html).toMatch(/data-now="on"[^>]*background:#5A3F12/);
+    expect(html).toMatch(/data-now="on"[^>]*background:#2C6B48/);   // v159: зелёная (была #5A3F12)
   });
   it("без подписи в пропсах — берёт сводку «моя смена сегодня»; вчерашняя не показывается", () => {
     store.sa_today_shift = JSON.stringify({ date: ymd(new Date()), label: "Утро · 10:00–18:00" });
-    expect(text(T({}))).toContain("Утро·10:00–18:00");
+    // v159 (Доп. 484): час задан — без него в часы смены (10–18 по часам машины) на плитке «Идёт», а не «Утро»
+    expect(text(T({ now: at(8) }))).toContain("Утро·10:00–18:00");
+    expect(text(T({ now: at(12) }))).toContain("Идёт·10:00–18:00");
     const y = new Date(); y.setDate(y.getDate() - 1);
     store.sa_today_shift = JSON.stringify({ date: ymd(y), label: "Утро · 10:00–18:00" });
     expect(text(T({}))).toContain("Составить, проверить и опубликовать");
@@ -156,7 +162,7 @@ describe("v45: на главной", () => {
     const tile = html.slice(sch, book);
     expect(tile).toContain("data-sched-page");
     expect(tile).toContain("data-sched-thread");
-    expect(text(tile)).toContain("Мой графикВечер·17:00–24:00");
+    expect(text(tile)).toMatch(/Мой график(Вечер|Идёт)·17:00–24:00/);   // v159: в часы смены — «Идёт» (главная — по настоящим часам)
     delete store.sa_today_shift;
     const none = await render();
     expect(none).not.toContain("data-sched-thread");

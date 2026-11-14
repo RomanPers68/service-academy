@@ -21,7 +21,11 @@ import { referenceDailyTask } from "./reference-daily";
 import { ScheduleTile } from "./schedule-tile";
 import { TracksRow } from "./tracks-row";   // v61 (Доп. 374): ряд треков под свёрнутым списком
 import { dockFit } from "../lib/dock-fit";   // v65 (Доп. 378): кружки ленты — под ширину
-import { bookStats, countNewDishes } from "../data/reviews";
+import { bookStats, countNewDishes, nextSealOf } from "../data/reviews";
+import { weekPulse } from "../lib/week-pulse";   // v159 (Доп. 484): «Пульс недели» — счёт и лидер
+import { stopsLabel } from "../lib/menu-stops";   // v159: число «в стопе» на значке «Меню»
+import { useStopCount, StopBadge } from "./stop-badge";
+import { FaceImg } from "./staff-photo";          // v159: фото лидера недели (этап 52)
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey, HINTS_VERSION } from "../data/hints";
@@ -49,6 +53,26 @@ const EmptySealSlot = ({ a11y }) => (
   <div data-seal-empty="" style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box", background: a11y ? "rgba(120,90,40,0.18)" : "rgba(0,0,0,0.28)",
     border: a11y ? "none" : "1px solid rgba(200,169,110,0.42)", boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35)" }} />
 );
+// v159 (Доп. 484): первый пустой кружок — бледный оттиск следующей печати в кольце: кольцо показывает, сколько уроков
+// роли пройдено до экзамена (за сданный экзамен и дают печать). Владелец на совет Google «силуэты и кольцо прогресса
+// вместо пустых кругов»: «Давай все 4». Рисунок 17 px, в ряду занимает 15 × 13: по высоте — как пустой кружок (плитка на
+// узком экране, где печати уходят на вторую строку, не подрастает), по ширине — как настоящая печать (WaxSealMini).
+const NextSealSlot = ({ a11y, pct = 0, ready = false }) => {
+  const R = 10.4, LEN = 2 * Math.PI * R, p = Math.max(0, Math.min(100, Math.round(pct)));
+  return (
+    <svg data-seal-next={p} data-seal-ready={ready ? "" : undefined} role="img" aria-label={ready ? "Следующая печать: уроки пройдены, остался экзамен" : `Следующая печать: до экзамена пройдено ${p}%`}
+      width="17" height="17" viewBox="0 0 24 24" style={{ flexShrink: 0, display: "block", margin: "-2px -1px", overflow: "visible" }}>
+      <circle cx="12" cy="12" r={R} fill={a11y ? "rgba(120,90,40,0.10)" : "rgba(0,0,0,0.22)"} stroke={a11y ? "rgba(120,90,40,0.26)" : "rgba(200,169,110,0.28)"} strokeWidth="1.5" />
+      {p > 0 ? <circle data-seal-ring="" cx="12" cy="12" r={R} fill="none" stroke={a11y ? "#7A5D2A" : "#E8C983"} strokeWidth="2.1" strokeLinecap="round"
+        strokeDasharray={`${(LEN * p / 100).toFixed(2)} ${LEN.toFixed(2)}`} transform="rotate(-90 12 12)" /> : null}
+      <g opacity={ready ? 0.9 : a11y ? 0.36 : 0.5} transform="translate(12 12) scale(0.62) translate(-12 -12)">
+        <path d={_WAX_BLOB} fill={a11y ? "#96331F" : "#B84C32"} />
+        <circle cx="12" cy="12" r="7.2" fill="none" stroke="rgba(60,12,4,0.6)" strokeWidth="1.5" />
+        <path d="M12 8.4l1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="#F2D7B8" opacity="0.85" />
+      </g>
+    </svg>
+  );
+};
 // Оправы (проба золота): full — герой, mid — рабочие элементы
 // «Морозный лёд»: оправа — светящаяся золотисто-белая кромка,
 // уровень full — ярче (парадные витрины), mid — деликатнее (жетоны)
@@ -191,6 +215,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // Подсказка по главному экрану. Ключ свой на роль: руководителю нужно
   // рассказать про график и команду, сотруднику — про трек и инструменты.
   const isBoss = !!profile?.is_admin || ["manager", "senior"].includes(profile?.position);
+  // v159 (Доп. 484): сколько блюд сегодня в стопе — числом на значке «Меню». Новичку до первого урока значок «Меню»
+  // не показан (ниже: newbie) — ему и не считаем, и сервер не спрашиваем.
+  const stopN = useStopCount(profile?.restaurant || "", !!onMenuTrainer && !!profile && (isBoss || Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0));
   // Подсказка ждёт, пока закроются карточки первого входа (WelcomeIntro в App).
   // Раньше она вставала поверх них: затемнение перехватывало касания — карточки
   // не листались, пока не пролистаешь подсказку, — а рамка обводила размытый фон
@@ -445,23 +472,49 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
 
         {/* Пульс недели: владельцу — командная сводка одним взглядом */}
         {profile?.is_admin && scores.length > 0 && (() => {
-          const d = new Date(); const dw = (d.getDay() + 6) % 7;
-          d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dw);
-          const ws = d.getTime();
-          const wk = scores.filter(q => q.updated_at && new Date(q.updated_at).getTime() >= ws);
-          if (!wk.length) return null;
-          const by = {};
-          wk.forEach(q => { const k = q.name + " " + (q.surname || ""); by[k] = (by[k] || 0) + (q.score || 0); });
-          const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
-          const ppl = Object.keys(by).length;
+          const pu = weekPulse(scores);   // lib/week-pulse.js: тесты с понедельника, люди, лидер
+          if (!pu) return null;
+          const wk = { length: pu.tests }, ppl = pu.people, lead = pu.leader;
+          const word = wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов";
+          // v159 (Доп. 484): лидер недели — кружком с фото (нет фото — буквы) под маленькой короной, а вся плашка ведёт в
+          // рейтинг. Совет Google был «бегущая строка или аватар лидера с короной»: строка здесь не едет (на главной уже
+          // едут подписи инструментов), а лицо лидера взяли. Владелец: «Давай все 4». Кружок встал на место слова
+          // «лидер:» (корона говорит то же), поэтому строка не стала длиннее и плашка не выросла: главная у владельца
+          // и так плотная. Кружок с именем не рвутся: длинное имя уходит на вторую строку вместе с лицом, как раньше
+          // уходило одно. Видит плашку, как и раньше, владелец.
+          const go = onLeaderboard ? () => onLeaderboard() : null;
+          const ini = lead ? ((lead.name || "?").slice(0, 1) + (lead.surname || "").slice(0, 1)).toUpperCase() : "";
+          const pg = a11y ? "#7A5D2A" : "#C8A96E";
+          // с кружком не рвутся имя и фамилия; третье слово и очень длинное имя переносятся
+          const leadWords = lead ? lead.full.split(/\s+/).filter(Boolean) : [], leadKeep = leadWords.slice(0, 2).join(" ").length <= 30 ? 2 : 1;
+          const leadFirst = leadWords.slice(0, leadKeep).join(" "), leadRest = leadWords.slice(leadKeep).join(" ");
           return (
             // v44 (Доп. 357): плотнее; в светлой теме — тёмное золото (раньше #C8A96E на кремовом почти не читался)
             <div data-pulse="" style={{ margin:"0 14px 8px", padding:"6px 12px", borderRadius:12, fontSize:11, lineHeight:1.4,
               color: T.modSub.color, background: a11y ? "rgba(255,250,238,0.55)" : "rgba(200,169,110,0.06)",
-              border: a11y ? "1px solid rgba(150,112,40,0.3)" : "1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif" }}>
+              border: a11y ? "1px solid rgba(150,112,40,0.3)" : "1px solid rgba(200,169,110,0.22)", fontFamily:"Georgia, serif",
+              cursor: go ? "pointer" : "default", WebkitTapHighlightColor:"transparent" }}
+              data-pulse-go={go ? "" : undefined} onClick={go || undefined} {...onActivate(go)}
+              aria-label={`Пульс недели: ${wk.length} ${word}, в игре ${ppl}${lead ? ", лидер " + lead.full : ""}${go ? ". Открыть рейтинг" : ""}`}>
               <span style={{ ...labelStyle(a11y ? 13.5 : 12.5), color: a11y ? "#7A5D2A" : "#C8A96E" }}>Пульс недели</span>
-              {" "}· {wk.length} {wk.length % 10 === 1 && wk.length % 100 !== 11 ? "тест" : wk.length % 10 >= 2 && wk.length % 10 <= 4 && (wk.length % 100 < 12 || wk.length % 100 > 14) ? "теста" : "тестов"} · {ppl} чел в игре
-              {top ? <> · лидер: <span style={{ color: a11y ? "#7A5D2A" : "#C8A96E" }}>{top[0].trim()}</span></> : null}
+              {" "}· {wk.length} {word} · {ppl} чел в игре
+              {/* кружок — обычная строчная вставка по середине строки (поля вверх и вниз отрицательные: строка не растёт),
+                  имя — обычный текст на общей базовой линии: так одинаково в Chrome и в Safari на iPhone. Кружок не
+                  отрывается от имени (nowrap), фамилия при нехватке места переносится как раньше */}
+              {lead ? <> · <span data-pulse-lead="" style={{ whiteSpace:"nowrap" }}>
+                <span data-pulse-leader="" aria-hidden="true" style={{ position:"relative", display:"inline-grid", placeItems:"center", verticalAlign:"middle", width:22, height:22, margin:"-6px 5px -6px 0", borderRadius:"50%",
+                  fontFamily:"Georgia, serif", fontSize:10.5, fontWeight:"bold", letterSpacing:-0.3, lineHeight:1,
+                  color: a11y ? "#FFF9EC" : "#1A1008",
+                  background: a11y ? "linear-gradient(135deg, #B08A3E, #7A5D2A)" : "linear-gradient(135deg, #E8C983, #9C7A42)",
+                  boxShadow: a11y ? "0 0 0 1.5px rgba(122,93,42,0.32)" : "0 0 0 1.5px rgba(232,201,131,0.32)" }}>
+                  {ini}
+                  <FaceImg who={{ name: lead.name, surname: lead.surname, restaurant: lead.restaurant || profile.restaurant || "" }} />
+                  <span data-pulse-crown="" style={{ position:"absolute", top:-6.5, left:"50%", marginLeft:-6, lineHeight:0, transform:"rotate(-9deg)", filter: a11y ? "drop-shadow(0 1px 1px rgba(90,60,20,0.35))" : "drop-shadow(0 1px 1.5px rgba(0,0,0,0.6))" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 16.4L3.3 7.7l4.9 3.5L12 5.3l3.8 5.9 4.9-3.5L19 16.4z" fill={a11y ? "#B8862B" : "#F2D89A"} stroke={a11y ? "#5E4416" : "#3A2A0E"} strokeWidth="1.5" strokeLinejoin="round"/><path d="M5.4 19.7h13.2" stroke={a11y ? "#B8862B" : "#F2D89A"} strokeWidth="2.3" strokeLinecap="round"/></svg>
+                  </span>
+                </span>
+                <span style={{ color: pg }}>{leadFirst}</span>
+              </span>{leadRest ? <span style={{ color: pg }}> {leadRest}</span> : null}</> : null}
             </div>
           );
         })()}
@@ -479,6 +532,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           const mgr = !!profile?.is_admin;
           const bs = onGuestBook && profile ? bookStats(MODULES, completed, quizDone, examResults) : null;
           const unread = bs ? countUnreadPages(completed, quizDone, examResults) : 0;
+          // v159 (Доп. 484): какая печать следующая и сколько до её экзамена (data/reviews.js: nextSealOf)
+          const nextSeal = bs && bs.seals < (bs.sealTotal || 0) ? nextSealOf({ role, examResults, progressOf, unlocked: effectiveUnlocked }) : null;
           const glass = a11y ? "inset 0 0 22px rgba(255,255,255,0.5), 0 4px 12px rgba(120,85,25,0.18)" : "inset 0 0 22px rgba(255,248,230,0.07), 0 5px 16px rgba(0,0,0,0.45)";
           // border-box: основа 150 px — вместе с полями и рамкой, иначе плитка с полями шире соседки и ряд переносится раньше
           const tile = { flex:"1 1 150px", minWidth:0, boxSizing:"border-box", position:"relative", borderRadius:14, cursor:"pointer", background: saInner(a11y), boxShadow: glass };
@@ -508,7 +563,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                       <div style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, rowGap:3, marginTop:3, minWidth:0 }}>
                         <span style={{ ...labelStyle(a11y ? 13.5 : 12.5), color: T.modSub.color, whiteSpace:"nowrap" }}>{bs.rank.label}</span>
                         <span style={{ display:"flex", gap:2, alignItems:"center", minWidth:0 }}>
-                          {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} /> : <EmptySealSlot key={i} a11y={a11y} />)}
+                          {Array.from({ length: bs.sealTotal || 5 }, (_, i) => i < bs.seals ? <WaxSealMini key={i} rot={[-8,6,-4,9,-6,4][i % 6]} />
+                            : i === bs.seals && nextSeal ? <NextSealSlot key={i} a11y={a11y} pct={nextSeal.pct} ready={nextSeal.ready} />
+                            : <EmptySealSlot key={i} a11y={a11y} />)}
                         </span>
                       </div>
                     </div>
@@ -666,9 +723,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                       const on = labelsOn && tools.length ? (toolSpot % tools.length) === i : false;
                       const badge = t.key === "menu" && menuNew > 0;
                       const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
+                      // v159 (Доп. 484): сколько блюд сегодня в стопе — рубиновым числом; оно важнее золотой точки
+                      const stop = t.key === "menu" ? stopN : 0;
                       return (
                         <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
-                          title={t.label}
+                          title={stop > 0 ? stopsLabel(stop) : t.label} aria-label={stop > 0 ? stopsLabel(stop) : undefined}
                           style={{ display:"flex", alignItems:"center", flexShrink:0, cursor:"pointer",
                             padding:2, borderRadius:999, WebkitTapHighlightColor:"transparent",
                             background: on ? `${c}1F` : "transparent",
@@ -677,7 +736,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                             display:"grid", placeItems:"center", flexShrink:0, "--tint": c + "55",
                             background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
                             {React.cloneElement(t.icon, { width:ico, height:ico })}
-                            {(badge || dot) ? (
+                            {stop > 0 ? <StopBadge n={stop} a11y={a11y} /> : (badge || dot) ? (
                               <span style={{ position:"absolute", top:-1, right:-1, width:8, height:8,
                                 borderRadius:4, background:GOLD_SOFT,
                                 border:`1.5px solid ${a11y ? "#F7F0E0" : "#1A1409"}` }} />

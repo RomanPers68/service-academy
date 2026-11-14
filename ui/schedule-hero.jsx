@@ -147,7 +147,10 @@ export function ShiftHero({ a11y, card, d, sh, when, dowName, dowShort, monthR, 
           <div style={{ fontFamily: serif, fontSize: 21, marginTop: 3, lineHeight: 1.15, color: p.text }}>{sh.name}</div>
           <div style={{ marginTop: 3, display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 7 }}>
             <span data-hero-time="" style={{ fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 19, color: p.gold, whiteSpace: "nowrap" }}>{sh.from}:00–{to}:00</span>
-            <span style={{ fontSize: 12.5, color: p.sub, whiteSpace: "nowrap" }}>{len} ч{st.text ? " · " + st.text : ""}</span>
+            {/* v159 (Доп. 484): «идёт» — тем же мягким зелёным, что на плитке «Мой график» на главной */}
+            <span style={{ fontSize: 12.5, color: p.sub, whiteSpace: "nowrap" }}>{len} ч{st.kind === "now" && st.text.startsWith("идёт")
+              ? <>{" · "}<span data-hero-live="" style={{ color: p.green }}>идёт</span>{st.text.slice(4)}</>
+              : st.text ? " · " + st.text : ""}</span>
           </div>
         </div>
       </div>

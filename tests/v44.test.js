@@ -137,7 +137,9 @@ describe("v44: «График смен» и «Книга отзывов» — п
     expect(html).not.toContain("ОТКРЫТЬ ›");
     // время смены не рвётся по тире (v45, Доп. 358: подпись «Вечер · 17:00–24:00», время — неразрывным золотом)
     expect(html).toMatch(/data-when-time=""[^>]*white-space:nowrap[^>]*>.*?17:00–24:00/);
-    expect(html).toContain('aria-label="Мой график. Сегодня: Вечер, 17:00–24:00"');
+    // v159 (Доп. 484): пока смена идёт, к подписи добавляется «смена идёт», а на плитке вместо «Вечер» — зелёное «Идёт».
+    // Главная рисуется по настоящим часам, тест идёт когда придётся (на GitHub — по UTC): годятся оба вида
+    expect(html).toMatch(/aria-label="Мой график\. Сегодня: Вечер, 17:00–24:00(, смена идёт)?"/);
     expect(text(html)).toContain("Мой график");
     delete store.sa_today_shift;
   });
@@ -165,7 +167,9 @@ describe("v44: «Пульс недели», табличка и полка — �
     const dk = await render({ profile: boss, scores });
     const lt = await render({ profile: boss, scores, a11y: true });
     expect(dk).toContain('data-pulse="" style="margin:0 14px 8px;padding:6px 12px;');
-    expect(text(dk)).toContain("Пульс недели · 2 теста · 2 чел в игре · лидер: Ангелина Токарева");   // v73: подпись курсивом, с заглавной
+    // v73: подпись курсивом, с заглавной; v159 (Доп. 484): на месте слова «лидер:» — кружок лидера под короной
+    // (фото, а пока его нет — буквы «АТ»), имя — следом
+    expect(text(dk)).toContain("Пульс недели · 2 теста · 2 чел в игре · АТАнгелина Токарева");
     const pl = lt.slice(lt.indexOf("data-pulse"), lt.indexOf("</div>", lt.indexOf("data-pulse")));
     expect(pl).toContain("color:#7A5D2A");
     expect(pl).not.toContain("#C8A96E");

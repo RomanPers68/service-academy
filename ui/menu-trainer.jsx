@@ -205,7 +205,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   const Head = (title) => (
     <div style={T.lessHead}>
-      <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (mode) { setMode(null); setFocusNew(false); } else if (restaurant && !RESTAURANTS.includes(profile?.restaurant)) setRestaurant(null); else onBack(); }}>‹</button>
+      <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (mode) { setMode(null); setFocusNew(false); setDeckStart(null); } else if (restaurant && !RESTAURANTS.includes(profile?.restaurant)) setRestaurant(null); else onBack(); }}>‹</button>
       <div style={T.lessHeadTitle}>{title}</div>
     </div>
   );
@@ -282,7 +282,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v158</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v159</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -299,6 +299,25 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
                   ))}
                 </div>
               )}
+            </div>
+          );
+        })()}
+        {/* v159 (Доп. 484): что сегодня в стопе — сразу под шапкой. Число на значке «Меню» на главной ведёт сюда:
+            раньше «сегодня нет» было видно только лентой на карточке блюда, и чтобы узнать, каких блюд нет, колоду
+            приходилось листать. Нажатие на блюдо открывает колоду на нём. */}
+        {(() => {
+          const st = dishes.filter(d => d && d.stop);
+          if (!st.length) return null;
+          const show = st.slice(0, 8), more = st.length - show.length;
+          const openAt = (d) => { setDeckStart(String(d.id)); setFocusNew(false); setMode("cards"); vibrate("light"); };
+          return (
+            <div data-menu-stops={st.length} style={{ marginTop: 7, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+              <span style={{ color: a11y ? "#A33A2A" : red, fontSize: 12.5 }}>Сегодня нет:</span>
+              {show.map(d => (
+                <span key={d.id} data-menu-stop={d.id} onClick={() => openAt(d)} {...onActivate(() => openAt(d))}
+                  style={{ padding: "5px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", border: `1px solid ${a11y ? "#A33A2A66" : red + "66"}`, color: textColor }}>{d.name} ›</span>
+              ))}
+              {more > 0 ? <span style={{ fontSize: 11.5 }}>и ещё {more}</span> : null}
             </div>
           );
         })()}
@@ -320,7 +339,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           </div>
         )}
         {/* Доп. 282: колода всегда открывается обычной — «Наоборот» включают руками */}
-        {modes.map(m => { const isDay = dayKey === m.key; const live = dishes.length || m.any; const open = () => { if (!live) return; if (isDay && m.key === "cards") setFocusNew(false); setMode(m.key); }; return (
+        {modes.map(m => { const isDay = dayKey === m.key; const live = dishes.length || m.any; const open = () => { if (!live) return; if (isDay && m.key === "cards") setFocusNew(false); if (m.key === "cards") setDeckStart(null); setMode(m.key); }; return (
           <div key={m.key} data-menu-mode={m.key} className="sa-card" data-lens-card={isDay ? (dayDone ? "ok" : "hi") : ""} style={{ ...T.modCard, margin: "0 0 10px", opacity: live ? 1 : 0.45, borderColor: isDay ? (dayDone ? "#5DBB8A88" : gold + "AA") : undefined }}
             onClick={open} {...onActivate(open)}>
             <div style={iconBox}>{m.icon(gold)}</div>

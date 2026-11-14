@@ -201,7 +201,9 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
               style={{ cursor: "pointer", willChange: "transform, opacity", touchAction: "pan-y" }}>
               <div className={"sa-ck-inner" + (settled ? " sa-ck-settled" : "")} style={{ transform: flip ? "rotateY(180deg)" : "none", transition: snapRef.current ? "none" : undefined }}>
                 <div className="sa-ck-face sa-ck-front" data-lens-edge="" style={{ ...glass(T), padding: "18px 18px 16px", boxSizing: "border-box" }}>
-                  {d.stop && <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit" }}><div style={{ position: "absolute", top: 16, right: -36, transform: "rotate(35deg)", background: red || "#B8352A", color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 42px" }}>СЕГОДНЯ НЕТ</div></div>}
+                  {/* v159 (Доп. 484): лента «сегодня нет» лежала ПОД фото блюда (слой стоит раньше фото) и у блюд с фото была
+                      не видна; теперь она поверх фото, в левом углу — в правом кнопка «фото на весь экран» */}
+                  {d.stop && <div data-deck-stop="" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", borderRadius: "inherit", zIndex: 2 }}><div style={{ position: "absolute", top: 16, left: -36, transform: "rotate(-35deg)", background: a11y ? "#A33A2A" : "#B8352A", color: "#fff", fontSize: 10.5, letterSpacing: 1.5, padding: "4px 42px", boxShadow: "0 2px 6px rgba(0,0,0,0.35)" }}>СЕГОДНЯ НЕТ</div></div>}
                   <div style={{ position: "relative" }}>
                     <DishPhoto src={d.img} h={a11y ? 270 : 230} />
                     {d.img && <span onClick={(e) => { e.stopPropagation(); setZoom(d.img); vibrate("light"); }} aria-label="Фото на весь экран"

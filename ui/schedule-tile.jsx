@@ -9,6 +9,9 @@
 // Выходной — «Сегодня выходной ✦», нить без отрезка; графика на сегодня нет — прежняя подпись, без нити.
 // Узкой плитке время уходит строкой ниже вместе с точкой-разделителем: точка в начале строки срезается.
 // v73 (Доп. 386): выходной — просто «Сегодня выходной», без золотой звёздочки ✦ после слова.
+// v159 (Доп. 484): пока смена идёт, вместо её названия — «Идёт» мягким зелёным, и риска «сейчас» на нити тоже зелёная
+// (раньше — светлая с золотым сиянием: на золотом отрезке её было почти не видно). Название смены остаётся в подписи
+// для экранного диктора: «…Сегодня: Вечер, 17:00–24:00, смена идёт». Смена кончилась — снова название и золотая риска.
 import React from "react";
 import { ACCENT_SERIF } from "./styles";
 import { CREAM, INK } from "./tokens";
@@ -43,14 +46,17 @@ export function readTodayShift(storage, now = new Date()) {
   } catch (e) { return null; }
 }
 
-// Подпись: «Вечер · 17:00–24:00» — время золотом; «Сегодня выходной» (v73: без ✦); без графика — запасная фраза
-function When({ sh, p, fallback }) {
+// Подпись: «Вечер · 17:00–24:00» — время золотом; «Сегодня выходной» (v73: без ✦); без графика — запасная фраза;
+// live (v159) — смена идёт прямо сейчас: «Идёт · 17:00–24:00», слово зелёным
+function When({ sh, p, fallback, live = false }) {
   const base = { fontSize: 11, lineHeight: 1.3, color: p.sub, marginTop: 3, fontFamily: "Georgia, serif" };
   if (sh && sh.off) return <div data-when="off" style={base}>Сегодня выходной</div>;
   if (sh && sh.a) return (
     <div data-when="shift" style={{ ...base, overflow: "hidden" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", marginLeft: -10 }}>
-        <span style={{ marginLeft: 10, whiteSpace: "nowrap" }}>{sh.name}</span>
+        {live
+          ? <span data-when-live="" style={{ marginLeft: 10, whiteSpace: "nowrap", color: p.green }}>Идёт</span>
+          : <span style={{ marginLeft: 10, whiteSpace: "nowrap" }}>{sh.name}</span>}
         <span data-when-time="" style={{ marginLeft: 10, position: "relative", whiteSpace: "nowrap", fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 11.5, color: p.gold, letterSpacing: 0.1 }}>
           <span aria-hidden="true" data-when-dot="" style={{ position: "absolute", left: -7.5, fontFamily: "Georgia, serif", fontWeight: 400, color: p.sub }}>·</span>
           {sh.a}–{sh.b}
@@ -84,8 +90,10 @@ export function CalendarPage({ day, p, a11y, off, w = 31, h = 34 }) {
   );
 }
 
-// Нить суток по нижнему краю плитки: смена — золотым отрезком, «сейчас» — светлой риской
+// Нить суток по нижнему краю плитки: смена — золотым отрезком, «сейчас» — риской: золотой, а пока смена идёт —
+// зелёной с мягким сиянием (v159; раньше — светлой)
 // (v46: та же нить — у ближайшей смены в графике сотрудника)
+export const liveGlow = (a11y) => (a11y ? "rgba(44,107,72,0.55)" : "rgba(138,216,175,0.85)");
 export function DayThread({ sh, h, p, a11y }) {
   const pct = (x) => +Math.max(0, Math.min(100, (x / 24) * 100)).toFixed(2);
   const on = shiftNow(sh, h);
@@ -96,7 +104,7 @@ export function DayThread({ sh, h, p, a11y }) {
           boxShadow: `0 0 6px ${a11y ? "rgba(156,118,52,0.45)" : "rgba(226,196,132,0.55)"}` }} />
       )) : null}
       <i data-now={on ? "on" : "off"} style={{ position: "absolute", bottom: 0, left: `calc(${pct(h)}% - 1px)`, width: 2, height: 7, borderRadius: "1px 1px 0 0",
-        background: on ? (a11y ? "#5A3F12" : "#FFF6DC") : p.gold, boxShadow: on ? `0 0 6px ${a11y ? "rgba(156,118,52,0.7)" : "rgba(255,236,190,0.9)"}` : "none" }} />
+        background: on ? p.green : p.gold, boxShadow: on ? `0 0 6px ${liveGlow(a11y)}` : "none" }} />
     </div>
   );
 }
@@ -110,16 +118,17 @@ export function ScheduleTile({ a11y, mgr, tile, frame, onOpen, act, label, now }
   const p = palette(a11y);
   const d = now || new Date(), h = d.getHours() + d.getMinutes() / 60;
   const sh = parseShift(label !== undefined ? label : readTodayShift(null, d));
+  const live = !!(sh && sh.a) && shiftNow(sh, h);   // v159: смена идёт прямо сейчас
   const name = mgr ? "График смен" : "Мой график";
   const fallback = mgr ? "Составить, проверить и опубликовать" : "Смены, время и старший смены";
-  const aria = name + ". " + (sh && sh.off ? "Сегодня выходной" : sh && sh.a ? "Сегодня: " + sh.name + ", " + sh.a + "–" + sh.b : sh && sh.raw ? "Сегодня: " + sh.raw : fallback);
+  const aria = name + ". " + (sh && sh.off ? "Сегодня выходной" : sh && sh.a ? "Сегодня: " + sh.name + ", " + sh.a + "–" + sh.b + (live ? ", смена идёт" : "") : sh && sh.raw ? "Сегодня: " + sh.raw : fallback);
   return (
     <div className="sa-card sa-glass" data-tile="schedule" aria-label={aria} onClick={onOpen} {...act} style={{ ...tile, border: `1px solid ${frame}` }}>
       <div style={{ overflow: "hidden", position: "relative", borderRadius: 12.5, height: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 9, padding: "9px 10px 10.5px" }}>
         <CalendarPage day={d.getDate()} p={p} a11y={a11y} off={!!(sh && sh.off)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13.5, lineHeight: 1.25, color: a11y ? INK : CREAM, whiteSpace: "nowrap", fontFamily: "Georgia, serif", fontWeight: "bold" }}>{name}</div>
-          <When sh={sh} p={p} fallback={fallback} />
+          <When sh={sh} p={p} fallback={fallback} live={live} />
         </div>
         {sh && (sh.a || sh.off) ? <DayThread sh={sh.a ? sh : null} h={h} p={p} a11y={a11y} /> : null}
       </div>

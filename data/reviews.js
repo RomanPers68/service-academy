@@ -171,3 +171,25 @@ export function bookStats(modulesByRole, completed = {}, quizDone = {}, examResu
   const sealTotal = Object.keys(LEGEND_REVIEWS).length;
   return { pages, seals, sealTotal, total: total + sealTotal + 1, score, rank: rankOf(score), next: nextRank(score) };
 }
+
+/**
+ * v159 (Доп. 484): следующая печать «Книги отзывов» — роль, до экзамена которой человеку ближе всего. Печать дают за
+ * сданный экзамен роли, а экзамен открывается, когда пройдены все уроки роли. Своя роль, если её экзамен ещё не
+ * сдан, — первая; иначе из открытых ролей та, где пройдено больше. Все печати получены — null.
+ * → { role, pct (0–100: сколько уроков роли пройдено), ready (уроки пройдены, остался экзамен) }
+ */
+export function nextSealOf({ role = "", examResults = {}, progressOf = () => 0, unlocked = null } = {}) {
+  const ex = examResults || {};
+  const left = Object.keys(LEGEND_REVIEWS).filter((r) => !(ex[r] && ex[r].passed));
+  if (!left.length) return null;
+  const pctOf = (r) => Math.max(0, Math.min(100, Math.round(Number(progressOf(r)) || 0)));
+  let pick = left.includes(role) ? role : null;
+  if (!pick) {
+    const has = (r) => (!unlocked ? true : typeof unlocked.has === "function" ? unlocked.has(r) : Array.isArray(unlocked) ? unlocked.includes(r) : true);
+    const open = left.filter(has);
+    const pool = open.length ? open : left;
+    pick = pool.reduce((best, r) => (pctOf(r) > pctOf(best) ? r : best), pool[0]);
+  }
+  const pct = pctOf(pick);
+  return { role: pick, pct, ready: pct >= 100 };
+}

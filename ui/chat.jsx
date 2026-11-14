@@ -44,6 +44,7 @@ import { searchQuery, searchSnippet } from "../lib/chat-search";   // v99: по�
 import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наставник новичков» в карточке коллеги
 import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
 import { traceUse } from "../lib/tip-avail";
+import { noteStopCards } from "../lib/menu-stops";   // v159 (Доп. 484): стоп из чата — число на значке «Меню» на главной
 import { isFemaleName } from "../lib/utils";
 
 let pokeAt = 0;   // v108: когда приложение последний раз просило поставить карточки праздников
@@ -1100,6 +1101,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const addMsgs = (list, { poll = false, quiet = false } = {}) => {
     const known = new Set(msgsRef.current.map((m) => String(m.id)));
     const next = mergeMsgs(msgsRef.current, list || []);
+    noteStopCards(list);   // v159: новая карточка стоп-листа или «Снова в меню» — главная сверит меню с сервером
     if (poll) lastId.current = Math.max(lastId.current, maxId(list || []));
     const added = (list || []).filter((m) => m && !known.has(String(m.id)) && String(m.emp) !== String(meId)).length;
     if (!quiet && !stick.current && added) setFresh((n) => n + added);

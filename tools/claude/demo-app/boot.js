@@ -558,12 +558,14 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   // v158 (Доп. 483): фото сотрудников (этап 52) — у шести человек «Океана» нарисованные портреты, у Анны и новичков фото нет
   // (Анна ставит своё сама); __demo_no52 = "1" — сервер без этапа 52. Сданные тесты — чтобы в «Команде» были лидеры
   staffPhotos: STAFF_PHOTOS, noStage52: lsGet("__demo_no52") === "1",
+  // v159 (Доп. 484): __demo_pulse = "1" — тесты сданы на этой неделе (у строк появляется updated_at): у владельца на
+  // главной виден «Пульс недели» с лидером, в «Команде» — лента сданных тестов. Без флажка — как раньше (дат нет)
   scores: [
     { id: 1, name: "Вера", surname: "Соколова", restaurant: R0, role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 12, total: 12 },
     { id: 2, name: "Анна", surname: "Смирнова", restaurant: R0, role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 11, total: 12 },
     { id: 3, name: "Пётр", surname: "Орлов", restaurant: R0, role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 10, total: 12 },
     { id: 4, name: "Дарья", surname: "Лебедева", restaurant: R0, role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 9, total: 12 },
-  ],
+  ].map((s, i) => (lsGet("__demo_pulse") === "1" ? { ...s, updated_at: new Date(Date.now() - (i + 1) * 9 * 60e3).toISOString() } : s)),
   concept: CONCEPT_SEED, conceptPhotos: CONCEPT_PHOTOS, lessonPhotos: LESSON_PHOTOS,   // v139 (Доп. 454): «О нас» — сеть, «Океан» и сосед «Порт»
   pushSubs: ["e-petr", "e-olga", "e-vera"],   // v137: уведомления на телефоне уже включили Пётр, Ольга (без Telegram) и Вера
   // v125 (Доп. 438): тренировка по винам у команды (этап 44): Анна выучила новые вина («Совиньон Блан» и «Москато»), Вера
@@ -646,6 +648,7 @@ function seed() {
   const uk = "_" + me.name + "_" + me.surname;
   const keep = new Set([K_SRV, K_WHO, K_DAY, K_T, LOOK_KEY]);
   keep.add("__demo_no52");   // v158: «сервер без этапа 52» переживает смену человека
+  keep.add("__demo_pulse");  // v159: «тесты на этой неделе» — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}

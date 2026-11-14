@@ -569,21 +569,23 @@ describe("v137: демо-сервер — как этап 48", () => {
   });
 });
 
+// Доп. 482: экраны рисуются через React.createElement — в файле .js разметку <PushBlock … /> настоящий vitest не разбирает
+// («Expression expected»), и на GitHub файл не запускался целиком; запуск в песочнице читал .js как .jsx и этого не видел.
 describe("v137: экраны", () => {
   const C = { text: "#fff", sub: "#aaa", gold: "#c9a", line: "#333", bg: "#000" };
   const withWin = (w, f) => { const was = globalThis.window; globalThis.window = w; try { return f(); } finally { if (was === undefined) delete globalThis.window; else globalThis.window = was; } };
   it("«На телефон»: iPhone в Safari — три шага; Telegram — бот пишет; можно — «Проверяю…» до ответа сервера", () => {
-    const ios = withWin({ __saPushShim: { env: "ios-browser" } }, () => renderToString(<PushBlock a11y={false} c={C} />));
+    const ios = withWin({ __saPushShim: { env: "ios-browser" } }, () => renderToString(React.createElement(PushBlock, { a11y: false, c: C })));
     expect(ios).toContain('data-push-block="ios-browser"');
     expect(ios).toContain("data-push-ios");
     expect(ios).toContain("Внизу Safari нажми «Поделиться»");
-    const tg = withWin({ __saPushShim: { env: "telegram" } }, () => renderToString(<PushBlock a11y={false} c={C} />));
+    const tg = withWin({ __saPushShim: { env: "telegram" } }, () => renderToString(React.createElement(PushBlock, { a11y: false, c: C })));
     expect(tg).toContain('data-push-block="telegram"'); expect(tg).toContain("Здесь сообщения присылает бот Telegram");
-    const ok = withWin({ __saPushShim: { env: "ok", reg: null } }, () => renderToString(<PushBlock a11y={false} c={C} />));
+    const ok = withWin({ __saPushShim: { env: "ok", reg: null } }, () => renderToString(React.createElement(PushBlock, { a11y: false, c: C })));
     expect(ok).toContain('data-push-block="load"'); expect(ok).toContain("Проверяю…");
   });
   it("«Куда присылать»: три варианта, выбранный — aria-pressed, подпись по выбору", () => {
-    const h = renderToString(<ChannelPick a11y={false} c={C} ps={{ channel: "push" }} />);
+    const h = renderToString(React.createElement(ChannelPick, { a11y: false, c: C, ps: { channel: "push" } }));
     expect(h).toContain('data-push-channel="push"');
     expect(h).toMatch(/aria-pressed="true" data-push-ch="push"/);
     expect(h).toContain("Telegram молчит, пока уведомления на телефоне включены.");

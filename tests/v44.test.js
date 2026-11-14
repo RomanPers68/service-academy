@@ -65,7 +65,9 @@ describe("v44: приветствие — роль под именем, «хор
   it("без роли — без строки роли; приветствие на одну строку", async () => {
     const html = await render({ role: null });
     expect(html).not.toContain("data-role-line");
-    expect(html).toContain('<div style="padding:2px 20px 8px;display:flex;align-items:baseline;justify-content:space-between;gap:10px">');
+    // v157 (Доп. 481–482): вечером и ночью приветствие стоит над огнями — в конце его стиля добавляется position:relative.
+    // Тест шёл только днём, а на GitHub (ночь по UTC) упал; строка сверяется без этой добавки — в любой час.
+    expect(html.replace('gap:10px;position:relative">', 'gap:10px">')).toContain('<div style="padding:2px 20px 8px;display:flex;align-items:baseline;justify-content:space-between;gap:10px">');
   });
 });
 

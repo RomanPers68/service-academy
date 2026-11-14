@@ -18,7 +18,9 @@ async function one(f) {
   const out = join(TMP, f.replace(/[^\w.-]/g, "_") + ".mjs");
   try {
     await esbuild.build({ entryPoints: [join(PRJ, "tests", f)], bundle: true, format: "esm", platform: "node", target: "node20", outfile: out, jsx: "automatic", nodePaths: [G], logLevel: "silent",
-      alias: { vitest: SHIM }, loader: { ".js": "jsx", ".woff": "dataurl", ".woff2": "dataurl", ".webp": "dataurl", ".png": "dataurl", ".jpg": "dataurl" },
+      // .js — как у Vite: без разметки JSX (она только в .jsx). Раньше .js читался как .jsx, и разметка в tests/v137.test.js
+      // проходила здесь, а на GitHub файл не запускался (Доп. 482).
+      alias: { vitest: SHIM }, loader: { ".woff": "dataurl", ".woff2": "dataurl", ".webp": "dataurl", ".png": "dataurl", ".jpg": "dataurl" },
       define: { "import.meta.env": JSON.stringify({ MODE: "test", DEV: false, PROD: false }) },
       banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
       footer: { js: "\nconst __r = await globalThis.__vt_run(); process.stdout.write('\\n__VT__' + JSON.stringify(__r) + '\\n'); process.exit(0);" } });

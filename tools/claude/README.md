@@ -23,6 +23,14 @@ vitest `vitest-shim.mjs` (describe, it, expect с теми сопоставит�
 подмена таймеров), и запускает его отдельным процессом из корня проекта. Вывод — упавшие тесты и строка «файлов N,
 тестов прошло N, упало N». На настоящем vitest (`npm test`) тесты идут без изменений.
 
+Настоящий vitest идёт на GitHub при каждой заливке (`.github/workflows/test.yml`, Доп. 482): у коммита — галочка или
+крестик, журнал — `gh api repos/<владелец>/<репозиторий>/actions/jobs/<id>/logs`. Чтобы не узнавать о падении уже там:
+
+- `.js` здесь читается как у Vite — без разметки JSX. Разметка в тестах — только в `.test.jsx` или через
+  `React.createElement`.
+- Главная зависит от часа (приветствие, свет, вечерние огни), а GitHub гоняет тесты по UTC. Перед заливкой — три прогона:
+  `TZ=Asia/Kamchatka`, `TZ=UTC`, `TZ=America/New_York node tools/claude/run-tests.mjs .` (день, ночь, вечер).
+
 ## Просмотр в браузере
 
     mkdir -p ~/.config/fontconfig && cp tools/claude/fonts.conf ~/.config/fontconfig/ && fc-cache -f

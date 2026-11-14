@@ -9,7 +9,8 @@
 //            ведёт в рейтинг; без этапа 52 — буквы; сотруднику плашки нет; «Для чтения»; 320 px;
 //   SEAL   — «Книга отзывов»: первый пустой кружок — оттиск в кольце, число то же, что на кружке трека; остальные пустые;
 //            плитка той же высоты; «Для чтения»;
-//   STOP   — число «в стопе» на значке «Меню» (вино не в счёт), жетон не обрезан рядом; «Меню»: «Сегодня нет» с блюдами,
+//   STOP   — число «в стопе» на значке «Меню» (вино не в счёт), жетон не обрезан рядом, диктору «Меню. В стопе 2 блюда»
+//            (подсказка title — по-прежнему «Меню»: по ней значки находят прежние проверки); «Меню»: «Сегодня нет» с блюдами,
 //            нажатие открывает колоду на блюде с лентой поверх фото; колода из списка режимов — с первой карточки;
 //   FRESH  — свежесть: после запуска один menu_get (не два), пока свежо — запросов нет; руководитель ставит стоп из чата —
 //            число на главной под чатом меняется сразу, «Вернуть в меню» — обратно; у официанта после входа — то же число;
@@ -226,7 +227,7 @@ await run("STOP", async () => {
     ok(`${tag}: на значке «Меню» — «2» (два блюда в стопе; вино в стопе в счёт не идёт)`, !!a.badge && a.badge.t === "2", JSON.stringify(a.badge));
     ok(`${tag}: жетон рубиновый, цифра 10,5 px светлая; у правого верхнего края кружка, рядом ничего не обрезает`, !!a.badge && /rgb\((200, 85, 60|180, 67, 47)\)/.test(a.badge.bg) && a.badge.font === "10.5px" && Math.abs(a.badge.box.h - 16) < 0.6 && a.badge.box.w >= 15.5 && a.badge.box.w <= 17
       && a.badge.box.y >= a.row.y - 0.6 && a.badge.box.r <= a.disc.r + 2.6 && a.badge.box.y <= a.disc.y && a.badge.box.x > a.disc.x + a.disc.w / 2, JSON.stringify([a.badge, a.disc, a.row]));
-    ok(`${tag}: подсказка и диктор — «Меню. В стопе 2 блюда»; золотой точки при числе нет`, !!a.tool && a.tool.title === "Меню. В стопе 2 блюда" && a.tool.aria === "Меню. В стопе 2 блюда" && a.menuDot === 0, JSON.stringify([a.tool, a.menuDot]));
+    ok(`${tag}: диктору — «Меню. В стопе 2 блюда», подсказка — по-прежнему «Меню»; золотой точки при числе нет`, !!a.tool && a.tool.title === "Меню" && a.tool.aria === "Меню. В стопе 2 блюда" && a.menuDot === 0, JSON.stringify([a.tool, a.menuDot]));
     await shot(page, "stop-home-" + (light ? "lt" : "dk"));
     await openMenu(page);
     const m = await page.evaluate(() => { const w = document.querySelector("[data-menu-stops]"); return w ? { n: w.getAttribute("data-menu-stops"), text: w.innerText.replace(/\s+/g, " ").trim(), chips: [...w.querySelectorAll("[data-menu-stop]")].map((c) => c.textContent.trim()), clip: w.scrollWidth - w.clientWidth, top: w.getBoundingClientRect().top, label: getComputedStyle(w.firstElementChild).color } : null; });

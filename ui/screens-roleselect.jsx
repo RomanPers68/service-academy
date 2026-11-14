@@ -723,11 +723,12 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                       const on = labelsOn && tools.length ? (toolSpot % tools.length) === i : false;
                       const badge = t.key === "menu" && menuNew > 0;
                       const dot = t.key === "menu" && !badge && dayMode && (dayMode.count || 0) < 5;
-                      // v159 (Доп. 484): сколько блюд сегодня в стопе — рубиновым числом; оно важнее золотой точки
+                      // v159 (Доп. 484): сколько блюд сегодня в стопе — рубиновым числом; оно важнее золотой точки.
+                      // Диктору — «Меню. В стопе 2 блюда»; подсказка (title) остаётся названием инструмента
                       const stop = t.key === "menu" ? stopN : 0;
                       return (
                         <div key={t.key} onClick={t.onClick} {...onActivate(t.onClick)}
-                          title={stop > 0 ? stopsLabel(stop) : t.label} aria-label={stop > 0 ? stopsLabel(stop) : undefined}
+                          title={t.label} aria-label={stop > 0 ? stopsLabel(stop) : undefined}
                           style={{ display:"flex", alignItems:"center", flexShrink:0, cursor:"pointer",
                             padding:2, borderRadius:999, WebkitTapHighlightColor:"transparent",
                             background: on ? `${c}1F` : "transparent",

@@ -415,6 +415,24 @@ describe("v159: свежесть числа — копия меню сверяе
     expect(stopCount(OCEAN)).toBe(1);
     expect(rd("lib/reference-context.js")).toContain("  menuTouched(restaurant);   // v159: копия свежая (lib/menu-fresh.js)");
   });
+  it("сверка принесла то же меню — копию на телефоне не переписываем (а отметка свежести ставится); поменялось — пишем", async () => {
+    const { rememberSharedMenu } = await import("../lib/reference-context.js");
+    let writes = 0; const set = globalThis.localStorage.setItem;
+    globalThis.localStorage.setItem = (k, v) => { if (k === "sa_menu_shared") writes++; set(k, v); };
+    try {
+      rememberSharedMenu(OCEAN, menu);
+      expect(writes).toBe(1);
+      rememberSharedMenu(OCEAN, menu.map((d) => ({ ...d })));
+      expect(writes).toBe(1);                                    // то же самое — без записи
+      expect(menuTouchedAt(OCEAN)).toBeGreaterThan(0);
+      rememberSharedMenu(OCEAN, [{ ...menu[0], stop: null, stopAt: 2 }]);
+      expect(writes).toBe(2);                                    // блюдо вернули в меню — записали
+      expect(stopCount(OCEAN)).toBe(0);
+      rememberSharedMenu("Марико", [{ id: "m1", name: "Роллы" }]);
+      expect(writes).toBe(3);
+      expect(Object.keys(JSON.parse(store.sa_menu_shared))).toEqual([OCEAN, "Марико"]);   // чужое заведение не задето
+    } finally { globalThis.localStorage.setItem = set; }
+  });
   it("чат: новая карточка стоп-листа или «Снова в меню» — копия устарела; та же карточка второй раз — нет", () => {
     menuTouched(OCEAN, 1e6);
     const got = []; menuSubscribe((r, why) => got.push(why));
@@ -463,7 +481,7 @@ describe("v159: жетон на значке «Меню» и строка «Се
     stops();
     const html = await home({ profile: boss, onMenuTrainer: noop });
     expect(count(html, /data-stop-badge="2"/g)).toBe(1);
-    expect(html).toMatch(/title="Меню\. В стопе 2 блюда" aria-label="Меню\. В стопе 2 блюда"/);
+    expect(html).toMatch(/title="Меню" aria-label="Меню\. В стопе 2 блюда"/);   // подсказка — название инструмента, как было
     const disc = html.slice(html.lastIndexOf("data-tool-disc", html.indexOf("data-stop-badge")), html.indexOf("data-stop-badge"));
     expect(disc).not.toContain("width:8px;height:8px");
     expect(RS).toContain("{stop > 0 ? <StopBadge n={stop} a11y={a11y} /> : (badge || dot) ? (");

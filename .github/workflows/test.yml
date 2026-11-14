@@ -1,0 +1,15 @@
+# Дополнение 137: проверки запускаются сами на каждый коммит.
+# Результат виден в GitHub: зелёная галочка или красный крестик у коммита.
+name: tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Node 22 (Доп.): у Node 20 закончилась поддержка 30.04.2026, и в нём нет глобального
+      # navigator — dev-сборка React 18 читает navigator.userAgent, и смоук-тест падал.
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npm test

@@ -16,7 +16,7 @@ import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner
 import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
 import { warmLessonPhotos } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске
 import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158: фото сотрудников в кружках (этап 52)
-import { MyFaceLayer } from "./ui/staff-photo";
+import { MyFaceLayer, FaceViewer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
 import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
@@ -3241,6 +3241,9 @@ function ServiceAcademy() {
               assistantNavigate(dest, true);
             }} /></Suspense>
         ) : null}
+        {/* v160 (Доп. 485): фото сотрудника крупно — один слой на всё приложение (нажали на лицо в кружке); порталом в
+            body, поверх чата и листов */}
+        <FaceViewer />
         {/* v90 (Доп. 403): чат смены — порталом в body, поверх всего; вызов мне — баннер, пока чат закрыт */}
         {chatOpen != null && chatMe ? <Suspense fallback={null}><ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} appCtx={chatAppCtx} openId={typeof chatOpen === "object" && chatOpen ? chatOpen.id : null}
           intent={typeof chatOpen === "object" && chatOpen ? chatOpen.intent || null : null}

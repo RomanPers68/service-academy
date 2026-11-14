@@ -38,6 +38,8 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 import { masterRolesOf, masterTitle } from "../lib/mastery";
 import { weekThanks, weekStars } from "../lib/team-warm";   // v108 (Доп. 421): «спасибо» коллег в «Сотруднике недели»
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): рейтинг шире, сотрудники — в две колонки
+import { FaceImg, CrownFace, RankFace, FaceZoomHint, useStaffPhotos } from "./staff-photo";
+import { staffPhotoOf } from "../lib/staff-photo";   // v160 (Доп. 485): фото в «Сотруднике недели» и «Моей статистике», по нажатию — крупно
 
 // v40: знак «Мастер роли» у имени — в рейтинге и в лиге недели (ui/league.jsx). v75: медаль на ленте вместо ✦.
 // roles — из masterRolesOf(mastersIndex(строки mastery_list), имя, фамилия); нет ролей — ничего.
@@ -222,7 +224,8 @@ export function WeekStar({ weekly, T }) {
     <div data-lens-edge="" style={wrap}>
       <div style={{ ...labelStyle(13.5), color:gold, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>{crownIcon(gold,13)} Сотрудник недели</div>
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center" }}>{crownIcon("#FBF7EE", 24)}</div>
+        {/* v160 (Доп. 485): есть фото — оно в медали, корона — маленькой над ним; нет фото — медаль с короной, как была */}
+        <div data-lens="avatar" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg, ${gold}, #7A5D2A)`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>{crownIcon("#FBF7EE", 24)}<CrownFace who={{ name: top.name, surname: top.surname, restaurant: top.restaurant }} sub="Сотрудник недели" /></div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ ...T.modTitle, fontSize:16 }}>{top.name} {top.surname}</div>
           <div style={{ color:T.modSub.color, fontSize:12.5 }}>{top.restaurant || ""}</div>
@@ -440,6 +443,10 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
   // v31: в сети коллеги других заведений — «Пётр Л.» (полностью видят руководящий состав и владелец)
   const netViewer = isAdmin || myPosition === "senior";
   const shownSurname = (p) => (!netViewer && scope === "net" && twoScopes && (p.restaurant || "") !== myRest ? (p.surname ? String(p.surname)[0] + "." : "") : (p.surname || ""));
+  // v160: фото в рейтинге — только у тех, чья фамилия здесь видна целиком: у коллег из чужого заведения в виде «Сеть»
+  // фамилия сокращена, и фото (а по нажатию — полное имя под ним) не показываем
+  const faceList = useStaffPhotos();
+  const faceOf = (p) => (p && shownSurname(p) === (p.surname || "") ? { name: p.name, surname: p.surname, restaurant: p.restaurant } : null);
   // v31: «до места — N% среднего балла» и какой тест ближе всего пересдать
   const quizTitle = (id) => { for (const t of Object.keys(MODULES_INDEX || {})) for (const m of MODULES_INDEX[t] || []) { const l = (m.lessons || []).find((x) => x.id === id); if (l) return l.title || ""; } return ""; };
   const myRowLb = myIdx >= 0 ? filtered[myIdx] : null;
@@ -561,12 +568,15 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               <div style={{ marginBottom:12, display:"flex", justifyContent:"center" }}>{UI_SVG.inbox(GOLD, 40)}</div>
               <div>Пока нет результатов</div>
             </div>
-          ) : (() => { const rows = filtered.map((p, i) => {
+          ) : (() => { const anyFace = filtered.some((p) => !!staffPhotoOf(faceList, faceOf(p)));
+            const rows = filtered.map((p, i) => {
             const ach = getAchievements(p, leaderboard, scores);
             return (
             <div key={i} onClick={() => { setSelected(p); setDetailTab(true); }} {...onActivate(() => { setSelected(p); setDetailTab(true); })}
               data-lens-card="" style={{ ...T.modCard, marginBottom:10, cursor:"pointer", gap:12 }}>
-              <div style={{ flexShrink:0, minWidth:28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { const med = [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]][i]; const fg = med ? med[0] : (T.modTitle?.color||GOLD); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||GOLD)+"44"; return <div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:12.5, fontWeight:"bold" }}>{i+1}</div>; })()}</div>
+              {/* v160: у кого есть фото — лицо с номером места в углу; нет фото — прежний кружок с номером */}
+              <div data-lb-rank="" style={{ flexShrink:0, minWidth: anyFace ? 38 : 28, display:"flex", alignItems:"center", justifyContent:"center" }}>{(() => { /* v160: в виде «Для чтения» медали темнее — светлая «2» на светлой карточке не читалась */
+                const med = (T.a11y ? [["#8A6A1E","rgba(184,144,46,0.16)"],["#5F6870","rgba(126,135,144,0.16)"],["#8A5630","rgba(160,100,58,0.14)"]] : [["#F0CE72","rgba(232,196,106,0.20)"],["#D2D7DE","rgba(200,205,212,0.16)"],["#D6A06A","rgba(214,160,106,0.18)"]])[i]; const fg = med ? med[0] : (T.modTitle?.color||GOLD); const bg = med ? med[1] : (T.modSub?.color||"#9A8C74")+"22"; const bd = med ? med[0]+"99" : (T.modTitle?.color||GOLD)+"44"; return <RankFace who={faceOf(p)} n={i+1} medal={med ? med[0] : ""} a11y={!!T.a11y}><div style={{ width:27, height:27, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:bg, border:`1.5px solid ${bd}`, color:fg, fontSize:12.5, fontWeight:"bold" }}>{i+1}</div></RankFace>; })()}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
                   <div style={{ ...T.modTitle }}>{p.name} {shownSurname(p)}</div>
@@ -602,8 +612,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           {(() => { const selAch = selected ? getAchievements(selected, leaderboard, scores) : []; const selMaster = selected ? masterOf(selected) : null; return (
           <div data-lens-card="" style={{ ...T.modCard, marginBottom:16, flexDirection:"column", alignItems:"flex-start", gap:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%" }}>
-              <div style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif" }}>
+              <div data-lb-face="" style={{ width:44, height:44, borderRadius:"50%", background:`${roleColor[selected?.role]||GOLD}22`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, fontWeight:"bold", color:roleColor[selected?.role]||GOLD, fontFamily:"Georgia, serif", position:"relative" }}>
                 {selected?.name?.[0]}{selected?.surname?.[0]}
+                {selected ? <><FaceImg who={faceOf(selected)} zoom /><FaceZoomHint who={faceOf(selected)} /></> : null}
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ ...T.modTitle }}>{selected?.name} {selected ? shownSurname(selected) : ""}</div>
@@ -1145,7 +1156,7 @@ function PlayerRow({ p, stat, T, a11y, peek, onResetPlayer, onUnlockQuiz, onView
           padding: "0 12px", cursor: "pointer", WebkitBackdropFilter: "blur(14px)", backdropFilter: "blur(14px)",
           background: a11y ? "linear-gradient(180deg, rgba(255,252,244,0.86), rgba(246,236,214,0.9))"
                            : "linear-gradient(180deg, rgba(58,46,26,0.72), rgba(32,25,14,0.82))" }}>
-        <Avatar who={`${p.name} ${p.surname}`} size={38} tone={tone === "good" ? null : tone} a11y={a11y} />
+        <Avatar who={`${p.name} ${p.surname}`} rest={p.restaurant} size={38} tone={tone === "good" ? null : tone} a11y={a11y} zoom={false} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: C.text, fontFamily: "Georgia, serif", fontSize: 14.5, fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name} {p.surname}</div>
           <div style={{ color: C.muted, fontSize: 11.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1200,7 +1211,7 @@ function PlayerSheet({ p, stat, T, a11y, onClose, onResetPlayer, onUnlockQuiz, o
           transform: shown ? "translateY(0) scale(1)" : "translateY(14px) scale(0.97)", opacity: shown ? 1 : 0,
           transition: "transform .26s cubic-bezier(.2,.9,.3,1), opacity .2s ease" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 12px 10px" }}>
-          <Avatar who={`${p.name} ${p.surname}`} size={40} tone={stat.tests === 0 ? "bad" : null} a11y={a11y} />
+          <Avatar who={`${p.name} ${p.surname}`} rest={p.restaurant} size={40} tone={stat.tests === 0 ? "bad" : null} a11y={a11y} />
           <div style={{ minWidth: 0 }}>
             <div style={{ color: C.text, fontSize: 15.5, fontWeight: "bold", fontFamily: "Georgia, serif" }}>{p.name} {p.surname}</div>
             <div style={{ color: C.muted, fontSize: 11.5, marginTop: 2 }}>
@@ -1270,8 +1281,9 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
 
         {/* Профиль */}
         <div data-lens-card="" style={{ ...T.modCard, marginBottom:12, gap:12 }}>
-          <div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0 }}>
+          <div data-lens="disc" style={{ width:48, height:48, borderRadius:"50%", background:"rgba(200,160,80,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:"bold", color: goldText(a11y), fontFamily:"Georgia, serif", flexShrink:0, position:"relative" }}>
             {profile?.is_admin ? UI_SVG.crown(GOLD, 24) : `${profile?.name?.[0]}${(profile?.surname||"")[0]||""}`.toUpperCase()}
+            {profile ? <FaceImg who={{ id: profile.id }} zoom /> : null}
           </div>
           <div>
             <div style={{ ...T.modTitle }}>{`${profile?.name || ""} ${profile?.surname || ""}`}</div>

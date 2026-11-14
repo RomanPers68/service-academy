@@ -13,6 +13,7 @@ import { MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
 import { plural } from "../lib/morning";
 import { gainModel, learnRows, hallRows, grewWhy, topicTitle, topicLine, compareLabel, monthNom, monthPrep, monthOf, deltaText, gainHeadline } from "../lib/gain";
+import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото сотрудника в строках «выросли» и «не занимались»
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
@@ -93,13 +94,13 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
   const was = (x) => (x.was == null ? null : <span style={{ fontSize: 12.5, color: sub }}>{"было " + x.wasText}</span>);
   // строка: слева что и «было», справа значение; act — кнопка справа вместо значения
   const row = (key, title, opt = {}) => {
-    const { sub: s = null, value = null, act = null, first = false, go = null, attrs = {}, ava = "", vsub = null } = opt;
+    const { sub: s = null, value = null, act = null, first = false, go = null, attrs = {}, ava = "", vsub = null, face = null } = opt;
     const on = go ? () => { vibrate("light"); go(); } : null;
     return (
       <div key={key} data-gain-row={key} {...attrs} role={on ? "button" : undefined} tabIndex={on ? 0 : undefined} onClick={on || undefined}
         onKeyDown={on ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); on(); } } : undefined}
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: first ? 0 : "1px solid " + c.line, cursor: on ? "pointer" : "default" }}>
-        {ava ? <Ava name={ava} /> : null}
+        {ava ? <FaceOver who={{ id: face }} zoom><Ava name={ava} /></FaceOver> : null}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: text, lineHeight: 1.4 }}>{title}</div>
           {s ? <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2 }}>{s}</div> : null}
@@ -185,7 +186,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
           {m.grew.length ? (<>
             {h("Больше всех выросли", null, "grew")}
             <div style={card} data-lens-card="" data-gain-sec="grew">
-              {m.grew.map((g, i) => row("g-" + g.id, g.n, { first: i === 0, sub: grewWhy(g), ava: g.n, attrs: { "data-gain-grew": g.id } }))}
+              {m.grew.map((g, i) => row("g-" + g.id, g.n, { first: i === 0, sub: grewWhy(g), face: g.id, ava: g.n, attrs: { "data-gain-grew": g.id } }))}
             </div>
           </>) : null}
 
@@ -197,7 +198,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
                 const act = s === "no_tg" ? <span style={{ flex: "0 0 auto", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
                   : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-lens-btn="soft" data-gain-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
-                return row("i-" + x.id, x.n, { first: i === 0, act, ava: x.n, attrs: { "data-gain-idle": x.id } });
+                return row("i-" + x.id, x.n, { first: i === 0, act, face: x.id, ava: x.n, attrs: { "data-gain-idle": x.id } });
               })}
               {m.idleMore ? row("idle-more", "И ещё " + m.idleMore, { go: () => onGo("report") }) : null}
             </div>

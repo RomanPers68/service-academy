@@ -12,6 +12,8 @@
 --     Уволенного в списке нет, и фото его не отдаётся.
 --   • staff_photos — у кого есть фото (сотрудник, имя, заведение, версия), кто я и что мне можно; staff_photo — сами фото:
 --     до 24 превью одним запросом или одно фото целиком; staff_photo_set — поставить или заменить; staff_photo_del — убрать.
+-- v160 (Доп. 485): в списке staff_photos у каждого появилась должность (position) — приложение показывает её под
+--   именем, когда фото открывают крупно. Остальное не менялось. Файл уже запускали — запустить ещё раз: фото на месте.
 -- Нужен этап 21 (_sa_caller, _sa_may_touch). Можно запускать повторно: поставленные фото не стираются.
 -- Supabase → SQL Editor → New query → вставить файл целиком → Run.
 -- ══════════════════════════════════════════════════════════════════════════════════════
@@ -60,7 +62,7 @@ begin
   if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
   begin
     select coalesce(jsonb_agg(jsonb_build_object('id', p.emp_id, 'name', coalesce(e.name, ''), 'surname', coalesce(e.surname, ''),
-             'restaurant', coalesce(e.restaurant, ''), 'ver', p.ver, 'at', p.updated_at)
+             'restaurant', coalesce(e.restaurant, ''), 'position', lower(coalesce(e.position, '')), 'ver', p.ver, 'at', p.updated_at)
              order by e.restaurant, e.name, e.surname, p.emp_id), '[]'::jsonb)
       into items
       from sa_staff_photos p

@@ -3,6 +3,7 @@
 // медальоны, плашки с метками. Каждый цвет — с вариантом для светлой темы (a11y).
 import React from "react";
 import { labelStyle } from "./tokens";
+import { FaceImg } from "./staff-photo";   // v160 (Доп. 485): фото сотрудника в медальоне
 
 // Тона тяжести: хорошо / внимание / плохо — у каждого светлый вариант для контраста
 export const tones = (a11y) => ({
@@ -27,8 +28,11 @@ export const glass = (C, a11y, extra = {}) => ({
 
 const initials = (who) => String(who || "").trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase() || "·";
 
-// Аватар: инициалы в медальоне; кольцо — золото, или тон, если человеку тяжело
-export function Avatar({ who, size = 40, tone, a11y }) {
+// Аватар: инициалы в медальоне; кольцо — золото, или тон, если человеку тяжело.
+// v160 (Доп. 485): есть фото сотрудника — оно в медальоне поверх букв (кольцо остаётся), по нажатию открывается крупно.
+// who — «Имя Фамилия»; rest — заведение человека (в сводке по всей сети без него фото не найти: тёзки в разных
+// заведениях — разные люди); zoom={false} — фото касаний не ловит.
+export function Avatar({ who, size = 40, tone, a11y, rest = "", zoom = true }) {
   const T = tones(a11y);
   const ring = tone && tone !== "good"
     ? `conic-gradient(from 210deg, ${T[tone]}, ${T[tone]}88, ${T[tone]})`
@@ -36,10 +40,10 @@ export function Avatar({ who, size = 40, tone, a11y }) {
   return (
     <span style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", background: ring,
       boxShadow: a11y ? "0 2px 6px rgba(107,78,20,0.18)" : "0 0 14px rgba(214,178,102,0.16)" }}>
-      <span style={{ width: size - 6, height: size - 6, borderRadius: "50%", display: "grid", placeItems: "center",
+      <span style={{ position: "relative", width: size - 6, height: size - 6, borderRadius: "50%", display: "grid", placeItems: "center",
         background: a11y ? "radial-gradient(circle at 35% 30%, #FFF9EC, #EADBB8)" : "radial-gradient(circle at 35% 30%, #4A3A20, #1E160A)",
         color: a11y ? "#5A4214" : "#EBD49A", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: size * 0.36, letterSpacing: 0.5 }}>
-        {initials(who)}
+        {initials(who)}<FaceImg who={{ full: who, restaurant: rest }} zoom={zoom} />
       </span>
     </span>
   );

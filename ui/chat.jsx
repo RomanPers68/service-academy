@@ -45,6 +45,7 @@ import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наст�
 import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
 import { traceUse } from "../lib/tip-avail";
 import { noteStopCards } from "../lib/menu-stops";   // v159 (Доп. 484): стоп из чата — число на значке «Меню» на главной
+import { FaceImg, FaceZoomHint } from "./staff-photo";   // v160 (Доп. 485): фото коллеги в кружках чата, в карточке коллеги — крупно по нажатию
 import { isFemaleName } from "../lib/utils";
 
 let pokeAt = 0;   // v108: когда приложение последний раз просило поставить карточки праздников
@@ -396,7 +397,7 @@ const Ava = ({ c, big }) => (c && c.kind === "group"
   ? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c.title || "Чат")}</span>
   : c && c.kind !== "dm"
   ? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{c.kind === "leads" ? IC.star : c.kind === "net" ? IC.net : IC.team}</span>
-  : <span className={"ch-ava" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c && c.peer ? c.peer.name : "")}</span>);
+  : <span className={"ch-ava" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c && c.peer ? c.peer.name : "")}{c && c.peer ? <FaceImg who={{ id: c.peer.id }} /> : null}</span>);
 const whoName = (m, me) => (m && me && String(m.emp) === String(me.id) ? "Ты" : bubbleName(m && m.name));
 // в «Руководителях сети» к имени — заведение: «Мария К. · Океан»
 const withRest = (name, rest, net) => (net && rest ? name + " · " + restShort(rest) : name);
@@ -689,7 +690,7 @@ function SearchView({ api, me, chats, chat = null, q0 = "", onQ = null, onBack, 
           const who = String(m.emp) === String(me && me.id) ? "Ты" : m.kind === "ai" ? AI_NAME : bubbleName(m.name);
           return (
             <button key={m.id} type="button" role="listitem" className="ch-sr" data-chat-sr={m.id} onClick={() => { vibrate("light"); onPick(m.chat, m.id); }}>
-              {c ? <Ava c={c} /> : <span className="ch-ava" aria-hidden="true">{chatInitials(m.name)}</span>}
+              {c ? <Ava c={c} /> : <span className="ch-ava" aria-hidden="true">{chatInitials(m.name)}{m.emp != null ? <FaceImg who={{ id: m.emp }} /> : null}</span>}
               <span className="ch-sr-b">
                 <span className="ch-sr-h"><span className="ch-sr-c">{c ? chatTitle(c) : "Чат"}</span><span className="ch-sr-t">{listTime(m.at, now)}</span></span>
                 <span className="ch-sr-x"><span className="ch-sr-w">{who}: </span>{sn.pre}{sn.hit ? <b>{sn.hit}</b> : null}{sn.post}</span>
@@ -721,7 +722,7 @@ function People({ me, api, title, sub = "Коллеги вашего завед�
     const on = multi ? multi.has(String(p.id)) : picked != null ? String(picked) === String(p.id) : undefined;
     return (
       <button key={p.id} type="button" className="ch-person" data-chat-person={p.id} aria-pressed={on} onClick={() => { vibrate("light"); onPick(p); }}>
-        <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}</span>
+        <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}<FaceImg who={{ id: p.id }} /></span>
         <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}><span className="ch-person-n">{p.name}</span><span className="ch-person-p">{[posName(p.pos), p.shift ? "сегодня в смене" : ""].filter(Boolean).join(" · ")}</span></span>
         {multi ? <span className={"ch-tick" + (on ? " on" : "")} aria-hidden="true">{on ? IC.check : null}</span> : null}
       </button>);
@@ -831,7 +832,7 @@ function ThanksSheet({ me, api, to0 = null, locked = false, text0 = "", onClose,
         <div className="ch-sheet-h"><span className="ch-sheet-t">Спасибо коллеге</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
         {!to ? <People me={me} api={api} inline title="" onPick={(p) => { setTo({ id: p.id, name: p.name, pos: p.pos }); setErr(""); }} emptyText="В команде пока никого." /> : (<>
           <div className="ch-pp" data-chat-thx-who={to.id}>
-            <span className="ch-ava" aria-hidden="true">{chatInitials(to.name)}</span>
+            <span className="ch-ava" aria-hidden="true">{chatInitials(to.name)}<FaceImg who={{ id: to.id }} zoom quiet sub={posName(to.pos)} /></span>
             <div className="ch-pp-b"><b className="ch-pp-n">{to.name}</b>{posName(to.pos) ? <span className="ch-pp-p">{posName(to.pos)}</span> : null}</div>
             {!locked ? <button type="button" className="ch-chip" data-chat-thx-other="" onClick={() => { vibrate("light"); setTo(null); }}>Другой</button> : null}
           </div>
@@ -876,7 +877,8 @@ function PersonSheet({ api, emp, chat, onClose, onDm = null, onThanks = null }) 
       <div className="ch-sheet" role="dialog" aria-modal="true" aria-label={p ? p.name : "Коллега"} data-chat-person={emp} onClick={stop}>
         <div className="ch-grip" aria-hidden="true" />
         <div className="ch-pp">
-          <span className="ch-ava" aria-hidden="true">{p ? chatInitials(p.name) : ""}</span>
+          {/* v160 (Доп. 485): фото коллеги; нажатие открывает его крупно, значок в углу это подсказывает */}
+          <span className="ch-ava" data-chat-person-face=""><span aria-hidden="true">{p ? chatInitials(p.name) : ""}</span><FaceImg who={{ id: emp }} zoom sub={p ? posName(p.pos) : ""} /><FaceZoomHint who={{ id: emp }} /></span>
           <div className="ch-pp-b"><b className="ch-pp-n" data-chat-person-n="">{p ? p.name : "Коллега"}</b>
             {p ? <span className="ch-pp-p" data-chat-person-p="">{[posName(p.pos), p.same ? "" : restShort(p.rest)].filter(Boolean).join(" · ")}</span> : null}</div>
           <button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button>
@@ -921,7 +923,7 @@ function GroupInfo({ chat, me, api, members, onClose, onChanged, onAdd, onGone }
           const self = String(p.id) === String(meId);
           return (
             <div key={p.id} className="ch-gm" data-chat-gm={p.id}>
-              <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}</span>
+              <span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}<FaceImg who={{ id: p.id }} zoom quiet sub={posName(p.pos)} /></span>
               <span className="ch-gm-b"><span className="ch-person-n">{p.name}{self ? " (ты)" : ""}</span>
                 <span className="ch-person-p">{[posName(p.pos), String(p.id) === String(chat.owner) ? "создатель чата" : ""].filter(Boolean).join(" · ")}</span></span>
               {manage && !self ? <button type="button" className="ch-gm-x" data-chat-gremove={p.id} disabled={busy} aria-label={"Убрать из чата: " + p.name}
@@ -1523,7 +1525,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
         <div className="ch-mb" role="listbox" aria-label="Кого упомянуть" data-chat-mentions="">
           {msugg.map((it) => (
             <button key={it.kind + it.id} type="button" role="option" aria-selected="false" className="ch-mc" data-chat-mention={it.kind === "person" ? it.id : it.kind} onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(it)}>
-              <span className={"ch-ava" + (it.kind === "person" ? "" : " team")} aria-hidden="true">{it.kind === "all" ? IC.team : it.kind === "ai" ? IC.ai : chatInitials(it.name)}</span>
+              <span className={"ch-ava" + (it.kind === "person" ? "" : " team")} aria-hidden="true">{it.kind === "all" ? IC.team : it.kind === "ai" ? IC.ai : chatInitials(it.name)}{it.kind === "person" ? <FaceImg who={{ id: it.id }} /> : null}</span>
               {it.kind === "all" ? "Все" : it.disp}</button>))}
         </div>)
         : !edit ? <Suggest items={sugg} onPick={(k) => (k === "stop" || k === "give" || k === "swap" || k === "poll" || k === "ai" || k === "thx" ? onTile(k) : null)} /> : null}

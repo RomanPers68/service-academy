@@ -764,7 +764,7 @@ export function makeServer(opts) {
     if (!p) return { ok: false, error: "auth" };
     const all = spAll();
     if (fn === "staff_photos") {
-      const items = Object.entries(all).map(([id, x]) => { const e = spActive(id); return e ? { id: String(id), name: e.name || "", surname: e.surname || "", restaurant: e.restaurant || "", ver: x.ver, at: x.at || null } : null; })
+      const items = Object.entries(all).map(([id, x]) => { const e = spActive(id); return e ? { id: String(id), name: e.name || "", surname: e.surname || "", restaurant: e.restaurant || "", position: opts.noPhotoPos ? undefined : String(e.position || "").toLowerCase(), ver: x.ver, at: x.at || null } : null; })
         .filter(Boolean).sort((a, b2) => a.restaurant.localeCompare(b2.restaurant) || a.name.localeCompare(b2.name) || a.surname.localeCompare(b2.surname));
       return { ok: true, me: String(p.id), restaurant: p.restaurant || null, items, can: { network: cnNet(p), lead: isLead(p) } };
     }

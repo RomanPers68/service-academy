@@ -558,6 +558,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   // v158 (Доп. 483): фото сотрудников (этап 52) — у шести человек «Океана» нарисованные портреты, у Анны и новичков фото нет
   // (Анна ставит своё сама); __demo_no52 = "1" — сервер без этапа 52. Сданные тесты — чтобы в «Команде» были лидеры
   staffPhotos: STAFF_PHOTOS, noStage52: lsGet("__demo_no52") === "1",
+  noPhotoPos: lsGet("__demo_nopos") === "1",   // v160: этап 52 ещё прежний — в списке фото нет должности
   // v159 (Доп. 484): __demo_pulse = "1" — тесты сданы на этой неделе (у строк появляется updated_at): у владельца на
   // главной виден «Пульс недели» с лидером, в «Команде» — лента сданных тестов. Без флажка — как раньше (дат нет)
   scores: [
@@ -649,6 +650,7 @@ function seed() {
   const keep = new Set([K_SRV, K_WHO, K_DAY, K_T, LOOK_KEY]);
   keep.add("__demo_no52");   // v158: «сервер без этапа 52» переживает смену человека
   keep.add("__demo_pulse");  // v159: «тесты на этой неделе» — тоже
+  keep.add("__demo_nopos");  // v160: «сервер без должности в списке фото» — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}

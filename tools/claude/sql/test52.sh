@@ -1,5 +1,5 @@
 #!/bin/bash
-# Этап 52 (v158, Доп. 483): фото сотрудников — staff_photos, staff_photo, staff_photo_set, staff_photo_del.
+# Этап 52 (v158, Доп. 483; v160: должность в списке): фото сотрудников — staff_photos, staff_photo, staff_photo_set, staff_photo_del.
 # Поверх базы run25.sh: копия satest52, этап 52 дважды; своё фото ставит и убирает сам сотрудник, чужое — кому можно
 # трогать данные сотрудника (руководитель — у своего заведения, сеть — у любого); список на всю сеть без уволенных; превью
 # пачкой до 24 и одно фото целиком; замена (новая версия, одна строка), проверка фото, служебная _sa_sp_person закрыта.
@@ -47,6 +47,8 @@ chk "Анна ставит своё фото — версия" "$VA" '^[0-9a-f]{
 chk "кому поставлено — сама Анна" "$(Q "select staff_photo_set('$ANNA', '', '$F1', '$T1')->>'id'") $(Q "select staff_photo_set('$ANNA', '$eANNA', '$F1', '$T1')->>'id'")" "^$eANNA $eANNA\$"
 chk "в таблице одна строка, кто поставил — имя" "$(PP "select count(*) || ' ' || max(by_name) from sa_staff_photos")" '^1 Анна Смирнова$'
 chk "в списке: номер, имя, фамилия, заведение, версия" "$(Q "select x->>'id' || '|' || (x->>'name') || '|' || (x->>'surname') || '|' || (x->>'restaurant') || '|' || (x->>'ver') from jsonb_array_elements(staff_photos('$ANNA')->'items') x")" "^$eANNA\|Анна\|Смирнова\|Два моря, Океан\|$VA\$"
+# v160 (Доп. 485): должность в списке — подпись под фото крупно («Официант · Океан»)
+chk "v160: в списке должность, строчными" "$(Q "select x->>'position' from jsonb_array_elements(staff_photos('$ANNA')->'items') x where x->>'id' = '$eANNA'")" '^waiter$'
 chk "что можно: Анна — никто, Пётр — руководитель, Роман и Мария — сеть" \
   "$(Q "select staff_photos('$ANNA')->'can'") $(Q "select staff_photos('$PETR')->'can'") $(Q "select staff_photos('$ROMAN')->'can'") $(Q "select staff_photos('$MARIA')->'can'")" \
   '"lead": false, "network": false.*"lead": true, "network": false.*"lead": true, "network": true.*"lead": true, "network": true'

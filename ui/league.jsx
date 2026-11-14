@@ -16,6 +16,9 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { masterRolesOf } from "../lib/mastery";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371): без «этап 24» у сотрудника
+import { RankFace, useStaffPhotos } from "./staff-photo";   // v160: лицо с номером места в строках лиги
+import { staffPhotoOf } from "../lib/staff-photo";
+import { POSITION_LABEL } from "../data/positions";
 
 const MEDAL = ["#E8C56A", "#C9C9C9", "#C89A6E"];
 const MEDAL_LIGHT = ["#B8902E", "#7E8790", "#A0643A"];
@@ -81,6 +84,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   const [scope, setScopeRaw] = React.useState(() => { try { return localStorage.getItem("sa_lg_scope") === "net" ? "net" : "rest"; } catch (e) { return "rest"; } });
   const [how, setHow] = React.useState(false);
   const [hint, hintDone] = useHintOnce("league");
+  const faceList = useStaffPhotos();   // v160
   const [hstep, setHstep] = React.useState(0);
   const hsteps = hintsFor("league");
   const setScope = (v) => { vibrate("light"); setScopeRaw(v); try { localStorage.setItem("sa_lg_scope", v); } catch (e) {} };
@@ -125,6 +129,10 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   const wins = st.status === "ok" && st.wins ? st.wins : null;
   const cs = st.status === "ok" ? cupStreak(st.cup_hist || []) : null;
   const podium = sorted.filter((r) => ptsOf(r) > 0).slice(0, 3);
+  // v160: фото в лиге — у своих: у коллег из других заведений сервер отдаёт фамилию одной буквой («Пётр Л.»), и фото
+  // с полным именем под ним не показываем. Колонка места шире, если у кого-то в списке фото есть
+  const faceOf = (r) => (r && (r.me || (!!myRest && (r.restaurant || "") === myRest)) ? { id: r.id } : null);
+  const anyFace = sorted.slice(0, 100).some((r) => !!staffPhotoOf(faceList, faceOf(r)));
   const mv = (r, i) => moveOf(i + 1, r[prevKey]);
   const arrow = (m) => !m ? null : m.same ? <span style={{ color: sub, fontSize: 11 }} aria-label="место то же">=</span>
     : <span style={{ color: m.up ? (a11y ? "#2F6B45" : "#8FB890") : (a11y ? "#8F3520" : "#E0A08A"), fontSize: 11, fontFamily: "monospace" }} aria-label={(m.up ? "выше на " : "ниже на ") + m.n}>{m.up ? "▲" : "▼"}{m.n}</span>;
@@ -206,8 +214,13 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                 const mr = leagueMasterRoles(masters, r, profile);   // v40: знак «Мастер роли» после имени
                 return (
                   <div key={r.id} role="listitem" data-lens-card={r.me ? "hi" : ""} style={{ ...T.modCard, marginBottom: 8, gap: 12, alignItems: "center", ...(r.me ? { boxShadow: `inset 0 0 0 1.5px ${GOLD}AA` } : null) }}>
-                    <div style={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: "bold",
-                      color: med || text, background: med ? med + "33" : "transparent", border: `1.5px solid ${med ? med + "99" : (T.modSub.color + "55")}` }}>{i + 1}</div>
+                    {/* v160: у кого есть фото — лицо с номером места в углу (нажатие — фото крупно); нет фото — прежний кружок */}
+                    <div data-lg-rank="" style={{ flexShrink: 0, minWidth: anyFace ? 38 : 27, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <RankFace who={faceOf(r)} n={i + 1} medal={med || ""} a11y={a11y} zoom sub={POSITION_LABEL[r.position] || ""}>
+                        <div style={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: "bold",
+                          color: med || text, background: med ? med + "33" : "transparent", border: `1.5px solid ${med ? med + "99" : (T.modSub.color + "55")}` }}>{i + 1}</div>
+                      </RankFace>
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ ...T.modTitle, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>{mr ? (
                         <><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name} {r.surname}</span><MasterMark roles={mr} a11y={a11y} />{r.me ? <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>· ты</span> : null}</>

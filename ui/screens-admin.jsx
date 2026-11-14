@@ -33,6 +33,7 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 // v141 (Доп. 459): чек-листы по умолчанию — в lib/checklists.js (их считает и «Распорядок смены»); здесь — те же имена
 export { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
 import { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
+import { FaceImg } from "./staff-photo";   // v160 (Доп. 485): фото новичка в списке «Первой недели»
 
 export const _clYmd = (d) => { const z = new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
 
@@ -301,7 +302,7 @@ export function OnboardingScreen({ T, a11y, profile, role, onBack }) {
             ) : list.map((h,i)=>{ const tot=h.total||ONB_TOTAL; const p=Math.round(((h.checked||0)/tot)*100); const ini=((h.name||"?")[0]||"")+((h.surname||"")[0]||""); return (
               <div key={i} style={{ ...card, padding:"14px 16px", marginBottom:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <div style={{ width:40, height:40, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{ini.toUpperCase()}</div>
+                  <div style={{ position:"relative", width:40, height:40, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg,#C8A96E,#7A5D2A)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{ini.toUpperCase()}<FaceImg who={{ name: h.name, surname: h.surname, restaurant: h.restaurant }} zoom /></div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ color:C.text, fontFamily:serif, fontSize:14, fontWeight:"bold" }}>{h.name} {h.surname||""}</div>
                     <div style={{ color:C.muted, fontSize:12.5 }}>{h.restaurant||""}</div>
@@ -640,7 +641,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
             return (
               <div key={i} data-lens-edge="" style={G({ padding:"12px 12px", marginBottom:8 })}>
                 <div onClick={toggle} {...onActivate(toggle)} style={{ cursor:"pointer", display:"flex", gap:11, alignItems:"center" }}>
-                  <Avatar who={p.who} tone={tone} a11y={a11y} />
+                  <Avatar who={p.who} rest={p.restaurant} tone={tone} a11y={a11y} zoom={false} />
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                       <span style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.who}</span>
@@ -698,7 +699,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
                 {list.slice(0, 5).map((p, j) => (
                   <div key={j} style={{ display:"flex", alignItems:"center", gap:10, padding:"5px 0", borderTop: j ? `1px solid ${a11y ? "rgba(107,78,20,0.10)" : "rgba(214,178,102,0.08)"}` : "none" }}>
                     <span style={{ width:18, textAlign:"center", fontFamily:serif, fontWeight:"bold", fontSize:14, color: j === 0 ? TN.gold : muted }}>{j + 1}</span>
-                    <Avatar who={p.who} size={30} a11y={a11y} />
+                    <Avatar who={p.who} rest={rest} size={30} a11y={a11y} />
                     <span style={{ flex:1, minWidth:0, color:C.text, fontFamily:serif, fontSize:14, fontWeight: j === 0 ? "bold" : "normal" }}>{p.who}</span>
                     <span style={{ display:"flex", gap:2, alignItems:"center" }}>
                       {Array.from({ length: Math.min(p.keys, 6) }).map((_, k) => <span key={k}>{Icon.key(TN.gold, 14)}</span>)}
@@ -711,7 +712,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           {retryPeople.map((p, i) => (
             <div key={i} data-lens-edge="" style={G({ padding:"12px 12px", marginBottom:8 })}>
               <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-                <Avatar who={p.who} a11y={a11y} />
+                <Avatar who={p.who} rest={p.restaurant} a11y={a11y} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ color:C.text, fontFamily:serif, fontSize:15, fontWeight:"bold" }}>{p.who}</div>
                   <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:4 }}>
@@ -778,7 +779,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
               <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
                 {dg.asleep.slice(0, 8).map((p, i) => (
                   <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px 3px 3px", borderRadius:999, border:`1px solid ${TN.mid}44`, background:`${TN.mid}10` }}>
-                    <Avatar who={`${p.name} ${p.surname || ""}`} size={24} tone="mid" a11y={a11y} />
+                    <Avatar who={`${p.name} ${p.surname || ""}`} rest={p.restaurant} size={24} tone="mid" a11y={a11y} />
                     <span style={{ color:C.text, fontSize:12.5 }}>{p.name} {(p.surname || "")[0] || ""}</span>
                   </span>))}
                 {dg.asleep.length > 8 ? <span style={{ color:muted, fontSize:12, alignSelf:"center" }}>и ещё {dg.asleep.length - 8}</span> : null}

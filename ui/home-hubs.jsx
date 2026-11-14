@@ -342,11 +342,11 @@ const DAYS = WEEKDAY, MONTHS = MONTH_GEN;   // v59: один словарь да
 
 // v157 (Доп. 481): кружок коллеги — стекло с буквами, как «АС» у заголовка «Я»; у старшего ободок ярче
 // v158 (Доп. 483): who — строка графика («Ким Мария»): есть у человека фото — оно ложится поверх букв (ui/staff-photo.jsx)
-const MateDisc = ({ a11y, text, lead = false, more = false, who = null }) => (
+const MateDisc = ({ a11y, text, lead = false, more = false, who = null, zoom = false }) => (
   <span data-lens="disc" data-mate={lead ? "lead" : more ? "more" : "one"} style={{ position: "relative", width: lead ? 34 : 30, height: lead ? 34 : 30, boxSizing: "border-box", borderRadius: "50%", flexShrink: 0,
     display: "grid", placeItems: "center", fontFamily: "Georgia, serif", fontSize: lead ? 12.5 : 11.5, lineHeight: 1, letterSpacing: 0.2, color: a11y ? "#7A5D2A" : "#E8C983",
     background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)",
-    border: "1px solid " + (a11y ? (lead ? "rgba(122,93,42,0.8)" : "rgba(139,106,48,0.42)") : (lead ? "rgba(232,201,131,0.85)" : "rgba(214,178,102,0.4)")) }}>{text}{who && !more ? <FaceImg who={who} /> : null}</span>
+    border: "1px solid " + (a11y ? (lead ? "rgba(122,93,42,0.8)" : "rgba(139,106,48,0.42)") : (lead ? "rgba(232,201,131,0.85)" : "rgba(214,178,102,0.4)")) }}>{text}{who && !more ? <FaceImg who={who} zoom={zoom} quiet sub={lead ? "Старший смены" : ""} /> : null}</span>
 );
 
 /** «Смена»: сегодняшняя смена из офлайн-сводки графика (sa_today_shift). */
@@ -376,7 +376,7 @@ export function ShiftHero({ a11y, onOpen, shift = null, mates = null }) {
         {crew ? (
           <div data-shift-mates={crew.mates.length} style={{ marginTop: 12, paddingTop: 11, borderTop: "1px dashed " + (a11y ? "rgba(122,93,42,0.25)" : "rgba(214,178,102,0.2)"), display: "flex", alignItems: "center", gap: 11 }}>
             <span aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-              {crew.mates.slice(0, crew.mates.length > 3 ? 2 : 3).map((m) => <MateDisc key={m.id} a11y={a11y} text={m.ini} lead={m.lead} who={{ full: m.full }} />)}
+              {crew.mates.slice(0, crew.mates.length > 3 ? 2 : 3).map((m) => <MateDisc key={m.id} a11y={a11y} text={m.ini} lead={m.lead} who={{ full: m.full }} zoom />)}
               {crew.mates.length > 3 ? <MateDisc a11y={a11y} text={"+" + (crew.mates.length - 2)} more /> : null}
             </span>
             <span style={{ minWidth: 0 }}>
@@ -459,7 +459,7 @@ export function TeamHero({ a11y, leaderboard = [], profile, onOpen }) {
           return (
             /* v58 (Доп. 371): медальон над именем — имени достаётся вся ширина ячейки, «Ангели…» больше нет */
             <div key={i} data-leader="" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textAlign: "center" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55`, position: "relative" }}>{ini}<FaceImg who={{ name: p.name, surname: p.surname, restaurant: p.restaurant || (profile && profile.restaurant) || "" }} /></div>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontSize: 12.5, color: a11y ? "#2A1F0E" : "#1a160f", background: medal[i], boxShadow: `0 0 0 2px ${medal[i]}55`, position: "relative" }}>{ini}<FaceImg who={{ name: p.name, surname: p.surname, restaurant: p.restaurant || (profile && profile.restaurant) || "" }} zoom quiet /></div>
               <div style={{ minWidth: 0, maxWidth: "100%" }}>
                 <div data-leader-name="" style={{ fontSize: 12.5, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.2 }}>{p.name}</div>
                 <div style={{ fontSize: 11, color: sub }}>{p.avg}%</div>

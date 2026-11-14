@@ -16,6 +16,7 @@ import { vibrate } from "../lib/utils";
 import {
   loadStaffPhotos, staffPhotoListNow, staffPhotoSubscribe, staffPhotoOf, staffThumbCached, staffThumbUrl, staffFullUrl,
   saveStaffPhoto, removeStaffPhoto, staffPhotosToModerate, staffPhotoErr, initialsOfPerson,
+  showFace, hideFace, faceNow, faceSubscribe, faceName, faceSubline,
   cropInit, cropMove, cropZoom, cropRect, cropSide, squarePhoto, CROP_MAX_ZOOM,
 } from "../lib/staff-photo";
 import { CamIcon } from "./lesson-photo";
@@ -57,14 +58,176 @@ export function useStaffThumb(entry) {
  * Фото поверх букв. Ставится последним ребёнком внутрь кружка с position: relative (скругление берёт у кружка).
  * who — { id } (номер сотрудника: чат, свой профиль) или { full | name, surname, restaurant } (строка графика, рейтинг).
  * Фото нет, нет этапа 52, тёзки — ничего не рисует: в кружке остаются буквы.
+ * v160 (Доп. 485): zoom — по нажатию на лицо открыть фото крупно (FaceViewer); sub — подпись под именем (должность).
+ * Нажатие дальше не идёт: строка или карточка под кружком своё действие не выполняет. Без zoom фото касаний не ловит,
+ * как раньше, — так оно стоит в кнопках, у которых своё дело (строка чата, выбор человека, «Пульс недели»).
  */
-export function FaceImg({ who, style }) {
+export function FaceImg({ who, style, zoom = false, quiet = false, sub = "" }) {
   const list = useStaffPhotos();
   const e = staffPhotoOf(list, who);
   const src = useStaffThumb(e);
   if (!e || !src) return null;
+  if (zoom) {
+    const open = (ev) => { ev.stopPropagation(); ev.preventDefault(); vibrate("light"); showFace(e, sub); };
+    // долгое нажатие на телефоне не предлагает «сохранить картинку»: это лицо коллеги, а не файл
+    const st = { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit", display: "block", pointerEvents: "auto", cursor: "zoom-in", WebkitTapHighlightColor: "transparent",
+      WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", ...style };
+    // quiet — кружок стоит там, где он скрыт от чтения с экрана (aria-hidden) или внутри карточки-кнопки: там фото
+    // открывается касанием, но кнопкой не объявляется и в обход по клавишам не встаёт (имя человека читается рядом)
+    if (quiet) return <img data-face={e.id} data-face-zoom="quiet" src={src} alt="" draggable={false} onClick={open} style={st} />;
+    return <img data-face={e.id} data-face-zoom="" src={src} alt="" draggable={false} role="button" tabIndex={0} aria-label={"Фото крупно: " + faceName(e)}
+      onClick={open} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") open(ev); }} style={st} />;
+  }
   return <img data-face={e.id} src={src} alt="" draggable={false}
     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit", display: "block", pointerEvents: "none", ...style }} />;
+}
+
+/** v160: запись списка фото для человека, когда превью уже готово (иначе null), — для своих кнопок «открыть крупно» */
+export function useFace(who) {
+  const list = useStaffPhotos();
+  const e = staffPhotoOf(list, who);
+  const src = useStaffThumb(e);
+  return e && src ? e : null;
+}
+
+/**
+ * v160: значок «увеличить» в углу кружка — только когда фото есть. Подсказка, что лицо открывается крупно: стоит там,
+ * где кружок — главное фото человека (карточка коллеги в чате, строка выбранного коллеги в графике). Касаний не ловит.
+ */
+export function FaceZoomHint({ who, size = 18 }) {
+  const e = useFace(who);
+  if (!e) return null;
+  return (
+    <span data-face-hint="" aria-hidden="true" style={{ position: "absolute", right: -4, bottom: -4, width: size, height: size, borderRadius: "50%", display: "grid", placeItems: "center", pointerEvents: "none",
+      color: "#E8C983", background: "#261D10", boxShadow: "0 0 0 1px rgba(214,178,102,0.6)" }}>
+      <svg width={Math.round(size * 0.58)} height={Math.round(size * 0.58)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4h6v6" /><path d="M10 20H4v-6" /><path d="M20 4l-7 7" /><path d="M4 20l7-7" /></svg>
+    </span>
+  );
+}
+
+/**
+ * v160: лицо отдельным кружком — только когда фото есть (нет фото — ничего не рисует): для строк, где буквы человека
+ * уже стоят рядом (строка «позвонить» под кружками в графике). Нажатие открывает фото крупно.
+ */
+export function FaceChip({ who, size = 36, sub = "", hint = true }) {
+  const e = useFace(who);
+  if (!e) return null;
+  return (
+    <span data-face-chip={e.id} style={{ position: "relative", width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "inline-block", boxShadow: "0 0 0 1.5px rgba(214,178,102,0.6)" }}>
+      <FaceImg who={{ id: e.id }} zoom sub={sub} />
+      {hint ? <FaceZoomHint who={{ id: e.id }} size={16} /> : null}
+    </span>
+  );
+}
+
+/**
+ * v160: фото в кружке-медали с короной («Сотрудник недели»): рисует фото поверх значка (по нажатию — крупно) и ту же
+ * маленькую корону над ним, что у лидера в «Пульсе недели» на главной. Нет фото — ничего: в медали остаётся её значок.
+ */
+export function CrownFace({ who, sub = "", crown = 16 }) {
+  const e = useFace(who);
+  if (!e) return null;
+  return (<>
+    <FaceImg who={{ id: e.id }} zoom sub={sub} />
+    <span data-face-crown="" aria-hidden="true" style={{ position: "absolute", top: -Math.round(crown * 0.56), left: "50%", marginLeft: -crown / 2, lineHeight: 0, transform: "rotate(-9deg)", pointerEvents: "none",
+      filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.6))" }}>
+      <svg width={crown} height={crown} viewBox="0 0 24 24"><path d="M5 16.4L3.3 7.7l4.9 3.5L12 5.3l3.8 5.9 4.9-3.5L19 16.4z" fill="#F2D89A" stroke="#3A2A0E" strokeWidth="1.5" strokeLinejoin="round" /><path d="M5.4 19.7h13.2" stroke="#F2D89A" strokeWidth="2.3" strokeLinecap="round" /></svg>
+    </span>
+  </>);
+}
+
+/**
+ * v160: фото поверх готового кружка, в который нельзя добавить ребёнка (кружок рисует другой компонент): обёртка того
+ * же размера, фото ложится поверх. Кружок внутри остаётся как был — буквы, ободок, размер.
+ */
+export function FaceOver({ who, zoom = false, quiet = false, sub = "", children }) {
+  return <span data-face-over="" style={{ position: "relative", display: "inline-grid", flexShrink: 0, borderRadius: "50%" }}>{children}<FaceImg who={who} zoom={zoom} quiet={quiet} sub={sub} /></span>;
+}
+
+// тёмная или светлая цифра на медали: по яркости её цвета (#RRGGBB); не цвет — как на тёмной
+const inkOn = (hex) => { const m = /^#([0-9a-f]{6})$/i.exec(String(hex || "")); if (!m) return "#F3E7CC";
+  const n = parseInt(m[1], 16); const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; return l > 0.5 ? "#2A1F0A" : "#FFF8E8"; };
+
+/**
+ * v160: место в рейтинге на фото. Есть фото — кружок с лицом, ободок цвета медали и номер места в углу; фото нет —
+ * прежний кружок с номером (children): у кого фото нет, тот видит рейтинг как раньше. В «Рейтинге» нажатие на строку
+ * открывает разбор, фото крупно — уже там; в «Лиге недели» строка сама ничего не открывает — фото крупно прямо из неё (zoom).
+ */
+export function RankFace({ who, n, medal = "", a11y = false, size = 38, zoom = false, sub = "", children = null }) {
+  const e = useFace(who);
+  if (!e) return children;
+  const rim = medal || (a11y ? "rgba(122,93,42,0.6)" : "rgba(214,178,102,0.55)");
+  return (
+    <span data-rank-face={e.id} style={{ position: "relative", width: size, height: size, flexShrink: 0, display: "inline-block", borderRadius: "50%", boxShadow: `0 0 0 1.5px ${rim}` }}>
+      <FaceImg who={{ id: e.id }} zoom={zoom} sub={sub} />
+      <b data-rank-n="" style={{ position: "absolute", right: -5, bottom: -4, minWidth: 18, height: 18, padding: "0 4px", boxSizing: "border-box", borderRadius: 999, display: "grid", placeItems: "center",
+        pointerEvents: "none", fontFamily: SERIF, fontSize: 10.5, lineHeight: 1, fontWeight: "bold", fontVariantNumeric: "tabular-nums",
+        color: medal ? inkOn(medal) : (a11y ? "#3A2A0E" : "#F3E7CC"), background: medal || (a11y ? "#F4E9CF" : "#2B2114"),
+        boxShadow: `0 0 0 1.5px ${a11y ? "#FBF5E6" : "#1B150B"}` }}>{n}</b>
+    </span>
+  );
+}
+
+/**
+ * v160 (Доп. 485): фото крупно — один слой на всё приложение (стоит в App, рисуется в document.body поверх чата и
+ * листов). Круг, как человек сам выбрал кадр в «Моём фото»; под ним имя и строка «должность · заведение». Сначала
+ * превью, которое уже есть в кружке, потом фото целиком (с телефона или с сервера, этап 52: staff_photo, p_full).
+ * Закрывается касанием мимо фото, крестиком, Esc и кнопкой «назад» Telegram (data-sa-back). Фото сняли, пока смотрели, —
+ * слой закрывается сам. Тема тёмная в обоих видах приложения: так смотрят фото.
+ */
+export function FaceViewer() {
+  const [view, setView] = React.useState(() => faceNow());
+  React.useEffect(() => { setView(faceNow()); return faceSubscribe(setView); }, []);
+  if (!view || typeof document === "undefined") return null;
+  return createPortal(<FaceView key={view.id} view={view} />, document.body);
+}
+export function FaceView({ view }) {
+  const list = useStaffPhotos();
+  const known = !!list && list !== "missing" && !!list.byId;
+  const live = known ? list.byId[view.id] || null : null;
+  const ver = live ? live.ver : view.ver;
+  const thumb = useStaffThumb({ id: view.id, ver });
+  const [full, setFull] = React.useState(null);
+  const [shown, setShown] = React.useState(false);
+  const xRef = React.useRef(null);
+  React.useEffect(() => {
+    let on = true;
+    setFull(null);
+    staffFullUrl(view.id, ver).then((u) => { if (on && u) setFull(u); }).catch(() => { /* останется превью */ });
+    return () => { on = false; };
+  }, [view.id, ver]);
+  React.useEffect(() => { if (known && !live) hideFace(); }, [known, live]);   // фото сняли, пока смотрели
+  React.useEffect(() => {
+    const t = setTimeout(() => setShown(true), 20);
+    // Escape закрывает только фото: слушаем первыми (capture) и дальше не пускаем, чтобы лист под фото остался открытым
+    const key = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); ev.stopImmediatePropagation(); hideFace(); } };
+    window.addEventListener("keydown", key, true);
+    // фокус — на крестик; закрыли — возвращаем туда, откуда открывали (с клавиатуры не теряется место в списке)
+    const prev = typeof document !== "undefined" ? document.activeElement : null;
+    try { if (xRef.current) xRef.current.focus({ preventScroll: true }); } catch (e) { /* */ }
+    return () => { clearTimeout(t); window.removeEventListener("keydown", key, true);
+      try { if (prev && prev !== document.body && typeof prev.focus === "function" && document.contains(prev)) prev.focus({ preventScroll: true }); } catch (e) { /* */ } };
+  }, []);
+  const close = (ev) => { if (ev) ev.stopPropagation(); vibrate("light"); hideFace(); };
+  const line = faceSubline(view);
+  return (
+    <div data-face-view={view.id} role="dialog" aria-modal="true" aria-label={"Фото: " + view.name} onClick={close}
+      style={{ position: "fixed", inset: 0, zIndex: 9700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "24px 20px",
+        boxSizing: "border-box", background: "rgba(8,6,3,0.9)", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)", opacity: shown ? 1 : 0, transition: "opacity .18s ease",
+        touchAction: "none", overscrollBehavior: "contain", WebkitTapHighlightColor: "transparent" }}>
+      <button ref={xRef} type="button" data-sa-back="" data-face-x="" aria-label="Закрыть" onClick={close}
+        style={{ position: "absolute", top: "calc(10px + var(--sa-st, env(safe-area-inset-top, 0px)))", right: 12, width: 44, height: 44, borderRadius: "50%", border: "1px solid rgba(232,201,131,0.4)",
+          background: "rgba(30,23,12,0.7)", color: "#E8C983", fontSize: 24, lineHeight: 1, cursor: "pointer", display: "grid", placeItems: "center", padding: 0 }}>×</button>
+      <div data-face-photo={full ? "full" : thumb ? "thumb" : "none"} onClick={(ev) => ev.stopPropagation()}
+        style={{ position: "relative", width: "min(82vw, 54vh, 380px)", aspectRatio: "1 / 1", flexShrink: 0, borderRadius: "50%", overflow: "hidden", background: "#2A2114",
+          boxShadow: "0 0 0 2px rgba(232,201,131,0.75), 0 0 0 7px rgba(232,201,131,0.12), 0 24px 70px rgba(0,0,0,0.65)", transform: shown ? "scale(1)" : "scale(0.94)", transition: "transform .22s cubic-bezier(.2,.9,.3,1)" }}>
+        {thumb ? <img src={thumb} alt="" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", filter: full ? "none" : "blur(1.5px)", WebkitTouchCallout: "none", userSelect: "none" }} /> : null}
+        {full ? <img data-face-full="" src={full} alt={view.name} draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", WebkitTouchCallout: "none", userSelect: "none" }} /> : null}
+      </div>
+      <div data-face-name="" onClick={(ev) => ev.stopPropagation()} style={{ marginTop: 20, maxWidth: "100%", textAlign: "center", fontFamily: SERIF, fontSize: 22, lineHeight: 1.25, fontWeight: "bold", color: "#EFE4C8" }}>{view.name}</div>
+      {line ? <div data-face-sub="" onClick={(ev) => ev.stopPropagation()} style={{ marginTop: 5, maxWidth: "100%", textAlign: "center", fontFamily: SERIF, fontSize: 14, lineHeight: 1.4, color: "#B3A58A" }}>{line}</div> : null}
+    </div>
+  );
 }
 
 /**

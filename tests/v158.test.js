@@ -658,7 +658,8 @@ describe("v158 · 4: фото в кружках и лист «Моё фото» 
     expect(html).toMatch(/>АС<\/div>/);
     const sc = rd("ui/schedule.jsx");
     expect((sc.match(/<FaceImg who=\{\{ full: /g) || []).length).toBe(5);
-    expect(sc).toContain("leadIni={lead ? initialsOf(lead.name) : \"\"} leadFace={lead ? <FaceImg who={{ full: lead.name }} /> : null}");
+    // v160 (Доп. 485): фото старшего открывается крупно (zoom), под именем — «Старший смены»
+    expect(sc).toContain("leadIni={lead ? initialsOf(lead.name) : \"\"} leadFace={lead ? <FaceImg who={{ full: lead.name }} zoom quiet sub=\"Старший смены\" /> : null}");
     const hero = rd("ui/schedule-hero.jsx");
     expect(hero).toContain("{leadIni || String(lead).trim()");
     expect(hero).toContain("{leadFace}");

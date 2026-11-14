@@ -28,12 +28,13 @@ import { StreakCard, MoodCheckCard, TeamMoodCard, moodPalette } from "./mood-car
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, labelStyle } from "./tokens";
 import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
+import { FaceImg } from "./staff-photo";   // v160 (Доп. 485): фото в карточке сотрудника и в «Аккаунте», по нажатию — крупно
 import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 
 // v150 (Доп. 474): кружок сотрудника — линза, как у «Я» в шапке: стекло с золотым ободком, инициалы (у владельца — корона)
 // золотом. Был золотой круг с белыми буквами; владелец (13.11): «Может иконку сотрудника тоже линзой сделаем?» — «Да, пожалуйста»
 const avatarInk = (a11y) => (a11y ? "#7A5D2A" : "#D2A85A");
-const avatarLens = (a11y, size) => ({ width:size, height:size, borderRadius:"50%", flexShrink:0, boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center",
+const avatarLens = (a11y, size) => ({ position:"relative", width:size, height:size, borderRadius:"50%", flexShrink:0, boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center",
   background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border:`1px solid ${avatarInk(a11y)}55` });
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
@@ -399,6 +400,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <span style={{ color:avatarInk(a11y), fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
                 {selected.is_admin ? UI_SVG.crown(avatarInk(a11y), 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
               </span>
+              <FaceImg who={{ id: selected.id }} zoom sub={positionLabel(selected.position)} />
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
@@ -844,6 +846,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
             <span style={{ color:avatarInk(a11y), fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown(avatarInk(a11y), 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
+            {profile ? <FaceImg who={{ id: profile.id }} zoom sub={positionLabel(profile.position)} /> : null}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>

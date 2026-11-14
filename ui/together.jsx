@@ -19,6 +19,9 @@ import { SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты �
 import { taskProgress, goalLine, plural, GOAL_WORDS } from "../lib/quest";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 import { LABEL_CSS } from "./tokens";
+import { FaceImg, useFace } from "./staff-photo";   // v160 (Доп. 485): фото коллег в кружках квеста, по нажатию — крупно
+import { showFace } from "../lib/staff-photo";
+import { POSITION_LABEL } from "../data/positions";
 
 const SERIF = "'Piazzolla',Georgia,'Times New Roman',serif";
 const BODY = "Georgia,'Times New Roman',serif";
@@ -56,13 +59,13 @@ html.sa-light .tg-bar.ok{color:#2F6B45}
 .tg-people{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
 .tg-p{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 4px;border-radius:999px;border:1px solid rgba(214,178,102,.28);font-size:12px;color:#CFC2A4}
 html.sa-light .tg-p{border-color:rgba(139,106,48,.3);color:#4A3B22}
-.tg-p .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E)}
+.tg-p .av{position:relative;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E)}
 .tg-p.me{border-color:#C8A96E}
 .tg-p .d{color:#D9B87C;font-weight:700}
 html.sa-light .tg-p .d{color:#7A5D2A}
 .tg-who{display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 0;padding:5px 2px;border:0;background:none;color:inherit;font:12.5px ${BODY};cursor:pointer;text-align:left}
 .tg-who .avs{display:flex}
-.tg-who .avs span{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E);box-shadow:0 0 0 2px #1E170C;margin-left:-5px}
+.tg-who .avs span{position:relative;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 10.5px Georgia,serif;color:#1A1008;background:var(--pc,#C8A96E);box-shadow:0 0 0 2px #1E170C;margin-left:-5px}
 html.sa-light .tg-who .avs span{box-shadow:0 0 0 2px #F6EEDC}
 .tg-who .avs span:first-child{margin-left:0}
 .tg-who .t{flex:1;min-width:0;color:#CFC2A4}
@@ -166,6 +169,18 @@ const BAR_FIELD = { warm: "warm", steps: "steps", guest: "guest" };
 // цвета людей в шкалах: у каждого свой оттенок (у тебя — самый яркий)
 const PC_DARK = ["#E8C56A", "#9CC7A8", "#D99A6C", "#8FB0D6", "#C9A2D8", "#C8A96E", "#E0B08A", "#A8C68F"];
 const PC_LIGHT = ["#B8902E", "#2F6B45", "#A3532A", "#2F5A86", "#7A4B91", "#8B6A30", "#9A6034", "#557A35"];
+// v160 (Доп. 485): человек в списке «Кто в смене»: в кружке фото (нет фото — буква, как раньше). Кружок 20 px —
+// пальцем не попасть, поэтому, когда фото есть, крупно его открывает весь жетон
+function QuestPerson({ p, color }) {
+  const e = useFace({ id: p.id });
+  const open = e ? (ev) => { ev.stopPropagation(); vibrate("light"); showFace(e, POSITION_LABEL[p.position] || ""); } : undefined;
+  return (
+    <span className={"tg-p" + (p.me ? " me" : "")} data-quest-person={p.id} title={p.synced ? "" : "ещё не открывал(а) приложение сегодня"}
+      role={e ? "button" : undefined} tabIndex={e ? 0 : undefined} onClick={open} onKeyDown={e ? (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(ev); } } : undefined}
+      style={e ? { cursor: "zoom-in" } : undefined}>
+      <span className="av" aria-hidden="true" style={{ "--pc": color }}>{(p.name || "?")[0]}<FaceImg who={{ id: p.id }} /></span>{p.me ? "ты" : short(p)}<span className="d">{p.steps || 0}</span>
+    </span>);
+}
 const fem = (name) => /[ая]$/i.test(String(name || "").split(" ")[0]) && !/^(никита|илья|кузьма|фома|лука)$/i.test(String(name || "").split(" ")[0]);
 const readLS = (k) => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -302,17 +317,13 @@ export function QuestCard({ a11y, tasks = [], todayRec = {}, tick = 0, lead = fa
           {people.length ? (
             <>
               <button type="button" className="tg-who" aria-expanded={open && openWho} onClick={() => { if (!open) { setOpen(true); writeLS("sa_quest_open", "1"); if (!openWho) { setOpenWho(true); writeLS("sa_quest_who", "1"); } vibrate("light"); } else toggleWho(); }}>
-                <span className="avs" aria-hidden="true">{people.slice(0, 5).map((p, i) => <span key={p.id} style={{ "--pc": pal[p.me ? 0 : (i % (pal.length - 1)) + 1] }}>{(p.name || "?")[0]}</span>)}</span>
+                <span className="avs" aria-hidden="true">{people.slice(0, 5).map((p, i) => <span key={p.id} style={{ "--pc": pal[p.me ? 0 : (i % (pal.length - 1)) + 1] }}>{(p.name || "?")[0]}<FaceImg who={{ id: p.id }} /></span>)}</span>
                 <span className="t">{people.length} {plural(people.length, "человек", "человека", "человек")} {team.known ? "в смене" : "сегодня"} · ты {me.steps || 0} {plural(me.steps || 0, "шаг", "шага", "шагов")}{!open && thanksList.length ? " · спасибо: " + thanksList.length : ""}</span>
                 <span className="ch" aria-hidden="true">▾</span>
               </button>
               {open && openWho ? (
                 <div className="tg-people" aria-label="Кто в смене">
-                  {people.map((p, i) => (
-                    <span key={p.id} className={"tg-p" + (p.me ? " me" : "")} title={p.synced ? "" : "ещё не открывал(а) приложение сегодня"}>
-                      <span className="av" aria-hidden="true" style={{ "--pc": pal[p.me ? 0 : (i % (pal.length - 1)) + 1] }}>{(p.name || "?")[0]}</span>{p.me ? "ты" : short(p)}<span className="d">{p.steps || 0}</span>
-                    </span>
-                  ))}
+                  {people.map((p, i) => <QuestPerson key={p.id} p={p} color={pal[p.me ? 0 : (i % (pal.length - 1)) + 1]} />)}
                 </div>
               ) : null}
             </>

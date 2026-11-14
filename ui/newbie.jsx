@@ -15,6 +15,7 @@ import {
   NB_ARRIVE, NB_MEMO_MAX, NB_BUDDY_STEPS, NB_PLAN,
 } from "../lib/newbie";
 import { dLong, upFirst, nm } from "../lib/morning";
+import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото новичка и наставника в кружках, по нажатию — крупно
 
 const SQL = "supabase-stage41-newbie.sql";
 const P = (a11y) => (a11y
@@ -181,7 +182,7 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
           <div style={card} data-lens-card="" data-nb-sec="buddy">
             {nb.buddy ? (
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Ava name={nb.buddy.name} c={c} />
+                <FaceOver who={{ id: nb.buddy.id }} zoom sub={upFirst(posWord(nb.buddy.pos))}><Ava name={nb.buddy.name} c={c} /></FaceOver>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: text }} data-nb-buddy={nb.buddy.id}>{nb.buddy.name}</div>
                   <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.4 }}>{[upFirst(posWord(nb.buddy.pos)), "покажет, где что, и подтвердит шаги плана"].filter(Boolean).join(" · ")}</div>
@@ -303,7 +304,7 @@ function PickSheet({ a11y, title, mark, rows: all, onPick, onClose, note = "" })
       {rows.length ? rows.map((r) => (
         <button key={r.key} type="button" data-nb-pick={r.key} onClick={() => { vibrate("light"); onPick(r); }}
           style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 4px", border: 0, borderTop: "1px solid " + c.line, background: "none", cursor: "pointer", color: text }}>
-          {r.name ? <Ava name={r.name} c={c} size={32} /> : null}
+          {r.name ? <FaceOver who={{ id: r.key }}><Ava name={r.name} c={c} size={32} /></FaceOver> : null}
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 14.5, color: r.on ? c.gold : text }}>{r.title}</span>
             {r.sub ? <span style={{ display: "block", fontSize: 12.5, color: sub, lineHeight: 1.4 }}>{r.sub}</span> : null}
@@ -384,7 +385,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(isOpen ? null : n.emp); } }}
           style={{ padding: "12px 14px", cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Ava name={n.name} c={c} />
+            <FaceOver who={{ id: n.emp }} zoom quiet sub={upFirst(posWord(n.pos))}><Ava name={n.name} c={c} /></FaceOver>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", color: text }}>{n.name}</div>
               <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45 }}>{[upFirst(posWord(n.pos)), "с нами " + withUs(n.days)].filter(Boolean).join(" · ")}</div>

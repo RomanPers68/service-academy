@@ -29,8 +29,8 @@ import { useViewport } from "./viewport";   // v50 (Доп. 363): телефон
 import { WEEKDAY_MON_SHORT, WEEKDAY_MON, WEEKDAY_SHORT, MONTH_NOM, MONTH_GEN } from "../lib/dates";   // v59
 import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardErr } from "../lib/schedule-chat";   // v97: смены в чате
 import { mateName, rowsSurnameFirst } from "../lib/shift-mates";   // v158 (Доп. 483): буквы в кружках — имя, потом фамилия
-import { FaceImg } from "./staff-photo";   // v158: фото сотрудника поверх букв (этап 52)
-import { staffPhotoListNow } from "../lib/staff-photo";
+import { FaceImg, FaceChip } from "./staff-photo";   // v158: фото сотрудника поверх букв (этап 52); v160: по нажатию — крупно
+import { staffPhotoListNow, staffPhotoOf } from "../lib/staff-photo";
 import { cheersDue, yearsWord } from "../lib/team-warm";   // v108 (Доп. 421): годовщины в «Сегодня»
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
@@ -3146,7 +3146,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           return (
             <ShiftHero a11y={a11y} card={card} d={nd} sh={nx.sh} when={nd === todayD ? "сегодня" : nd === todayD + 1 ? "завтра" : ""}
               dowName={DOWF[dow(nd)]} dowShort={DOWL[dow(nd)]} monthR={MONTHS_R[M]} isToday={nd === todayD}
-              lead={lead ? lead.name : null} leadIni={lead ? initialsOf(lead.name) : ""} leadFace={lead ? <FaceImg who={{ full: lead.name }} /> : null} callNode={lead && lead.phone ? <CallName who={lead} label={lead.name} color={P.acc} round /> : null}
+              lead={lead ? lead.name : null} leadIni={lead ? initialsOf(lead.name) : ""} leadFace={lead ? <FaceImg who={{ full: lead.name }} zoom quiet sub="Старший смены" /> : null} callNode={lead && lead.phone ? <CallName who={lead} label={lead.name} color={P.acc} round /> : null}
               mates={mates} onMates={openMates} onChecklist={kT && onChecklist ? onChecklist : null}
               due={(kT || kN) && dueCount > 0 && onMistakes ? { n: dueCount, onMistakes } : null} />
           );
@@ -3660,6 +3660,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                     {callW ? (
                       <div data-sheet-call="" style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", margin:"2px 0 4px", padding:"8px 11px", borderRadius:12, fontSize:12.5,
                         background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)", border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.3)"}` }}>
+                        {/* v160 (Доп. 485): кружок коллеги выше выбирает его (по нажатию — эта строка), а здесь его фото: нажал — крупно */}
+                        <FaceChip who={{ full: callW.name }} size={34} sub={posName(callW.pos)} />
                         <span style={{ color:P.text }}>{callW.name}</span>
                         {callW.phone ? <CallName who={callW} label="позвонить" color={P.acc} /> : <span style={{ color:P.sub }}>· телефона нет в графике</span>}
                       </div>
@@ -4391,7 +4393,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <span aria-hidden="true" style={{ position:"relative", width:46, height:46, borderRadius:"50%", flexShrink:0, display:"grid", placeItems:"center", fontFamily:serif, fontSize:15, color:P.text,
                 border:`1.5px solid ${GOLD}`, boxShadow:"0 0 0 3px rgba(214,178,102,0.12)",
-                background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}<FaceImg who={{ full: s.name }} /></span>
+                background: a11y ? "linear-gradient(180deg,rgba(214,178,102,0.30),rgba(214,178,102,0.12))" : "linear-gradient(180deg,rgba(214,178,102,0.24),rgba(214,178,102,0.08))" }}>{initialsOf(s.name)}<FaceImg who={{ full: s.name }} zoom quiet sub={posName(s.pos)} /></span>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ ...labelStyle(11.5), color:P.acc }}>{MONTHS_N[M]} {Y}</div>
                 <div data-person-name="" style={{ fontFamily:serif, fontSize:18, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
@@ -5120,13 +5122,15 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 );
                 const col = colorOf(c.k), lead = leadOn(today) === c.who.name;
                 const on = callWho === c.who.id;
+                // v160 (Доп. 485): есть что показать в строке под сеткой — телефон или фото (его там открывают крупно)
+                const canTap = !!c.who.phone || !!staffPhotoOf(knownPeople, { full: c.who.name });
                 return (
                   // Нажимается вся карточка, а не только кружок: раньше было
                   // непонятно, куда целиться, и тап по имени ничего не давал.
-                  <div key={c.who.id}
-                    onClick={c.who.phone ? () => { setCallWho(on ? null : c.who.id); vibrate("light"); } : undefined}
-                    {...(c.who.phone ? onActivate(() => setCallWho(on ? null : c.who.id)) : {})}
-                    style={{ width:60, textAlign:"center", cursor: c.who.phone ? "pointer" : "default",
+                  <div key={c.who.id} data-today-card={c.who.id}
+                    onClick={canTap ? () => { setCallWho(on ? null : c.who.id); vibrate("light"); } : undefined}
+                    {...(canTap ? onActivate(() => setCallWho(on ? null : c.who.id)) : {})}
+                    style={{ width:60, textAlign:"center", cursor: canTap ? "pointer" : "default",
                       borderRadius:12, padding:"3px 0",
                       background: on ? (a11y ? "rgba(214,178,102,0.16)" : "rgba(214,178,102,0.10)") : "transparent" }}>
                     <div style={{ position:"relative", width:44, margin:"0 auto 5px" }}>
@@ -5164,21 +5168,23 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         {(() => {
           if (!callWho) return null;
           const w = staff.find(q => String(q.id) === String(callWho));
-          if (!w || !w.phone) return null;
+          if (!w || !(w.phone || staffPhotoOf(knownPeople, { full: w.name }))) return null;
           return (
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"9px 12px",
+            <div data-today-call={w.id} style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"9px 12px",
               borderRadius:12,
               background: a11y ? "rgba(250,242,222,0.7)" : "rgba(255,250,238,0.04)",
               border:`1px solid ${a11y ? "rgba(150,112,40,0.3)" : "rgba(145,108,40,0.3)"}`,
               boxShadow: a11y ? "inset 0 0 14px rgba(255,255,255,0.5)" : "inset 0 0 14px rgba(255,248,230,0.05)" }}>
+              {/* v160 (Доп. 485): фото выбранного сотрудника; нажал — крупно. Телефона нет, а фото есть — строка всё равно есть */}
+              <FaceChip who={{ full: w.name }} size={34} sub={posName(w.pos)} />
               <span style={{ flex:1, minWidth:0, fontSize:12.5, color:P.text, whiteSpace:"nowrap",
                 overflow:"hidden", textOverflow:"ellipsis" }}>{w.name}</span>
-              <a href={telHref(w.phone)} onClick={e => e.stopPropagation()}
+              {w.phone ? <a href={telHref(w.phone)} onClick={e => e.stopPropagation()}
                 style={{ display:"inline-flex", alignItems:"center", gap:6, flexShrink:0, textDecoration:"none",
                   fontFamily:mono, fontSize:12.5, fontWeight:700, color:INK_DEEP, whiteSpace:"nowrap",
                   background:`linear-gradient(180deg,#E4C88C,${GOLD})`, padding:"6px 13px", borderRadius:999 }}>
                 <IcoPhone size={12} color={INK_DEEP} sw={2.1} />{w.phone}
-              </a>
+              </a> : <span style={{ flexShrink:0, fontSize:12, color:P.sub }}>телефона нет в графике</span>}
             </div>
           );
         })()}

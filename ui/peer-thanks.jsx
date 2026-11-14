@@ -10,6 +10,7 @@ import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { serverMissing } from "../lib/server-text";
 import { nm, upFirst } from "../lib/morning";
+import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото того, кто сказал спасибо; по нажатию — крупно
 
 const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const ymd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -90,7 +91,7 @@ export function PeerThanksScreen({ T, a11y, profile, onBack, onOpenChat = null, 
                 onClick={can ? () => { vibrate("light"); onOpenChat(x.chat, x.msg); } : undefined}
                 onKeyDown={can ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenChat(x.chat, x.msg); } } : undefined}
                 style={{ ...c.frost, padding: "11px 14px", marginBottom: 8, cursor: can ? "pointer" : "default", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <Ava name={x.name} />
+                <FaceOver who={{ id: x.from }} zoom quiet><Ava name={x.name} /></FaceOver>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ ...labelStyle(12.5), color: c.gold }}>{[whenOf(x.at), nm(x.name)].filter(Boolean).join(" · ")}</div>
                   {x.text ? <div style={{ fontFamily: "Georgia, serif", fontSize: 14.5, color: c.text, marginTop: 4, lineHeight: 1.45 }}>«{upFirst(x.text)}»</div>

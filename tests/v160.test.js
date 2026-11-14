@@ -271,7 +271,7 @@ describe("v160: фото в кружках, где были буквы", () => {
   });
   it("чат: фото в личных чатах, поиске, списках людей и упоминаниях; крупно — из карточки коллеги, участников и «спасибо»", () => {
     const c = rd("ui/chat.jsx");
-    expect(c).toContain('import { FaceImg, FaceZoomHint } from "./staff-photo";');
+    expect(c).toMatch(/import \{ FaceImg, FaceZoomHint[^}]*\} from "\.\/staff-photo";/);
     expect(c).toContain('{chatInitials(c && c.peer ? c.peer.name : "")}{c && c.peer ? <FaceImg who={{ id: c.peer.id }} /> : null}</span>);');
     expect(c).toContain("{chatInitials(m.name)}{m.emp != null ? <FaceImg who={{ id: m.emp }} /> : null}</span>}");
     expect(c).toContain('<span className="ch-ava" aria-hidden="true">{chatInitials(p.name)}<FaceImg who={{ id: p.id }} /></span>');        // выбор человека: строка выбирает
@@ -281,7 +281,7 @@ describe("v160: фото в кружках, где были буквы", () => {
     expect(c).toContain('<span className="ch-ava" aria-hidden="true">{chatInitials(to.name)}<FaceImg who={{ id: to.id }} zoom quiet sub={posName(to.pos)} /></span>');
     // кружки общих чатов — как были (их держат tests/v92 и v103)
     expect(c).toContain('? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c.title || "Чат")}</span>');
-    expect(count(c, "<FaceImg ")).toBe(7);
+    expect(count(c, "<FaceImg ")).toBeGreaterThanOrEqual(7);                    // v161 добавила кружок автора у сообщения
   });
   it("квест смены: фото в стопке кружков и в жетонах «Кто в смене»; жетон с фото открывает его крупно целиком", () => {
     const t = rd("ui/together.jsx");

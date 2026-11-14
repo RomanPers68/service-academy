@@ -45,7 +45,7 @@ import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наст�
 import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
 import { traceUse } from "../lib/tip-avail";
 import { noteStopCards } from "../lib/menu-stops";   // v159 (Доп. 484): стоп из чата — число на значке «Меню» на главной
-import { FaceImg, FaceZoomHint } from "./staff-photo";   // v160 (Доп. 485): фото коллеги в кружках чата, в карточке коллеги — крупно по нажатию
+import { FaceImg, FaceZoomHint, useStaffPhotos } from "./staff-photo";   // v160 (Доп. 485): фото коллеги в кружках чата, в карточке коллеги — крупно по нажатию
 import { isFemaleName } from "../lib/utils";
 
 let pokeAt = 0;   // v108: когда приложение последний раз просило поставить карточки праздников
@@ -147,6 +147,14 @@ export const CHAT_CSS = `
 .ch-row.back{transition:transform .22s cubic-bezier(.3,1.2,.5,1)}
 .ch-swipe{position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;display:grid;place-items:center;background:var(--card);color:var(--gold-ink);box-shadow:0 0 0 1px var(--edge-gold);pointer-events:none}
 .ch-nm{margin:0 0 3px 12px;font-size:13px;line-height:1.2;color:var(--gold-ink);font-style:italic}
+/* v161 (Доп. 486): лица рядом с сообщениями коллег в общих чатах. Кружок стоит слева у последнего пузыря столбика —
+   там, куда смотрит хвостик; пузыри сдвинуты вправо на его ширину, справа поле уже (пузырь почти той же ширины) */
+.ch-feed.ava .ch-row.in{padding:0 8% 0 42px}
+.ch-mava{position:absolute;left:4px;bottom:0;width:30px;height:30px;font-size:11.5px;letter-spacing:.2px;border:0;padding:0;margin:0;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}
+button.ch-mava{cursor:pointer}
+button.ch-mava::before{content:"";position:absolute;inset:-7px;border-radius:50%}
+button.ch-mava:active{opacity:.75}
+.ch-feed.ava .ch-typing{margin-left:42px}
 /* v97: имя — кнопка (карточка коллеги) */
 .ch-nmb{display:block;border:0;background:none;padding:2px 0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ch-nmb:active{opacity:.7}
@@ -978,6 +986,10 @@ function useSwipe(on, onSwipe) {
   return { dx, quiet, handlers: { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up } };
 }
 
+// v161: наибольшая ширина фото в пузыре. На телефоне уже 352 px пузырь уже 260 px (а с кружком автора слева — ещё уже):
+// фото не должно вылезать из пузыря. На обычных экранах — прежние 260.
+export const photoMaxW = (withAva) => { let w = 400; try { w = window.innerWidth || 400; } catch (e) { /* */ } return w >= 352 ? 260 : withAva ? 224 : 250; };
+
 function SwipeIcon({ dx }) {
   if (!dx) return null;
   const k = Math.min(1, Math.abs(dx) / SWIPE_AT);
@@ -1000,12 +1012,24 @@ function Quote({ q, me, onJump }) {
     </button>);
 }
 
-function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView, onWho = null, names = null, leadIds = null }) {
+/**
+ * v161 (Доп. 486): кружок автора у сообщения в общем чате — фото, а у кого его нет — буквы. Нажатие открывает карточку
+ * коллеги, как имя над пузырём (фото крупно — в карточке). Диктору кружок не читается и в обход по клавишам не встаёт:
+ * та же кнопка уже есть — имя над первым пузырём столбика.
+ */
+export function MsgAva({ m, onWho = null }) {
+  const body = <>{chatInitials(m.name)}<FaceImg who={{ id: m.emp }} /></>;
+  return onWho
+    ? <button type="button" className="ch-ava ch-mava" data-chat-ava={m.emp} tabIndex={-1} aria-hidden="true" onClick={(e) => { e.stopPropagation(); vibrate("light"); onWho(m); }}>{body}</button>
+    : <span className="ch-ava ch-mava" data-chat-ava={m.emp} aria-hidden="true">{body}</span>;
+}
+
+function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl, onMenu, onReply, onReact, onJump, onView, onWho = null, names = null, leadIds = null, ava = false }) {
   const m = row.m, out = row.side === "out", meId = me && me.id;
   const sw = useSwipe(!m.del, () => onReply(m));
   const rb = out ? readBy(m, reads, meId) : [];
   const ph = m.kind === "photo" && m.photo && !m.del;
-  const box = ph ? photoBox(m.photo.w, m.photo.h) : null;
+  const box = ph ? photoBox(m.photo.w, m.photo.h, photoMaxW(ava && !out)) : null;
   const cap = m.del ? "" : String(m.body || "");
   // v99 (Доп. 412): «@Имя» — золотом; меня упомянули (или «@все» руководителя) — пузырь с золотой каймой
   const parts = group && names && cap.indexOf("@") >= 0 ? mentionParts(cap, names, { meId, leadAuthor: !!(leadIds && leadIds.has(String(m.emp))) }) : null;
@@ -1034,6 +1058,8 @@ function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl
         <span className={"ch-meta" + (ph && !cap && !hasRx ? " on-ph" : "")} aria-hidden="true">{m.edited && !m.del ? <span className="ch-edm">изменено</span> : null}{hhmm(m.at)}{out ? TICKS : null}</span>
       </div>
       {group && out && myLastId === m.id && !m.del ? <div className="ch-reads" data-chat-reads={rb.length}>{readLine(rb.length, othersN, group)}</div> : null}
+      {/* v161: кружок автора — у последнего пузыря столбика (у того, что с хвостиком) */}
+      {ava && !out && !row.cont ? <MsgAva m={m} onWho={onWho && m.emp && m.emp !== "ai" ? onWho : null} /> : null}
     </div>);
 }
 
@@ -1058,6 +1084,9 @@ function CallCard({ row, me, now, busyGo, hl, onGo, onMenu, onReply, onReact }) 
 function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, onDm = null, init = null }) {
   const group = chat.kind !== "dm";
   const meId = me && me.id;
+  // v161 (Доп. 486): лица рядом с сообщениями — в общих чатах и когда сервер знает фото (этап 52); без этапа лента как была
+  const faces = useStaffPhotos();
+  const avaOn = group && !!faces && faces !== "missing";
   const [msgs, setMsgs] = React.useState([]);
   const [members, setMembers] = React.useState([]);
   const [pin, setPin] = React.useState(null);
@@ -1442,10 +1471,10 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     }
     if (m.kind === "call") return <CallCard key={row.key} row={row} me={me} now={now} busyGo={busyGo} hl={isHl} onGo={go} onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} />;
     if (m.kind === "card") return <CardMsg key={row.key} row={row} me={me} app={app} busy={cardBusy === m.id} hl={isHl} showWho={whoOpen.has(String(m.id))} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;   // v93
-    if (m.kind === "ai") return <AiMsg key={row.key} row={row} me={me} hl={isHl} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;
+    if (m.kind === "ai") return <AiMsg key={row.key} row={row} me={me} hl={isHl} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} ava={avaOn} />;
     return <Bubble key={row.key} row={row} me={me} api={api} reads={reads} myLastId={myLast && myLast.id} othersN={others.length} group={group} net={chat.kind === "net"} hl={isHl}
       onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} onJump={jumpTo} onView={setView} onWho={api.person ? (x) => setSheet({ person: String(x.emp) }) : null}
-      names={names} leadIds={leadIds} />;
+      names={names} leadIds={leadIds} ava={avaOn} />;
   };
   // v92: добавить людей в свой чат — на весь экран вместо переписки (хуки — выше)
   // v99 (Доп. 412): поиск в этом чате — на весь экран вместо переписки; нашёл — к сообщению (подгружая раньше)
@@ -1483,14 +1512,14 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     <div className="ch-chatwrap sa-dlgpath">
       {/* v96: лента едет с клавиатурой трансформом внутри рамки .ch-chatwrap (уходит под шапку, не налезая) — ui/keyboard.js */}
       <div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="" data-kbm="" data-kbm-scroll="">
-        <div className="ch-feed">
+        <div className={"ch-feed" + (avaOn ? " ava" : "")}>
           {more ? <button type="button" className="ch-more" onClick={() => loadOlder()}>Показать раньше</button> : null}
           {!loaded && !err ? <div className="ch-day">Загружаю…</div> : null}
           {loaded && !rows.length && !pending.length ? <div className="ch-day">{group ? "Здесь пока тихо. Напиши первым." : "Напиши первым: " + chatTitle(chat).split(" ")[0] + " увидит сообщение у себя."}</div> : null}
           {rows.map(renderRow)}
           {aiWait ? <AiTyping /> : null}
           {pending.map((p) => {
-            const box = p.photo ? photoBox(p.photo.w, p.photo.h) : null;
+            const box = p.photo ? photoBox(p.photo.w, p.photo.h, photoMaxW(false)) : null;
             return (
               <div key={p.tmp} className="ch-row out tail" data-chat-pending={p.failed ? "failed" : "1"}>
                 <div className={"ch-b ch-out" + (p.photo ? " ph" : "")} style={{ opacity: p.failed ? 0.7 : 0.9, ...(p.photo ? { width: box.w + 6 } : {}) }}>

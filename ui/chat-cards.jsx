@@ -79,6 +79,9 @@ export const CARDS_CSS = `
 /* Наставник в переписке */
 .ch-ai-nm{display:inline-flex;align-items:center;gap:6px;margin:0 0 3px 4px;font-size:13px;line-height:1.2;color:var(--gold-ink);font-style:italic}
 .ch-ai-nm .ch-ai-d{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--on-gold)}
+/* v161: в ленте с лицами значок Наставника стоит кружком в колонке, в строке имени он не нужен */
+.ch-feed.ava .ch-ai-nm{margin-left:12px}
+.ch-feed.ava .ch-ai-nm .ch-ai-d{display:none}
 .ch-ai-nm .ch-ai-d svg{width:15px;height:15px}
 .ch-b.ai{border:1px solid var(--edge-gold)}
 .ch-ai-for{display:block;margin:0 0 4px;font-size:12.5px;color:var(--faint);font-style:italic}
@@ -328,7 +331,7 @@ export function CardMsg({ row, me, app, busy, hl, showWho = false, onAct, onMenu
 }
 
 // ── Наставник в переписке ──
-export function AiMsg({ row, me, hl, onAct, onMenu }) {
+export function AiMsg({ row, me, hl, onAct, onMenu, ava = false }) {
   const m = row.m, cards = (m.card && Array.isArray(m.card.cards)) ? m.card.cards : [];
   // v153: последняя строка «Нашёл в интернете: адрес · адрес» — именами сайтов, касание открывает страницу
   const wl0 = splitWebLine(m.body), wl = { ...wl0, src: oneSite(wl0.src) }, sites = wl.src.map((x) => siteOf(x.url));   // v155: по одной ссылке на сайт
@@ -350,6 +353,8 @@ export function AiMsg({ row, me, hl, onAct, onMenu }) {
         <i className="ch-sp" aria-hidden="true" />
         <span className="ch-meta" aria-hidden="true">{hhmm(m.at)}</span>
       </div>
+      {/* v161 (Доп. 486): в общем чате с лицами у ответа Наставника свой кружок в той же колонке (значок из строки имени) */}
+      {ava && !row.cont ? <span className="ch-ava team ch-mava" data-chat-ava="ai" aria-hidden="true">{IC.ai}</span> : null}
     </div>);
 }
 export const AiTyping = () => <div className="ch-typing" role="status" data-chat-ai-typing="">{AI_NAME} печатает<i /><i /><i /></div>;

@@ -316,16 +316,20 @@ describe("v157: обложки разделов — те же фото, что �
   it("«Справочник»: карточка-обложка; раздел трека: фото сверху, шапка ниже", () => {
     const ref = rd("ui/ReferenceSection.jsx");
     expect(ref).toContain("function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {");
-    expect(ref).toContain('data-ref-card={c.id} data-ref-cover={own && ownSrc ? "own" : photo ? "app" : "art"}');
+    // v163 (Доп. 488): своё фото проявляется поверх снимка из приложения (или пустого стекла), а не встаёт вместо него
+    // разом: карточка «с фото» — как только известно, что фото есть; пока оно едет и снимка нет — data-ref-cover="wait"
+    expect(ref).toContain('data-ref-card={c.id} data-ref-cover={ownOn && ownSrc ? "own" : def ? "app" : ownOn ? "wait" : "art"}');
     expect(ref).toContain("minHeight: 112");
-    expect(ref).toContain("const photo = own && ownSrc ? { src: ownSrc, pos: \"50% 50%\" } : def;");
+    expect(ref).toContain("const photo = ownOn || !!def;");
     expect(ref).toContain('<CoverEditButton id={id} title={c.t} profile={profile} a11y={!!a11y} list={photos} note={note} onPhoto={!!photo} />');
     expect(ref).toContain("<Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} profile={profile}");
     const mm = rd("ui/module-menu.jsx");
     expect(mm).toContain('<div className={"tbm-menu" + (sealed ? " sealed" : "") + (covered ? " covered" : "")} data-mod-cover={covered ? (cov.own ? "own" : "lesson") : undefined}>');
-    expect(mm).toContain('{covered ? <div className="tbm-cover" aria-hidden="true">{covSrc ? <img src={covSrc} alt="" draggable={false} /> : <span className="sa-skel" style={{ position: "absolute", inset: 0 }} />}</div> : null}');
-    // место под обложку — сразу, как известно, что фото есть; соседней странице — только превью; не пришло — карточка прежняя
-    expect(mm).toContain('const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", !passive);');
+    // v163 (Доп. 488): фото — слоями (проявляется), под ним тихая подложка вместо мерцающей заглушки
+    expect(mm).toContain('{covered ? <div className="tbm-cover" aria-hidden="true"><CoverPhoto src={covSrc} wait={<PhotoWait />} /></div> : null}');
+    // место под обложку — сразу, как известно, что фото есть; соседней странице — превью (v163: или целое, если оно уже в
+    // памяти, — "ready"); не пришло — карточка прежняя
+    expect(mm).toContain('const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", passive ? "ready" : true);');
     expect(mm).toContain("const covered = !!cov && !covGone;");
     expect(mm).toContain("passive={passive} style={{ top: 10, right: 46 }}");
     expect(TABLE_CSS).toContain(".tbm-cover{position:absolute;left:0;right:0;top:0;height:178px;border-radius:21px 21px 0 0;overflow:hidden;pointer-events:none;");
@@ -358,7 +362,8 @@ describe("v157: вечерние огни на главной (ui/screens-rolese
     const src = rd("ui/screens-roleselect.jsx");
     expect(src).toContain('<div className="sa-evl" data-eve-lights={eveLights} aria-hidden="true" style={{ position:"absolute", left:0, right:0, top:0, height: eveH, pointerEvents:"none", overflow:"hidden",');
     expect(src).toContain("const eveLights = eveLightsMode(new Date().getHours(), a11y);");
-    expect((src.match(/position: eveLights \? "relative" : undefined/g) || []).length).toBe(2);   // логотип и приветствие — над огнями, и только в этот час
+    // v163 (Доп. 488): строка роли — отдельным блоком под приветствием, ей то же самое: было 2, стало 3
+    expect((src.match(/position: eveLights \? "relative" : undefined/g) || []).length).toBe(3);   // логотип, приветствие и строка роли — над огнями, и только в этот час
     const css = rd("ui/css.js");
     expect(css).toContain("@keyframes saEvl { 0%, 100% { opacity: .58; transform: translate3d(0, 0, 0); } 50% { opacity: 1; transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0); } }");
     expect(css).toContain("@media (prefers-reduced-motion: reduce) { .sa-evl > i { animation: none; } }");

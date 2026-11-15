@@ -17,7 +17,7 @@ import { CHAT_SHARE_IC } from "./share-chat";
 import { cachedShared } from "../lib/deck-extras";   // v120 (Доп. 433): винная карта заведения
 import { wineRecords } from "../lib/wine";
 import { barCounts, barLine } from "../lib/bar-card";   // v127: «Барная карта»
-import { useLessonPhotos, useCoverSrc, useCover, canEditCovers, CoverEditButton, LessonCover } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов; v158: фото главы
+import { useLessonPhotos, useCover, canEditCovers, CoverEditButton, LessonCover, CoverPhoto, PhotoWait } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов; v158: фото главы; v163: фото проявляется
 import { refCoverId, photoOf, REF_COVER_DEFAULT, lessonPhotoId } from "../lib/lesson-photo";
 import { chapterThumb } from "../lib/reference-thumb";   // v158 (Доп. 483): плитка главы в списке глав
 
@@ -81,12 +81,19 @@ function Figure({ T, children }) {
 // загрузить, верно?» — да: у руководителя на карточке фотоаппарат, лист «Фото раздела» (тот же, что у фото урока: вся сеть
 // или своё заведение, этап 51). Своего фото нет — снимок из приложения («Сервировка», «Вина»), а где и его нет («Кофе»,
 // «Барная карта») — прежний рисунок-витраж, крупнее и справа. Фото — фоном во всю карточку, слева гаснет под текст.
+const REF_PHOTO = { "data-ref-photo": "" }, REF_UNDER = { "data-ref-under": "" };   // фото на виду и снимок из приложения под своим фото
 function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
   const id = refCoverId(c.id);
   const own = id && photos && photos !== "missing" ? photoOf(photos, id) : null;
-  const ownSrc = useCoverSrc(id, own ? own.ver : "");
+  // v163 (Доп. 488): своё фото проявляется поверх того, что на карточке было (снимок из приложения или пустое стекло), а
+  // не встаёт вместо него разом. Не приехало совсем (нет связи) — карточка как без своего фото.
+  const { src: ownSrc, gone } = useCover(own ? id : null, own ? own.ver : "");
+  const ownOn = !!own && !gone;
   const def = REF_COVER_DEFAULT[c.id] || null;
-  const photo = own && ownSrc ? { src: ownSrc, pos: "50% 50%" } : def;
+  const photo = ownOn || !!def;   // карточка с фото: вуаль под текст и светлые буквы
+  const imgSt = (pos) => ({ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: pos, display: "block", filter: dark ? "brightness(.92) saturate(1.06)" : "none" });
+  // снимок из приложения: телефон его уже держит — стоит сразу, иначе проявится, когда загрузится (CoverPhoto)
+  const defImg = def ? <CoverPhoto key={def.src} src={def.src} style={imgSt(def.pos)} attrs={ownOn ? REF_UNDER : REF_PHOTO} /> : null;
   const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist"].includes(art);
   const ink = dark ? "#F4ECD8" : "#2A1F0E", sub = dark ? "#C9BB9C" : "#5E4E34";
   const veil = dark
@@ -94,11 +101,10 @@ function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
     : "linear-gradient(90deg, rgba(246,238,220,.96) 0%, rgba(246,238,220,.86) 30%, rgba(246,238,220,.25) 62%, rgba(246,238,220,0) 80%), linear-gradient(0deg, rgba(246,238,220,.55) 0%, rgba(246,238,220,0) 55%)";
   const note = own ? "" : def ? "Сейчас на обложке снимок из справочника. Своё фото встанет вместо него." : "";
   return (
-    <div onClick={c.on ? onGo : undefined} {...onActivate(c.on ? onGo : undefined)} aria-label={c.t} data-lens-card="" data-ref-card={c.id} data-ref-cover={own && ownSrc ? "own" : photo ? "app" : "art"}
+    <div onClick={c.on ? onGo : undefined} {...onActivate(c.on ? onGo : undefined)} aria-label={c.t} data-lens-card="" data-ref-card={c.id} data-ref-cover={ownOn && ownSrc ? "own" : def ? "app" : ownOn ? "wait" : "art"}
       style={{ ...T.modCard, gap: 0, alignItems: "stretch", minHeight: 112, padding: "0 16px", cursor: c.on ? "pointer" : "default", opacity: c.on ? 1 : 0.5 }}>
       {photo ? (<>
-        <img src={photo.src} alt="" loading="lazy" draggable={false} data-ref-photo="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: photo.pos, display: "block",
-          filter: dark ? "brightness(.92) saturate(1.06)" : "none" }} />
+        {ownOn ? <CoverPhoto src={ownSrc} style={imgSt("50% 50%")} attrs={REF_PHOTO} wait={defImg || <PhotoWait />} /> : defImg}
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: veil, pointerEvents: "none" }} />
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 22px rgba(255,248,230,.07)" }} />
       </>) : hasArt ? (
@@ -181,9 +187,10 @@ function ChapterTile({ lesson, n, isQuiz, photos, T, gold, dark }) {
   return (
     <div data-ref-tile={kind} aria-hidden="true" style={{ position: "relative", width: 52, height: 52, borderRadius: 14, flexShrink: 0, overflow: "hidden", display: "grid", placeItems: "center",
       background: dark ? "rgba(200,169,110,0.07)" : "rgba(139,106,48,0.07)", color: isQuiz ? gold : (T.lessNumColor || "#C8B898") }}>
-      {kind === "own" || kind === "photo"
-        ? (photo ? <img src={photo} alt="" loading="lazy" decoding="async" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <div className="sa-skel" style={{ position: "absolute", inset: 0 }} />)
+      {kind === "own"
+        ? <CoverPhoto src={photo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} wait={<PhotoWait />} /> /* v163: своё фото проявляется */
+        : kind === "photo"
+        ? <img src={photo} alt="" loading="lazy" decoding="async" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         : kind === "art" ? <div className="ref-mini" style={{ display: "grid", placeItems: "center", lineHeight: 0 }}>{renderIllMini(th.key, gold, dark)}</div>
         : kind === "quiz" ? Ico.cam(gold, 20)
         : <span style={{ fontFamily: SERIF, fontSize: T.lessNumColor ? 21 : 19, fontWeight: T.lessNumColor ? "bold" : "normal", lineHeight: 1 }}>{n}</span>}

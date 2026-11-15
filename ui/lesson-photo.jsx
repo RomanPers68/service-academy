@@ -13,7 +13,8 @@ import { vibrate } from "../lib/utils";
 import { isLeadPos } from "../lib/chat-mention";
 import {
   loadLessonPhotos, lessonPhotoListNow, lessonPhotoSubscribe, lessonPhotoUrl, lessonPhotoCached, photoOf, canEditPhotos,
-  defaultScope, scopeName, saveLessonPhoto, removeLessonPhoto, lessonPhotoErr,
+  defaultScope, scopeName, saveLessonPhoto, removeLessonPhoto, lessonPhotoErr, aheadPlan, aheadLessonPhotos, liftLessonPhotos, leanNet,
+  REF_COVER_DEFAULT, refCoverId,
 } from "../lib/lesson-photo";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -83,8 +84,8 @@ export function LessonCover({ lessonId, lessonTitle = "", profile, a11y = false,
   return (<>
     <div data-lp-cover={info.scope ? "venue" : "net"} style={{ position: "relative", margin: "-20px -18px 16px", borderRadius: "21px 21px 0 0", overflow: "hidden",
       height: "clamp(150px, " + Math.round(Math.min(0.66, Math.max(0.5, ratio)) * 92) + "vw, 240px)", background: a11y ? "#E9DEC4" : "#2A2114" }}>
-      {src ? <img src={src} alt="" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        : <div className="sa-skel" aria-hidden="true" style={{ position: "absolute", inset: 0 }} />}
+      {/* v163 (Доп. 488): фото проявляется (CoverPhoto ниже), на его месте до того — тихая подложка, а не мерцание */}
+      <CoverPhoto src={src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} wait={<PhotoWait />} />
       <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "45%", pointerEvents: "none",
         background: a11y ? "linear-gradient(180deg, rgba(250,244,230,0) 0%, rgba(250,244,230,0.55) 100%)" : "linear-gradient(180deg, rgba(20,16,9,0) 0%, rgba(28,22,13,0.75) 100%)" }} />
       {canEdit ? (
@@ -108,7 +109,7 @@ const SHEET_WORDS = {
   section: { title: "Фото раздела", of: "раздела", at: "у раздела", drop: "Да, убрать фото у раздела",
     tip: "Подойдёт зал, команда на фоне ресторана, блюдо или деталь сервировки. Лучше горизонтальное: фото встанет обложкой раздела" },
 };
-export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, onClose, kind = "lesson", note = "" }) {
+export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, onClose, kind = "lesson", note = "", also = "" }) {
   const W = SHEET_WORDS[kind] || SHEET_WORDS.lesson;
   const missing = list === "missing" || !list;
   const e = !missing && list.map ? list.map[lessonId] || null : null;
@@ -200,6 +201,8 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
         </div>
         {/* v157: что на обложке сейчас, если это не своё фото раздела (фото урока или снимок из справочника) */}
         {note && !missing && !here ? <div data-lp-note="" style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 8 }}>{note}</div> : null}
+        {/* v163 (Доп. 488): где ещё видно это фото (раздел трека — в билете «Начать» на главной) */}
+        {also && !missing ? <div data-lp-also="" style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 8 }}>{also}</div> : null}
         {msg ? <div data-lp-msg="" role="status" style={{ fontSize: 14, lineHeight: 1.45, color: list === "missing" ? c.text : c.err, marginTop: 10 }}>{msg}</div> : null}
         {busy ? <div data-lp-busy="" role="status" style={{ fontSize: 14, fontStyle: "italic", color: c.gold, marginTop: 10 }}>{busy}</div> : null}
         {!missing && scope !== null ? (
@@ -226,10 +229,13 @@ export function LessonPhotoSheet({ lessonId, lessonTitle, profile, a11y, list, o
 // ── v157 (Доп. 481): обложки разделов — «Справочник» и раздел трека ─────────────────────────────────────────
 /**
  * Фото по номеру и версии: сначала превью, потом целиком (память — lib/lesson-photo.js). → { src, gone }.
- * wantFull = false — только превью (соседняя страница трека: фото видно краем, целое не тянем).
+ * wantFull = false — только превью (плитка главы: фото маленькое, целое ни к чему).
+ * wantFull = "ready" (v163) — целое не тянем, но если оно уже в памяти, показываем его (соседняя страница трека: фото
+ * видно краем; стала текущей — резкость менять уже не нужно).
  * gone — фото не пришло совсем (нет связи): место под обложку не держим. Нет версии — { src: null, gone: false }.
  */
 export function useCover(id, ver, wantFull = true) {
+  const pull = wantFull === true;   // тянуть ли целое с телефона и сервера
   const first = () => (id && ver ? (wantFull ? lessonPhotoCached(id, ver, true) : null) || lessonPhotoCached(id, ver, false) || lessonPhotoCached(id, ver, true) : null);
   const [st, setSt] = React.useState(() => ({ src: first(), gone: false }));
   React.useEffect(() => {
@@ -241,11 +247,118 @@ export function useCover(id, ver, wantFull = true) {
     const have = lessonPhotoCached(id, ver, false) || full;
     put(have, false);
     const a = lessonPhotoUrl(id, ver, false).then((u) => { if (live && u) setSt((x) => (x.src ? x : { src: u, gone: false })); return u; });
-    const b = wantFull ? lessonPhotoUrl(id, ver, true).then((u) => { if (live && u) put(u, false); return u; }) : Promise.resolve(null);
+    const b = pull ? lessonPhotoUrl(id, ver, true).then((u) => { if (live && u) put(u, false); return u; }) : Promise.resolve(null);
     Promise.all([a, b]).then(([x, y]) => { if (live && !x && !y && !have) put(null, true); });
     return () => { live = false; };
   }, [id, ver, wantFull]);
   return st;
+}
+
+// ── v163 (Доп. 488): фото проявляется, а не выскакивает ──────────────────────────────────────────────────
+// Владелец (15.11): «добавленные фото разделов подгружаются, это выглядит не очень. Я понимаю, что это из-за того, что
+// фото уходят на сервер, но мы можем эту подгрузку сделать менее заметной?» Раньше на месте фото мерцала заглушка, потом
+// фото вставало разом: сначала мутное превью, следом целое, ещё одним скачком. Теперь:
+//   1. Фото готовятся заранее (lib/lesson-photo.js, aheadLessonPhotos; PhotosAhead ниже) и чаще всего стоят уже при
+//      первом рисовании экрана: ни заглушки, ни смены резкости.
+//   2. Что приехало позже, проявляется слоем поверх прежнего за PHOTO_FADE мс: превью из пустоты, целое фото поверх
+//      превью (резкость «наводится», картинка не дёргается). Слой проявляется, когда телефон разобрал фото (decode).
+//   3. Пока фото нет, на его месте тихая подложка (PhotoWait): полсекунды ничего, потом едва заметный перелив. С телефона
+//      фото приходит раньше, и подложки не видно вовсе.
+// Стили — ui/css.js: .sa-photo-in и .sa-photo-wait. Проявление сделано анимацией «из прозрачности к своей непрозрачности»
+// (у ключевых кадров нет конца: слой приходит к тому, что задано видом, например .96 в «Для чтения»). Переход (transition)
+// здесь не годится: слой, который телефон разобрал в том же кадре, в каком он появился, встал бы разом, без перехода.
+export const PHOTO_FADE = 450;
+const isData = (src) => /^data:/.test(String(src || ""));
+const useLayout = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;   // на сервере (проверки) раскладки нет
+/** Тихая подложка на месте фото, пока оно едет (класс .sa-photo-wait — ui/css.js) */
+export const PhotoWait = ({ style }) => <span className="sa-photo-wait" aria-hidden="true" data-photo-wait="" style={{ position: "absolute", inset: 0, ...style }} />;
+// Один слой. soft: false — фото было известно при первом рисовании: стоит сразу; true — приехало позже: проявляется;
+// "url" — это адрес, а не само фото: телефон его уже держит (complete) — стоит сразу, иначе проявится, когда загрузится.
+function PhotoLayer({ k, src, soft, style, className, attrs, onShown }) {
+  const [st, setSt] = React.useState(soft ? "wait" : "set");   // wait (ещё не видно) → in (проявляется) → set (стоит)
+  const ref = React.useRef(null);
+  useLayout(() => {
+    if (!soft) return undefined;
+    const el = ref.current;
+    const ready = () => !!el && el.complete && el.naturalWidth > 0;
+    if (soft === "url" && ready()) { setSt("set"); onShown(k); return undefined; }
+    let live = true, done = 0;
+    // проявился — слой дальше просто стоит (класс проявления снят: спрятанный и снова показанный экран не проявит фото заново)
+    const go = () => { if (!live || done) return; setSt("in"); done = setTimeout(() => { if (live) { setSt("set"); onShown(k); } }, PHOTO_FADE + 60); };
+    // телефон не сообщил, что фото готово, — показываем всё равно (у адреса не так: пустое место проявлять незачем)
+    const guard = isData(src) ? setTimeout(go, 1200) : 0;
+    const onLoad = () => { if (ready()) go(); };
+    try {
+      if (el && !el.complete) el.addEventListener("load", onLoad, { once: true });
+      // decode — «телефон разобрал фото»: слой начнёт проявляться уже с готовой картинкой, без пустого первого кадра
+      if (el && typeof el.decode === "function") el.decode().then(go, () => { if (isData(src) || ready()) go(); });
+      else if (!el || el.complete) go();
+    } catch (e) { go(); }
+    return () => { live = false; clearTimeout(guard); clearTimeout(done); if (el) el.removeEventListener("load", onLoad); };
+  }, []);
+  // непрозрачность у показанного слоя не трогаем: её может задавать вид («Для чтения» — .96 у обложки раздела)
+  return <img ref={ref} src={src} alt="" draggable={false} {...attrs} data-photo-layer={st}
+    className={[className, st === "in" ? "sa-photo-in" : ""].filter(Boolean).join(" ") || undefined} style={st === "wait" ? { ...style, opacity: 0 } : style} />;
+}
+/**
+ * Фото слоями. src — что показать сейчас; сменился — новый слой проявляется поверх прежнего, а прежний убирается, когда
+ * новый проявился. Что известно при первом рисовании, стоит сразу, без проявления (экран открылся уже с фото).
+ * wait — что лежит под фото, пока первый слой не проявился; style, className, attrs — каждому слою (<img>).
+ */
+export function CoverPhoto({ src, style, className, attrs = null, wait = null }) {
+  const seq = React.useRef(0);
+  const last = React.useRef(src || null);
+  const [layers, setLayers] = React.useState(() => (src ? [{ k: 0, src, soft: isData(src) ? false : "url", done: isData(src) }] : []));
+  React.useEffect(() => {
+    const s = src || null;
+    if (last.current === s) return;
+    last.current = s;
+    setLayers((ls) => (s ? [...ls, { k: ++seq.current, src: s, soft: true, done: false }] : []));
+  }, [src]);
+  const shown = React.useCallback((k) => setLayers((ls) => {
+    const i = ls.findIndex((l) => l.k === k);
+    return i < 0 ? ls : ls.slice(i).map((l, j) => (j === 0 && !l.done ? { ...l, done: true } : l));
+  }), []);
+  return (<>
+    {!layers.length || !layers[0].done ? wait : null}
+    {layers.map((l) => <PhotoLayer key={l.k} k={l.k} src={l.src} soft={l.soft} style={style} className={className} attrs={attrs} onShown={shown} />)}
+  </>);
+}
+const APP_COVERS = new Map();   // адрес → Image: снимок держим загруженным, пока приложение открыто
+/**
+ * Снимки из приложения для разделов «Справочника» (REF_COVER_DEFAULT) — загрузить заранее: карточка раздела откроется уже
+ * с фото. Раздел со своим фото пропускаем: снимок там не нужен. → сколько снимков начали грузить в этот раз.
+ */
+export function warmAppCovers(list) {
+  if (typeof Image === "undefined") return 0;
+  let n = 0;
+  for (const [id, d] of Object.entries(REF_COVER_DEFAULT)) {
+    const own = list && list !== "missing" ? photoOf(list, refCoverId(id)) : null;
+    if (own || APP_COVERS.has(d.src)) continue;
+    try { const im = new Image(); im.decoding = "async"; im.src = d.src; APP_COVERS.set(d.src, im); n++; } catch (e) { /* */ }
+  }
+  return n;
+}
+/**
+ * Пока человек на главной, готовим фото, которые он откроет дальше (lib/lesson-photo.js, aheadPlan): раздел из билета
+ * «Начать» и его урок, разделы своего трека, разделы «Справочника» (и снимки из приложения для них). Ничего не рисует.
+ * Нет этапа 51 — только снимки из приложения. Что уже лежит на телефоне, поднимает сразу; за остальным идёт на сервер
+ * через AHEAD_WAIT мс: сначала сама главная и её запросы.
+ */
+export const AHEAD_WAIT = 1200;
+export function PhotosAhead({ first = null, lesson = null, mods = [] }) {
+  const list = useLessonPhotos();
+  const plan = React.useMemo(() => aheadPlan(list, { first, lesson, mods }), [list, first && first.id, lesson && lesson.id, mods.map((m) => m && m.id).join(",")]);
+  const sig = plan.full.join(",") + "#" + plan.thumbs.join(",");
+  React.useEffect(() => {
+    if (plan.full.length) liftLessonPhotos(list, plan);
+    const t = setTimeout(() => {
+      warmAppCovers(list);
+      if (plan.thumbs.length) aheadLessonPhotos(list, plan, { lean: leanNet() });
+    }, AHEAD_WAIT);
+    return () => clearTimeout(t);
+  }, [sig, list]);
+  return null;
 }
 /** То же, только само фото (карточки «Справочника»: высота карточки от фото не зависит) */
 export const useCoverSrc = (id, ver) => useCover(id, ver).src;
@@ -255,7 +368,7 @@ export const canEditCovers = (list, profile) => (list === "missing" ? isBoss(pro
  * Кнопка с фотоаппаратом у обложки раздела (видит только тот, кто может ставить фото) и лист «Фото раздела».
  * Стоит внутри карточки-кнопки, поэтому нажатие дальше не идёт.
  */
-export function CoverEditButton({ id, title = "", profile, a11y = false, list, note = "", onPhoto = false, passive = false, style }) {
+export function CoverEditButton({ id, title = "", profile, a11y = false, list, note = "", also = "", onPhoto = false, passive = false, style }) {
   const [sheet, setSheet] = React.useState(false);
   if (!id || !canEditCovers(list, profile)) return null;
   const open = (e) => { if (e) { e.stopPropagation(); if (e.preventDefault) e.preventDefault(); } vibrate("light"); setSheet(true); };
@@ -268,6 +381,6 @@ export function CoverEditButton({ id, title = "", profile, a11y = false, list, n
         boxShadow: onPhoto ? "inset 0 0 0 1px rgba(232,201,131,0.55), 0 4px 12px rgba(0,0,0,0.35)" : "inset 0 0 0 1px " + (a11y ? "rgba(139,106,48,0.42)" : "rgba(214,178,102,0.4)"),
         pointerEvents: passive ? "none" : undefined, ...style }}>
       <CamIcon s={16} /></button>
-    {sheet ? <span onClick={stop} onKeyDown={stop}><LessonPhotoSheet kind="section" lessonId={id} lessonTitle={title} profile={profile} a11y={a11y} list={list} note={note} onClose={() => setSheet(false)} /></span> : null}
+    {sheet ? <span onClick={stop} onKeyDown={stop}><LessonPhotoSheet kind="section" lessonId={id} lessonTitle={title} profile={profile} a11y={a11y} list={list} note={note} also={also} onClose={() => setSheet(false)} /></span> : null}
   </>);
 }

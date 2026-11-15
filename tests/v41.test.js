@@ -230,8 +230,11 @@ describe("v41: главная — строка шага в карточке тр
   it("подпись роли — целиком или никак: обёртка в одну строку с невидимым элементом нулевой ширины", async () => {
     // v44 (Доп. 357): роль — строкой под именем в приветствии; подпись целиком (без многоточия), не влезла рядом —
     // переносится второй строкой (flex-wrap), а не обрезается
+    // v163 (Доп. 488): строка роли — своей строкой во всю ширину под приветствием; подпись снова «целиком или никак»:
+    // перенеслась ниже — не видна (строка высотой 16 px, overflow:hidden), многоточия по-прежнему нет
+    // вечером и ночью строка стоит над огнями главной (v157): в конце её стиля добавляется position:relative — допускаем
     const html = await render({});
-    expect(html).toMatch(/<span data-role-line="" style="display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;margin-top:3px;font-family:Georgia, serif;font-size:12px;line-height:16px;color:#[0-9A-Fa-f]{6}"><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap">.*?<b>Новичок<\/b><\/span><span data-role-sub="" style="color:#aaa;font-size:11px;white-space:nowrap">Сезонный сотрудник<\/span><\/span>/);
+    expect(html).toMatch(/<div data-role-line="" style="display:flex;align-items:center;gap:10px;padding:3px 20px 8px;font-family:Georgia, serif;font-size:12px;line-height:16px;color:#[0-9A-Fa-f]{6}(?:;position:relative)?"><span data-role-main="" style="flex:1 1 0;min-width:0;height:16px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;column-gap:6px"><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap">.*?<b>Новичок<\/b><\/span><span data-role-sub="" style="color:#aaa;font-size:11px;white-space:nowrap">Сезонный сотрудник<\/span><\/span><\/div>/);
     expect(html).not.toMatch(/text-overflow:ellipsis;white-space:nowrap">Сезонный/);
   });
   it("название шага трека — до трёх строк (на узком экране не обрывается многоточием)", async () => {

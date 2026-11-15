@@ -14,7 +14,7 @@ import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModul
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
 import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
-import { warmLessonPhotos } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске
+import { warmLessonPhotos, WARM_HOLD } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске; v163: заставка их ждёт
 import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158: фото сотрудников в кружках (этап 52)
 import { MyFaceLayer, FaceViewer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
@@ -819,6 +819,9 @@ function ServiceAcademy() {
       } catch(e) {}
       try { const uk5 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const sv = await storageGet("sa_saved"+uk5); if (sv) { const obj = JSON.parse(sv.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setSaved(obj); } } catch(e) {}
       try { const uk6 = p ? `_${JSON.parse(p.value).name}_${JSON.parse(p.value).surname||""}` : ""; const ex = await storageGet("sa_exam"+uk6); if (ex) { const obj = JSON.parse(ex.value); if (obj && typeof obj === "object" && !Array.isArray(obj)) setExamResults(obj); } } catch(e) {}
+      // v163 (Доп. 488): фото с телефона — в память до того, как заставка уйдёт: фото в билете на главной и обложки стоят
+      // уже в первом кадре, а не проявляются следом. Обычно это десятки миллисекунд; дольше WARM_HOLD мс не ждём.
+      try { await Promise.race([warmLessonPhotos(), new Promise((r) => setTimeout(r, WARM_HOLD))]); } catch (e) {}
       clearTimeout(fallback);
       setStorageLoaded(true);
       if (verify) verifyLater(verify.token, verify.cached);   // v55: сервер подтверждает вход уже после показа

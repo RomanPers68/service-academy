@@ -199,7 +199,10 @@ if (want("CHAP")) {
 // ── STORE ──────────────────────────────────────────────────────────────────────────────
 if (want("STORE")) {
   const { ctx, page, errs } = await open({ who: "anna" });
-  ok("STORE: новый телефон — фото на нём ещё нет", ((await onPhone(page)) || { t: [] }).t.length === 0);
+  // v163 (Доп. 488): фото уроков и разделов приложение готовит заранее, пока человек на главной, — к этой минуте они уже
+  // могут лежать на телефоне; фото сотрудников по-прежнему приезжают, когда их показывают
+  const ph0 = (await onPhone(page)) || { t: [], f: [] };
+  ok("STORE: новый телефон — фото сотрудников на нём ещё нет", ph0.t.filter((k) => k.startsWith("sp:")).length === 0, JSON.stringify(ph0.t));
   await spy(page);
   await nav(page, "shift", 2400);
   const s1 = await rpcs(page, "staff_photo");
@@ -209,7 +212,8 @@ if (want("STORE")) {
   await nav(page, "home", 2600);
   const cov1 = await page.evaluate(() => { const i = document.querySelector(".tbm-cover img"); return i ? i.naturalWidth > 0 : null; });
   const l1 = await rpcs(page, "lesson_photo");
-  ok("STORE: обложка раздела в первый раз — с сервера", cov1 === true && l1.length >= 1, JSON.stringify([cov1, l1.length]));
+  // v163: запрос за обложкой мог уйти заранее, ещё с главной (до того, как сценарий начал записывать запросы)
+  ok("STORE: обложка раздела в первый раз — с сервера (при показе или заранее, с главной)", cov1 === true && (l1.length >= 1 || ph0.t.some((k) => k.startsWith("lp:"))), JSON.stringify([cov1, l1.length, ph0.t.length]));
   await page.waitForTimeout(600);
   const ph = await onPhone(page);
   ok("STORE: после показа фото лежат на телефоне: превью коллег и фото урока", !!ph && ph.t.filter((k) => k.startsWith("sp:")).length >= 2 && ph.t.some((k) => k.startsWith("lp:")) && ph.f.some((k) => k.startsWith("lp:")), JSON.stringify(ph));

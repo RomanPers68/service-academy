@@ -47,7 +47,9 @@ describe("v44: приветствие — роль под именем, «хор
     const html = await render();
     expect(count(html, /data-role-line=""/g)).toBe(1);
     expect(text(html.slice(html.indexOf("data-role-line"), html.indexOf("</span></span>", html.indexOf("data-role-line"))))).toContain("НовичокСезонный сотрудник");
-    expect(html.indexOf("data-role-line")).toBeLessThan(html.indexOf("Два моря, Океан"));   // в левой колонке приветствия
+    // v163 (Доп. 488): строка роли — своей строкой во всю ширину под приветствием (была в его левой колонке)
+    expect(html.indexOf("data-role-line")).toBeGreaterThan(html.indexOf("Два моря, Океан"));
+    expect(html.indexOf("data-role-line")).toBeLessThan(html.indexOf("data-now-card"));
     expect(html).not.toMatch(/padding:4px 11px;border-radius:999px/);                       // чипа роли больше нет
     expect(src).toContain("v44 (Доп. 357): роль — строкой под именем в");
   });

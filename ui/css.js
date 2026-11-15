@@ -340,6 +340,13 @@ export const injectStyles = () => {
     /* Мерцающий скелетон стеклянных карточек на время ленивой подгрузки */
     @keyframes saShimmer { from { background-position:-200% 0; } to { background-position:200% 0; } }
     .sa-skel { background: linear-gradient(100deg, rgba(200,169,110,0.07) 40%, rgba(230,200,140,0.16) 50%, rgba(200,169,110,0.07) 60%); background-size:200% 100%; animation: saShimmer 1.4s linear infinite; }
+    /* v163: фото проявляется (ui/lesson-photo.jsx, CoverPhoto; там же — почему анимация, а не transition) */
+    @keyframes saPhotoWait { from { opacity:0; } to { opacity:1; } }
+    @keyframes saPhotoIn { from { opacity:0; } }
+    .sa-photo-in { animation: saPhotoIn .45s ease-out backwards; }
+    .sa-photo-wait { opacity:0; background: linear-gradient(100deg, rgba(200,169,110,0.03) 36%, rgba(230,200,140,0.085) 50%, rgba(200,169,110,0.03) 64%); background-size:200% 100%;
+      animation: saShimmer 2.6s linear infinite, saPhotoWait .6s ease .5s forwards; }
+    @media (prefers-reduced-motion: reduce) { .sa-photo-in { animation:none; } .sa-photo-wait { animation:none; opacity:1; } }
     @keyframes saPulse { 0%,100% { opacity:.35; } 50% { opacity:.85; } }
     .sa-pulse { animation: saPulse 1.15s ease-in-out infinite; }
     /* Онбординг: появление подложки, «выпрыгивание» иконки, всплытие подсказки */

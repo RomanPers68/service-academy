@@ -35,6 +35,7 @@ import { moodTier, MOOD_REPLY } from "../lib/now-card";   // v56 (Доп. 369): 
 import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTED_2, RED, RED_DARK, toolColor, goldText, labelStyle } from "./tokens";
 import { _estMins, _fmtMins } from "./screens-learning";
 import { NowInvitation } from "./now-hero";   // v68 (Доп. 381): главная карточка «Приглашение»
+import { PhotosAhead } from "./lesson-photo";   // v163 (Доп. 488): фото разделов готовятся заранее, пока человек на главной
 import { lookClass } from "../lib/home-look";   // v101 (Доп. 414): вид главной с общим элементом
 import { ensureLookCss } from "./home-look";
 import { fitValues, fitOver, fitNext, fitTailFor, fitTail, fitBudget, FIT_ABOVE, FIT_NONE } from "../lib/home-fit";   // v101: главная целиком на экране
@@ -343,32 +344,42 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           // целиком или никак, как в v41: не влезла рядом — переносится второй строкой, без многоточия.
           const roleObj = role ? ROLES.find(r => r.id === role) : null;
           const RCg = roleObj ? (inkOf(roleObj.color, a11y) || (a11y ? "#4E7A58" : "#8FB890")) : null;
-          return (
-            <div style={{ padding:"2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, position: eveLights ? "relative" : undefined }}>
+          // v163 (Доп. 488): строка роли — своей строкой во всю ширину, под приветствием. Раньше она жила в левой колонке под
+          // именем, и на телефоне владельца «по должности · сменить» уходило на третью строку: «Сервис-менеджер Следующая
+          // ступень / по должности · сменить» читалось одной ломаной фразой (его снимок 15.11; из трёх предложений по главной
+          // взял это: «из предыдущей первую»). Теперь слева роль и её подпись (подпись целиком или никак: не влезла рядом —
+          // скрыта), справа, под названием заведения, «по должности · сменить». Пожелание «хорошей смены» встаёт туда же,
+          // когда трек выбран самим; нужны оба — пожелание остаётся под заведением, как было.
+          const wishLow = wish && !roleAuto && !!roleObj;
+          return (<>
+            <div style={{ padding: roleObj ? "2px 20px 0" : "2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, position: eveLights ? "relative" : undefined }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
                 {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
                 {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
-                {roleObj ? (
-                  <span data-role-line="" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6, marginTop:3, fontFamily:"Georgia, serif", fontSize:12, lineHeight:"16px", color:RCg }}>
-                    <span style={{ display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>{ROLE_SVG[role] ? ROLE_SVG[role](RCg, 13) : null}<b>{roleObj.label}</b></span>
-                    {roleObj.sublabel ? <span data-role-sub="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span> : null}
-                    {/* v58 (Доп. 371): трек подставлен по должности из профиля — выбирать самой не нужно, «сменить» рядом */}
-                    {roleAuto ? (
-                      <span data-role-auto="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>
-                        по должности · <button type="button" data-role-change="" onClick={toTracks} style={{ background:"none", border:"none", padding:"2px 0", margin:0,
-                          font:"inherit", color: goldText(a11y), textDecoration:"underline", textUnderlineOffset:2, cursor:"pointer" }}>сменить</button>
-                      </span>
-                    ) : null}
-                  </span>
-                ) : null}
               </div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
                 {/* v73 (Доп. 386): заведение — курсивом обычными буквами (был моноширинный капс); у пожелания — без ✦ */}
                 <div style={{ ...labelStyle(a11y ? 14 : 13), color: T.modSub.color, whiteSpace:"nowrap" }}>{profile.restaurant}</div>
-                {wish ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены</div> : null}
+                {wish && !wishLow ? <div data-shift-wish="" style={{ fontSize:11, color: T.modSub.color, fontFamily:"Georgia, serif", fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены</div> : null}
               </div>
             </div>
-          );
+            {roleObj ? (
+              <div data-role-line="" style={{ display:"flex", alignItems:"center", gap:10, padding:"3px 20px " + F.greetPb + "px", fontFamily:"Georgia, serif", fontSize:12, lineHeight:"16px", color:RCg, position: eveLights ? "relative" : undefined }}>
+                {/* роль и её подпись: строка высотой 16 px; подпись, которой не хватило места рядом, переносится ниже и не видна */}
+                <span data-role-main="" style={{ flex:"1 1 0", minWidth:0, height:16, overflow:"hidden", display:"flex", flexWrap:"wrap", alignItems:"center", columnGap:6 }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>{ROLE_SVG[role] ? ROLE_SVG[role](RCg, 13) : null}<b>{roleObj.label}</b></span>
+                  {roleObj.sublabel ? <span data-role-sub="" style={{ color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>{roleObj.sublabel}</span> : null}
+                </span>
+                {/* v58 (Доп. 371): трек подставлен по должности из профиля — выбирать самой не нужно, «сменить» рядом */}
+                {roleAuto ? (
+                  <span data-role-auto="" style={{ flexShrink:0, color: T.modSub.color, fontSize:11, whiteSpace:"nowrap" }}>
+                    по должности · <button type="button" data-role-change="" onClick={toTracks} style={{ background:"none", border:"none", padding:"2px 0", margin:0,
+                      font:"inherit", color: goldText(a11y), textDecoration:"underline", textUnderlineOffset:2, cursor:"pointer" }}>сменить</button>
+                  </span>
+                ) : wishLow ? <span data-shift-wish="" style={{ flexShrink:0, fontSize:11, color: T.modSub.color, fontStyle:"italic", whiteSpace:"nowrap" }}>хорошей смены</span> : null}
+              </div>
+            ) : null}
+          </>);
         })()}
         {/* Доп. 298, 306: ритм дня (из App). v43 (Доп. 356): табличка во всю ширину под приветствием —
             пламя серии, бокал «цель дня» и венок «Путь мастера» в медальонах, с трека и без. До v43 значки
@@ -378,6 +389,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
         {/* v31: строка напарника; без трека — с теми же полями, что у карточек ниже */}
         {!role && dayNote ? <div style={{ padding:"0 10px" }}>{dayNote}</div> : null}
 
+        {/* v163 (Доп. 488): трек ещё не выбран — заранее готовим хотя бы фото разделов «Справочника» */}
+        {profile && !(role && onContinueLesson) ? <PhotosAhead /> : null}
         {/* ═══ Карточка «Твой трек»: урок → ошибки → гость недели ═══ */}
         {role && onContinueLesson && (() => {
           const roleObj = ROLES.find(r => r.id === role);
@@ -453,11 +466,14 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                   приветствии (там же видна), отдельного ряда над карточкой больше нет. */}
               {/* v31: строка напарника — отдельной строкой под чипами (раньше уезжала за край экрана) */}
               {dayNote}
-              {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке */}
+              {/* v163 (Доп. 488): пока человек на главной, фото разделов его трека и «Справочника» готовятся заранее */}
+              <PhotosAhead first={next ? next.mod : null} lesson={next ? next.lesson : null} mods={[...(MODULES[role] || []), ...(customByRole[role] || [])]} />
+              {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке.
+                  v163 (Доп. 488): билет зовёт в урок трека — на фоне фото его раздела (coverMod); билет о смене — без фото */}
               <div ref={refTrack}>
                 <NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}
                   lens={look === "lens"} fade={(() => { if (nowModeRef.current === null) nowModeRef.current = card.mode; return card.mode !== nowModeRef.current; })()}
-                  onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} />
+                  onMood={(lvl) => { setMoodReply(lvl); if (nowOn) nowOn.mood(lvl); }} onReplyDone={() => setMoodReply(null)} coverMod={!ctx && next ? next.mod : null} />
               </div>
               {/* v40: карточка «Путь мастера» (из App) — сразу под главной карточкой, по её краям */}
               {masteryCard ? <div data-mastery-slot="" style={{ marginTop:9 }}>{masteryCard}</div> : null}

@@ -14,7 +14,7 @@ import { sfx } from "../lib/sfx";   // v57 (Доп. 370)
 import { GOLD_N, CREDIT_N } from "../lib/marks";
 import { practicePool, quizPool } from "../lib/table-pick";
 import { INFO_NOTE } from "../lib/info-topics";   // v144 (Доп. 465): тема «для ознакомления» — записка под названием
-import { useLessonPhotos, useCover, CoverEditButton } from "./lesson-photo";   // v157 (Доп. 481): обложка раздела
+import { useLessonPhotos, useCover, CoverEditButton, CoverPhoto, PhotoWait } from "./lesson-photo";   // v157 (Доп. 481): обложка раздела; v163: фото проявляется
 import { moduleCover, modCoverId } from "../lib/lesson-photo";
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
@@ -116,9 +116,11 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
   // фотоаппарат справа сверху (лист «Фото раздела», как у фото урока). Соседняя страница трека рисуется так же, но не нажимается.
   const photos = useLessonPhotos();
   const cov = moduleCover(photos, mod);
-  // место под обложку — сразу, как известно, что фото есть (пока едет — мерцающий силуэт): шапка раздела не прыгает.
+  // место под обложку — сразу, как известно, что фото есть (пока едет — тихая подложка): шапка раздела не прыгает.
   // Соседней странице хватает превью; фото не пришло совсем (нет связи) — карточка прежняя.
-  const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", !passive);
+  // v163 (Доп. 488): целое фото уже в памяти (его готовят заранее) — соседняя страница берёт сразу его ("ready"), и когда
+  // она становится текущей, резкость не меняется; фото, приехавшее позже экрана, проявляется (CoverPhoto), а не встаёт разом.
+  const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", passive ? "ready" : true);
   const covered = !!cov && !covGone;
   const est = (l) => { try { return estMins ? estMins(l) : 1; } catch (e) { return 1; } };
   const fmt = (m) => (fmtMins ? fmtMins(m) : m + " мин");
@@ -163,10 +165,11 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           (.sealed) зависит только от того, пройден ли раздел: у соседней страницы оно то же,
           даже пока сама печать ещё не «опустилась» */}
       <div className={"tbm-menu" + (sealed ? " sealed" : "") + (covered ? " covered" : "")} data-mod-cover={covered ? (cov.own ? "own" : "lesson") : undefined}>
-        {covered ? <div className="tbm-cover" aria-hidden="true">{covSrc ? <img src={covSrc} alt="" draggable={false} /> : <span className="sa-skel" style={{ position: "absolute", inset: 0 }} />}</div> : null}
+        {covered ? <div className="tbm-cover" aria-hidden="true"><CoverPhoto src={covSrc} wait={<PhotoWait />} /></div> : null}
         <span className="tbm-lasse" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent 40%,rgba(0,0,0,.28))," + (deco || "#8B3020") }} />
         <CoverEditButton id={modCoverId(mod.id)} title={mod.title} profile={profile} a11y={a11y} list={photos} onPhoto={covered} passive={passive} style={{ top: 10, right: 46 }}
-          note={cov && !cov.own ? "Сейчас на обложке фото урока «" + cov.lesson + "». Своё фото раздела встанет вместо него." : ""} />
+          note={cov && !cov.own ? "Сейчас на обложке фото урока «" + cov.lesson + "». Своё фото раздела встанет вместо него." : ""}
+          also="Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел. В виде «Для чтения» билет без фото." />
         {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={46} /></span> : null}
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}

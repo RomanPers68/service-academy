@@ -17,6 +17,8 @@ import { MOOD_FACES } from "./mood-cards";
 import { hhmm, untilText } from "../lib/now-card";
 import { ACCENT_SERIF } from "./styles";
 import { GOLD } from "./tokens";
+import { useLessonPhotos, useCover, CoverPhoto } from "./lesson-photo";   // v163 (Доп. 488): фото раздела в билете
+import { moduleCover } from "../lib/lesson-photo";
 
 function useActs({ ctx, on, onReplyDone }) {
   const act = () => {
@@ -123,9 +125,19 @@ const TILE_TONE = "linear-gradient(160deg, rgba(226,186,116,0.18) 0%, rgba(226,1
 // fade — мягкое появление: только когда состояние сменилось на открытом экране (ответ на «как прошла», началась
 // смена). v69 (Доп. 382): при возврате на главную карточка проявлялась второй раз поверх появления всей страницы —
 // позже остального экрана («мерцание», запись владельца)
-export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false, lens = false }) {
+export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, onMood, onReplyDone, fade = false, lens = false, coverMod = null }) {
   const { act, stop, key, later, tappable } = useActs({ ctx, on, onReplyDone });
   const dark = !a11y;
+  // v163 (Доп. 488): билет зовёт в раздел трека (coverMod) — справа на фоне фото этого раздела: та же обложка, что у
+  // раздела в треке (v157: своё фото раздела, а нет — фото первого урока, у которого оно есть); линза и слово «Начать»
+  // поверх. Владелец (15.11) на набросок: «Да, кайф, берём эту идею». Только в тёмной теме: в «Для чтения» билет бумажный,
+  // и фото под светлой вуалью спорит с текстом. Фото нет (не поставлено, нет этапа 51, не доехало) или билет о смене —
+  // билет прежний. Фото стоит сразу, если уже в памяти (его готовят заранее), а приехало позже — проявляется (CoverPhoto).
+  const photos = useLessonPhotos();
+  const cov = coverMod && dark ? moduleCover(photos, coverMod) : null;
+  const { src: covSrc } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", true);
+  const covLate = React.useRef(!covSrc);   // фото не было при первом рисовании: затемнение под кнопкой проявится вместе с ним
+  const COVER_FADE = "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.22) 22%, rgba(0,0,0,0.78) 46%, #000 60%)";
   // v70 (Доп. 383), владелец: «может всё-таки эту кнопку сделаем чуть светлее, теплее? В тон других кнопок? А то кажется,
   // что она выбивается из основного стиля»; из показанного — «тон, как у соседних плиток, но контуры и текстура как есть
   // сейчас». На его снимке фон карточки был почти чёрным (rgb 16,12,5), у плиток «График смен» и «Книга отзывов» — тёплое
@@ -150,8 +162,19 @@ export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, on
         <span aria-hidden="true" data-now-shadow="" style={{ position: "absolute", inset: 0, borderRadius: 16, boxShadow: P.shadow, pointerEvents: "none" }} />
         <div style={{ position: "relative", display: "flex", borderRadius: 16, background: (P.rim ? notchRim(P.rim) + ", " : "") + P.bg,
           boxShadow: P.rim ? "inset 0 0 0 1px " + P.rim : undefined, WebkitMask: CUT, mask: CUT, minHeight: 124 }}>
+          {cov ? (<>
+            {/* фото — правая половина билета, слева тает в карту; приглушено и чуть в сепию, чтобы золото текста осталось главным */}
+            <span aria-hidden="true" data-now-cover={cov.own ? "own" : "lesson"} style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "47%", pointerEvents: "none", opacity: 0.9,
+              filter: "brightness(0.62) saturate(0.9) sepia(0.18)", WebkitMaskImage: COVER_FADE, maskImage: COVER_FADE }}>
+              <CoverPhoto src={covSrc} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 50%", display: "block" }} />
+            </span>
+            {/* под линзой и словом — затемнение: кнопка читается на любом фото */}
+            {covSrc ? <span aria-hidden="true" data-now-scrim="" className={covLate.current ? "sa-fadein" : undefined} style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: STUB + 26, pointerEvents: "none",
+              animationDuration: covLate.current ? ".5s" : undefined, background: "linear-gradient(180deg, rgba(16,12,5,0.10) 0%, rgba(16,12,5,0.38) 45%, rgba(16,12,5,0.70) 100%)",
+              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, #000 34%)", maskImage: "linear-gradient(90deg, transparent 0%, #000 34%)" }} /> : null}
+          </>) : null}
           <span aria-hidden="true" style={{ position: "absolute", inset: 5, borderRadius: 12, border: "1px solid " + P.frame, pointerEvents: "none" }} />
-          <div style={{ flex: 1, minWidth: 0, padding: "15px 12px 12px 18px", display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 0, padding: "15px 12px 12px 18px", display: "flex", flexDirection: "column" }}>
             <div data-now-tag="" style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 13, color: P.lead }}>{nowLead(ctx)}</div>
             <div data-now-title="" style={{ fontFamily: ACCENT_SERIF, fontSize: "clamp(18px, 4.9vw, 21px)", lineHeight: 1.15, marginTop: 2, ...(dark ? FOIL : { color: P.ink }) }}>{ctx.title}</div>
             {mood ? <div style={{ marginTop: 8 }}><Moods color={P.gold} sub={P.sub} onMood={onMood} stop={stop} /></div>
@@ -173,8 +196,9 @@ export function NowInvitation({ refEl, ctx, a11y, rows = [], foot = null, on, on
               </div>
             ) : null}
           </div>
-          <span aria-hidden="true" style={{ width: 0, borderLeft: P.perf, margin: "14px 0" }} />
-          <div data-now-stub="" style={{ width: STUB - 2, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: dark || lens ? 9 : 5, padding: "12px 4px" }}>
+          <span aria-hidden="true" style={{ position: "relative", width: 0, borderLeft: P.perf, margin: "14px 0" }} />
+          <div data-now-stub="" style={{ position: "relative", width: STUB - 2, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: dark || lens ? 9 : 5, padding: "12px 4px",
+            textShadow: covSrc ? "0 1px 4px rgba(0,0,0,0.85)" : undefined }}>
             {dark ? <Lens size={44} icon={icon} /> : lens ? <Lens size={44} icon={icon} light /> : <WaxSeal size={50} icon={icon} />}
             {ctx.cta ? <span data-now-cta="" style={dark ? { fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 14.5, color: P.ink, marginTop: 1 }
               : { fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: 16, color: P.ink, marginTop: 2 }}>{ctx.cta}</span> : null}

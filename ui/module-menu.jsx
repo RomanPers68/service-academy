@@ -169,7 +169,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
         <span className="tbm-lasse" aria-hidden="true" style={{ background: "linear-gradient(180deg,transparent 40%,rgba(0,0,0,.28))," + (deco || "#8B3020") }} />
         <CoverEditButton id={modCoverId(mod.id)} title={mod.title} profile={profile} a11y={a11y} list={photos} onPhoto={covered} passive={passive} style={{ top: 10, right: 46 }}
           note={cov && !cov.own ? "Сейчас на обложке фото урока «" + cov.lesson + "». Своё фото раздела встанет вместо него." : ""}
-          also="Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел. В виде «Для чтения» билет без фото." />
+          also="Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел." />
         {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={46} /></span> : null}
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}

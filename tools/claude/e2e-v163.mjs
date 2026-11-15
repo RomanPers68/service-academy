@@ -11,7 +11,7 @@
 //   ROLE    — строка роли своей строкой во всю ширину: роль слева, «по должности · сменить» справа, в одну строку на 440,
 //             393 и 320 px; подпись роли целиком или никак; «хорошей смены» справа; «Для чтения»;
 //   TICKET  — билет «Начать» у Романа: фото раздела в правой половине, текст и кнопка поверх и читаются; нажатие
-//             открывает урок; «Для чтения» и билет о смене — без фото; 320 px;
+//             открывает урок; билет о смене — без фото; «Для чтения» — с v164 тоже с фото (e2e-v164.mjs); 320 px;
 //   FIRST   — первый запуск на медленной сети: билет сначала прежний, фото проявляется (а не встаёт разом), целое —
 //             поверх превью; раздел трека и «Справочник» сразу после запуска: подложка, проявление, никакого мерцания;
 //   AHEAD   — человек постоял на главной: фото готовы; раздел трека, соседние страницы, «Справочник» и главы открываются
@@ -250,7 +250,9 @@ if (want("TICKET")) {
     ok("TICKET: у Романа билет зовёт в урок трека, на нём фото раздела (обложка — фото урока раздела)", !!t && t.mode === "track" && t.cover === "lesson" && !!t.img && t.img.nw > 0, t && [t.mode, t.cover, t.img]);
     if (t && t.img) {
       ok("TICKET: фото занимает правую часть билета (47%), от верха до низа, заполняет её без искажений", Math.abs(t.cov.w - t.card.w * 0.47) < 1.5 && Math.abs(t.cov.r - t.card.r) < 1 && Math.abs(t.cov.t - t.card.t) < 1 && Math.abs(t.cov.b - t.card.b) < 1 && t.img.fit === "cover" && Math.abs(t.img.r.w - t.cov.w) < 1, [t.cov, t.card]);
-      ok("TICKET: слева фото тает в карту (маска), приглушено и не ловит нажатия", /linear-gradient/.test(t.mask) && /brightness\(0\.62\)/.test(t.filter) && t.op === "0.9" && t.pe === "none", [t.mask.slice(0, 60), t.filter, t.op, t.pe]);
+      // v164 (Доп. 489): фото приглушает слой поверх него (data-now-tone), а не CSS filter — подробно в e2e-v164.mjs (DARK)
+      const tone = await page.evaluate(() => { const x = document.querySelector("[data-now-tone]"); return x ? getComputedStyle(x).backgroundColor : ""; });
+      ok("TICKET: слева фото тает в карту (маска), приглушено и не ловит нажатия", /linear-gradient/.test(t.mask) && t.filter === "none" && tone === "rgba(26, 18, 7, 0.42)" && t.pe === "none", [t.mask.slice(0, 60), t.filter, tone, t.pe]);
       ok("TICKET: под кнопкой затемнение, слово «Начать» или «Дальше» и название на месте", t.scrim === 1 && /^(Начать|Дальше)$/.test(t.cta) && t.title.length > 5 && t.ctaR.l >= t.cov.l && t.titleR.l < t.cov.l, [t.scrim, t.cta, t.title]);
       ok("TICKET: фото стоит одним слоем (превью заменено целым)", t.layers === 1 && t.img.st === "set" && t.img.nw >= 590, [t.layers, t.img]);
       // название читается: под его началом фото почти прозрачно (маска), яркость фона под текстом близка к билету без фото
@@ -275,10 +277,10 @@ if (want("TICKET")) {
     await shot(page, "ticket-" + width);
     ok(`TICKET ${width}: без ошибок страницы`, !errs.length, errs.join(" | "));
     await ctx.close(); }
-  // «Для чтения»: бумажный билет без фото
+  // «Для чтения»: в v163 бумажный билет был без фото; v164 (Доп. 489) — фото и там (подробно — e2e-v164.mjs, LIGHT)
   { const { ctx, page, errs } = await roman({ width: 393, height: 852, wait: 2200, light: true }); await top(page);
     const t = await ticket(page);
-    ok("TICKET light: в «Для чтения» билет бумажный, без фото и без затемнения", !!t && t.mode === "track" && t.hero === "paper" && t.cover === null && t.scrim === 0 && t.shadow === "none", t && [t.hero, t.cover, t.scrim, t.shadow]);
+    ok("TICKET light: в «Для чтения» билет бумажный и тоже с фото раздела (v164)", !!t && t.mode === "track" && t.hero === "paper" && t.cover === "lesson" && !!t.img && t.img.nw > 0 && t.scrim === 1, t && [t.hero, t.cover, t.img, t.scrim]);
     await shot(page, "ticket-light");
     ok("TICKET light: без ошибок страницы", !errs.length, errs.join(" | "));
     await ctx.close(); }
@@ -503,7 +505,7 @@ if (want("EDIT")) {
   ok("EDIT: у руководителя на разделе фотоаппарат, на обложке сейчас фото", !!cur && !!cur.id && !!cur.cover && cur.nw > 0, cur);
   await page.locator(".tbp-cur [data-cover-edit]").click(); await page.waitForTimeout(700);
   const sheet = await page.evaluate(() => { const d = document.querySelector("[data-lp-sheet] [role=dialog]"), a = document.querySelector("[data-lp-also]"); return d ? { label: d.getAttribute("aria-label"), also: a ? a.textContent.trim() : "" } : null; });
-  ok("EDIT: лист «Фото раздела» говорит, что фото видно и в билете «Начать» на главной", !!sheet && sheet.label === "Фото раздела" && sheet.also === "Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел. В виде «Для чтения» билет без фото.", sheet);
+  ok("EDIT: лист «Фото раздела» говорит, что фото видно и в билете «Начать» на главной", !!sheet && sheet.label === "Фото раздела" && sheet.also === "Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел.", sheet);   // v164: без оговорки о «Для чтения»
   await shot(page, "edit-sheet");
   await takeLog(page);
   await page.locator("[data-lp-pick] input[type=file]").setInputFiles({ name: "hall.jpg", mimeType: "image/jpeg", buffer: PHOTO });

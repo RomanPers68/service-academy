@@ -462,7 +462,8 @@ describe("v163 · 4: фото проявляется, а не выскакива
     expect(set).not.toContain("data-photo-wait");
   });
   it("лист «Фото раздела» у раздела трека говорит, что фото видно и в билете на главной", () => {
-    const also = "Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел. В виде «Для чтения» билет без фото.";
+    // v164 (Доп. 489): фото в билете теперь и в «Для чтения» — оговорка про бумажный билет из подсказки ушла
+    const also = "Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел.";
     expect(rd("ui/module-menu.jsx")).toContain('also="' + also + '"');
     const sheet = noDoc(() => R(h(LessonPhotoSheet, { kind: "section", lessonId: "mod:m1", lessonTitle: "Первый", profile: PEOPLE[0], a11y: false, list, onClose() {}, also })));
     expect(sheet).toContain('<div data-lp-also=""');
@@ -483,9 +484,10 @@ describe("v163 · 2: фото раздела в билете «Начать» (u
   it("фото в памяти — билет открывается уже с ним: правая половина, приглушено, слева тает; под кнопкой затемнение", async () => {
     await lessonPhotoUrl("mod:m1", ver("mod:m1"), true);
     const html = ticket({ coverMod: M1 });
-    expect(html).toContain('<span aria-hidden="true" data-now-cover="own" style="position:absolute;top:0;bottom:0;right:0;width:47%;pointer-events:none;opacity:0.9;filter:brightness(0.62) saturate(0.9) sepia(0.18);');
+    // v164 (Доп. 489): фото приглушает слой поверх него (data-now-tone), а не CSS filter — см. tests/v164
+    expect(html).toContain('<span aria-hidden="true" data-now-cover="own" style="position:absolute;top:0;bottom:0;right:0;width:47%;pointer-events:none;');
     expect(html).toContain('<img src="' + url(SEED["mod:m1|"].full) + '" alt="" draggable="false" data-photo-layer="set" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block"/>');
-    expect(html).toMatch(/mask-image:linear-gradient\(90deg, transparent 0%, rgba\(0,0,0,0\.22\) 22%, rgba\(0,0,0,0\.78\) 46%, #000 60%\)/);
+    expect(html).toMatch(/mask-image:linear-gradient\(90deg, transparent 0%, rgba\(0,0,0,0\.20\) 22%, rgba\(0,0,0,0\.70\) 46%, rgba\(0,0,0,0\.90\) 60%\)/);
     expect(count(html, "data-now-scrim")).toBe(1);
     expect(html).not.toContain("sa-fadein");                       // фото было сразу — затемнение тоже стоит сразу
     expect(html).toMatch(/data-now-stub="" style="[^"]*text-shadow:0 1px 4px rgba\(0,0,0,0\.85\)/);
@@ -510,18 +512,20 @@ describe("v163 · 2: фото раздела в билете «Начать» (u
     expect(src).toContain("const covLate = React.useRef(!covSrc);");
     expect(src).toContain('className={covLate.current ? "sa-fadein" : undefined}');
   });
-  it("«Для чтения», билет о смене, раздел без фото, сервер без этапа 51 — билет в точности прежний", async () => {
+  it("билет о смене, раздел без фото, сервер без этапа 51 — билет в точности прежний (в обеих темах)", async () => {
     await lessonPhotoUrl("mod:m1", ver("mod:m1"), true);
     const plain = ticket();
     expect(plain).not.toContain("data-now-cover");
     expect(ticket({ coverMod: { id: "без-фото", lessons: [{ id: "нет" }] } })).toBe(plain);
     expect(ticket({ coverMod: null })).toBe(plain);
     const paper = ticket({ a11y: true });
-    expect(ticket({ a11y: true, coverMod: M1 })).toBe(paper);        // «Для чтения»: бумажный билет без фото
+    // v164 (Доп. 489): в «Для чтения» билет с фото раздела тоже (было: бумажный билет без фото) — см. tests/v164
+    expect(ticket({ a11y: true, coverMod: M1 })).toContain('data-now-cover="own"');
+    expect(ticket({ a11y: true, coverMod: { id: "без-фото", lessons: [] } })).toBe(paper);
     expect(paper).not.toContain("data-now-cover");
     const rs = rd("ui/screens-roleselect.jsx");
     expect(rs).toContain("onReplyDone={() => setMoodReply(null)} coverMod={!ctx && next ? next.mod : null} />");   // билет о смене (ctx) — без фото
-    expect(rd("ui/now-hero.jsx")).toContain("const cov = coverMod && dark ? moduleCover(photos, coverMod) : null;");
+    expect(rd("ui/now-hero.jsx")).toContain("const cov = coverMod ? moduleCover(photos, coverMod) : null;");
     // сервер без этапа 51
     for (const k of Object.keys(store0)) delete store0[k];
     setPhotoBackend(memoryBackend()); _resetLessonPhotos(); calls = [];
@@ -529,6 +533,7 @@ describe("v163 · 2: фото раздела в билете «Начать» (u
     login("ta");
     expect(await loadLessonPhotos()).toBe("missing");
     expect(ticket({ coverMod: M1 })).toBe(plain);
+    expect(ticket({ a11y: true, coverMod: M1 })).toBe(paper);
     expect(aheadPlan("missing", { first: M1, mods: [M1] })).toEqual({ full: [], thumbs: [] });
   });
 });

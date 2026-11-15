@@ -19,6 +19,7 @@ import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158:
 import { MyFaceLayer, FaceViewer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
+import { isServiceGod } from "./lib/service-god";   // v166 (Доп. 491): «Бог сервиса» — все тесты шести треков на 100%
 import { buildFeed, quizTitles, withQuizTitles, scoreDate } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
 import { MODULES_INDEX } from "./data/modules-index";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
@@ -1963,10 +1964,10 @@ function ServiceAcademy() {
 
     const achieved = [];
 
-    // 🌟 Бог сервиса — все 4 роли пройдены + все тесты 100%
-    const allRolesDone = ROLE_ORDER.every(r => newCompletedRoles.has(r));
-    const allPerfect = myScores.length > 0 && myScores.every(s => s.pct === 100);
-    if (allRolesDone && allPerfect) achieved.push({ icon:"laurel", label:"Бог сервиса", key:"god" });
+    // «Бог сервиса» — все тесты всех шести треков на 100% (v166, Доп. 491: правило одно на поздравление и на венок в
+    // рейтинге — lib/service-god.js; раньше — четыре ступени зала и «все имеющиеся результаты по 100%»). Результаты по
+    // своим урокам, удалённым в редакторе, не считаем: пересдать их нечем.
+    if (isServiceGod(myScores.filter(s => !deadCms(s.quiz_id)))) achieved.push({ icon:"laurel", label:"Бог сервиса", key:"god" });
 
     // 🏆 Мастер практики — больше всех звёздочек
     if (myStars > 0 && myStars === maxStars && Object.keys(newPracticeStars).length > 1) {
@@ -2003,7 +2004,7 @@ function ServiceAcademy() {
         setTimeout(() => setNewAchievement(null), i * 3500 + 3000);
       });
     }
-  }, [profile]);
+  }, [profile, deadCms]);
 
   const completeLesson = useCallback(() => {
     try {

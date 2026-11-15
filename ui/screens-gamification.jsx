@@ -5,6 +5,7 @@
 
 import { inkOf } from "../lib/tracks";
 import { pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
+import { isServiceGod } from "../lib/service-god";   // v166 (Доп. 491)
 import { quizTitles, scoreDate } from "../lib/team-feed";   // v165: название теста и дата результата в карточке сотрудника
 import { dayLabel } from "../lib/dates";
 import { POSITION_LABEL, POS_LABELS } from "../data/positions";
@@ -357,10 +358,9 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
     const key = `${player.name}|${player.surname}`;
     const playerScores = allScores.filter(s => s.name === player.name && s.surname === player.surname);
 
-    // «Бог сервиса» — все 4 роли + все тесты 100% (v75: лавровый венок вместо значка-искры)
-    const rolesWithScores = new Set(playerScores.map(s => s.role));
-    const allRolesCovered = ["seasonal","core","manager","service_manager"].every(r => rolesWithScores.has(r));
-    if (allRolesCovered && playerScores.length > 0 && playerScores.every(s => s.pct === 100)) {
+    // «Бог сервиса» — все тесты всех шести треков на 100% (v166, Доп. 491: lib/service-god.js — то же правило, что у
+    // поздравления в App; раньше хватало по одному результату в каждой из четырёх ступеней зала). v75: лавровый венок.
+    if (isServiceGod(playerScores)) {
       achievements.push({ icon:"laurel", label:"Бог сервиса" });
     }
 

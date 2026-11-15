@@ -19,7 +19,7 @@ import {
   showFace, hideFace, faceNow, faceSubscribe, faceName, faceSubline,
   cropInit, cropMove, cropZoom, cropRect, cropSide, squarePhoto, CROP_MAX_ZOOM,
 } from "../lib/staff-photo";
-import { CamIcon } from "./lesson-photo";
+import { CamIcon, useSoftImg } from "./lesson-photo";   // v165 (Доп. 490): лицо, приехавшее позже, проявляется
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const isOwner = (p) => !!p && (!!p.is_admin || String(p.position || "") === "senior");
@@ -66,6 +66,9 @@ export function FaceImg({ who, style, zoom = false, quiet = false, sub = "" }) {
   const list = useStaffPhotos();
   const e = staffPhotoOf(list, who);
   const src = useStaffThumb(e);
+  // v165 (Доп. 490): фото приехало, когда кружок с буквами уже показан, — проявляется поверх букв (как обложки разделов),
+  // а не встаёт рывком. Фото известно сразу (обычный случай: превью подняты в память при запуске) — стоит как стояло.
+  const soft = useSoftImg(e ? src : null);
   if (!e || !src) return null;
   if (zoom) {
     const open = (ev) => { ev.stopPropagation(); ev.preventDefault(); vibrate("light"); showFace(e, sub); };
@@ -74,12 +77,12 @@ export function FaceImg({ who, style, zoom = false, quiet = false, sub = "" }) {
       WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", ...style };
     // quiet — кружок стоит там, где он скрыт от чтения с экрана (aria-hidden) или внутри карточки-кнопки: там фото
     // открывается касанием, но кнопкой не объявляется и в обход по клавишам не встаёт (имя человека читается рядом)
-    if (quiet) return <img data-face={e.id} data-face-zoom="quiet" src={src} alt="" draggable={false} onClick={open} style={st} />;
+    if (quiet) return <img data-face={e.id} data-face-zoom="quiet" src={src} alt="" draggable={false} onClick={open} {...soft.props(st)} />;
     return <img data-face={e.id} data-face-zoom="" src={src} alt="" draggable={false} role="button" tabIndex={0} aria-label={"Фото крупно: " + faceName(e)}
-      onClick={open} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") open(ev); }} style={st} />;
+      onClick={open} onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") open(ev); }} {...soft.props(st)} />;
   }
   return <img data-face={e.id} src={src} alt="" draggable={false}
-    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit", display: "block", pointerEvents: "none", ...style }} />;
+    {...soft.props({ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit", display: "block", pointerEvents: "none", ...style })} />;
 }
 
 /** v160: запись списка фото для человека, когда превью уже готово (иначе null), — для своих кнопок «открыть крупно» */

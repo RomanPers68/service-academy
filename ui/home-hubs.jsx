@@ -14,6 +14,7 @@ import { matesLine, matesNote } from "../lib/shift-mates";   // v157 (Доп. 48
 import { Medal, tierText } from "./mastery-card";               // v157: полка значков на вкладке «Я»
 import { FaceImg, useStaffPhotos } from "./staff-photo";   // v158 (Доп. 483): фото сотрудника поверх букв в кружке; v162: лица в «Жизни команды»
 import { initialsOfPerson } from "../lib/staff-photo";   // v162 (Доп. 487): буквы в кружке ленты «Жизнь команды»
+import { pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { labelStyle } from "./tokens";   // v73 (Доп. 386): подписи — курсивом, без моноширинного капса   // v52 (Доп. 365): компьютер — «сегодня» слева, разделы плитками справа
 
 // ── Дополнение 133: вкладки «Смена», «Команда», «Я» ───────────────────────────
@@ -492,7 +493,7 @@ export function MeHero({ a11y, done = 0, total = 0, streak, roleLabel, onOpen })
       </svg>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={tagStyle(a11y)}>{roleLabel || "Твой трек"}</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} уроков</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, marginTop: 4 }}>{done} из {total} {pluralGen(total, "урока", "уроков")}</div>
         <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>
           {days > 0 ? <><span className="tbv" style={{ color: gold, display: "inline-flex", alignItems: "center", gap: 3, verticalAlign: "-2px" }}><Candle s={15} lit={streak.last === ymd(new Date())} />{days} {dword}</span> подряд</> : "Начни серию: заходи каждый день"}
         </div>

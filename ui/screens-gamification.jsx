@@ -4,6 +4,8 @@
 // публичный API остался в ui/screens.jsx — App.jsx не менялся.
 
 import { inkOf } from "../lib/tracks";
+import { pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
+import { quizTitles, scoreDate } from "../lib/team-feed";   // v165: название теста и дата результата в карточке сотрудника
 import { dayLabel } from "../lib/dates";
 import { POSITION_LABEL, POS_LABELS } from "../data/positions";
 import { ROLE_LABEL, ROLE_COLOR } from "../data/roles";
@@ -233,7 +235,7 @@ export function WeekStar({ weekly, T }) {
         </div>
         <div style={{ textAlign:"right", flexShrink:0 }}>
           <div style={{ color:gold, fontFamily:ACCENT_SERIF, fontSize:21, fontWeight:"bold", lineHeight:1 }}>{top.pts}</div>
-          <div style={{ color:T.modSub.color, fontSize:10.5 }}>очков</div>
+          <div style={{ color:T.modSub.color, fontSize:10.5 }}>{kk(top.pts, "очко", "очка", "очков")}</div>
         </div>
       </div>
       {rest.length > 0 && (
@@ -639,7 +641,8 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
               </div>
               <div style={{ textAlign:"center" }}>
                 <div style={{ color:GOLD, fontSize:21, fontWeight:"bold" }}>{selected?.total}</div>
-                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 13 }}>тестов</div>
+                {/* v165 (Доп. 490): слово при числе — «1 тест», «2 теста», «5 тестов» (было «тестов» на все числа) */}
+                <div data-lb-tests="" style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 13 }}>{kk(selected?.total, "тест", "теста", "тестов")}</div>
               </div>
               <div style={{ textAlign:"center" }}>
                 <div style={{ color:roleColor[selected?.role]||GOLD, fontSize:14, fontWeight:"bold", marginTop:4 }}>{selected?.position !== "senior" ? (roleLabel[selected?.role]||"") : ""}</div>
@@ -650,10 +653,11 @@ export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceSta
           {detail.map((d, i) => (
             <div key={i} style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", alignItems:"flex-start", gap:6 }}>
               <div style={{ display:"flex", justifyContent:"space-between", width:"100%" }}>
-                <div style={{ ...T.lessTitle, fontSize:12.5, flex:1, marginRight:8 }}>{d.quizTitle}</div>
+                {/* v165 (Доп. 490): название теста подставляет App (withQuizTitles); урок удалён или он из чужого заведения — «Тест» */}
+                <div data-score-title="" style={{ ...T.lessTitle, fontSize:12.5, flex:1, marginRight:8 }}>{d.quizTitle || "Тест"}</div>
                 <div style={{ color: d.pct>=80?"#81C784":d.pct>=50?GOLD:"#E07878", fontWeight:"bold", flexShrink:0 }}>{d.pct}%</div>
               </div>
-              <div style={{ color:T.modSub.color, fontSize:12.5 }}>{d.score} из {d.total} верно · {d.date}</div>
+              <div style={{ color:T.modSub.color, fontSize:12.5 }}>{d.score} из {d.total} верно{d.date ? " · " + d.date : ""}</div>
               <div style={{ width:"100%", height:3, background:T.progBar.background, borderRadius:3, overflow:"hidden" }}>
                 <div style={{ width:`${d.pct}%`, height:"100%", background: d.pct>=80?"#81C784":d.pct>=50?GOLD:"#E07878" }} />
               </div>
@@ -811,7 +815,9 @@ export function DailyScreen({ a11y, T, profile, completed, quizDone, role, modul
   );
 }
 
-export function PlayerDetailScreen({ player, T, onBack }) {
+// v165 (Доп. 490): названия тестов штатной программы — для карточки сотрудника, когда App не передал свои (titleOf)
+const PROGRAM_TITLE = quizTitles(MODULES_INDEX);
+export function PlayerDetailScreen({ player, T, onBack, titleOf = null }) {
   useAllModules();   // v79: тесты и уроки сотрудника раскладываются по ролям всей программы
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [pdHint, pdHintDone] = useHintOnce("playerDetail");
@@ -949,7 +955,9 @@ export function PlayerDetailScreen({ player, T, onBack }) {
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               const color = roleColors[roleId] || GOLD;
               return (
-                <div key={roleId} style={{ ...T.modCard, flexDirection:"column", gap:8, marginBottom:8, padding:"12px 14px" }}>
+                // v165 (Доп. 490): карточка роли стоит во всю ширину. Её строки жались к середине: название и процент слипались
+                // («Хостес0%»), а полоска прогресса выходила нулевой ширины и была не видна.
+                <div key={roleId} data-player-role={roleId} style={{ ...T.modCard, flexDirection:"column", alignItems:"stretch", gap:8, marginBottom:8, padding:"12px 14px" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <div style={{ color: T.modTitle?.color || CREAM, fontSize:14, fontWeight:"bold" }}>{roleName}</div>
                     <div style={{ color, fontSize:14, fontWeight:"bold" }}>{pct}%</div>
@@ -957,7 +965,7 @@ export function PlayerDetailScreen({ player, T, onBack }) {
                   <div style={{ height:6, background:"rgba(255,255,255,0.08)", borderRadius:3 }}>
                     <div style={{ height:6, width:`${pct}%`, background:color, borderRadius:3, transition:"width 0.5s ease" }} />
                   </div>
-                  <div style={{ color: T.modSub?.color || BROWN, fontSize:12.5 }}>{count} из {total} уроков</div>
+                  <div style={{ color: T.modSub?.color || BROWN, fontSize:12.5 }}>{count} из {total} {pluralGen(total, "урока", "уроков")}</div>
                 </div>
               );
             })}
@@ -966,15 +974,19 @@ export function PlayerDetailScreen({ player, T, onBack }) {
             {scores.length > 0 && (
               <>
                 <div style={{ ...labelStyle(13.5), color: T.secTitle?.color || "#7A654C", margin:"16px 0 10px" }}>Последние тесты</div>
+                {/* v165 (Доп. 490): у теста видно название — раньше заголовком стояла роль («Новичок» у каждой строки), и какой
+                    тест сдан, руководитель не видел; роль ушла в подпись. Название — из программы и своих уроков (titleOf из App),
+                    негде взять — «Тест». Карточка во всю ширину: её строки жались к середине, полоска выходила нулевой ширины. */}
                 {uniqueScores.sort((a,b) => (b.score/b.total) - (a.score/a.total)).map((s, i) => {
                   const pct = Math.round(s.score / s.total * 100);
+                  const title = (s.quiz_id && ((typeof titleOf === "function" && titleOf(s.quiz_id)) || PROGRAM_TITLE(s.quiz_id))) || "Тест";
                   return (
-                    <div key={i} style={{ ...T.modCard, marginBottom:8, padding:"10px 14px", flexDirection:"column", gap:4 }}>
+                    <div key={i} data-player-test="" style={{ ...T.modCard, marginBottom:8, padding:"10px 14px", flexDirection:"column", alignItems:"stretch", gap:4 }}>
                       <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <div style={{ color: T.modTitle?.color || CREAM, fontSize:12.5, fontWeight:"bold", flex:1 }}>{s.role ? roleNames[s.role] || s.role : ""}</div>
+                        <div data-score-title="" style={{ color: T.modTitle?.color || CREAM, fontSize:12.5, fontWeight:"bold", flex:1, marginRight:8 }}>{title}</div>
                         <div style={{ color: pct === 100 ? GREEN : pct >= 70 ? GOLD : RED, fontSize:14, fontWeight:"bold" }}>{pct}%</div>
                       </div>
-                      <div style={{ color: T.modSub?.color || BROWN, fontSize:11 }}>{s.score} из {s.total} верно · {new Date(s.updated_at).toLocaleDateString("ru-RU")}</div>
+                      <div style={{ color: T.modSub?.color || BROWN, fontSize:11 }}>{[s.role ? roleNames[s.role] || s.role : "", `${s.score} из ${s.total} верно`, scoreDate(s.updated_at)].filter(Boolean).join(" · ")}</div>
                       <div style={{ height:3, background:"rgba(255,255,255,0.08)", borderRadius:3, marginTop:2 }}>
                         <div style={{ height:3, width:`${pct}%`, background: pct === 100 ? GREEN : pct >= 70 ? GOLD : RED, borderRadius:3 }} />
                       </div>
@@ -1358,7 +1370,7 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
                 <div style={{ height:4, background:T.progBar.background, borderRadius:3, overflow:"hidden" }}>
                   <div style={{ width:`${displayPct}%`, height:"100%", background:roleColor[r], borderRadius:3, transition:"width 0.5s" }} />
                 </div>
-                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15, marginTop:4 }}>{totalDone} из {lessonTotal} · {roleScores.length} {kk(roleScores.length, "тест", "теста", "тестов")} пройдено</div>
+                <div style={{ color:T.modSub.color, fontSize: T.modSub?.fontSize || 15, marginTop:4 }}>{totalDone} из {lessonTotal} · {roleScores.length} {kk(roleScores.length, "тест пройден", "теста пройдено", "тестов пройдено")}</div>
               </div>
             </div>
           );
@@ -1368,13 +1380,15 @@ export function StatsScreen({ T, a11y, profile, scores, completedRoles, complete
         {myScores.length > 0 && (
           <>
             <div style={{ ...labelStyle(13), color:T.modSub.color, margin:"12px 0 8px" }}>Последние тесты</div>
+            {/* v165 (Доп. 490): у теста видно название (с сервера оно не приходит — App подставляет из программы), а карточка
+                стоит во всю ширину: раньше её строки жались к середине, и полоска результата выходила нулевой ширины */}
             {[...myScores].reverse().slice(0, 5).map((s, i) => (
-              <div key={i} style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", gap:4 }}>
+              <div key={i} data-last-test="" style={{ ...T.lessCard, marginBottom:8, flexDirection:"column", alignItems:"stretch", gap:4 }}>
                 <div style={{ display:"flex", justifyContent:"space-between" }}>
-                  <div style={{ ...T.lessTitle, fontSize:12.5, flex:1, marginRight:8 }}>{s.quizTitle}</div>
+                  <div data-score-title="" style={{ ...T.lessTitle, fontSize:12.5, flex:1, marginRight:8 }}>{s.quizTitle || "Тест"}</div>
                   <div style={{ color: s.pct>=80?"#81C784":s.pct>=50?GOLD:"#E07878", fontWeight:"bold" }}>{s.pct}%</div>
                 </div>
-                <div style={{ color:T.modSub.color, fontSize:11 }}>{roleLabel[s.role]} · {s.date}</div>
+                <div style={{ color:T.modSub.color, fontSize:11 }}>{[roleLabel[s.role], s.date].filter(Boolean).join(" · ")}</div>
                 <div style={{ height:3, background:T.progBar.background, borderRadius:3, overflow:"hidden" }}>
                   <div style={{ width:`${s.pct}%`, height:"100%", background: s.pct>=80?"#81C784":s.pct>=50?GOLD:"#E07878" }} />
                 </div>

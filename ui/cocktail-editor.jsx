@@ -10,6 +10,7 @@ import { COCKTAILS } from "../data/cocktails";
 import { CocktailArt } from "./cocktail-art";
 import { frostOf } from "./home-hubs";
 import { rememberSharedMenu } from "../lib/reference-context";
+import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 
 // ── Дополнение 240: редактор коктейлей бара ────────────────────────────────────
 // Свой коктейль — полноправный: витраж, оборот, «Собрать руками» с точной последовательностью,
@@ -129,7 +130,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{form.name || "Без названия"}</div>
               <div style={{ fontSize: 12.5, color: sub, marginTop: 2 }}>{form.method} · {GLASS_RU[form.glass]} · {ICES.find(x => x[0] === form.ice)?.[1]}</div>
-              <div style={{ ...labelStyle(13.5), color: gold, marginTop: 8 }}>Сборка · {seq.length ? `${seq.length} шагов` : "допиши состав и шаги"}</div>
+              <div style={{ ...labelStyle(13.5), color: gold, marginTop: 8 }}>Сборка · {seq.length ? `${seq.length} ${plural(seq.length, "шаг", "шага", "шагов")}` : "допиши состав и шаги"}</div>
               {seq.length > 0 && <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.5, maxHeight: 74, overflow: "hidden" }}>{seq.map((s, i) => `${i + 1}. ${s.label}`).join(" · ")}</div>}
             </div>
           </div>
@@ -269,7 +270,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
             <div style={{ width: 52, flexShrink: 0 }} onClick={() => onOpenCard && onOpenCard(r.id)}><CocktailArt c={c} w={52} light={a11y} /></div>
             <div style={{ flex: 1, minWidth: 0 }} onClick={() => setForm(toForm(r))} {...onActivate(() => setForm(toForm(r)))}>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
-              <div style={{ fontSize: 12.5, color: r.stop ? "#E07878" : sub }}>{r.stop ? "В стопе · " : ""}{c.method} · {GLASS_RU[c.glass]} · {c.ing.length} ингр. · сборка {seq} шагов{r.inCard === false ? " · не в карте" : ""}</div>
+              <div style={{ fontSize: 12.5, color: r.stop ? "#E07878" : sub }}>{r.stop ? "В стопе · " : ""}{c.method} · {GLASS_RU[c.glass]} · {c.ing.length} ингр. · сборка {seq} {plural(seq, "шаг", "шага", "шагов")}{r.inCard === false ? " · не в карте" : ""}</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
               <span onClick={() => toggleStop(r.id)} style={pill(!!r.stop, { padding: "4px 9px", fontSize: 11, color: r.stop ? "#E07878" : sub, borderColor: r.stop ? "#E0787866" : gold + "33" })}>{r.stop ? "В стопе" : "В стоп"}</span>

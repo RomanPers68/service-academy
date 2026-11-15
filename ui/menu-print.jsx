@@ -4,6 +4,7 @@ import { GOLD, labelStyle } from "./tokens";
 import { allergenLabel } from "../lib/deck-extras";
 import { groupByCat } from "../lib/menu-sections";
 import { dishNutrition, nutritionLine } from "../lib/nutrition";
+import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): лист открывали — совета «Меню для печати» больше нет
 
 // ── Дополнение 261: меню для печати ────────────────────────────────────────────
@@ -62,7 +63,7 @@ export function MenuPrint({ T, a11y, dishes = [], restaurant = "", onBack }) {
         x.fillStyle = C.bg; x.fillRect(0, 0, W, H);
         x.fillStyle = C.text; x.font = "600 26px Georgia, serif"; x.fillText(`${restaurant} · меню`, PAD, 42);
         x.fillStyle = C.dim; x.font = "14px Georgia, serif";
-        x.fillText(`${new Date().toLocaleDateString("ru-RU")} · ${list.length} блюд · страница ${pi + 1} из ${pages.length}`, PAD, 70);
+        x.fillText(`${new Date().toLocaleDateString("ru-RU")} · ${list.length} ${plural(list.length, "блюдо", "блюда", "блюд")} · страница ${pi + 1} из ${pages.length}`, PAD, 70);
         x.strokeStyle = C.line; x.lineWidth = 1; x.beginPath(); x.moveTo(PAD, 88); x.lineTo(W - PAD, 88); x.stroke();
         let y = HEAD, lastCat = null;
         for (const r of part) {

@@ -31,6 +31,7 @@ import { isoDay, boardRows, boardNeeds, boardWho, mineWho, needProgress, boardEr
 import { mateName, rowsSurnameFirst } from "../lib/shift-mates";   // v158 (Доп. 483): буквы в кружках — имя, потом фамилия
 import { FaceImg, FaceChip } from "./staff-photo";   // v158: фото сотрудника поверх букв (этап 52); v160: по нажатию — крупно
 import { staffPhotoListNow, staffPhotoOf } from "../lib/staff-photo";
+import { plural, pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе — «21 смена», «31 день»
 import { cheersDue, yearsWord } from "../lib/team-warm";   // v108 (Доп. 421): годовщины в «Сегодня»
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
@@ -1369,7 +1370,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       const en = effNorm(s);
       if ((R.normMode || "floor") === "cap" && h > s.norm) out.push(`${s.name}: переработка ${h - s.norm} ч`);
       if ((R.normMode || "floor") === "floor" && h < en) out.push(`${s.name}: недоработка ${en - h} ч до нормы${en !== s.norm ? " (с учётом отпуска)" : ""}`);
-      if (mx > R.maxRow) out.push(`${s.name}: ${mx} смен подряд при пределе ${R.maxRow}`);
+      if (mx > R.maxRow) out.push(`${s.name}: ${mx} ${plural(mx, "смена", "смены", "смен")} подряд при пределе ${R.maxRow}`);
     });
     return [...new Set(out)];
   };
@@ -1428,7 +1429,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     if (!(x.rate > 0)) return null;
     const mode = x.rateMode || "hour";
     if (mode === "month") return { sum: x.rate, note: "оклад / мес" };
-    if (mode === "shift") { const n = shiftsOf(x); return { sum: n * x.rate, note: `${n} смен × ${x.rate}` }; }
+    if (mode === "shift") { const n = shiftsOf(x); return { sum: n * x.rate, note: `${n} ${plural(n, "смена", "смены", "смен")} × ${x.rate}` }; }
     return { sum: hoursOf(x) * x.rate, note: `${hoursOf(x)} ч × ${x.rate}` };
   };
   const leadObj = d =>
@@ -1568,7 +1569,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                 return nx;
               });
               setDirty(true); setGenKey(k2 => k2 + 1); vibrate(n ? "success" : "light");
-              setMsg(n ? `Перенесено ${n} смен из прошлого месяца. Проверь и жми «Заполнить»` : "В прошлом месяце нечего переносить");
+              setMsg(n ? `${plural(n, "Перенесена", "Перенесено", "Перенесено")} ${n} ${plural(n, "смена", "смены", "смен")} из прошлого месяца. Проверь и жми «Заполнить»` : "В прошлом месяце нечего переносить");
               setTimeout(() => setMsg(""), 6000);
             };
 
@@ -1672,7 +1673,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         onClick={() => { const m = M - 1; if (m < 0) { setM(11); setY(Y - 1); } else setM(m); }}>‹</button>
       <div style={{ flex:1, textAlign:"center" }}>
         <div style={{ fontSize:16, color:P.text }}>{MONTHS_N[M]} {Y}</div>
-        <div style={{ ...labelStyle(11.5), color:P.sub }}>{DAYS} дней</div>
+        <div style={{ ...labelStyle(11.5), color:P.sub }}>{DAYS} {plural(DAYS, "день", "дня", "дней")}</div>
       </div>
       <button className="sa-btn" data-lens-btn="soft" style={{ ...ghost, flex:"0 0 auto", width:40, height:40, padding:0, fontSize:16 }}
         onClick={() => { const m = M + 1; if (m > 11) { setM(0); setY(Y + 1); } else setM(m); }}>›</button>
@@ -1716,7 +1717,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     x.fillStyle = C.text; x.font = "600 21px Georgia, serif";
     x.fillText("График смен", 16, 30);
     x.fillStyle = C.dim; x.font = "13px Georgia, serif";
-    x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} сотрудников`, 16, 54);
+    x.fillText(`${profile?.restaurant || ""} · ${MONTHS_N[M]} ${Y} · ${staff.length} ${plural(staff.length, "сотрудник", "сотрудника", "сотрудников")}`, 16, 54);
     // Вордмарк и служебная строка — правым краем: слева им тесно
     // (строка «составлен» упиралась в числа первых дней)
     // v73 (Доп. 386): знак — прописными с засечками, как на логотипе (был моноширинный)
@@ -1876,7 +1877,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
     const bd = breakdownOf(me);
     x.fillStyle = C.dim; x.font = "12.5px Georgia, serif";
     x.fillText(`${me.name} · ${MONTHS_N[M]} ${Y}`, 16, 50);
-    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} смен · ${bd.hours} из ${effNorm(me)} ч`, 16, 69);
+    x.fillText(`${profile?.restaurant || ""} · ${bd.shifts} ${plural(bd.shifts, "смена", "смены", "смен")} · ${bd.hours} из ${effNorm(me)} ч`, 16, 69);
     let y = HEAD;
     for (let d = 1; d <= DAYS; d++) {
       const k = plan[me.id]?.[d], sh = k && shiftOf(k), vac = onVac(me, d), w = dow(d), note = notes[d];
@@ -2403,13 +2404,13 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               return (
                 <div key={r.pos} style={{ display:"flex", alignItems:"baseline", gap:8, padding:"7px 0", borderBottom:`1px solid ${GOLD}22` }}>
                   <span style={{ flex:1, fontSize:14, color:P.text }}>{r.t}<span style={{ color:P.sub, fontSize:11 }}> · {r.n} чел</span></span>
-                  <span style={{ fontFamily:mono, fontSize:12.5, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} смен</span>
+                  <span style={{ fontFamily:mono, fontSize:12.5, color: lack > 0 ? P.warn : (a11y ? "#4A6B4A" : "#7FA05A") }}>{r.cap} из {r.need} {pluralGen(r.need, "смены", "смен")}</span>
                 </div>);
             })}
             {bad.length ? (
               <div style={{ marginTop:10, fontSize:12.5, color:P.warn, lineHeight:1.6 }}>
                 {bad.map(r => { const perShift = Math.max(1, Math.round((r.need - r.cap) / DAYS * 10) / 10);
-                  return <div key={r.pos}>{r.t}: не хватит примерно {r.need - r.cap} смен за месяц, это {perShift} человека в день. Либо ещё {Math.max(1, Math.ceil((r.need - r.cap) / Math.max(1, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7))))} чел в штат, либо меньше людей в смене.</div>; })}
+                  return <div key={r.pos}>{r.t}: не хватит примерно {r.need - r.cap} {pluralGen(r.need - r.cap, "смены", "смен")} за месяц, это {perShift} человека в день. Либо ещё {Math.max(1, Math.ceil((r.need - r.cap) / Math.max(1, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7))))} чел в штат, либо меньше людей в смене.</div>; })}
               </div>
             ) : <div style={{ marginTop:10, fontSize:12.5, color: a11y ? "#4A6B4A" : "#7FA05A" }}>Штата достаточно под текущую потребность ✓</div>}
           </Sec>
@@ -3992,7 +3993,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       cap += c;
     });
     if (cap < needTotal) warns.unshift(
-      `${t}: потребность ${needTotal} смен в месяц, а ёмкость штата ≈ ${cap}. Нехватка структурная. Уменьши потребность в настройках (межсезонье?) или добавь людей`
+      `${t}: потребность ${needTotal} ${plural(needTotal, "смена", "смены", "смен")} в месяц, а ёмкость штата ≈ ${cap}. Нехватка структурная. Уменьши потребность в настройках (межсезонье?) или добавь людей`
     );
   });
   // Нарушенные пожелания — отдельно от нарушений правил: это просьбы,
@@ -5514,7 +5515,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           const fund = staff.reduce((a, x) => a + (payOf(x)?.sum || 0), 0);
           return (
             <div style={{ ...labelStyle(11.5), color:P.sub, marginTop:8 }}>
-              итог месяца: {shifts} смен · {hours.toLocaleString("ru-RU")} ч
+              итог месяца: {shifts} {plural(shifts, "смена", "смены", "смен")} · {hours.toLocaleString("ru-RU")} ч
               {fund > 0 ? <> · фонд ≈ <span style={{ color:P.acc }}><NumUp v={fund} /> ₽</span></> : null}
               {prevStats ? (() => {
                 const ar = (d) => d > 0 ? "↑" + d.toLocaleString("ru-RU") : d < 0 ? "↓" + Math.abs(d).toLocaleString("ru-RU") : "=";
@@ -5562,7 +5563,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
                       <div style={{ fontFamily:mono, fontSize:11, color:P.sub }}>из {s.norm}</div>
                     </div>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:6 }}>
-                      <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{b.shifts} смен</span>
+                      <span style={{ fontFamily:mono, fontSize:11, color:P.sub }}>{b.shifts} {plural(b.shifts, "смена", "смены", "смен")}</span>
                       {Object.entries(b.by).map(([k, v]) => {
                         const c = colorOf(k);
                         return (
@@ -5598,7 +5599,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         let n = 0; for (let d = 1; d <= DAYS; d++) if (plan[s.id]?.[d]) n++; return a + n;
       }, 0);
       return (
-        <Sec no={<IcoClock size={13} />} title="Часы за месяц" hint={shifts + " смен · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
+        <Sec no={<IcoClock size={13} />} title="Часы за месяц" hint={shifts + " " + plural(shifts, "смена", "смены", "смен") + " · " + tot.toLocaleString("ru-RU") + " ч · норма месяца " + monthNorm(40) + " ч"}
           open={anOpen === "month"} onToggle={() => setAnOpen(anOpen === "month" ? null : "month")} P={P}>
           <div style={{ display:"flex", gap:10 }}>
             {[[shifts, "смен"], [tot, "часов"], [totNorm, "по нормам"]].map(([v, t], i) => (

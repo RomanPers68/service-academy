@@ -8,6 +8,7 @@ import { readBarcard, cachedShared, houseCocktails, isFullCocktail } from "../li
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
 import { GLASS_PATH, LIQ_BOX, ING_COLOR } from "./bar-lab";
 import { CocktailArt } from "./cocktail-art";
+import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 
 // ── Дополнение 244: карта бара для печати — спеки и сборка всех коктейлей карты, одним листом ─────
 // «Печать / PDF» — системный диалог печати (в браузере: сохранить как PDF). В Telegram печати может не быть —
@@ -82,7 +83,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
       x.fillStyle = C.bg; x.fillRect(0, 0, W, H);
       x.fillStyle = C.text; x.font = "600 26px Georgia, serif"; x.fillText(`${restaurant} · карта бара`, PAD, 42);
       x.fillStyle = C.dim; x.font = "14px Georgia, serif";
-      x.fillText(`${new Date().toLocaleDateString("ru-RU")} · ${list.length} позиций · страница ${pi + 1} из ${pages.length}`, PAD, 70);
+      x.fillText(`${new Date().toLocaleDateString("ru-RU")} · ${list.length} ${plural(list.length, "позиция", "позиции", "позиций")} · страница ${pi + 1} из ${pages.length}`, PAD, 70);
       x.strokeStyle = C.line; x.lineWidth = 1; x.beginPath(); x.moveTo(PAD, 88); x.lineTo(W - PAD, 88); x.stroke();
       let y = HEAD;
       for (const r of part) {
@@ -165,7 +166,7 @@ export function BarCardPrint({ T, a11y, profile, onBack }) {
       )}
       <div id="sa-print" style={{ padding: "0 16px 100px" }}>
         <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, margin: "8px 0 4px" }}>{restaurant} · карта бара</div>
-        <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>{new Date().toLocaleDateString("ru-RU")} · {list.length} позиций · спеки и порядок сборки как в Колоде</div>
+        <div style={{ fontSize: 11, color: sub, marginBottom: 10 }}>{new Date().toLocaleDateString("ru-RU")} · {list.length} {plural(list.length, "позиция", "позиции", "позиций")} · спеки и порядок сборки как в Колоде</div>
         {list.map(c => { const sc = buildScenario(c, COCKTAILS).steps; return (
           <div key={c.id} className="sa-pcard" style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: `1px solid ${gold}22` }}>
             <div style={{ width: 56, flexShrink: 0 }}><CocktailArt c={c} w={56} light={true} /></div>

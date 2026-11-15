@@ -45,6 +45,7 @@ import { mentorLine } from "../lib/newbie";   // v107 (Доп. 420): «Наст�
 import { thxChips, thxFromText, THX_MAX } from "../lib/team-warm";   // v108 (Доп. 421): «Спасибо коллеге»
 import { traceUse } from "../lib/tip-avail";
 import { noteStopCards } from "../lib/menu-stops";   // v159 (Доп. 484): стоп из чата — число на значке «Меню» на главной
+import { useSoftImg } from "./lesson-photo";   // v165 (Доп. 490): фото в сообщении проявляется, как обложки разделов
 import { FaceImg, FaceZoomHint, useStaffPhotos } from "./staff-photo";   // v160 (Доп. 485): фото коллеги в кружках чата, в карточке коллеги — крупно по нажатию
 import { isFemaleName } from "../lib/utils";
 
@@ -452,7 +453,9 @@ function PhotoImg({ api, id, local = null, alt = "" }) {
     loadPhoto(api, id, false).then((u) => { if (alive && u) setSrc(u); });
     return () => { alive = false; };
   }, [id, local]);   // eslint-disable-line react-hooks/exhaustive-deps
-  return src ? <img src={src} alt={alt} draggable={false} decoding="async" /> : <span className="ch-ph-wait" aria-hidden="true" />;
+  // v165 (Доп. 490): фото приехало, когда сообщение уже на экране, — проявляется, а не встаёт рывком
+  const soft = useSoftImg(src);
+  return src ? <img src={src} alt={alt} draggable={false} decoding="async" {...soft.props()} /> : <span className="ch-ph-wait" aria-hidden="true" />;
 }
 
 // ── экран ─────────────────────────────────────────────────────────────────────────

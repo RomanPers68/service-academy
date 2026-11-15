@@ -170,7 +170,7 @@ export function MonthRecap({ a11y, profile, data, month, shareUrl = "", onClose,
     <div className="mr-ey">Дни в деле</div>
     <div className="mr-big">{r.active}</div>
     <p className="mr-p">{plural(r.active, "день", "дня", "дней")} из {r.current ? r.upto : r.daysIn} {r.current ? "прошедших" : ""}{r.off ? " · выходных по графику: " + r.off + ", серия в них не гаснет" : ""}</p>
-    <div className="mr-cal" role="img" aria-label={"Календарь: в деле " + r.active + " дней"}>
+    <div className="mr-cal" role="img" aria-label={"Календарь: в деле " + r.active + " " + plural(r.active, "день", "дня", "дней")}>
       {DOW.map((d) => <span key={d} className="wk">{d}</span>)}
       {Array.from({ length: first }, (_, i) => <span key={"e" + i} className="wk" />)}
       {r.calendar.map((c) => <span key={c.d} className={c.state === 2 ? "on" : c.state === 1 ? "fr" : undefined}>{c.state === 2 ? <Candle s={16} lit /> : c.state === 1 ? <Ic n="snow" s={13} /> : null}<small>{c.d}</small></span>)}

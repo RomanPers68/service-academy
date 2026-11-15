@@ -238,7 +238,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{ color: gold, fontFamily: "Georgia, serif", fontSize: 19, fontWeight: "bold", lineHeight: 1 }}>{ptsOf(r)}</div>
-                      <div style={{ color: sub, fontSize: 10.5 }}>очков</div>
+                      <div style={{ color: sub, fontSize: 10.5 }}>{plural(ptsOf(r), "очко", "очка", "очков")}</div>
                     </div>
                   </div>
                 );

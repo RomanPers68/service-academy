@@ -301,6 +301,38 @@ function PhotoLayer({ k, src, soft, style, className, attrs, onShown }) {
     className={[className, st === "in" ? "sa-photo-in" : ""].filter(Boolean).join(" ") || undefined} style={st === "wait" ? { ...style, opacity: 0 } : style} />;
 }
 /**
+ * v165 (Доп. 490): то же проявление для своего <img> — лица в кружке, фото «О нас», фото в чате. Там фото до сих пор
+ * появлялось рывком: место под него уже показано (буквы в кружке, подложка), фото приехало — и встало разом.
+ * Фото известно при первом рисовании — ничего не делает: ни класса, ни стиля, разметка прежняя. Появилось позже —
+ * невидимо, пока телефон его не разобрал, потом проявляется (.sa-photo-in, как у обложек) и дальше просто стоит.
+ * Смена одного фото другим — без проявления, как было: пустого кадра между ними быть не должно.
+ * → { st, props }: st — "set" | "wait" | "in"; props(style) — что отдать в <img>: { ref, className, style }.
+ */
+export function useSoftImg(src) {
+  const [st, setSt] = React.useState("set");
+  const ref = React.useRef(null);
+  const seen = React.useRef(src || null);
+  useLayout(() => {
+    const s = src || null, was = seen.current;
+    seen.current = s;
+    if (was === s) return undefined;
+    const el = ref.current;
+    if (!s || was || !el) { setSt("set"); return undefined; }
+    let live = true, done = 0, fin = false;
+    setSt("wait");
+    const go = () => { if (!live || done) return; setSt("in"); done = setTimeout(() => { if (live) { fin = true; setSt("set"); } }, PHOTO_FADE + 60); };
+    const guard = setTimeout(go, 1200);   // телефон не сообщил, что фото готово, — показываем всё равно
+    try {
+      if (typeof el.decode === "function") el.decode().then(go, go);
+      else go();
+    } catch (e) { go(); }
+    // проявление оборвали (фото сменилось, эффект перезапущен) — следующий запуск начнёт его заново, а не оставит фото невидимым
+    return () => { live = false; clearTimeout(guard); clearTimeout(done); if (!fin) seen.current = was; };
+  }, [src]);
+  const props = (style) => ({ ref, className: st === "in" ? "sa-photo-in" : undefined, style: st === "wait" ? { ...(style || {}), opacity: 0 } : style });
+  return { st, props };
+}
+/**
  * Фото слоями. src — что показать сейчас; сменился — новый слой проявляется поверх прежнего, а прежний убирается, когда
  * новый проявился. Что известно при первом рисовании, стоит сразу, без проявления (экран открылся уже с фото).
  * wait — что лежит под фото, пока первый слой не проявился; style, className, attrs — каждому слою (<img>).

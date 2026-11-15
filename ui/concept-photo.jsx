@@ -5,6 +5,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { rpc, saToken } from "../api/supabase";
+import { useSoftImg, PhotoWait } from "./lesson-photo";   // v165 (Доп. 490): фото проявляется, как обложки разделов
 
 const PH = new Map();   // "id|1" (целиком) или "id|0" (превью) → data: URL или обещание
 
@@ -36,13 +37,17 @@ export function ConceptPhoto({ id, cap = "", onOpen, h = 150, a11y = false }) {
     return () => { live = false; };
   }, [id, src]);
   const line = a11y ? "rgba(139,106,48,0.25)" : "rgba(214,178,102,0.22)";
+  // v165 (Доп. 490): фото приехало уже на открытом экране — проявляется; пока едет, на его месте тихая подложка (раньше
+  // стояло слово «Фото…», а фото вставало рывком). Известно сразу (уже открывали) — стоит как стояло.
+  const soft = useSoftImg(src);
   return (
     <figure data-cn-photo={id} style={{ margin: 0, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
       <button type="button" className="sa-hit" aria-label={cap ? "Фото: " + cap : "Открыть фото"} onClick={() => onOpen && onOpen(id, cap)}
         style={{ padding: 0, border: "1px solid " + line, borderRadius: 12, overflow: "hidden", background: a11y ? "rgba(139,106,48,0.08)" : "rgba(255,250,238,0.04)",
-          height: h, cursor: "pointer", display: "block", width: "100%" }}>
-        {src ? <img src={src} alt={cap || ""} decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <span style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 12, color: a11y ? "#7A5A1E" : "rgba(232,215,180,0.6)" }}>{bad ? "Фото не загрузилось" : "Фото…"}</span>}
+          height: h, cursor: "pointer", display: "block", width: "100%", position: "relative" }}>
+        {src ? <img src={src} alt={cap || ""} decoding="async" {...soft.props({ width: "100%", height: "100%", objectFit: "cover", display: "block" })} />
+          : bad ? <span style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 12, color: a11y ? "#7A5A1E" : "rgba(232,215,180,0.6)" }}>Фото не загрузилось</span>
+          : <PhotoWait />}
       </button>
       {cap ? <figcaption style={{ fontSize: 12, lineHeight: 1.4, color: a11y ? "#5C4A2A" : "rgba(232,215,180,0.75)" }}>{cap}</figcaption> : null}
     </figure>);

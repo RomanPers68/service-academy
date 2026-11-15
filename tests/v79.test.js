@@ -122,7 +122,8 @@ describe("v79: загрузки на старте", () => {
     expect(gb).toContain("}, [completed, quizDone, examResults, readList, contentVer]);");
     expect(gb).toContain('(BM().bar || []).flatMap(m => (m.lessons || []).filter(l => l.type === "build")), [contentVer]);');
     const gm = code(rd("ui/screens-gamification.jsx"));
-    expect(gm).toMatch(/export function PlayerDetailScreen\(\{ player, T, onBack \}\) \{\s*useAllModules\(\);/);
+    // v165 (Доп. 490): у карточки сотрудника появился titleOf (названия тестов из App); useAllModules — по-прежнему первым
+    expect(gm).toMatch(/export function PlayerDetailScreen\(\{ player, T, onBack, titleOf = null \}\) \{\s*useAllModules\(\);/);
     expect(gm).toMatch(/export function StatsScreen\([^)]*\) \{\s*useAllModules\(\);/);
     expect(code(rd("ui/screens-admin.jsx"))).toContain("const contentVerA = useAllModules();");
   });

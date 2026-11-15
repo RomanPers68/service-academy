@@ -38,6 +38,7 @@ import { practiceRound } from "../lib/practice-round";
 import { tfLabel } from "../lib/practice-mistake";
 import { vibrate } from "../lib/utils";
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
+import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
 
 const DRAFT_KEY = "sa_cms_draft";
@@ -891,7 +892,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
             <div style={{ marginTop: 10, borderTop: `1px solid ${brd}`, paddingTop: 10 }}>
               <div style={{ color: txt, fontFamily: SERIF, fontSize: 14, fontWeight: "bold", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>{ai.result.dialogue.guest.name} · {moodFace(ai.result.dialogue.guest.mood, 16)}<span style={{ fontWeight: "normal", color: muted, fontSize: 12.5 }}>{MOOD_WORDS[(ai.result.dialogue.guest.mood || 3) - 1]}</span></div>
               <div style={{ color: muted, fontSize: 12.5, marginBottom: 8 }}>{ai.result.dialogue.guest.context}</div>
-              <div style={{ color: muted, fontSize: 12.5 }}>{ai.result.dialogue.steps.length} шагов · выборов: {ai.result.dialogue.steps.filter(x => x.type === "choice").length}</div>
+              <div style={{ color: muted, fontSize: 12.5 }}>{ai.result.dialogue.steps.length} {plural(ai.result.dialogue.steps.length, "шаг", "шага", "шагов")} · выборов: {ai.result.dialogue.steps.filter(x => x.type === "choice").length}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => { setDlg(withIds(ai.result.dialogue)); aiClose(); }} data-lens-btn="main" style={{ ...primary, width: "auto", padding: "9px 14px", fontSize: 13.5 }}>{draft.dialogue ? "Заменить диалог" : "Взять в урок"}</button>
                 <button onClick={aiClose} style={{ ...iconBtn, color: muted, fontFamily: SERIF, fontSize: 13 }}>Отмена</button>
@@ -1034,7 +1035,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
 
         {/* Живой диалог — после практики, перед тестом (правка 159) */}
         <div ref={secRef.dlg} />
-        <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} шагов` : "необязательно"}>Живой диалог</SectionLabel>
+        <SectionLabel a11y={a11y} right={draft.dialogue ? `${draft.dialogue.steps.length} ${plural(draft.dialogue.steps.length, "шаг", "шага", "шагов")}` : "необязательно"}>Живой диалог</SectionLabel>
         {!draft.dialogue ? (
           <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 10 }}>Разговор с гостем по шагам: гость говорит, сотрудник выбирает ответ, настроение гостя меняется. Как штатные «Живые диалоги».</div>
@@ -1108,7 +1109,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {/* Сборка — только в треке бара (правка 160) */}
         {draft.role === "bar" || draft.build ? (<>
         <div ref={secRef.bld} />
-        <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} шагов` : "необязательно"}>Сборка</SectionLabel>
+        <SectionLabel a11y={a11y} right={draft.build ? `${draft.build.steps.length} ${plural(draft.build.steps.length, "шаг", "шага", "шагов")}` : "необязательно"}>Сборка</SectionLabel>
         {!draft.build ? (
           <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш. Бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>

@@ -131,6 +131,17 @@ export const EVE_LIGHTS = [
 /** Режим огней по часу: "evening" (18–24), "night" (0–6) или null (день, «Для чтения») */
 export const eveLightsMode = (hour, light) => (light ? null : hour >= 18 ? "evening" : hour < 6 ? "night" : null);
 
+/**
+ * v165 (Доп. 490): имя в приветствии → [начало с пробелом на конце, последнее слово]. За последнее слово держится
+ * карандаш: вместе они не разрываются. «Анна» → ["", "Анна"]; «Анна Мария» → ["Анна ", "Мария"].
+ */
+export const GREET_GLUE = 16;   // слово длиннее не держим: ему и одному в строке тесно
+export function greetName(name) {
+  const s = String(name == null ? "" : name).trim().replace(/\s+/g, " ");
+  const cut = s.lastIndexOf(" ");
+  return cut > 0 ? [s.slice(0, cut + 1), s.slice(cut + 1)] : ["", s];
+}
+
 export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
   const isAdmin = !!profile?.is_admin;
   // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
@@ -351,11 +362,21 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           // скрыта), справа, под названием заведения, «по должности · сменить». Пожелание «хорошей смены» встаёт туда же,
           // когда трек выбран самим; нужны оба — пожелание остаётся под заведением, как было.
           const wishLow = wish && !roleAuto && !!roleObj;
+          // v165 (Доп. 490): карандаш держится за имя. На телефонах поуже (360–412 px) при имени подлиннее имя вставало в
+          // строку, а карандаш уже нет: он один уходил на вторую строку («Добрый вечер, Александра» и под ним карандаш).
+          // Теперь имя и карандаш не разрываются: не влезли рядом с приветствием — переносятся вместе. У имени из
+          // нескольких слов за карандаш держится последнее слово, остальные переносятся как обычный текст; слово длиннее
+          // GREET_GLUE букв не держим (ему и одному в строке тесно) — как было. Без карандаша разметка прежняя.
+          const [nameHead, nameTail] = greetName(profile.name);
+          const glue = !!onProfile && nameTail.length > 0 && nameTail.length <= GREET_GLUE;
+          const pencil = onProfile ? <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span> : null;
           return (<>
             <div style={{ padding: roleObj ? "2px 20px 0" : "2px 20px " + F.greetPb + "px", display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, position: eveLights ? "relative" : undefined }}>
               <div style={{ color: T.modTitle.color, fontSize:18, fontFamily:ACCENT_SERIF, minWidth:0 }}>
-                {hello}, <span style={{ color: goldText(a11y) }}>{profile.name}</span>
-                {onProfile && <span onClick={onProfile} {...onActivate(onProfile)} style={{ display:"inline-flex", verticalAlign:"-2px", marginLeft:8, cursor:"pointer", opacity:0.65 }}>{UI_SVG.pencil(T.modSub.color, 14)}</span>}
+                {hello}, {glue ? (<>
+                  {nameHead ? <span style={{ color: goldText(a11y) }}>{nameHead}</span> : null}
+                  <span data-greet-name="" style={{ whiteSpace:"nowrap" }}><span style={{ color: goldText(a11y) }}>{nameTail}</span>{pencil}</span>
+                </>) : (<><span style={{ color: goldText(a11y) }}>{profile.name}</span>{pencil}</>)}
               </div>
               <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
                 {/* v73 (Доп. 386): заведение — курсивом обычными буквами (был моноширинный капс); у пожелания — без ✦ */}

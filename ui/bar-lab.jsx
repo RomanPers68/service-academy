@@ -11,6 +11,7 @@ import { CocktailArt, VesselArt } from "./cocktail-art";
 import { report as reportAch } from "../lib/achievements";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
+import { pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { useViewport, useColumn } from "./viewport";   // v54 (Доп. 367): телефон лёжа — сцена слева, полки справа
 
 // ── Дополнение 208: «Сборка руками» — тренажёр, от которого не оторваться ─────
@@ -326,7 +327,7 @@ export function BarLabScreen({ T, a11y, profile, onBack, startId, onOpenDeck }) 
             </div>
           </>)}
           {tile({ ref: blRefMastery }, <>
-            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Мастерство · {stamps} из {cardTotal()} печатей{card ? " · своя карта" : ""}</div>
+            <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>Мастерство · {stamps} из {cardTotal()} {pluralGen(cardTotal(), "печати", "печатей")}{card ? " · своя карта" : ""}</div>
             {[1, 2, 3].map(t => { const total = cardTotal(t); const n = ALL.filter(c => tierOf(c) === t && inCard(c) && (mastery[c.id]?.level || 0) >= 2).length; return (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                 <div style={{ width: 84, fontSize: 12.5, color: text }}>{TIER_LABEL[t]}</div>

@@ -88,7 +88,8 @@ describe("v58: пустые экраны и дата (неудобства 7–9
     expect(rd("App.jsx")).toContain("onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate(\"roleSelect\"); }}");
   });
   it("«0 тестов», а не «0 теста»", () => {
-    expect(rd("ui/screens-gamification.jsx")).toContain('{roleScores.length} {kk(roleScores.length, "тест", "теста", "тестов")}');
+    // v165 (Доп. 490): слово «пройден» идёт вместе с числом — «1 тест пройден», «2 теста пройдено», «0 тестов пройдено»
+    expect(rd("ui/screens-gamification.jsx")).toContain('{roleScores.length} {kk(roleScores.length, "тест пройден", "теста пройдено", "тестов пройдено")}');
   });
   it("дата в «Заданиях дня» — «Воскресенье, 18 октября»; задания дня считаются от прежней даты (не перемешались)", async () => {
     const { dayLabelRu } = await import("../ui/screens-gamification.jsx");

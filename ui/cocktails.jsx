@@ -13,6 +13,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey } from "../data/hints";
 import { cocktailShareItem } from "../lib/share-items";   // v97 (Доп. 410): «Поделиться в чат»
 import { CHAT_SHARE_IC } from "./share-chat";
+import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 
 // Колода бармена: свайп — листать, тап — перевернуть (рецепт), режим
 // «Знаю?» — интервальное повторение (1·3·7·30 дней), как у банка ошибок.
@@ -327,7 +328,7 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
               {/* Доп. 230: порядок сборки — тот же, что проверяет «Сборка руками» (один источник, без расхождений) */}
               {!c.house ? (() => { const seq = buildScenario(c, COCKTAILS).steps; const glyph = (s) => s.kind === "glass" ? "▽" : s.kind === "ice" ? <Sign n="ice" s={11} sw={2.2} style={{ verticalAlign: "-1px" }} /> : s.kind === "tool" ? "▸" : s.kind === "garnish" ? <Sign n="garnish" s={12} sw={2.2} style={{ verticalAlign: "-1px" }} /> : "●"; return (
                 <div style={{ margin:"10px 0 8px" }}>
-                  <div style={{ ...labelStyle(13), color:GOLD, marginBottom:4 }}>Сборка · {seq.length} шагов · как в тренажёре</div>
+                  <div style={{ ...labelStyle(13), color:GOLD, marginBottom:4 }}>Сборка · {seq.length} {plural(seq.length, "шаг", "шага", "шагов")} · как в тренажёре</div>
                   <ol style={{ margin:0, paddingLeft:20, color:glass.tx }}>{seq.map((s, k) => <li key={k} style={{ paddingLeft:2 }}><span style={{ color:GOLD, marginRight:6, fontSize:11 }}>{glyph(s)}</span>{s.label}</li>)}</ol>
                 </div>); })() : <ol style={{ margin:"10px 0 8px", paddingLeft:20, color:glass.tx }}>{c.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>}
               <div style={{ color:glass.sub, fontStyle:"italic", fontSize:12.5 }}>{c.tip}</div>

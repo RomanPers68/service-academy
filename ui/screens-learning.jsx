@@ -1612,7 +1612,7 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
                 {[1,2,3].map(s => <span key={s} style={{ display:"inline-flex", opacity:s<=stars?1:0.22, transition:"opacity 0.3s" }}><Sign n={s<=stars ? "star" : "starLine"} s={46} /></span>)}
               </div>
               <div style={{ color:color, fontSize:36, fontWeight:"bold", marginBottom:4 }}>{practiceState.score}</div>
-              <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:4 }}>очков</div>
+              <div style={{ color:T.modSub.color, fontSize:12.5, marginBottom:4 }}>{plural3(practiceState.score, "очко", "очка", "очков")}</div>
               <div style={{ color:T.para.color, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 {stars===3 ? UI_SVG.trophy(GOLD, 16) : stars===2 ? ROLE_SVG.core(GOLD, 16) : UI_SVG.book(GOLD, 16)}
                 <span>{stars===3?"Раунд без потерь":stars===2?"Хороший раунд":"Есть что повторить"}</span>

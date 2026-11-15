@@ -19,7 +19,7 @@ import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158:
 import { MyFaceLayer, FaceViewer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
-import { buildFeed, quizTitles } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
+import { buildFeed, quizTitles, withQuizTitles, scoreDate } from "./lib/team-feed";   // v57 (Доп. 370): «Жизнь команды»
 import { MODULES_INDEX } from "./data/modules-index";
 import { nextLessonOf, TRACK_GROUPS } from "./ui/screens-roleselect";
 import { OfflineScreen } from "./ui/offline";
@@ -849,7 +849,7 @@ function ServiceAcademy() {
           restaurant: s.restaurant, role: s.role, position: s.position || "waiter",
           quizTitle: "", quiz_id: s.quiz_id, score: s.score, total: s.total,
           pct: s.total > 0 ? Math.round(s.score / s.total * 100) : 0,
-          date: new Date(s.updated_at).toLocaleDateString("ru-RU"),
+          date: scoreDate(s.updated_at),   // v165: даты нет — пусто, а не «Invalid Date»
           updated_at: s.updated_at,
         }));
         setScores(mapped);
@@ -2663,6 +2663,9 @@ function ServiceAcademy() {
     return () => { alive = false; };
   }, [screen, profile, storageLoaded, ukP]);
   const feedTitleOf = useMemo(() => quizTitles(MODULES_INDEX, customModules), [customModules]);
+  // v165 (Доп. 490): результатам с сервера (team_scores) название теста не приходит — подставляем из программы и своих
+  // уроков: в рейтинге (карточка коллеги) и в «Моей статистике» («Последние тесты») было не видно, какой тест сдан
+  const titledScores = useMemo(() => withQuizTitles(liveScores, feedTitleOf), [liveScores, feedTitleOf]);
   const teamFeed = useMemo(() => (screen === "teamHub" && profile ? buildFeed({ now: Date.now(), me: profile, restaurant: profile.restaurant,
     masters: masters && masters.status === "ok" ? masters.rows : [], scores, achievements: teamAch,
     thanks: brief && brief.quest && Array.isArray(brief.quest.thanks) ? brief.quest.thanks : [], titleOf: feedTitleOf }) : []),
@@ -3332,8 +3335,8 @@ function ServiceAcademy() {
         {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
         {screen === "profile" && <Suspense fallback={<ScreenLoader T={T} />}><AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} /></Suspense>}
-        {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} onBack={() => navigate("stats")} /></Suspense>}
-        {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={liveScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} titleOf={feedTitleOf} onBack={() => navigate("stats")} /></Suspense>}
+        {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={titledScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -3457,7 +3460,7 @@ function ServiceAcademy() {
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}
         {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={liveScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
+        {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={titledScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
         {screen === "seat" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SeatingScreen T={T} a11y={a11y} profile={profile}
           onMissing={() => setSeatOn(false)} onBack={() => goBack("shift")} /></Suspense></div>}
         {screen === "thanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ThanksScreen T={T} a11y={a11y} profile={profile} lead={isLead} startTab={thanksTab}

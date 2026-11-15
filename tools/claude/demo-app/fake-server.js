@@ -747,6 +747,48 @@ export function makeServer(opts) {
     return undefined;
   }
 
+  // ── v167 (Доп. 492, этап 53): редактор справочника — как supabase-stage53-ref-book.sql. opts.refBook: [{ id, kind, parent,
+  // title, sub, body, hidden, sort }] — правки примера (по умолчанию их нет: справочник штатный). Читают все, кто вошёл;
+  // пишет только владелец. Строка заменяется целиком; свой раздел («rs-…») убирают вместе с его главами. opts.noStage53 — этапа нет
+  const RB_ID = /^[A-Za-z0-9_.:-]{1,60}$/;
+  const rbRow = (it, at) => ({ id: String(it.id), kind: it.kind, parent: typeof it.parent === "string" ? it.parent : "", title: typeof it.title === "string" && it.title ? it.title : null,
+    sub: typeof it.sub === "string" && it.sub ? it.sub : null, body: typeof it.body === "string" ? it.body : null, hidden: it.hidden === true,
+    sort: typeof it.sort === "number" && Number.isFinite(it.sort) ? Math.round(it.sort) : null, at });
+  if (!S.rb) { const seed = (opts.refBook || []).filter((r) => r && RB_ID.test(String(r.id || "")) && (r.kind === "sec" || r.kind === "ch"));
+    S.rb = { ver: seed.length ? 1 : 0, items: Object.fromEntries(seed.map((r) => [String(r.id), rbRow(r, new Date(clock() - 864e5).toISOString())])) }; }
+  function refBook(fn, p, b) {
+    if (!p) return { ok: false, error: "auth" };
+    if (fn === "ref_book") {
+      const can = { edit: !!p.is_admin }, ver = String(S.rb.ver);
+      if (b.p_have != null && String(b.p_have) === ver) return { ok: true, ver, same: true, can };
+      const items = Object.values(S.rb.items).sort((x, y) => (x.kind < y.kind ? 1 : x.kind > y.kind ? -1 : 0) || (x.sort == null ? 1e9 : x.sort) - (y.sort == null ? 1e9 : y.sort) || (x.id < y.id ? -1 : 1));
+      return { ok: true, ver, items: clone(items), can };
+    }
+    if (fn === "ref_book_save") {
+      if (!p.is_admin) return { ok: false, error: "forbidden" };
+      const put = b.p_items == null ? [] : b.p_items, del = b.p_del == null ? [] : b.p_del;
+      if (!Array.isArray(put) || !Array.isArray(del)) return { ok: false, error: "bad_request" };
+      if (put.length > 400 || del.length > 400) return { ok: false, error: "too_many" };
+      const str = (v) => (v == null ? "" : String(v));
+      for (const it of put) {
+        const id = str(it && it.id);
+        if (!it || !RB_ID.test(id) || (it.kind !== "sec" && it.kind !== "ch") || !/^[A-Za-z0-9_.:-]{0,60}$/.test(str(it.parent)) || str(it.title).length > 160 || str(it.sub).length > 240
+          || str(it.body).length > 60000 || (it.sort != null && typeof it.sort !== "number") || (it.hidden != null && typeof it.hidden !== "boolean")) return { ok: false, error: "bad_item", id };
+      }
+      for (const d of del) if (typeof d !== "string" || !RB_ID.test(d)) return { ok: false, error: "bad_item" };
+      const after = new Set(Object.keys(S.rb.items).filter((id) => !del.includes(id)));
+      for (const it of put) after.add(String(it.id));
+      if (after.size > 800) return { ok: false, error: "too_many" };
+      for (const [id, r] of Object.entries(S.rb.items)) if (r.kind === "ch" && /^rs-/.test(r.parent) && del.includes(r.parent)) delete S.rb.items[id];
+      for (const d of del) delete S.rb.items[d];
+      const now = new Date(clock()).toISOString();
+      for (const it of put) S.rb.items[String(it.id)] = rbRow(it, now);
+      S.rb.ver += 1;
+      return { ok: true, ver: String(S.rb.ver) };
+    }
+    return undefined;
+  }
+
   // ── v158 (Доп. 483, этап 52): фото сотрудников — как supabase-stage52-staff-photos.sql. opts.staffPhotos: { номер сотрудника:
   // { full, thumb } } — нарисованные портреты демо; в состоянии (S.sp) — только поставленное и убранное в демо (null — убрано).
   // Своё ставит и убирает сам сотрудник; чужое — руководитель у своего заведения, сеть — у любого. opts.noStage52 — этапа нет
@@ -806,6 +848,7 @@ export function makeServer(opts) {
     if (/^concept_/.test(fn)) { if (opts.noStage49) return { code: "PGRST202", message: "Could not find the function" }; const r = concept(fn, p, b); if (r !== undefined) return r; }   // v139: этап 49
     if (/^lesson_photo/.test(fn)) { if (opts.noStage51) return { code: "PGRST202", message: "Could not find the function" }; const r = lessonPhotos(fn, p, b); if (r !== undefined) return r; }   // v146: этап 51
     if (/^staff_photo/.test(fn)) { if (opts.noStage52) return { code: "PGRST202", message: "Could not find the function" }; const r = staffPhotos(fn, p, b); if (r !== undefined) return r; }   // v158: этап 52
+    if (/^ref_book/.test(fn)) { if (opts.noStage53) return { code: "PGRST202", message: "Could not find the function" }; const r = refBook(fn, p, b); if (r !== undefined) return r; }   // v167: этап 53
     if (fn === "team_scores") return p ? { ok: true, rows: clone(opts.scores || []) } : { ok: false, error: "auth" };   // v158: opts.scores — сданные тесты команды (рейтинг и «Лидеры ресторана»)
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };
@@ -995,7 +1038,7 @@ export function makeServer(opts) {
         S.srv.code = hex32().slice(0, 12);
         return { ok: true, code: S.srv.code, app: S.srv.app };
       }
-      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds") && !(opts.noStage47 && f === "som_log_add") && !(opts.noStage48 && f === "push_subscribe")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
+      return { ok: true, fns: Array.isArray(b.p_fns) ? b.p_fns.filter((f) => !(opts.noStage46 && f === "_sa_chat_bar_kinds") && !(opts.noStage47 && f === "som_log_add") && !(opts.noStage48 && f === "push_subscribe") && !(opts.noStage53 && f === "ref_book")) : [], buckets: Array.isArray(b.p_buckets) ? b.p_buckets.slice() : [],
         cron: [{ name: "sa-nudges", on: true }, { name: "sa-qday", on: true }, { name: "sa-warmup-reminders", on: true }, { name: "sa-morning", on: true }, { name: "sa-newbie", on: true }], pg_net: true,
         tg: { bot: true, name: "akademiya_demo_bot", hook: !!S.srv.hook, last: S.srv.last, linked: 5, auth: Object.values(S.tgAuth).filter((a) => !a.off).length + 2 },
         app: S.srv.app, staff: PEOPLE.length, tz: "Europe/Moscow", now: now() };

@@ -20,6 +20,8 @@ import { barCounts, barLine } from "../lib/bar-card";   // v127: «Барная 
 import { useLessonPhotos, useCover, canEditCovers, CoverEditButton, LessonCover, CoverPhoto, PhotoWait } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов; v158: фото главы; v163: фото проявляется
 import { refCoverId, photoOf, REF_COVER_DEFAULT, lessonPhotoId } from "../lib/lesson-photo";
 import { chapterThumb } from "../lib/reference-thumb";   // v158 (Доп. 483): плитка главы в списке глав
+import { mergeRefBook, RB_FIXED, REF_PHOTO_RE, refPhotoIds, refreshRefBook } from "../lib/ref-book";   // v167 (Доп. 492): справочник с правками владельца
+import { useRefBook } from "./use-ref-book";
 
 const R = React;
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -32,10 +34,28 @@ function inlineBold(s, T) {
     ? <b key={i} style={{ color: T.bold.color, fontWeight: "bold" }}>{p}</b>
     : <R.Fragment key={i}>{p}</R.Fragment>);
 }
-function Content({ text, T, gold, dark }) {
-  return (<div>{text.split("\n").map((ln, i) => {
+// v167 (Доп. 492): своё фото в тексте главы — строка [photo:номер] или [photo:номер|подпись]. Фото ставит владелец в
+// редакторе справочника; хранится как фото урока на всю сеть (этап 51), поэтому едет и проявляется так же, как обложки.
+// Фото убрали или этапа 51 нет — в тексте ничего (в редакторе — пометка, чтобы строку было видно).
+function RefPhoto({ id, cap, gold, dark, note = false }) {
+  const photos = useLessonPhotos();
+  const own = photos && photos !== "missing" ? photoOf(photos, id) : null;
+  const { src, gone } = useCover(own ? id : null, own ? own.ver : "", true);
+  if (!own || gone) return note ? <div data-ref-photo-gone={id} style={{ margin: "8px 0 16px", padding: "10px 12px", borderRadius: 12, border: `1px dashed ${gold}66`, color: gold, fontSize: 12.5 }}>Фото не найдено: его убрали или оно ещё не загрузилось</div> : null;
+  const ratio = own.w > 0 && own.h > 0 ? Math.min(1.6, Math.max(0.42, own.h / own.w)) : 0.66;
+  return (<figure data-ref-own-photo={id} style={{ margin: "8px 0 16px" }}>
+    <div style={{ position: "relative", width: "100%", paddingTop: (ratio * 100).toFixed(2) + "%", borderRadius: 14, overflow: "hidden", background: dark ? "rgba(200,169,110,0.07)" : "rgba(139,106,48,0.07)" }}>
+      <CoverPhoto src={src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} wait={<PhotoWait />} />
+    </div>
+    {cap ? <figcaption style={{ marginTop: 6, textAlign: "center", fontSize: 12.5, fontStyle: "italic", color: dark ? "#C9BB9C" : "#5E4E34" }}>{cap}</figcaption> : null}
+  </figure>);
+}
+function Content({ text, T, gold, dark, notes = false }) {
+  return (<div>{String(text || "").split("\n").map((ln, i) => {
     const t = ln.trim();
     if (!t) return <div key={i} style={{ height: 10 }} />;
+    const ph = t.match(REF_PHOTO_RE);
+    if (ph) return <RefPhoto key={i} id={ph[1]} cap={(ph[2] || "").trim()} gold={gold} dark={dark} note={notes} />;
     const im = t.match(/^\[img:(.+)\]$/);
     if (im) {
       const keys = im[1].split(",").map(x => x.trim());
@@ -68,6 +88,8 @@ function Content({ text, T, gold, dark }) {
   })}</div>);
 }
 
+export { Content as RefContent };   // v167: предпросмотр главы в редакторе — тем же кодом, что у сотрудника
+
 function Head({ T, title, onBack }) {
   return (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>{title}</div></div>);
 }
@@ -94,7 +116,7 @@ function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
   const imgSt = (pos) => ({ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: pos, display: "block", filter: dark ? "brightness(.92) saturate(1.06)" : "none" });
   // снимок из приложения: телефон его уже держит — стоит сразу, иначе проявится, когда загрузится (CoverPhoto)
   const defImg = def ? <CoverPhoto key={def.src} src={def.src} style={imgSt(def.pos)} attrs={ownOn ? REF_UNDER : REF_PHOTO} /> : null;
-  const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist"].includes(art);
+  const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist", "book"].includes(art);
   const ink = dark ? "#F4ECD8" : "#2A1F0E", sub = dark ? "#C9BB9C" : "#5E4E34";
   const veil = dark
     ? "linear-gradient(90deg, rgba(24,18,10,.95) 0%, rgba(24,18,10,.84) 30%, rgba(24,18,10,.28) 62%, rgba(24,18,10,.04) 82%), linear-gradient(0deg, rgba(24,18,10,.6) 0%, rgba(24,18,10,0) 55%)"
@@ -124,18 +146,24 @@ function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
   );
 }
 
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant, profile = null }) {
+// v167 (Доп. 492): карточки хаба — из разделов справочника, как их видит команда: штатные («Сервировка», «Вина», «Кофе»)
+// с прежними подписями и рисунками, за ними свои разделы владельца. Название и число глав — уже с правками.
+// «Бар: истории и техника» и «Гид по приложению» карточками не были и не стали (открываются из колоды, подсказок и поиска).
+export const REF_OFF_HUB = ["bar", "app"];
+const HUB_PRESET = { serving: { icon: Ico.serving, tail: " с фото" }, wine: { icon: Ico.wine, tail: "" }, coffee: { icon: Ico.coffee, tail: " со схемами" } };
+const chaptersWord = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
+export function hubCards(sections) {
+  return (Array.isArray(sections) ? sections : []).filter(c => c && !REF_OFF_HUB.includes(c.id)).map(c => {
+    const n = (c.lessons || []).filter(l => l.type === "lesson").length, p = HUB_PRESET[c.id] || null;
+    return { id: c.id, t: c.title, s: `${n} ${chaptersWord(n)}${p ? p.tail : ""}`, icon: p ? p.icon : Ico.compass, on: true, ...(p ? null : { art: "book" }) };
+  });
+}
+const PEN_IC = (c, s = 15) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" /><path d="M14.5 6.5l3 3" /></svg>);
+
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant, profile = null, sections = [], onEdit = null }) {
   const photos = useLessonPhotos();   // v157: свои фото разделов — из того же списка, что фото уроков
-  const chapters = REFERENCE_COURSE.lessons.filter(l => l.type === "lesson").length;
-  const wineChapters = REFERENCE_WINE_COURSE.lessons.filter(l => l.type === "lesson").length;
-  const coffeeChapters = REFERENCE_COFFEE_COURSE.lessons.filter(l => l.type === "lesson").length;
-  const barChapters = REFERENCE_BAR_COURSE.lessons.filter(l => l.type === "lesson").length;
-  const appChapters = REFERENCE_APP_COURSE.lessons.filter(l => l.type === "lesson" && (!l.leaderOnly || isLeader)).length;
-  const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
   const cards = [
-    { id: "serving", t: "Сервировка", s: `${chapters} ${plural(chapters)} с фото`, icon: Ico.serving, on: true },
-    { id: "wine", t: "Вина", s: `${wineChapters} ${plural(wineChapters)}`, icon: Ico.wine, on: true },
-    { id: "coffee", t: "Кофе", s: `${coffeeChapters} ${plural(coffeeChapters)} со схемами`, icon: Ico.coffee, on: true },
+    ...hubCards(sections),
       // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
     // v127 (Доп. 440), владелец: «одну общую кнопку… «Барная карта», и закинуть туда вина, коктейли, крепыш» — вместо «Нашей
     // винной карты» (v120) и «Бар: коктейли»: внутри вкладки «Коктейли · Вина · Крепкое» (ui/bar-card.jsx)
@@ -147,6 +175,10 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
       <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onExit}>‹</button>
       <span style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>Раздел</span>
+      {/* v167 (Доп. 492): владельцу — вход в редактор справочника: разделы, главы, текст, фото */}
+      {onEdit ? <button type="button" data-ref-edit="" data-lens-btn="soft" onClick={() => onEdit(null)}
+        style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 36, padding: "0 14px", borderRadius: 999, border: `1px solid ${gold}66`,
+          background: dark ? "rgba(255,248,230,0.06)" : "rgba(255,255,255,0.55)", color: T.bold.color, fontFamily: SERIF, fontSize: 13.5, cursor: "pointer" }}>{PEN_IC(gold)}Редактор</button> : null}
     </div>
     <div style={{ padding: "6px 18px 8px" }}>
       <div style={{ fontFamily: SERIF, fontSize: 25, fontWeight: "bold", color: T.modTitle.color }}>Справочник</div>
@@ -176,9 +208,17 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
 // Владелец (14.11): «Давай все пять». Строка главы была номером и словом «Глава». Теперь слева плитка 52 px: своё фото
 // главы (ставит руководитель в самой главе — тот же лист и этап 51, что у фото уроков), а нет — первое фото из главы,
 // а нет — маленький рисунок из её иллюстраций, а нет — номер, как раньше. С картинкой номер уходит в подпись «Глава 3».
+// v167 (Доп. 492): у главы без своего фото плиткой встаёт первое фото из её текста (его ставит владелец в редакторе).
+const tilePhoto = (lesson, photos) => {
+  if (!photos || photos === "missing") return null;
+  const id = lessonPhotoId(lesson.id), own = id ? photoOf(photos, id) : null;
+  if (own) return { id, info: own };
+  for (const pid of refPhotoIds(lesson.content)) { const p = photoOf(photos, pid); if (p) return { id: pid, info: p }; }
+  return null;
+};
 function ChapterTile({ lesson, n, isQuiz, photos, T, gold, dark }) {
-  const id = lessonPhotoId(lesson.id);
-  const own = id && photos && photos !== "missing" ? photoOf(photos, id) : null;
+  const tp = isQuiz ? null : tilePhoto(lesson, photos);
+  const id = tp ? tp.id : null, own = tp ? tp.info : null;
   const { src: ownSrc, gone } = useCover(own ? id : null, own ? own.ver : "", false);
   const th = isQuiz ? null : chapterThumb(lesson, hasIllMini);
   const kind = isQuiz ? "quiz" : own && !gone ? "own" : th ? th.kind : "num";
@@ -199,10 +239,7 @@ function ChapterTile({ lesson, n, isQuiz, photos, T, gold, dark }) {
   );
 }
 /** Есть ли у главы картинка для плитки (тогда номер главы — в подписи) */
-const chapterHasPic = (lesson, photos) => {
-  const id = lessonPhotoId(lesson.id);
-  return !!(id && photos && photos !== "missing" && photoOf(photos, id)) || !!chapterThumb(lesson, hasIllMini);
-};
+const chapterHasPic = (lesson, photos) => !!tilePhoto(lesson, photos) || !!chapterThumb(lesson, hasIllMini);
 
 // ── Курс ──
 function Course({ T, gold, dark, course, openLesson, onBack }) {
@@ -232,7 +269,7 @@ function Course({ T, gold, dark, course, openLesson, onBack }) {
 }
 
 // ── Глава ──
-function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = null, profile = null, a11y = false }) {
+function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = null, profile = null, a11y = false, onEdit = null }) {
   const bodyRef = R.useRef(null);
   R.useEffect(() => {
     if (typeof document !== "undefined") { try { (document.getElementById("root") || window).scrollTo(0, 0); } catch (e) {} }
@@ -248,10 +285,14 @@ function Lesson({ T, gold, dark, lesson, onBack, onNext, nextLabel, onShare = nu
         <Content text={lesson.content} T={T} gold={gold} dark={dark} />
       </div>
       {/* v97 (Доп. 410): глава — в чат команды карточкой, коллега откроет её в своём Справочнике */}
-      {onShare ? <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
-        <button type="button" data-share-chat={"ref:" + lesson.id} onClick={onShare} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 999,
+      {onShare || onEdit ? <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+        {onShare ? <button type="button" data-share-chat={"ref:" + lesson.id} onClick={onShare} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 999,
           border: `1px solid ${gold}66`, background: dark ? "rgba(255,248,230,0.06)" : "rgba(255,255,255,0.55)", color: T.bold.color, fontFamily: SERIF, fontSize: 13, cursor: "pointer" }}>
-          {CHAT_SHARE_IC(gold)}Поделиться в чат</button>
+          {CHAT_SHARE_IC(gold)}Поделиться в чат</button> : null}
+        {/* v167 (Доп. 492): владельцу — сразу в редактор, на эту главу */}
+        {onEdit ? <button type="button" data-ref-edit-ch={lesson.id} onClick={onEdit} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 999,
+          border: `1px solid ${gold}66`, background: dark ? "rgba(255,248,230,0.06)" : "rgba(255,255,255,0.55)", color: T.bold.color, fontFamily: SERIF, fontSize: 13, cursor: "pointer" }}>
+          {PEN_IC(gold, 14)}Править главу</button> : null}
       </div> : null}
       {onNext
         ? <button style={{ ...T.doneBtn, background: gold }} onClick={onNext}>{nextLabel} →</button>
@@ -301,7 +342,9 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 
 // ── Корень раздела ──
 // v128: onBarItem(kind, id) — коктейль, вино или крепкое из поиска справочника: карточка в «Барной карте»
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null, onBarItem = null }) {
+// v167 (Доп. 492): onEdit(номер главы или null) — владельцу: редактор справочника (App.jsx даёт его только владельцу)
+// startInside — главу startLessonId открыли как изнутри (вернулись из редактора): «назад» ведёт к программе раздела
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null, onBarItem = null, onEdit = null, startInside = false }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
@@ -314,51 +357,61 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
   // пропом: объявление в чужом скоупе уронило Справочник на проде.
   const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
   const filterCourse = (c) => ({ ...c, lessons: c.lessons.filter(l => !l.leaderOnly || isLeader) });
-  const COURSES = { serving: REFERENCE_COURSE, wine: REFERENCE_WINE_COURSE, coffee: REFERENCE_COFFEE_COURSE, bar: REFERENCE_BAR_COURSE, app: filterCourse(REFERENCE_APP_COURSE) };
-  let startCourseId = "serving", startIdx = -1;
-  if (startLessonId) {
-    for (const cid of Object.keys(COURSES)) {
-      const i = COURSES[cid].lessons.findIndex(l => l.id === startLessonId);
-      if (i >= 0) { startCourseId = cid; startIdx = i; break; }
-    }
-  }
-  const [courseId, setCourseId] = R.useState(startCourseId);
-  const course = COURSES[courseId] || REFERENCE_COURSE;
-  const lessons = course.lessons;
-  const [view, setView] = R.useState(startIdx >= 0 ? "read" : "hub");
+  // v167 (Доп. 492): справочник — штатные разделы и правки владельца (lib/ref-book.js): свои разделы и главы, свои
+  // названия и текст, порядок, скрытое убрано. Правок нет или сервер без этапа 53 — те же штатные разделы, как раньше.
+  const book = useRefBook();
+  R.useEffect(() => { refreshRefBook(); }, []);   // справочник открыли — правки владельца не старше минуты
+  const base = R.useMemo(() => [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, filterCourse(REFERENCE_APP_COURSE)], [isLeader]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const sections = R.useMemo(() => mergeRefBook(base, book.items), [base, book.items]);
+  const COURSES = R.useMemo(() => Object.fromEntries(sections.map(c => [c.id, c])), [sections]);
+  const whereIs = (lid) => { for (const c of sections) { if (c.lessons.some(l => l.id === lid)) return c.id; } return null; };
+  // Глава на экране помнится по номеру, а не по месту в списке: владелец переставил главы или скрыл соседнюю, пока человек
+  // читает, — он остаётся на своей главе. Главу убрали совсем — показываем программу раздела, раздел убрали — хаб.
+  const startCourseId = startLessonId ? whereIs(startLessonId) : null;
+  const [courseId, setCourseId] = R.useState(startCourseId || "serving");
+  const [lid, setLid] = R.useState(startCourseId ? startLessonId : null);
+  const [entry, setEntry] = R.useState(startCourseId && !startInside ? startLessonId : null);   // глава, с которой вошли снаружи: «назад» с неё — туда, откуда пришли
+  const [view, setView] = R.useState(startCourseId ? "read" : "hub");
+  // Позвали на главу, которой на телефоне ещё нет (своя глава владельца из чата, а правки только едут) — откроем, когда приедут
+  const [wantStart, setWantStart] = R.useState(startLessonId && !startCourseId ? startLessonId : null);
+  R.useEffect(() => {
+    if (!wantStart) return;
+    const cid = whereIs(wantStart);
+    if (cid) { setCourseId(cid); setLid(wantStart); setEntry(startInside ? null : wantStart); setView("read"); setWantStart(null); }
+    else if (book.loaded || book.missing) setWantStart(null);
+  }, [wantStart, sections, book.loaded, book.missing]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const course = COURSES[courseId] || null;
+  const lessons = course ? course.lessons : [];
+  const idx = lid ? lessons.findIndex(l => l.id === lid) : -1;
+  const lesson = idx >= 0 ? lessons[idx] : null;
+  const shown = view === "read" && !lesson ? (course ? "course" : "hub") : view === "course" && !course ? "hub" : view;
   // v52: список курсов и программа курса — шире, карточками в две колонки; глава и фото-тест — прежней колонкой
   const wide = useWide();
-  useColumn(wide && (view === "hub" || view === "course") ? 900 : 0);
-  const [idx, setIdx] = R.useState(startIdx >= 0 ? startIdx : 0);
-  const lesson = lessons[idx];
-  const openCourse = (cid) => { setCourseId(cid); setIdx(0); setView("course"); };
-  const openLesson = (l) => { setIdx(lessons.indexOf(l)); setView("read"); };
-  const next = idx < lessons.length - 1 ? lessons[idx + 1] : null;
-  const goNext = next ? () => { setIdx(idx + 1); setView("read"); } : null;
+  useColumn(wide && (shown === "hub" || shown === "course") ? 900 : 0);
+  const openCourse = (cid) => { setCourseId(cid); setLid(null); setView("course"); };
+  const openLesson = (l) => { setLid(l.id); setView("read"); };
+  const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null;
+  const goNext = next ? () => { setLid(next.id); setView("read"); } : null;
   const nextLabel = next ? (next.type === "quiz" ? "К фото-вопросам" : "Следующая глава") : null;
 
-  const openById = (lid) => {
-    for (const cid of Object.keys(COURSES)) {
-      const i = COURSES[cid].lessons.findIndex(l => l.id === lid);
-      if (i >= 0) { setCourseId(cid); setIdx(i); setView("read"); return; }
-    }
-  };
-  if (view === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
+  const openById = (id) => { const cid = whereIs(id); if (cid) { setCourseId(cid); setLid(id); setView("read"); } };
+  if (shown === "search") return <SearchScreen T={T} a11y={a11y} modules={[]} profile={profile}
     scopeText={onBarItem ? "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию, меню ресторана и барной карте." : "Введи минимум 2 буквы. Ищу по главам справочника, глоссарию и меню ресторана."}
     onCocktail={onBarItem ? (id) => onBarItem("cocktail", id) : undefined} onDrink={onBarItem || undefined}
     onReferenceLesson={openById} onBack={() => setView("hub")} />;
-  if (view === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} profile={profile}
+  if (shown === "hub") return <Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} profile={profile} sections={sections} onEdit={onEdit}
     hintNode={rHint && rSteps.length ? (
       <HintBubble a11y={a11y} text={rSteps[rStep]} arrow="up"
         step={rStep + 1} total={rSteps.length}
         onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
         onClose={rHintDone} />
     ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onWines={onWines} restaurant={(profile && profile.restaurant) || ""} onSearch={() => setView("search")} onExit={onExit} />;
-  if (view === "course") return <Course T={T} gold={gold} dark={dark} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
-  const back = (startIdx >= 0 && idx === startIdx) ? onExit : () => setView("course");
+  if (shown === "course") return <Course T={T} gold={gold} dark={dark} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
+  const back = (entry && lid === entry) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;
   return <Lesson T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} profile={profile} a11y={a11y}
-    onShare={onShareChat ? () => onShareChat(refShareItem(lesson, course.title)) : null} />;
+    onShare={onShareChat ? () => onShareChat(refShareItem(lesson, course.title)) : null}
+    onEdit={onEdit && !RB_FIXED.includes(course.id) ? () => onEdit(lesson.id) : null} />;
 }
 
 // Задание дня из Справочника: одна глава/тест, меняется по дате (seed).

@@ -24,7 +24,7 @@ const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 
 // Фрагмент текста вокруг найденного слова — чтобы было видно контекст
 const snippet = (content, q) => {
-  const plain = (content || "").replace(/\[img:[^\]]*\]/g, "").replace(/[*#•☑]/g, "").replace(/\s+/g, " ").trim();
+  const plain = (content || "").replace(/\[(?:img|photo):[^\]]*\]/g, "").replace(/[*#•☑]/g, "").replace(/\s+/g, " ").trim();   // v167: и строки своих фото
   const i = norm(plain).indexOf(q);
   if (i < 0) return plain.slice(0, 90) + (plain.length > 90 ? "…" : "");
   const start = Math.max(0, i - 40);
@@ -37,6 +37,8 @@ const snippet = (content, q) => {
 const dishesFor = (restaurant) => menuDishesFromStorage(restaurant);
 
 const REF_COURSES = [REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE];
+import { mergeRefBook } from "../lib/ref-book";   // v167 (Доп. 492): поиск видит справочник с правками владельца
+import { useRefBook } from "./use-ref-book";
 
 export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onReferenceLesson, onBack, scopeText, onCocktail, onDish, onDrink, concept = null, onAbout = null }) {
   const [q, setQ] = React.useState("");
@@ -69,6 +71,9 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
   // v128: вина и крепкое карты команды (без архива)
   const drinks = React.useMemo(() => { const sh = sharedOf(profile?.restaurant || ""); return [WINE, SPIRIT].map((K) => [K, K.records(sh).filter((w) => !w.archived)]); }, [profile?.restaurant]);
 
+  // v167 (Доп. 492): главы справочника — с правками владельца, без скрытого
+  const refBook = useRefBook();
+  const refCourses = React.useMemo(() => mergeRefBook(REF_COURSES, refBook.items), [refBook.items]);
   const results = React.useMemo(() => {
     if (query.length < 2) return { terms: [], lessons: [], menu: [], ref: [], bar: [], drink: [], about: [] };
     const terms = GLOSSARY.filter(g => norm(g.term).includes(query) || norm(g.def).includes(query)).slice(0, 8);
@@ -86,7 +91,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
       .sort((a, b) => (norm(b.w.name).includes(query) ? 1 : 0) - (norm(a.w.name).includes(query) ? 1 : 0)).slice(0, 8);
 
     const ref = [];
-    for (const course of REF_COURSES) {
+    for (const course of refCourses) {
       const isLeader = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
       for (const l of (course.lessons || [])) {
         if (l.type !== "lesson") continue;
@@ -119,7 +124,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
     const own = new Set(["Вся сеть", concept && concept.venue ? concept.venue.name : ""]);
     const about = conceptSearchItems(concept, role && role.id).filter((it) => !own.has(it.where) && norm(it.title + " " + it.text + " " + it.where).includes(query)).slice(0, 6);
     return { terms, lessons, menu, ref, bar, drink, about };
-  }, [query, modules, dishes, cocktails, drinks, concept]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, modules, dishes, cocktails, drinks, concept, refCourses]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const nothing = query.length >= 2 && !results.terms.length && !results.lessons.length && !results.menu.length && !results.ref.length && !results.bar.length && !results.drink.length && !results.about.length;
   const toggle = (key) => { vibrate("light"); setOpenKey(openKey === key ? null : key); };

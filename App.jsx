@@ -16,6 +16,7 @@ import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner
 import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
 import { warmLessonPhotos, WARM_HOLD } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске; v163: заставка их ждёт
 import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158: фото сотрудников в кружках (этап 52)
+import { loadRefBook } from "./lib/ref-book";   // v167 (Доп. 492): правки справочника (этап 53) — один запрос за заход
 import { MyFaceLayer, FaceViewer } from "./ui/staff-photo";
 // v114: вкладки-хабы (HubScreen) — свой въезд карточек, без общего (см. обёртку экрана)
 const HUB_TABS = ["shift", "teamHub", "me"];
@@ -100,6 +101,7 @@ const BarCardPrint = lazy(() => retryImport(() => import("./ui/bar-card-print"))
 const GuideScreen = lazy(() => retryImport(() => import("./ui/guide")).then(m => ({ default: m.GuideScreen })));   // Доп. 280: 73 КБ мимо старта // Доп. 244
 // Лёгкий старт: редактор контента нужен только руководителю — грузится при открытии
 const ContentEditorScreen = lazy(() => retryImport(() => import("./ui/content-editor")).then(m => ({ default: m.ContentEditorScreen })));
+const RefEditorScreen = lazy(() => retryImport(() => import("./ui/ref-editor")).then(m => ({ default: m.RefEditorScreen })));   // v167 (Доп. 492): редактор справочника, только владелец
 
 // v79 (Доп. 392): бережная или медленная сеть (экономия трафика, 2G) — фоновые загрузки не делаем
 const thriftyNet = () => { try { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); } catch (e) { return false; } };
@@ -451,7 +453,7 @@ function ServiceAcademy() {
   const [navStack, setNavStack] = useState([]);
   const navRef = useRef([]);                 // источник истины для push/pop
   const screenRef = useRef("roleSelect");    // текущий экран для императивных переходов
-  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); if (screen !== "wineEditor") setWineEdit(null); if (screen !== "wines") { setWineStart(null); setBarTab(null); setBarNote(""); setBarSom(false); } if (!["cocktails", "barLab", "ckEditor"].includes(screen)) setBarBack(null); if (screen !== "schedule") setSchedToday(false); if (screen !== "guide") setGuideFocus(null); if (screen !== "cocktails") setCkReverse(false); }, [screen]);
+  useEffect(() => { screenRef.current = screen; if (screen !== "menuTrainer") { setMenuStart(null); setMenuMode(null); } if (screen !== "barLab") setLabStart(null); if (screen !== "ckEditor") setCkEdit(null); if (screen !== "wineEditor") setWineEdit(null); if (screen !== "wines") { setWineStart(null); setBarTab(null); setBarNote(""); setBarSom(false); } if (!["cocktails", "barLab", "ckEditor"].includes(screen)) setBarBack(null); if (screen !== "refEditor") setRefEdit(null); if (screen !== "reference" && screen !== "refEditor") setRefInside(false); if (screen !== "schedule") setSchedToday(false); if (screen !== "guide") setGuideFocus(null); if (screen !== "cocktails") setCkReverse(false); }, [screen]);
   const commitStack = useCallback((arr) => { navRef.current = arr; setNavStack(arr); }, []);
   const prevScreen = navStack.length ? navStack[navStack.length - 1] : null;
   const setPrevScreen = useCallback((x) => { if (x) commitStack([...navRef.current, x].slice(-24)); }, [commitStack]);
@@ -483,6 +485,10 @@ function ServiceAcademy() {
   const [activeModule, setActiveModule] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
   const [refStart, setRefStart] = useState(null);
+  // v167 (Доп. 492): редактор справочника. refEdit — глава, с которой владелец вошёл («Править главу»); refInside — вернуться
+  // из редактора в ту же главу так, будто её открыли из раздела: «назад» ведёт к программе раздела, а не прочь из справочника
+  const [refEdit, setRefEdit] = useState(null);
+  const [refInside, setRefInside] = useState(false);
   // Дополнение 123: Справочник и Колода бармена ходят друг в друга, а история
   // навигации хранит один шаг — назад из Справочника вело обратно в Колоду по
   // кругу. Запоминаем экран, с которого зашли в эту пару, и выходим на него.
@@ -1170,7 +1176,7 @@ function ServiceAcademy() {
   useEffect(() => { warmLessonPhotos(); warmStaffPhotos(); }, []);
   // список «у кого есть фото» — один запрос за заход, как только известно, кто вошёл (кружки в «Смене» и «Графике» уже с фото)
   const profId = profile ? profile.id || profile.name : null;
-  useEffect(() => { if (profId) loadStaffPhotos(); }, [profId]);
+  useEffect(() => { if (profId) { loadStaffPhotos(); loadRefBook(); } }, [profId]);   // v167: и правки справочника — «глава дня», чат и Наставник уже с ними
   const shiftText = shiftToday && !shiftToday.off ? (shiftToday.label || shiftLabel(shiftToday)) : "";
   // ── v30 (Доп. 313, 315, 316): свежесть тем, зачёт на опыт, золотая тема — на телефоне ──
   // v31: логика вынесена в хук lib/use-day.js (useFreshMarks)
@@ -3335,6 +3341,8 @@ function ServiceAcademy() {
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
+        {/* v167 (Доп. 492): редактор справочника — только владелец (сервер проверяет то же: этап 53) */}
+        {screen === "refEditor" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><RefEditorScreen T={T} a11y={a11y} profile={profile} startId={refEdit} onBack={() => goBack("reference")} /></Suspense>}
         {screen === "profile" && <Suspense fallback={<ScreenLoader T={T} />}><AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} /></Suspense>}
         {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} titleOf={feedTitleOf} onBack={() => navigate("stats")} /></Suspense>}
         {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={titledScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
@@ -3542,6 +3550,7 @@ function ServiceAcademy() {
             staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
             staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Кто где ошибается и что не прошёл, в Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
             staff && { key:"ce", group:"Управление", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
+            profile?.is_admin && { key:"re", group:"Управление", icon:"book", label:"Редактор справочника", sub:"Разделы, главы, текст и фото", onClick:() => { setRefEdit(null); navigate("refEditor"); } },   // v167 (Доп. 492)
             // v139 (Доп. 454): концепция и стандарты сети и заведения — правка (сотрудник видит «О нас» ниже, в «Команде»)
             staff && { key:"cn", group:"Управление", icon:"about", label:"Концепция и стандарты", sub:"О нас: сеть и заведение, дресс-код, сервировка, фото", onClick:() => { setAboutEdit(true); navigate("about"); } },
             staff && thanksOn && { key:"thanksTeam", group:"Команда", icon:"thanks", label:"Спасибо от гостей", sub:"Кого и за что благодарят гости по QR", onClick:() => openThanks("team") },   // v84
@@ -3668,7 +3677,8 @@ function ServiceAcademy() {
           modules={programAllMods} mentorName={mentorName} goal={{ steps: todaySteps, goal }} onAskMentor={askMentor} onActivity={logActivity}
           onContents={activeModule ? () => navigate("module") : undefined} onShareChat={chatShare} />}
         {screen === "roleComplete" && <Suspense fallback={<ScreenLoader T={T} />}><RoleCompleteScreen role={ROLES.find(r=>r.id===role)} nextRole={ROLE_ORDER.indexOf(role) >= 0 ? ROLES.find(r=>r.id===ROLE_ORDER[ROLE_ORDER.indexOf(role)+1]) : undefined} T={T} onNext={() => navigate("roleSelect")} onExam={CERTIFICATES_ENABLED ? () => openExam(role) : undefined} /></Suspense>}
-        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onWines={() => { setRefStart(null); navigate("wines"); }} onBarItem={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onShareChat={chatShare} /></Suspense>}
+        {screen === "reference" && <Suspense fallback={<ScreenLoader T={T} />}><ReferenceSection accent={toolColor("sp", a11y)} onBarLab={() => { setLabStart(null); navigate("barLab"); }} key={refStart || "hub"} T={T} a11y={a11y} profile={profile} startLessonId={refStart} onExit={() => goBack()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} onWines={() => { setRefStart(null); navigate("wines"); }} onBarItem={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onShareChat={chatShare}
+          startInside={refInside} onEdit={profile?.is_admin ? (id) => { setRefEdit(id || null); if (id) { setRefStart(id); setRefInside(true); } navigate("refEditor"); } : null} /></Suspense>}
         {screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BarCardScreen key={"bar" + barOpenN} onShareChat={chatShare} startSom={barSom} T={T} a11y={a11y} profile={profile} startTab={barTab || (barBack && barBack.tab)} startId={wineStart || (barBack && barBack.id)} note={barNote} onBack={() => goBack("reference")}
           onEdit={(kind, id) => { setWineKind(kind === "spirit" ? "spirit" : "wine"); setWineEdit(id || null); navigate("wineEditor"); }}
           onOpenCocktail={(id) => { setBarBack({ tab: "cocktail", id }); setRefStart(null); setCkStart(id); navigate("cocktails"); }} onBuildCocktail={(id) => { setBarBack({ tab: "cocktail", id }); setLabStart(id); navigate("barLab"); }}

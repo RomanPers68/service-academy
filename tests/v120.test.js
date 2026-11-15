@@ -166,10 +166,10 @@ describe("v120: экраны", () => {
   });
   it("«Справочник»: у «Нашей винной карты» — свой витраж, как у курсов (владелец: «выглядит как что-то инородное»)", () => {
     // v127: у «Барной карты» — витраж винной карты; v157 (Доп. 481): карточка раздела — обложка (RefCard), витраж — там, где нет фото
-    expect(R).toContain('const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist"].includes(art);');
+    expect(R).toContain('const art = c.art || c.id, hasArt = ["serving", "wine", "coffee", "cocktails", "winelist", "book"].includes(art);');   // v167: и книга у своих разделов владельца
     expect(R).toContain('<RefArt kind={art} light={!!a11y} size={76} />');
     const A = rd("ui/reference-art.jsx");
-    expect(A).toContain("const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList };");
+    expect(A).toContain("const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList, book: Book };");   // v167: и книга
     expect(A).toMatch(/function WineList\(\{ light \}\) \{[\s\S]*viewBox="0 0 120 120"/);
   });
   it("линза с самого начала: карточки, поля, плашки и стекло; «Справочник» — карточки, значок без витража — линза", () => {

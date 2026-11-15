@@ -202,7 +202,11 @@ describe("v163 · 3: что готовить заранее — aheadPlan (lib/l
   });
   it("разделы «Справочника» в плане — те же, что на его экране", () => {
     const hub = rd("ui/ReferenceSection.jsx");
-    const ids = [...hub.slice(hub.indexOf("const cards = ["), hub.indexOf("return (<div style={T.screen}>", hub.indexOf("const cards = ["))).matchAll(/\{ id: "([a-z]+)"/g)].map((m) => m[1]);
+    // v167 (Доп. 492): штатные карточки собираются из разделов справочника (HUB_PRESET), за ними «Барная карта» или «Бар: коктейли»
+    const at = hub.indexOf("const HUB_PRESET = {");
+    const preset = [...hub.slice(at, hub.indexOf("\n", at)).matchAll(/([a-z]+): \{ icon/g)].map((m) => m[1]);
+    expect(preset).toEqual(["serving", "wine", "coffee"]);
+    const ids = preset.concat([...hub.slice(hub.indexOf("const cards = ["), hub.indexOf("return (<div style={T.screen}>", hub.indexOf("const cards = ["))).matchAll(/\{ id: "([a-z]+)"/g)].map((m) => m[1]));
     expect(ids.length).toBeGreaterThanOrEqual(5);
     for (const id of ids) expect(REF_COVER_IDS, id).toContain(id);
     for (const id of Object.keys(REF_COVER_DEFAULT)) expect(REF_COVER_IDS).toContain(id);

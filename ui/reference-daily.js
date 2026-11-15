@@ -4,13 +4,16 @@
 // выбирается по индексу глав (data/reference-index.js, ~5 КБ вместо ~190 КБ).
 // Индекс собирает scripts/gen-reference-index.mjs, тест сверяет его со справочником.
 import { REFERENCE_DAILY_INDEX } from "../data/reference-index";
+import { mergeRefIndex, refItemsNow } from "../lib/ref-book";   // v167 (Доп. 492): справочник с правками владельца
 
 // Курс главы (правка 169) хранится в индексе: раньше у любой главы было «Курс: Сервировка»
 const withCourse = (l) => (l ? { ...l, course: l.course || "Справочник" } : l);
 
 export function referenceDailyTask(seed, mistakeTopics) {
   // Глава руководителей в «главу дня» не попадает: пул общий для всех ролей
-  const ls = REFERENCE_DAILY_INDEX.filter(l => !l.leaderOnly);
+  // v167: главы — с правками владельца (скрытое не предлагаем, названия свои, свои главы в общем кругу); правок нет — как было
+  const ls = mergeRefIndex(REFERENCE_DAILY_INDEX, refItemsNow()).filter(l => !l.leaderOnly);
+  if (!ls.length) return null;
   // Прицел в слабые места: если в банке ошибок есть темы — глава дня
   // выбирается по пересечению слов с их названиями (детерминированно).
   // Нет совпадений или ошибок — прежняя ротация по кругу.

@@ -43,8 +43,10 @@ describe("v78: Справочник — без меток «Курс» и «Ко
   });
   it("«6 глав с фото», «7 глав со схемами», «56 коктейлей: состав, метод и история»", async () => {
     const src = code(rd("ui/ReferenceSection.jsx"));
-    expect(src).toContain('s: `${chapters} ${plural(chapters)} с фото`');
-    expect(src).toContain('s: `${coffeeChapters} ${plural(coffeeChapters)} со схемами`');
+    // v167 (Доп. 492): карточки собираются из разделов справочника (hubCards), подписи штатных — прежние
+    expect(src).toContain('s: `${n} ${chaptersWord(n)}${p ? p.tail : ""}`');
+    expect(src).toContain('serving: { icon: Ico.serving, tail: " с фото" }');
+    expect(src).toContain('coffee: { icon: Ico.coffee, tail: " со схемами" }');
     expect(src).toContain(': состав, метод и история`');
     expect(src).not.toContain("состав, метод, история · основы бара");
     const { COCKTAILS } = await import("../data/cocktails.js");

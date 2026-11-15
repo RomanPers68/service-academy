@@ -29,7 +29,7 @@ describe("v52: экран сам просит ширину колонки", () =
   });
   it("какие экраны сколько просят (только на широком экране)", () => {
     expect(rd("ui/home-hubs.jsx")).toContain("useColumn(wide ? 1080 : 0);");
-    expect(rd("ui/ReferenceSection.jsx")).toContain("useColumn(wide && (view === \"hub\" || view === \"course\") ? 900 : 0);");
+    expect(rd("ui/ReferenceSection.jsx")).toContain("useColumn(wide && (shown === \"hub\" || shown === \"course\") ? 900 : 0);");   // v167: shown — то, что на экране (главу или раздел могли убрать)
     const sl = rd("ui/screens-learning.jsx");
     expect(sl).toContain("useColumn(wide ? 980 : 0);");          // глоссарий
     expect(sl).toContain("useColumn(wideScr ? 820 : 0);");       // трек

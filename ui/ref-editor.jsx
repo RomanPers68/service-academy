@@ -28,7 +28,7 @@ import { useRefBook } from "./use-ref-book";
 import { loadRefBook, refItemsNow, refPhotoIds, RB_LIMITS } from "../lib/ref-book";
 import {
   refEditTree, reorderPut, chapterRow, refRow, refRowEmpty, saveRefBook, refBookErr, newRefId, newRefPhotoId, applyRefEdit,
-  refFmt, refInsertLine, refPhotoLine, sameText,
+  refFmt, refInsertLine, refPhotoLine, sameText, REF_FRESH,
 } from "../lib/ref-edit";
 import { counted } from "../lib/ru-num";
 import { RefAssist } from "./ref-assist";   // v168 (Доп. 493): ассистент под текстом главы
@@ -56,7 +56,8 @@ export async function addHiddenChapter({ title, content, after = "", before = ""
   const secNow = refEditTree(RE_BASE, refItemsNow()).find((s) => s.id === toSec);
   if (!secNow) return { ok: false, error: "Раздела больше нет: его убрали, пока ассистент писал." };
   const id = newRefId("ch");
-  const row = { ...chapterRow({ id, own: true, sec: toSec, home: toSec, it: null, content: "" }, { title, body: content, parent: toSec }), hidden: true };
+  // v171: с пометкой «из документа» — по ней строка «Показать все» находит главу на любом устройстве
+  const row = { ...chapterRow({ id, own: true, sec: toSec, home: toSec, it: null, content: "" }, { title, body: content, parent: toSec }), hidden: true, sub: REF_FRESH };
   const ids = secNow.lessons.map((l) => l.id);
   ids.splice(after && ids.includes(after) ? ids.indexOf(after) + 1 : before && ids.includes(before) ? ids.indexOf(before) : ids.length, 0, id);
   const more = reorderPut([...secNow.lessons, { id, own: true, sec: toSec, it: { ...row, sort: null }, nat: null }], ids, "ch");
@@ -65,8 +66,8 @@ export async function addHiddenChapter({ title, content, after = "", before = ""
   return r.ok ? { ok: true, id } : { ok: false, error: refBookErr(r.error) };
 }
 
-/** v170 (Доп. 495): строки, которыми главы list (из дерева редактора) становятся видны команде: «Показать все» пишет их одной записью */
-export const showChapterRows = (list) => (Array.isArray(list) ? list : []).map((l) => ({ ...refRow(l, "ch"), hidden: false }));
+/** v170 (Доп. 495): строки, которыми главы list (из дерева редактора) становятся видны команде: «Показать все» пишет их одной записью. v171: пометка «из документа» при этом снимается */
+export const showChapterRows = (list) => (Array.isArray(list) ? list : []).map((l) => ({ ...refRow(l, "ch"), hidden: false, sub: null }));
 
 /** Черновик главы: то, что набрано и не записано (с телефона), иначе сама глава. → { draft, restored (время или null) } */
 export function chapterDraft(node, stored = readDraft()) {
@@ -429,15 +430,16 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
     if (!put.length || !sec) return;
     const n = put.length;
     if (!(await run(put, [], "Показано: " + counted(n, "глава", "главы", "глав") + ". Команда увидит " + (n === 1 ? "её" : "их") + ", когда откроет справочник."))) return;
-    // память телефона: показанные сейчас и раньше, удалённые — больше не помним; по живому справочнику, чтобы не забыть
-    // главу, которую ассистент дописал в эту же секунду
+    // память телефона (главы, написанные сборкой v170): показанные сейчас и раньше, удалённые — больше не помним; по
+    // живому справочнику
     const now = refEditTree(RE_BASE, refItemsNow()).find((s) => s.id === sec.id);
     splitPrune(sec.id, now ? now.lessons : []);
   };
   // v170: показал или скрыл главу сам — дальше это решение владельца, «Показать все» её больше не считает
+  // (v171: пометка «из документа» снимается в той же записи; память телефона — для глав, написанных сборкой v170)
   const hideCh = async () => {
     if (!chNode) return;
-    const row = { ...refRow(chNode, "ch"), hidden: !chNode.hidden }, say = chNode.hidden ? "Глава снова видна команде." : "Глава скрыта от команды.", at = chNode.sec, id = chNode.id;
+    const row = { ...refRow(chNode, "ch"), hidden: !chNode.hidden, sub: null }, say = chNode.hidden ? "Глава снова видна команде." : "Глава скрыта от команды.", at = chNode.sec, id = chNode.id;
     if (await (refRowEmpty(row) ? run([], [id], say) : run([row], [], say))) splitForget(at, [id]);
   };
   const resetCh = async () => {

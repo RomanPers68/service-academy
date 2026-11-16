@@ -5,6 +5,8 @@
 //          показывает одной записью; скрытое владельцем вручную остаётся скрытым; сотрудник видит новые главы;
 //   ONE  — одну из новых глав удалили: осталась одна, кнопка «Показать главу»; в другом разделе строки нет;
 //   LOOK — светлая тема, 360 и 1280 px: строка не вылезает, шрифт не мельче 10.5 px.
+// v171 (Доп. 496): пометка «из документа» переехала с телефона на сервер, в строку главы; проверки памяти телефона
+// заменены проверками пометки (marks). Другое устройство, перенос и память сборки v170 — в e2e-v171.mjs.
 // Запуск: E2E_SITE=<демо> E2E_PORT=<порт> E2E_OUT=<папка снимков> [E2E_ONLY="ALL"] node e2e-v170.mjs
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -174,6 +176,8 @@ const bar = (page) => txt(page, "[data-rs-new]");
 const allBtn = (page) => txt(page, "[data-rs-show-all]");
 const hiddenOnServer = async (page) => (await secRows(page)).filter((x) => x[1]).map((x) => x[0]);
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("sa_ref_split_new_v1") || "{}"));
+// v171: пометка «из документа» лежит на сервере, в строке главы (поле sub); названия таких глав по местам
+const marks = (page) => page.evaluate(() => Object.values(window.__demo.srv.S.rb.items).filter((x) => x.kind === "ch" && x.sub === "doc").sort((p, q) => (p.sort || 0) - (q.sort || 0)).map((x) => x.title));
 
 // ── ALL ────────────────────────────────────────────────────────────────────────────────────────────────
 if (on("ALL")) {
@@ -185,7 +189,7 @@ if (on("ALL")) {
   ok("ALL: главы написаны — строка «Из документа: 3 главы ещё скрыты» и «Показать все (3)»", /Из документа: 3 главы ещё скрыты\. Проверил\? Покажи команде одной кнопкой\./.test(await bar(page)) && /^Показать все \(3\)$/.test((await allBtn(page)).trim()), await bar(page));
   ok("ALL: строка стоит над списком глав, под заголовком «Главы»", await page.evaluate(() => { const b = document.querySelector("[data-rs-new]").getBoundingClientRect(), c = document.querySelector("[data-re-ch]").getBoundingClientRect(); return b.bottom <= c.top + 1; }));
   ok("ALL: в итоге раскладки сказано про кнопку над списком глав", /Или покажи все разом кнопкой над списком глав\./.test(await txt(page, "[data-rs]")));
-  same("ALL: номера написанных глав запомнены на телефоне, по разделу", Object.keys(await stored(page)).join() + ":" + (await stored(page))[SEC].length, SEC + ":3");
+  same("ALL: у трёх новых глав на сервере пометка «из документа»; телефон ничего не запоминает (v171)", [await marks(page), await stored(page)], [["Подача вина", "Расчёт", "Прощание с гостем"], {}]);
   await page.locator("[data-rs-new]").scrollIntoViewIfNeeded();
   await shot(page, "all-bar");
   // «Готово» и новый вход в приложение строку не убирают: главы ещё скрыты
@@ -205,7 +209,7 @@ if (on("ALL")) {
   await page.waitForTimeout(500);
   await tap(page, "[data-lens='back']");
   ok("ALL: показал одну главу сам — в строке две, кнопка «Показать все (2)»", /Из документа: 2 главы ещё скрыты\./.test(await bar(page)) && /Показать все \(2\)/.test(await allBtn(page)), await bar(page));
-  same("ALL: главу, которую показал сам, телефон больше «из документа» не считает", ((await stored(page))[SEC] || []).length, 2);
+  same("ALL: с главы, которую показал сам, пометка «из документа» снята (v171: она на сервере)", await marks(page), ["Расчёт", "Прощание с гостем"]);
   // первое нажатие спрашивает
   await tap(page, "[data-rs-show-all]");
   ok("ALL: первое нажатие спрашивает: «Да, показать 2 главы», их сразу увидят все заведения", /^Да, показать 2 главы$/.test((await allBtn(page)).trim()) && /Их сразу увидят все заведения\./.test(await bar(page)) && (await page.getAttribute("[data-rs-show-all]", "data-rs-show-all")) === "sure");
@@ -224,7 +228,7 @@ if (on("ALL")) {
     [["Черновик владельца", true, 10], ["Встреча гостя", false, 20], ["Подача вина", false, 30], ["Расчёт", false, 40], ["Прощание с гостем", false, 50]]);
   const list = await chList(page);
   ok("ALL: в списке глав пометка «скрыта» осталась только у главы владельца", list.filter((x) => /скрыта/.test(x)).length === 1 && /Черновик владельца/.test(list.find((x) => /скрыта/.test(x))), list);
-  same("ALL: память телефона очищена", await stored(page), {});
+  same("ALL: пометок на сервере не осталось, память телефона пуста", [await marks(page), await stored(page)], [[], {}]);
   await shot(page, "all-done");
   await switchTo(page, errs, "anna");
   await nav(page, "reference", "[data-ref-card]");
@@ -277,7 +281,7 @@ if (on("ONE")) {
   await page.waitForSelector("[data-re-screen='sec']");
   ok("ONE: показанную главу потом скрыл сам — строка «Из документа» не вернулась", mine === "Сервировка стола" && !(await has(page, "[data-rs-new]")) && (await chList(page)).filter((x) => /скрыта/.test(x)).length === 2, [mine, await chList(page)]);
   same("ONE: на сервере скрыты глава владельца и та, что он скрыл сам", await hiddenOnServer(page), ["Черновик владельца", "Сервировка стола"]);
-  same("ONE: память телефона пуста", await stored(page), {});
+  same("ONE: пометок на сервере нет, память телефона пуста", [await marks(page), await stored(page)], [[], {}]);
   same("ONE: ошибок на странице нет", errs, []);
   await ctx.close();
 }

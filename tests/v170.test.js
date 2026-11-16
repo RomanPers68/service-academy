@@ -5,6 +5,8 @@
 //     «Из документа: N глав ещё скрыто» и «Показать все (N)» над списком глав раздела, второе нажатие подтверждает;
 //   • ui/ref-editor.jsx — showChapterRows и запись одной правкой; скрытое владельцем вручную не трогается.
 // Сервер менять не нужно. Разметки JSX в файле нет (Доп. 482). Вид в браузере — tools/claude/e2e-v170.mjs.
+// v171 (Доп. 496): пометка «из документа» переехала на сервер, в строку главы; телефон больше ничего не запоминает. То, что
+// запомнила сборка v170, читается и чистится как раньше — это здесь и проверяется (память собирает помощник splitRemember).
 import { describe, it, expect, beforeEach } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
@@ -17,7 +19,7 @@ if (typeof globalThis.window === "undefined") globalThis.window = globalThis;
 if (!globalThis.document) globalThis.document = { body: { appendChild() {} }, createElement: () => ({ style: {}, setAttribute() {}, appendChild() {} }) };
 if (typeof globalThis.navigator === "undefined") globalThis.navigator = { userAgent: "node", onLine: true };
 
-import { RefSplit, RefSplitNew, makeSplitJob, SPLIT_NEW, splitNewIds, splitRemember, splitForget, splitPrune, splitHiddenNew } from "../ui/ref-split";
+import { RefSplit, RefSplitNew, makeSplitJob, SPLIT_NEW, splitNewIds, splitForget, splitPrune, splitHiddenNew } from "../ui/ref-split";
 import { addHiddenChapter, showChapterRows, RE_BASE } from "../ui/ref-editor";
 import { refEditTree, saveRefBook } from "../lib/ref-edit";
 import { loadRefBook, refItemsNow, _resetRefBook } from "../lib/ref-book";
@@ -35,6 +37,14 @@ const noop = () => {};
 const uiOf = (a11y) => { const dark = !a11y; return { input: { fontSize: 14 }, primary: { fontSize: 15 }, G: (x) => glass(null, a11y, x), txt: dark ? "#EFE4C8" : "#2A2113", muted: "#BFAE8A", gold: "#C8A96E", brd: "rgba(214,178,102,0.30)", TN: tones(a11y) }; };
 const wipe = () => { for (const k of Object.keys(store0)) delete store0[k]; };
 const ch = (id, more = {}) => ({ id, title: "Глава " + id, own: true, hidden: true, ...more });
+// память телефона, как её оставила сборка v170: { раздел: [номера глав] }, без повторов (с v171 приложение её не пополняет)
+const splitRemember = (sec, id) => {
+  if (!sec || !id) return;
+  let v; try { v = JSON.parse(phone.getItem(SPLIT_NEW) || "{}"); } catch (e) { v = {}; }
+  if (!v || typeof v !== "object" || Array.isArray(v)) v = {};
+  const a = Array.isArray(v[sec]) ? v[sec].filter((x) => typeof x === "string" && x) : [];
+  if (!a.includes(id)) { v[sec] = [...a, id]; phone.setItem(SPLIT_NEW, JSON.stringify(v)); }
+};
 
 describe("v170 · версия и журнал", () => {
   it("сборка v170, Дополнение 495, слова владельца, сценарий в браузере", () => {
@@ -69,10 +79,8 @@ describe("v170 · 1: какие главы написал ассистент (ui
     splitForget("coffee", null);   // нечего забывать — не падает
     expect(phone.getItem(SPLIT_NEW)).toBeNull();
   });
-  it("на раздел помнится не больше шестидесяти глав: самые давние забываются; мусор на телефоне не мешает", () => {
-    for (let i = 0; i < 65; i++) splitRemember("rs-1", "rc-" + i);
-    const ids = splitNewIds("rs-1");
-    expect([ids.length, ids[0], ids[59]]).toEqual([60, "rc-5", "rc-64"]);
+  it("мусор на телефоне не мешает (v171: память больше не пополняется, предела в 60 глав на раздел нет)", () => {
+    expect(rd("ui/ref-split.jsx")).not.toContain("SPLIT_NEW_MAX");
     for (const junk of ["не JSON", "[1,2]", "null", '{"rs-1":"строка"}', '{"rs-1":[1,null,"rc-a",""]}']) {
       phone.setItem(SPLIT_NEW, junk);
       expect(splitNewIds("rs-1"), junk).toEqual(junk.includes("rc-a") ? ["rc-a"] : []);
@@ -102,7 +110,7 @@ describe("v170 · 1: какие главы написал ассистент (ui
   });
 });
 
-describe("v170 · 2: ассистент запоминает написанное (makeSplitJob)", () => {
+describe("v170 · 2: ассистент и память телефона (makeSplitJob; v171 — телефон больше не запоминает)", () => {
   let bad, saveBad;
   const DOC = "Встреча гостя\nВстречаем гостя у входа за десять секунд.\nЗдороваемся и называем заведение.\n\nПодача вина\nБутылку показываем гостю этикеткой.\nПробу наливаем тому, кто заказал.\n\nРасчёт\nСчёт приносим в течение трёх минут.\nСдачу отдаём до копейки.";
   const PLAN = [{ title: "Встреча гостя", about: "Как встречаем." }, { title: "Подача вина", about: "Порядок подачи." }, { title: "Расчёт", about: "Счёт и сдача." }];
@@ -113,20 +121,23 @@ describe("v170 · 2: ассистент запоминает написанно�
       const r = b.mode === "ref_plan" ? { ok: true, chapters: PLAN } : bad.has(b.title) ? { ok: false, error: "Ассистент не ответил. Попробуй ещё раз." } : { ok: true, title: b.title, content: "Текст главы «" + b.title + "»." };
       return { ok: true, status: 200, json: async () => r }; };
   });
-  it("записанная глава запоминается сразу; не написанная и не записавшаяся — нет; дописали — запомнилась", async () => {
+  it("v171: главы пишутся и дописываются, а на телефон ничего не ложится — пометку ставит запись на сервер", async () => {
     const j = makeSplitJob(save);
     j.open({ id: "rs-1", title: "Стандарты" }); j.patch({ text: DOC });
     await j.plan();
     bad.add("Подача вина"); saveBad.add("Расчёт");
     await j.run();
-    expect(splitNewIds("rs-1")).toEqual(["rc-Встреча гостя"]);
+    expect(j.st.rows.map((r) => r.state)).toEqual(["done", "fail", "fail"]);
+    expect(phone.getItem(SPLIT_NEW)).toBeNull();
     bad.clear(); saveBad.clear();
     await j.run();
-    expect(splitNewIds("rs-1")).toEqual(["rc-Встреча гостя", "rc-Подача вина", "rc-Расчёт"]);
-    j.close();   // «Готово» памяти не стирает: главы ещё скрыты
-    expect(splitNewIds("rs-1").length).toBe(3);
-    expect(splitNewIds("rs-2")).toEqual([]);
-    expect(rd("ui/ref-split.jsx")).toContain("if (w && w.ok) { splitRemember(s.sec, w.id); row(i, { state: \"done\", content: \"\", err: \"\", id: w.id || \"\" }); fails = 0; continue; }");
+    expect(j.st.rows.map((r) => [r.state, r.id])).toEqual([["done", "rc-Встреча гостя"], ["done", "rc-Подача вина"], ["done", "rc-Расчёт"]]);
+    expect(phone.getItem(SPLIT_NEW)).toBeNull();
+    j.close();
+    expect(splitNewIds("rs-1")).toEqual([]);
+    const src = rd("ui/ref-split.jsx");
+    expect(src).toContain("if (w && w.ok) { row(i, { state: \"done\", content: \"\", err: \"\", id: w.id || \"\" }); fails = 0; continue; }");
+    expect(src).not.toContain("splitRemember");
   });
 });
 
@@ -218,7 +229,7 @@ describe("v170 · 4: показать одной записью (ui/ref-editor.j
     expect(src).toContain("const put = showChapterRows(list);");
     expect(src).toContain('if (!(await run(put, [], "Показано: " + counted(n, "глава", "главы", "глав") + ". Команда увидит " + (n === 1 ? "её" : "их") + ", когда откроет справочник."))) return;');
     expect(src).toContain("splitPrune(sec.id, now ? now.lessons : []);");   // память чистится по живому справочнику
-    expect(src).toContain("export const showChapterRows = (list) => (Array.isArray(list) ? list : []).map((l) => ({ ...refRow(l, \"ch\"), hidden: false }));");
+    expect(src).toContain("export const showChapterRows = (list) => (Array.isArray(list) ? list : []).map((l) => ({ ...refRow(l, \"ch\"), hidden: false, sub: null }));");   // v171: и пометка снята
   });
   it("показал или скрыл главу сам, кнопкой в главе — она больше не «из документа»: дальше это решение владельца", () => {
     const src = rd("ui/ref-editor.jsx");

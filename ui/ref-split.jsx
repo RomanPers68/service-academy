@@ -18,6 +18,10 @@
 // N глав ещё скрыто» с кнопкой «Показать все (N)» (RefSplitNew); второе нажатие подтверждает. Показываются только эти
 // главы: то, что владелец скрыл сам, остаётся скрытым. Глава, которую владелец сам показал или скрыл кнопкой в главе,
 // больше «из документа» не считается: дальше это его решение (ui/ref-editor.jsx, hideCh).
+//
+// v171 (Доп. 496). Владелец (16.11): «Давай что бы была видна везде». Пометка «из документа, ещё не показана» теперь лежит
+// на сервере, в строке самой главы (REF_FRESH в lib/ref-edit.js), и строка видна с любого устройства. Телефон больше ничего
+// не запоминает; то, что запомнила сборка v170, читается как раньше, пока эти главы не покажут.
 import React from "react";
 import { labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
@@ -25,26 +29,18 @@ import { vibrate } from "../lib/utils";
 import { REF_AI_LIMITS, refAiCheck, refPlanRows } from "../lib/ref-ai";
 import { refAiCall, REF_AI_PDF_MAX, REF_PDF_BIG, fileIc } from "./ref-assist";
 import { counted } from "../lib/ru-num";
+import { refFresh } from "../lib/ref-edit";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 /** Столько неудач подряд — и работа останавливается сама */
 export const SPLIT_STOP_AFTER = 2;
 
-// ── v170: какие главы написал ассистент (на телефоне) ──
-export const SPLIT_NEW = "sa_ref_split_new_v1";   // { раздел: [номера глав] } — главы из документа, которые могли остаться скрытыми
-const SPLIT_NEW_MAX = 60;                          // на раздел: дальше самые давние забываются
+// ── v170: какие главы написал ассистент (на телефоне). С v171 память не пополняется: пометка лежит на сервере ──
+export const SPLIT_NEW = "sa_ref_split_new_v1";   // { раздел: [номера глав] } — главы из документа, написанные сборкой v170
 const readNew = () => { try { const v = JSON.parse(localStorage.getItem(SPLIT_NEW) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } };
-const writeNew = (v) => { try { if (Object.keys(v).length) localStorage.setItem(SPLIT_NEW, JSON.stringify(v)); else localStorage.removeItem(SPLIT_NEW); } catch (e) { /* без памяти телефона кнопки «Показать все» просто не будет */ } };
-/** Номера глав раздела, которые написал ассистент */
+const writeNew = (v) => { try { if (Object.keys(v).length) localStorage.setItem(SPLIT_NEW, JSON.stringify(v)); else localStorage.removeItem(SPLIT_NEW); } catch (e) { /* память телефона нужна только главам, написанным сборкой v170: новые находятся по пометке на сервере */ } };
+/** Номера глав раздела, которые написал ассистент на этом телефоне при сборке v170 */
 export const splitNewIds = (sec) => { const a = readNew()[sec]; return Array.isArray(a) ? a.filter((x) => typeof x === "string" && x) : []; };
-/** Запомнить: главу id в разделе sec написал ассистент */
-export function splitRemember(sec, id) {
-  if (!sec || !id) return;
-  const v = readNew(), a = splitNewIds(sec);
-  if (a.includes(id)) return;
-  v[sec] = [...a, id].slice(-SPLIT_NEW_MAX);
-  writeNew(v);
-}
 /** Забыть главы ids раздела sec (их показали) */
 export function splitForget(sec, ids) {
   const v = readNew(), drop = new Set(Array.isArray(ids) ? ids : []), left = splitNewIds(sec).filter((x) => !drop.has(x));
@@ -56,8 +52,11 @@ export function splitPrune(sec, lessons) {
   const hid = new Set((Array.isArray(lessons) ? lessons : []).filter((l) => l && l.own && l.hidden).map((l) => l.id));
   splitForget(sec, splitNewIds(sec).filter((id) => !hid.has(id)));
 }
-/** Главы раздела, которые написал ассистент и которые ещё скрыты: свои, скрытые, из запомненных. sec — раздел из дерева редактора */
-export const splitHiddenNew = (sec, ids = splitNewIds(sec && sec.id)) => (sec && Array.isArray(sec.lessons) ? sec.lessons : []).filter((l) => l && l.own && l.hidden && ids.includes(l.id));
+/**
+ * Главы раздела, которые написал ассистент и которые ещё скрыты: свои, скрытые, с пометкой «из документа» на сервере
+ * (v171) или из запомненных телефоном при сборке v170. sec — раздел из дерева редактора
+ */
+export const splitHiddenNew = (sec, ids = splitNewIds(sec && sec.id)) => (sec && Array.isArray(sec.lessons) ? sec.lessons : []).filter((l) => l && l.own && l.hidden && (refFresh(l) || ids.includes(l.id)));
 
 /** Сколько глав отмечено, сколько из них уже в разделе и сколько осталось написать */
 export const splitCount = (rows) => {
@@ -131,7 +130,7 @@ export function makeSplitJob(save, emit = () => {}) {
         const now = cur.rows, prev = now.slice(0, i).reverse().find((r) => r.state === "done" && r.id), next = now.slice(i + 1).find((r) => r.state === "done" && r.id);
         const w = await saver({ title: it.title.trim(), content, after: prev ? prev.id : "", before: next ? next.id : "" }, s.sec);
         if (!alive || !cur) return;
-        if (w && w.ok) { splitRemember(s.sec, w.id); row(i, { state: "done", content: "", err: "", id: w.id || "" }); fails = 0; continue; }   // v170: для «Показать все»
+        if (w && w.ok) { row(i, { state: "done", content: "", err: "", id: w.id || "" }); fails = 0; continue; }
         row(i, { state: "fail", content, err: (w && w.error) || "Не записалось. Попробуй ещё раз." });
       } else row(i, { state: "fail", err: err || "Ассистент не ответил. Попробуй ещё раз." });
       fails++;

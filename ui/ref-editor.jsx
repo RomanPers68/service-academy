@@ -32,7 +32,7 @@ import {
 } from "../lib/ref-edit";
 import { counted } from "../lib/ru-num";
 import { RefAssist } from "./ref-assist";   // v168 (Доп. 493): ассистент под текстом главы
-import { RefSplit, useRefSplit } from "./ref-split";   // v169 (Доп. 494): «Главы из документа» в экране раздела
+import { RefSplit, RefSplitNew, useRefSplit, splitPrune, splitForget } from "./ref-split";   // v169 (Доп. 494): «Главы из документа» в экране раздела; v170: «Показать все»
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const RE_DRAFT = "sa_ref_draft_v1";   // черновик главы на телефоне: { forId, at, title, body, parent }
@@ -64,6 +64,9 @@ export async function addHiddenChapter({ title, content, after = "", before = ""
   const r = await saveRefBook([...by.values()], []);
   return r.ok ? { ok: true, id } : { ok: false, error: refBookErr(r.error) };
 }
+
+/** v170 (Доп. 495): строки, которыми главы list (из дерева редактора) становятся видны команде: «Показать все» пишет их одной записью */
+export const showChapterRows = (list) => (Array.isArray(list) ? list : []).map((l) => ({ ...refRow(l, "ch"), hidden: false }));
 
 /** Черновик главы: то, что набрано и не записано (с телефона), иначе сама глава. → { draft, restored (время или null) } */
 export function chapterDraft(node, stored = readDraft()) {
@@ -420,7 +423,23 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
     dropDraft();
     goBack();
   };
-  const hideCh = () => { if (!chNode) return; const row = { ...refRow(chNode, "ch"), hidden: !chNode.hidden }, say = chNode.hidden ? "Глава снова видна команде." : "Глава скрыта от команды."; if (refRowEmpty(row)) run([], [chNode.id], say); else run([row], [], say); };
+  // v170 (Доп. 495): «Показать все» — главы из документа, которые ещё скрыты, одной записью
+  const showNew = async (list) => {
+    const put = showChapterRows(list);
+    if (!put.length || !sec) return;
+    const n = put.length;
+    if (!(await run(put, [], "Показано: " + counted(n, "глава", "главы", "глав") + ". Команда увидит " + (n === 1 ? "её" : "их") + ", когда откроет справочник."))) return;
+    // память телефона: показанные сейчас и раньше, удалённые — больше не помним; по живому справочнику, чтобы не забыть
+    // главу, которую ассистент дописал в эту же секунду
+    const now = refEditTree(RE_BASE, refItemsNow()).find((s) => s.id === sec.id);
+    splitPrune(sec.id, now ? now.lessons : []);
+  };
+  // v170: показал или скрыл главу сам — дальше это решение владельца, «Показать все» её больше не считает
+  const hideCh = async () => {
+    if (!chNode) return;
+    const row = { ...refRow(chNode, "ch"), hidden: !chNode.hidden }, say = chNode.hidden ? "Глава снова видна команде." : "Глава скрыта от команды.", at = chNode.sec, id = chNode.id;
+    if (await (refRowEmpty(row) ? run([], [id], say) : run([row], [], say))) splitForget(at, [id]);
+  };
   const resetCh = async () => {
     if (!chNode || chNode.own) return;
     if (sure !== "reset-ch") { setSure("reset-ch"); vibrate("light"); return; }
@@ -563,6 +582,8 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
 
           <SectionLabel a11y={a11y} right={counted(sec.lessons.length, "глава", "главы", "глав")}>Главы</SectionLabel>
           {!sec.lessons.length ? <div data-re-empty="" style={{ color: muted, fontSize: 13.5, lineHeight: 1.5, margin: "0 2px 10px" }}>Глав пока нет. Раздел появится у команды с первой главой.</div> : null}
+          {/* v170 (Доп. 495): главы из документа ещё скрыты — показать их можно все разом; скрытое вручную не трогается */}
+          <RefSplitNew sec={sec} busy={busy} onShow={showNew} ui={{ G, txt, muted, gold: a11y ? "#7A5D2A" : GOLD, brd, primary }} />
           {sec.lessons.map((l, i) => {
             const text = l.type === "lesson";   // фото-тест (если появится среди штатных) здесь не правится: только место и видимость
             const chips = [l.own && ["своя", gold], l.hidden && ["скрыта", TN.bad], l.edited && ["изменена", TN.mid], l.moved && ["перенесена", muted], stored && stored.forId === l.id && ["черновик", TN.mid], !text && ["тест, текст не правится", muted]].filter(Boolean);

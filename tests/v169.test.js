@@ -726,7 +726,7 @@ describe("v169 · 6: готовая глава в разделе (ui/ref-editor.
   });
   it("блок стоит в экране раздела под «Новая глава»; работа живёт на уровне экрана редактора", () => {
     const src = rd("ui/ref-editor.jsx");
-    expect(src).toContain('import { RefSplit, useRefSplit } from "./ref-split";');
+    expect(src).toMatch(/import \{ RefSplit, [^}]*useRefSplit[^}]* \} from "\.\/ref-split";/);   // v170 добавил «Показать все»
     expect(src).toContain("const split = useRefSplit(addHiddenChapter);");
     expect(src).toContain('<RefSplit a11y={a11y} job={split} sec={sec} ui={{ input, primary, G, txt, muted, gold: a11y ? "#7A5D2A" : GOLD, brd, TN }} />');
     expect(src.indexOf("<RefSplit ")).toBeGreaterThan(src.indexOf('data-re-new-ch=""'));

@@ -12,6 +12,12 @@
 // Работа живёт на уровне экрана редактора (хук useRefSplit): можно открыть готовую главу, пока пишутся остальные.
 // Две неудачи подряд — работа останавливается (ассистент не отвечает, незачем тратить обращения); «Дописать остальные»
 // продолжает с того же места, пока редактор открыт.
+//
+// v170 (Доп. 495). Владелец (16.11): «Да, давай сделаем „показать все“». Номера глав, которые написал ассистент,
+// запоминаются на телефоне (SPLIT_NEW). Пока среди них есть скрытые, над списком глав раздела стоит строка «Из документа:
+// N глав ещё скрыто» с кнопкой «Показать все (N)» (RefSplitNew); второе нажатие подтверждает. Показываются только эти
+// главы: то, что владелец скрыл сам, остаётся скрытым. Глава, которую владелец сам показал или скрыл кнопкой в главе,
+// больше «из документа» не считается: дальше это его решение (ui/ref-editor.jsx, hideCh).
 import React from "react";
 import { labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
@@ -23,6 +29,35 @@ import { counted } from "../lib/ru-num";
 const SERIF = "Georgia, 'Times New Roman', serif";
 /** Столько неудач подряд — и работа останавливается сама */
 export const SPLIT_STOP_AFTER = 2;
+
+// ── v170: какие главы написал ассистент (на телефоне) ──
+export const SPLIT_NEW = "sa_ref_split_new_v1";   // { раздел: [номера глав] } — главы из документа, которые могли остаться скрытыми
+const SPLIT_NEW_MAX = 60;                          // на раздел: дальше самые давние забываются
+const readNew = () => { try { const v = JSON.parse(localStorage.getItem(SPLIT_NEW) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } };
+const writeNew = (v) => { try { if (Object.keys(v).length) localStorage.setItem(SPLIT_NEW, JSON.stringify(v)); else localStorage.removeItem(SPLIT_NEW); } catch (e) { /* без памяти телефона кнопки «Показать все» просто не будет */ } };
+/** Номера глав раздела, которые написал ассистент */
+export const splitNewIds = (sec) => { const a = readNew()[sec]; return Array.isArray(a) ? a.filter((x) => typeof x === "string" && x) : []; };
+/** Запомнить: главу id в разделе sec написал ассистент */
+export function splitRemember(sec, id) {
+  if (!sec || !id) return;
+  const v = readNew(), a = splitNewIds(sec);
+  if (a.includes(id)) return;
+  v[sec] = [...a, id].slice(-SPLIT_NEW_MAX);
+  writeNew(v);
+}
+/** Забыть главы ids раздела sec (их показали) */
+export function splitForget(sec, ids) {
+  const v = readNew(), drop = new Set(Array.isArray(ids) ? ids : []), left = splitNewIds(sec).filter((x) => !drop.has(x));
+  if (left.length) v[sec] = left; else delete v[sec];
+  writeNew(v);
+}
+/** Забыть главы раздела sec, которые больше не скрыты: показаны, удалены или перенесены. lessons — главы раздела сейчас */
+export function splitPrune(sec, lessons) {
+  const hid = new Set((Array.isArray(lessons) ? lessons : []).filter((l) => l && l.own && l.hidden).map((l) => l.id));
+  splitForget(sec, splitNewIds(sec).filter((id) => !hid.has(id)));
+}
+/** Главы раздела, которые написал ассистент и которые ещё скрыты: свои, скрытые, из запомненных. sec — раздел из дерева редактора */
+export const splitHiddenNew = (sec, ids = splitNewIds(sec && sec.id)) => (sec && Array.isArray(sec.lessons) ? sec.lessons : []).filter((l) => l && l.own && l.hidden && ids.includes(l.id));
 
 /** Сколько глав отмечено, сколько из них уже в разделе и сколько осталось написать */
 export const splitCount = (rows) => {
@@ -96,7 +131,7 @@ export function makeSplitJob(save, emit = () => {}) {
         const now = cur.rows, prev = now.slice(0, i).reverse().find((r) => r.state === "done" && r.id), next = now.slice(i + 1).find((r) => r.state === "done" && r.id);
         const w = await saver({ title: it.title.trim(), content, after: prev ? prev.id : "", before: next ? next.id : "" }, s.sec);
         if (!alive || !cur) return;
-        if (w && w.ok) { row(i, { state: "done", content: "", err: "", id: w.id || "" }); fails = 0; continue; }
+        if (w && w.ok) { splitRemember(s.sec, w.id); row(i, { state: "done", content: "", err: "", id: w.id || "" }); fails = 0; continue; }   // v170: для «Показать все»
         row(i, { state: "fail", content, err: (w && w.error) || "Не записалось. Попробуй ещё раз." });
       } else row(i, { state: "fail", err: err || "Ассистент не ответил. Попробуй ещё раз." });
       fails++;
@@ -217,7 +252,7 @@ export function RefSplit({ a11y, job, sec, ui }) {
                 {r.state === "fail" && r.err ? <div data-rs-item-err="" style={{ color: TN.bad, fontSize: 12.5, lineHeight: 1.45, marginTop: 4 }}>{r.err}</div> : null}
               </div>
             </div>))}
-          {n.done ? <div style={{ ...hint, marginTop: 10 }}>Новые главы скрыты: команда их не видит. Открой каждую, проверь и нажми в ней «Показать главу».</div> : null}
+          {n.done ? <div style={{ ...hint, marginTop: 10 }}>Новые главы скрыты: команда их не видит. Открой каждую, проверь и нажми в ней «Показать главу». Или покажи все разом кнопкой над списком глав.</div> : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             {st.phase === "writing" ? <button type="button" data-rs-stop="" data-lens-btn="soft" disabled={st.halting} onClick={halt} style={{ ...aiBtn, minHeight: 40, ...off(st.halting) }}>Остановить</button> : null}
             {st.phase === "done" && n.left ? <button type="button" data-rs-more="" data-lens-btn="main" onClick={run} style={small}>{"Дописать остальные (" + n.left + ")"}</button> : null}
@@ -226,6 +261,32 @@ export function RefSplit({ a11y, job, sec, ui }) {
         </div>) : null}
 
       {st.err ? <div data-rs-err="" role="status" style={{ color: TN.bad, fontSize: 13.5, lineHeight: 1.45, marginTop: 10 }}>{st.err}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * v170 (Доп. 495): строка над списком глав раздела — «Из документа: N глав ещё скрыто» и «Показать все (N)». Второе нажатие
+ * подтверждает: главы сразу увидит вся сеть. onShow(главы) — показать их; busy — экран сейчас что-то записывает.
+ */
+export function RefSplitNew({ sec, busy, onShow, ui }) {
+  const { G, txt, muted, gold, brd, primary } = ui;
+  const [sure, setSure] = React.useState(false);
+  const fresh = splitHiddenNew(sec);
+  const n = fresh.length;
+  React.useEffect(() => { setSure(false); }, [sec && sec.id, n]);   // другой раздел или другой счёт — спрашиваем заново
+  if (!n) return null;
+  const soft = { display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 40, padding: "0 14px", borderRadius: 12, cursor: busy ? "default" : "pointer", fontFamily: SERIF, fontSize: 14,
+    background: "transparent", color: gold, border: `1px solid ${brd}`, opacity: busy ? 0.5 : 1 };
+  const main = { ...primary, width: "auto", minHeight: 40, padding: "0 16px", fontSize: 14, opacity: busy ? 0.5 : 1 };
+  return (
+    <div data-rs-new={n} data-lens-edge="" style={{ ...G({ padding: "10px 12px", marginBottom: 10 }), display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ color: txt, fontSize: 13.5, lineHeight: 1.45 }}>{"Из документа: " + counted(n, "глава ещё скрыта", "главы ещё скрыты", "глав ещё скрыто") + "."}</div>
+        <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45 }}>{sure ? (n === 1 ? "Её" : "Их") + " сразу увидят все заведения." : "Проверил? Покажи команде одной кнопкой."}</div>
+      </div>
+      <button type="button" data-rs-show-all={sure ? "sure" : ""} data-lens-btn={sure ? "main" : "soft"} disabled={busy} onClick={() => { if (!sure) { setSure(true); vibrate("light"); return; } onShow(fresh); }}
+        style={sure ? main : soft}>{sure ? "Да, показать " + counted(n, "главу", "главы", "глав") : n === 1 ? "Показать главу" : "Показать все (" + n + ")"}</button>
     </div>
   );
 }

@@ -202,13 +202,14 @@ describe("v163 · 3: что готовить заранее — aheadPlan (lib/l
   });
   it("разделы «Справочника» в плане — те же, что на его экране", () => {
     const hub = rd("ui/ReferenceSection.jsx");
-    // v167 (Доп. 492): штатные карточки собираются из разделов справочника (HUB_PRESET), за ними «Барная карта» или «Бар: коктейли»
+    // v167 (Доп. 492): штатные карточки собираются из разделов справочника (HUB_PRESET). v172 (Доп. 497): карточек вне
+    // разделов больше нет — «Барная карта» ушла в ленту главной, а её место занял раздел «Бар: Основы»
     const at = hub.indexOf("const HUB_PRESET = {");
-    const preset = [...hub.slice(at, hub.indexOf("\n", at)).matchAll(/([a-z]+): \{ icon/g)].map((m) => m[1]);
-    expect(preset).toEqual(["serving", "wine", "coffee"]);
-    const ids = preset.concat([...hub.slice(hub.indexOf("const cards = ["), hub.indexOf("return (<div style={T.screen}>", hub.indexOf("const cards = ["))).matchAll(/\{ id: "([a-z]+)"/g)].map((m) => m[1]));
-    expect(ids.length).toBeGreaterThanOrEqual(5);
-    for (const id of ids) expect(REF_COVER_IDS, id).toContain(id);
+    const preset = [...hub.slice(at, hub.indexOf("};", at)).matchAll(/([a-z]+): \{ icon/g)].map((m) => m[1]);
+    expect(preset).toEqual(["serving", "wine", "coffee", "bar"]);
+    expect(hub).toContain("const cards = hubCards(sections);");
+    for (const id of preset) expect(REF_COVER_IDS, id).toContain(id);
+    expect(REF_COVER_IDS).toContain("barcard");   // обложка прежней карточки «Барная карта» достаётся разделу «Бар: Основы»
     for (const id of Object.keys(REF_COVER_DEFAULT)) expect(REF_COVER_IDS).toContain(id);
   });
 });

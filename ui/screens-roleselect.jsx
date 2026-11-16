@@ -142,7 +142,7 @@ export function greetName(name) {
   return cut > 0 ? [s.slice(0, cut + 1), s.slice(cut + 1)] : ["", s];
 }
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onBarCard = null, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
   const isAdmin = !!profile?.is_admin;
   // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
   // ui/home-look.jsx; раскладка та же.
@@ -646,6 +646,12 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           if (onMenuTrainer) tiles.push({ key:"menu", label:"Меню", onClick:onMenuTrainer, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3v7a2 2 0 0 0 2 2h0V3"/><path d="M11 3v18"/><path d="M7 12v9"/><path d="M17 3c-1.7 0-3 2.2-3 5s1.3 5 3 5v8"/></svg>
           )});
+          // v172 (Доп. 497), владелец (16.11): «Может бар из справочника рядом с меню вставим? Так как раз место для одного
+          // есть». «Барная карта» (коктейли, вина, крепкое) открывается с главной одним касанием; значок тот же, что был
+          // у её карточки в Справочнике. В Справочнике остался раздел «Бар: Основы».
+          if (onBarCard) tiles.push({ key:"bar", label:"Бар", onClick:onBarCard, icon:(
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h14l-7 8.5z"/><path d="M12 12.5V20"/><path d="M8 20h8"/><path d="M8.5 7h7"/></svg>
+          )});
           if (onMentor && role) tiles.push({ key:"skill", label:"Допуск", onClick:onMentor, icon:(
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z"/><path d="M9.5 12l1.8 1.8 3.2-3.3"/></svg>
           )});
@@ -669,7 +675,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             // v65 (Доп. 378), владелец: «AI собеседование добавим в вкладку, где справочник, меню… для менеджера и
             // руководства — как раз с уменьшением появилось место». Пятой — «Собеседование» (менеджер, старший,
             // владелец: onCandidate App передаёт только им); во вкладке «Команда» оно остаётся.
-            const learn = new Set(["sp", "sos", "menu", "cl", ...(role === "seasonal" && newbie ? ["ob"] : []), ...(isStaff && onCandidate ? ["hire"] : [])]);
+            // v172 (Доп. 497): шестым (у сотрудника пятым) — «Бар», сразу за «Меню»
+            const learn = new Set(["sp", "sos", "menu", "bar", "cl", ...(role === "seasonal" && newbie ? ["ob"] : []), ...(isStaff && onCandidate ? ["hire"] : [])]);
             for (let i = tiles.length - 1; i >= 0; i--) if (!learn.has(tiles[i].key)) tiles.splice(i, 1);
             if (onGlossary) tiles.push({ key:"gl", label:"Глоссарий", onClick:onGlossary, icon:(
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Cc.gold} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h5"/></svg>
@@ -711,7 +718,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             })() : null}
             {(() => {
               // Порядок — как назвал владелец: Справочник, Меню, Глоссарий, Чек-листы
-              const ORDER = ["sp", "ob", "menu", "gl", "cl", "hire"];   // v65: «Собеседование» — последним, перед SOS
+              const ORDER = ["sp", "ob", "menu", "bar", "gl", "cl", "hire"];   // v65: «Собеседование» — последним, перед SOS; v172: «Бар» — рядом с «Меню»
               const tools = visibleTiles.filter(t => !t.red)
                 .sort((a, b) => (ORDER.indexOf(a.key) + 1 || 99) - (ORDER.indexOf(b.key) + 1 || 99));
               // Четыре инструмента и раскрытая подпись должны помещаться рядом с SOS.

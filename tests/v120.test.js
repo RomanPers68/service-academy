@@ -157,12 +157,14 @@ describe("v120: экраны", () => {
   it("править могут руководитель, старший и владелец — как коктейли", () => {
     expect(L).toContain('export const canEditWines = (profile) => !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));');
   });
-  it("App: экраны «wines» и «wineEditor», вход из «Справочника»", () => {
+  it("App: экраны «wines» и «wineEditor»; вход — значок «Бар» в ленте главной (до v172 — карточка в «Справочнике»)", () => {
     // v127 (Доп. 440): экран «wines» — «Барная карта» (вкладки «Коктейли · Вина · Крепкое»), винная карта — её вкладка
     expect(APP).toContain('{screen === "wines" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><BarCardScreen ');
     expect(APP).toContain('{screen === "wineEditor" && <Suspense fallback={<ScreenLoader T={T} />}><WineEditor ');
-    expect(APP).toContain('onWines={() => { setRefStart(null); navigate("wines"); }}');
-    expect(R).toContain('onWines ? { id: "barcard", art: "winelist", t: "Барная карта"');
+    // v172 (Доп. 497): «Барная карта» открывается с главной; карточки в «Справочнике» больше нет
+    expect(APP).toContain('onBarCard={() => { setBarBack(null); setBarNote(""); setWineStart(null); setBarTab(null); setBarSom(false); setBarOpenN((n) => n + 1); navigate("wines"); }}');
+    expect(APP).not.toContain('onWines={() => { setRefStart(null); navigate("wines"); }}');   // из «Меню» к винам вход остался: там свой onWines
+    expect(R).not.toContain('id: "barcard"');
   });
   it("«Справочник»: у «Нашей винной карты» — свой витраж, как у курсов (владелец: «выглядит как что-то инородное»)", () => {
     // v127: у «Барной карты» — витраж винной карты; v157 (Доп. 481): карточка раздела — обложка (RefCard), витраж — там, где нет фото

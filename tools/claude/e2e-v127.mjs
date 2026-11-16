@@ -281,7 +281,7 @@ mkdirSync(OUT + "/in", { recursive: true });
 const { writeFileSync } = await import("node:fs");
 writeFileSync(OUT + "/in/page.jpg", JPG); writeFileSync(OUT + "/in/carta.pdf", PDF);
 // v127 (Доп. 440): «Наша винная карта» теперь — вкладка «Вина» в «Барной карте» (Справочник → «Барная карта» → «Вина»)
-const openBarWines = async (page) => { const okk = await clickText(page, ".sa-card, [data-ref-card]", "Барная карта"); if (!okk) return false; for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
+const openBarWines = async (page) => { await nav(page, "wines", 700);   /* v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет — экран открываем сразу */ for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
   await page.evaluate(() => { const b = document.querySelector('[data-bar-tab="wine"]'); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }); await sleep(400); return true; };
 const toList = async (page) => { await go(page, "reference", 1800); return openBarWines(page); };
 
@@ -400,7 +400,7 @@ const nb = (t) => String(t || "").replace(/ /g, " ");
 const openBar = async (page, tab = null) => {
   for (let i = 0; i < 3; i++) {
     await go(page, "reference", 1200);
-    await until(() => clickText(page, ".sa-card, [data-ref-card]", "Барная карта"), 9000, 400);
+    await nav(page, "wines", 700);   // v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет — экран открываем сразу
     if (!(await until(() => page.locator("[data-bar-cocktails], [data-wine-list], [data-drink-kind]").count(), 9000))) continue;
     if (!tab) return true;
     await page.evaluate((t) => { const b = document.querySelector(`[data-bar-tab="${t}"]`); if (b && b.getAttribute("aria-selected") !== "true") b.click(); }, tab); await sleep(500);
@@ -427,11 +427,12 @@ await run("HUB", async () => {
   const o = await open({ who: ANNA, srv, menu: MENU_B });
   await hideToasts(o.page);
   await go(o.page, "reference", 1800);
-  await until(() => o.page.locator('[data-ref-card="barcard"]').count(), 9000);
-  const card = await txt(o.page.locator('[data-ref-card="barcard"]'));
-  ok("HUB: в Справочнике одна «Барная карта»: сколько коктейлей, вин и крепкого (архив не считается)", /^Барная карта Коктейли \d+ · вина 6 · крепкое 7( ›)?$/.test(card), card);
+  // v172 (Доп. 497): «Барная карта» ушла из Справочника в ленту главной (значок «Бар»); в Справочнике — раздел «Бар: Основы»
+  await until(() => o.page.locator('[data-ref-card="bar"]').count(), 9000);
+  const card = await txt(o.page.locator('[data-ref-card="bar"]'));
+  ok("HUB: в Справочнике вместо «Барной карты» — раздел «Бар: Основы» (v172)", /^Бар: Основы 6 глав( ›)?$/.test(card) && !(await o.page.locator('[data-ref-card="barcard"]').count()), card);
   ok("HUB: «Нашей винной карты» и «Бар: коктейли» больше нет", !(await o.page.locator('[data-ref-card="winelist"], [data-ref-card="cocktails"]').count()));
-  ok("HUB: у «Барной карты» — витраж, как у курсов", (await o.page.locator('[data-ref-card="barcard"] [data-ref-art="winelist"] svg').count()) === 1);
+  ok("HUB: у «Бар: Основы» — витраж, как у курсов", (await o.page.locator('[data-ref-card="bar"] [data-ref-art="cocktails"] svg').count()) === 1);
   await shot(o.page, "hub");
   const [e1, e2] = noErr(o); ok("HUB: без ошибок", e1, e2);
   await o.ctx.close();

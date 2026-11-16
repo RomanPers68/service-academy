@@ -103,7 +103,7 @@ async function photoFile(page, name) {
   writeFileSync(p, Buffer.from(b64, "base64"));
   return p;
 }
-const BASE_CARDS = ["serving", "wine", "coffee", "barcard"];
+const BASE_CARDS = ["serving", "wine", "coffee", "bar"];   // v172 (Доп. 497): четвёртым — «Бар: Основы» (была карточка «Барная карта»)
 // «Команда»: группа «Управление» свёрнута кнопкой — раскрыть и вернуть подписи её строк
 async function management(page) {
   await nav(page, "teamHub", "[data-hub-group]");
@@ -131,7 +131,8 @@ if (on("HUB")) {
   await page.getByText("Редактор справочника").first().click();
   await page.waitForSelector("[data-re-screen='list']", { timeout: 15000 }).catch(() => {});
   ok("HUB: из «Управления» открывается редактор", await has(page, "[data-re-screen='list']"));
-  same("HUB: в редакторе штатные разделы и «Бар» отдельно", await attrs(page, "data-re-sec"), ["serving", "wine", "coffee", "bar"]);
+  same("HUB: в редакторе штатные разделы; «Бар: Основы» — в общем списке (v172: раньше стоял отдельно)", await attrs(page, "data-re-sec"), ["serving", "wine", "coffee", "bar"]);
+  ok("HUB: блока «Отдельно» в редакторе нет (v172)", !/Отдельно/.test(await txt(page)) && /Бар: Основы/.test(await txt(page)), (await txt(page)).slice(0, 400));
   ok("HUB: про «Гид по приложению» сказано, что здесь его нет", /«Гид по приложению» обновляется вместе с приложением/.test(await txt(page)));
   await tap(page, "[data-lens='back']");
   await nav(page, "reference", "[data-ref-card]");
@@ -201,7 +202,7 @@ if (on("FLOW")) {
   await tap(page, "[data-lens='back']");
   await page.waitForSelector("[data-ref-card]");
   const cards = await attrs(page, "data-ref-card");
-  ok("FLOW: в справочнике карточка своего раздела — после штатных, перед барной картой", cards.length === 5 && /^rs-/.test(cards[3]) && cards[4] === "barcard", cards);
+  ok("FLOW: в справочнике карточка своего раздела — после штатных (v172: последний из штатных — «Бар: Основы»)", cards.length === 5 && cards[3] === "bar" && /^rs-/.test(cards[4]), cards);
   ok("FLOW: у карточки своего раздела — рисунок-книга и подпись «1 глава»", (await has(page, "[data-ref-card^='rs-'] [data-ref-art='book']")) && /Стандарты заведения 1 глава/.test(await txt(page, "[data-ref-card^='rs-']")));
   await shot(page, "flow-hub");
   await tap(page, "[data-ref-card^='rs-']");
@@ -307,7 +308,7 @@ if (on("ORDER")) {
   await page.locator("[data-re-sec='coffee'] [data-re-up]").click(); await page.waitForTimeout(450);
   same("ORDER: «Кофе» поднят выше «Вин»", await attrs(page, "data-re-sec"), ["serving", "coffee", "wine", "bar"]);
   same("ORDER: записаны только те разделы, чьё место изменилось", (await rows(page)).map((r) => [r[0], r[5]]), [["coffee", 20], ["wine", 30]]);
-  ok("ORDER: у первого раздела стрелка «выше» не нажимается, у последнего — «ниже»", await page.evaluate(() => document.querySelector("[data-re-sec='serving'] [data-re-up]").disabled && document.querySelector("[data-re-sec='wine'] [data-re-down]").disabled));
+  ok("ORDER: у первого раздела стрелка «выше» не нажимается, у последнего («Бар: Основы», v172) — «ниже»", await page.evaluate(() => document.querySelector("[data-re-sec='serving'] [data-re-up]").disabled && document.querySelector("[data-re-sec='bar'] [data-re-down]").disabled && !document.querySelector("[data-re-sec='wine'] [data-re-down]").disabled));
   await tap(page, "[data-re-sec='wine']");
   await page.locator("[data-re-ch='win-temp'] [data-re-up]").click(); await page.waitForTimeout(450);
   same("ORDER: глава «Температура» стала первой", (await attrs(page, "data-re-ch")).slice(0, 3), ["win-temp", "win-etiquette", "win-glasses"]);
@@ -326,7 +327,7 @@ if (on("ORDER")) {
   // сотрудник: порядок, скрытая глава, своё название
   await switchTo(page, errs, "anna");
   await nav(page, "reference", "[data-ref-card]");
-  same("ORDER: у сотрудника разделы в новом порядке", await attrs(page, "data-ref-card"), ["serving", "coffee", "wine", "barcard"]);
+  same("ORDER: у сотрудника разделы в новом порядке", await attrs(page, "data-ref-card"), ["serving", "coffee", "wine", "bar"]);
   ok("ORDER: число глав на карточке — без скрытой", /Вина 7 глав/.test(await txt(page, "[data-ref-card='wine']")), await txt(page, "[data-ref-card='wine']"));
   await tap(page, "[data-ref-card='wine']");
   const chs = await attrs(page, "data-ref-chapter");
@@ -349,7 +350,7 @@ if (on("ORDER")) {
   ok("ORDER: раздел переименован и скрыт", (await rows(page)).some((r) => r[0] === "wine" && r[3] === "Вина мира" && r[4] === true), await rows(page));
   await shot(page, "order-sec-hidden");
   await nav(page, "reference", "[data-ref-card]");
-  same("ORDER: скрытого раздела в справочнике нет (и у владельца)", await attrs(page, "data-ref-card"), ["serving", "coffee", "barcard"]);
+  same("ORDER: скрытого раздела в справочнике нет (и у владельца)", await attrs(page, "data-ref-card"), ["serving", "coffee", "bar"]);
   await nav(page, "refEditor", "[data-re-screen='list']");
   ok("ORDER: в редакторе скрытый раздел на месте, с пометками", /Вина мира 8 глав скрыт изменён/.test(await txt(page)), await txt(page));
   await tap(page, "[data-re-sec='wine']");
@@ -443,7 +444,7 @@ if (on("STAFF")) {
     R("rc-hid", "ch", { parent: "rs-e2e", title: "Черновая глава", body: "Секретное слово: каракатица.", hidden: true }), R("srv-basics", "ch", { title: "Основы, по-нашему" }), R("coffee", "sec", { hidden: true })]);
   await page.reload({ waitUntil: "load" }); await ready(page, errs);
   await nav(page, "reference", "[data-ref-card]");
-  same("STAFF: хаб: скрытого раздела нет, свой раздел есть", await attrs(page, "data-ref-card"), ["serving", "wine", "rs-e2e", "barcard"]);
+  same("STAFF: хаб: скрытого раздела нет, свой раздел есть", await attrs(page, "data-ref-card"), ["serving", "wine", "bar", "rs-e2e"]);
   ok("STAFF: редактора у сотрудника нет", !(await has(page, "[data-ref-edit]")));
   await tap(page, "[data-ref-card='rs-e2e']");
   ok("STAFF: в разделе подзаголовок владельца и одна глава (скрытой нет)", /Как принято у нас/.test(await txt(page)) && (await attrs(page, "data-ref-chapter")).join() === "rc-e2e");

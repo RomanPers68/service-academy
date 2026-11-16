@@ -23,7 +23,7 @@ import { GOLD, labelStyle } from "./tokens";
 import { vibrate } from "../lib/utils";
 import { compressPhoto } from "../lib/chat-photo";
 import { useLessonPhotos, LessonPhotoSheet, CamIcon } from "./lesson-photo";
-import { saveLessonPhoto, removeLessonPhoto, lessonPhotoErr, photoOf, lessonPhotoId, refCoverId } from "../lib/lesson-photo";
+import { saveLessonPhoto, removeLessonPhoto, lessonPhotoErr, photoOf, lessonPhotoId, refCoverId, refCoverPick } from "../lib/lesson-photo";
 import { useRefBook } from "./use-ref-book";
 import { loadRefBook, refItemsNow, refPhotoIds, RB_LIMITS } from "../lib/ref-book";
 import {
@@ -282,7 +282,8 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
   const sec = secId ? tree.find((s) => s.id === secId) || null : null;
   const chNode = draft && !draft.isNew ? findCh(tree, draft.id) : null;
   const shown = view === "ch" && (!draft || (!draft.isNew && !chNode)) ? (sec ? "sec" : "list") : view === "sec" && !sec ? "list" : view;
-  const hubSecs = tree.filter((s) => !REF_OFF_HUB.includes(s.id)), offSecs = tree.filter((s) => REF_OFF_HUB.includes(s.id));
+  // v172 (Доп. 497): «Бар: Основы» — обычный раздел с карточкой; блока «Отдельно» (главы без карточки) больше нет
+  const hubSecs = tree.filter((s) => !REF_OFF_HUB.includes(s.id));
 
   const metaOf = (s) => ({ id: s.id, title: s.title, sub: s.subtitle });
   const m = sec ? (meta && meta.id === sec.id ? meta : metaOf(sec)) : null;
@@ -543,11 +544,6 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
                 </div>
               </div>
             )}
-            {offSecs.length ? <>
-              <SectionLabel a11y={a11y}>Отдельно</SectionLabel>
-              <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.5, margin: "-2px 2px 8px" }}>Карточки в справочнике у этих глав нет: они открываются из колоды бармена, подсказок и поиска.</div>
-              {offSecs.map((s, i) => secRow(s, i, offSecs.length, false))}
-            </> : null}
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.5, margin: "14px 2px 0" }}>«Гид по приложению» обновляется вместе с приложением, здесь его нет.</div>
           </>)}
         </div>
@@ -558,7 +554,7 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
   // ═════ РАЗДЕЛ ═════
   if (shown === "sec") {
     const onHub = !REF_OFF_HUB.includes(sec.id);
-    const coverId = onHub ? refCoverId(sec.id) : null;
+    const coverId = onHub ? refCoverPick(photos, sec.id) : null;   // v172: у «Бар: Основы» — обложка прежней «Барной карты», пока своей нет
     const hasCover = !!(coverId && photos && photos !== "missing" && photoOf(photos, coverId));
     return (
       <div style={T.screen} data-re-screen="sec">

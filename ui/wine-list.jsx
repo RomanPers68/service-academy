@@ -415,7 +415,7 @@ export function WineListScreen({ T, a11y, profile, onBack, onEdit, startId, kind
   })();
   return (
     <div ref={frameRef} style={T.screen} className="sa-screen" data-wine-list={all.length} data-drink-kind={K.kind}>
-      {head(listTitle, onBack, "Справочник · " + restaurant)}
+      {head(listTitle, onBack, restaurant || "Бар")}
       {tabs}
       {som}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />

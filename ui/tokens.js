@@ -39,6 +39,7 @@ export const TOOL_COLOR = {
   sp:   { dark: GOLD,      light: "#7A5D2A" },   // Справочник
   menu: { dark: "#8FB890", light: "#4E7A58" },   // Меню
   gl:   { dark: "#9B8FC4", light: "#5F5490" },   // Глоссарий
+  bar:  { dark: "#D2875A", light: "#93500F" },   // Бар (v172): медь трека «Бар», та же пара, что в lib/tracks.js
 };
 export const toolColor = (key, a11y) =>
   (TOOL_COLOR[key] || TOOL_COLOR.sp)[a11y ? "light" : "dark"];

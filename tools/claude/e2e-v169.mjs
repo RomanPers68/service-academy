@@ -100,7 +100,7 @@ async function photoFile(page, name) {
   writeFileSync(p, Buffer.from(b64, "base64"));
   return p;
 }
-const BASE_CARDS = ["serving", "wine", "coffee", "barcard"];
+const BASE_CARDS = ["serving", "wine", "coffee", "bar"];   // v172 (Доп. 497): четвёртым — «Бар: Основы» (была карточка «Барная карта»)
 // «Команда»: группа «Управление» свёрнута кнопкой — раскрыть и вернуть подписи её строк
 async function management(page) {
   await nav(page, "teamHub", "[data-hub-group]");

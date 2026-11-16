@@ -280,7 +280,7 @@ mkdirSync(OUT + "/in", { recursive: true });
 const { writeFileSync } = await import("node:fs");
 writeFileSync(OUT + "/in/page.jpg", JPG); writeFileSync(OUT + "/in/carta.pdf", PDF);
 // v127 (Доп. 440): «Наша винная карта» теперь — вкладка «Вина» в «Барной карте» (Справочник → «Барная карта» → «Вина»)
-const openBarWines = async (page) => { const okk = await clickText(page, ".sa-card, [data-ref-card]", "Барная карта"); if (!okk) return false; for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
+const openBarWines = async (page) => { await nav(page, "wines", 700);   /* v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет — экран открываем сразу */ for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
   await page.evaluate(() => { const b = document.querySelector('[data-bar-tab="wine"]'); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }); await sleep(400); return true; };
 const toList = async (page) => { await go(page, "reference", 1800); return openBarWines(page); };
 
@@ -290,8 +290,9 @@ await run("LIST", async () => {
   await hideToasts(a.page);
   await go(a.page, "reference", 1800);
   // v127: «Наша винная карта» — вкладка «Вина» в «Барной карте»; в Справочнике — одна «Барная карта» (архив не считается)
-  const cardTxt = await txt(a.page.locator('[data-ref-card="barcard"]'));
-  ok("LIST: в «Справочнике» — «Барная карта · коктейли · вина 5» (архив не считается)", /^Барная карта Коктейли \d+ · вина 5( ›)?$/.test(cardTxt), cardTxt);
+  // v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет (она в ленте главной, значок «Бар»); на её месте раздел «Бар: Основы»
+  const cardTxt = await txt(a.page.locator('[data-ref-card="bar"]'));
+  ok("LIST: в «Справочнике» — раздел «Бар: Основы», карточки «Барная карта» больше нет (v172)", /^Бар: Основы 6 глав( ›)?$/.test(cardTxt) && !(await a.page.locator('[data-ref-card="barcard"]').count()), cardTxt);
   await openBarWines(a.page); await sleep(1100);
   const sum = await txt(a.page.locator("[data-wine-sum]"));
   const groups = await a.page.evaluate(() => [...document.querySelectorAll("[data-wine-group]")].map((g) => g.getAttribute("data-wine-group")).join(","));
@@ -323,7 +324,7 @@ await run("LIST", async () => {
   const b = await open({ who: ANNA, srv: srv2 });
   await hideToasts(b.page); await go(b.page, "reference", 1800);
   // v127: «Барная карта» есть у всех (коктейли), но вкладки «Вина» у сотрудника при пустой винной карте нет
-  await clickText(b.page, "[data-ref-card]", "Барная карта"); await sleep(1200);
+  await nav(b.page, "wines", 1200);   // v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет
   ok("LIST: пустая карта — у сотрудника вкладки «Вина» нет", !(await b.page.locator('[data-bar-tab="wine"]').count()) && (await b.page.locator("[data-bar-cocktails]").count()) === 1);
   await b.ctx.close();
   const m = await open({ who: MARIA, srv: srvOf(MENU) });
@@ -467,9 +468,9 @@ await run("LENS", async () => {
   const fld = await st(a.page, '[data-wine-field="name"]'), sv = await st(a.page, "[data-wine-save]");
   ok("LENS: форма — поля стеклом, «Сохранить» — плашка", !!fld && fld.bg === GLASS && isMain(sv), JSON.stringify([fld, sv]));
   await go(a.page, "reference", 1800);
-  const rc = await st(a.page, '[data-ref-card="barcard"]'), art = await a.page.locator('[data-ref-card="barcard"] [data-ref-art="winelist"] svg').count();
+  const rc = await st(a.page, '[data-ref-card="bar"]'), art = await a.page.locator('[data-ref-card="bar"] [data-ref-art="cocktails"] svg').count();   // v172: вместо «Барной карты» — «Бар: Основы»
   const h = await a.page.evaluate(() => [...document.querySelectorAll("[data-ref-card]")].map((c) => Math.round(c.getBoundingClientRect().height)));
-  ok("LENS: «Справочник» — курсы карточками; у «Барной карты» — витраж винной карты и та же высота, что у курсов", lensCard(rc) && art === 1 && new Set(h).size === 1, JSON.stringify([rc, art, h]));
+  ok("LENS: «Справочник» — курсы карточками; у «Бар: Основы» — витраж с бокалом и та же высота, что у курсов", lensCard(rc) && art === 1 && new Set(h).size === 1, JSON.stringify([rc, art, h]));
   await shot(a.page, "reference");
   await a.ctx.close();
   // карточка «Дальше» под пройденной темой (владелец: «Ещё пару нашёл. Далее…»): у Анны «Психология первого дня» пройдена

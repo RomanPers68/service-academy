@@ -551,14 +551,15 @@ const book = async (items, more = {}, tok = "tr") => { fresh({ refBook: items, l
 const refScreen = (p = {}) => R(h(ReferenceSection, { T: S, a11y: false, onExit: noop, profile: ANNA, ...p }));
 
 describe("v167 · 4: справочник с правками на экране (ui/ReferenceSection.jsx)", () => {
-  it("карточки хаба — из разделов: штатные с прежними подписями, свои — за ними, «Бар» и «Гид» карточками не стали", () => {
-    expect(REF_OFF_HUB).toEqual(["bar", "app"]);
-    expect(hubCards(BASE).map((c) => [c.id, c.t, c.s])).toEqual([["serving", "Сервировка", "6 глав с фото"], ["wine", "Вина", "8 глав"], ["coffee", "Кофе", "7 глав со схемами"]]);
+  it("карточки хаба — из разделов: штатные с прежними подписями, свои — за ними, «Гид» карточкой не стал (v172: «Бар: Основы» — карточка)", () => {
+    expect(REF_OFF_HUB).toEqual(["app"]);
+    expect(hubCards(BASE).map((c) => [c.id, c.t, c.s])).toEqual([["serving", "Сервировка", "6 глав с фото"], ["wine", "Вина", "8 глав"], ["coffee", "Кофе", "7 глав со схемами"], ["bar", "Бар: Основы", "6 глав"]]);
     const cards = hubCards(mergeRefBook(BASE, OWN));
-    expect(cards.map((c) => [c.id, c.t, c.s])).toEqual([["serving", "Сервировка", "6 глав с фото"], ["wine", "Вина", "8 глав"], ["rs-a", "Стандарты заведения", "1 глава"]]);
+    expect(cards.map((c) => [c.id, c.t, c.s])).toEqual([["serving", "Сервировка", "6 глав с фото"], ["wine", "Вина", "8 глав"], ["bar", "Бар: Основы", "6 глав"], ["rs-a", "Стандарты заведения", "1 глава"]]);
     expect(hubCards(null)).toEqual([]);
-    // у своего раздела — рисунок-книга в том же ряду витражей (значок в линзе среди них смотрелся чужим: Доп. 433)
-    expect(cards.map((c) => c.art)).toEqual([undefined, undefined, "book"]);
+    // у своего раздела — рисунок-книга в том же ряду витражей (значок в линзе среди них смотрелся чужим: Доп. 433);
+    // у «Бар: Основы» — витраж с бокалом
+    expect(cards.map((c) => c.art)).toEqual([undefined, undefined, "cocktails", "book"]);
     expect(rd("ui/reference-art.jsx")).toContain("const ART = { serving: Serving, wine: Wine, coffee: Coffee, cocktails: Cocktails, winelist: WineList, book: Book };");
     expect(rd("ui/ReferenceSection.jsx")).toContain('hasArt = ["serving", "wine", "coffee", "cocktails", "winelist", "book"].includes(art);');
   });
@@ -567,17 +568,17 @@ describe("v167 · 4: справочник с правками на экране 
     expect(src).toContain("for (const pid of refPhotoIds(lesson.content)) { const p = photoOf(photos, pid); if (p) return { id: pid, info: p }; }");
     expect(src).toContain("const chapterHasPic = (lesson, photos) => !!tilePhoto(lesson, photos) || !!chapterThumb(lesson, hasIllMini);");
   });
-  it("без правок хаб тот же: три курса и барная карта; сотруднику кнопки «Редактор» нет", async () => {
+  it("без правок хаб: три курса и «Бар: Основы» (до v172 — барная карта); сотруднику кнопки «Редактор» нет", async () => {
     await book([]);
     const html = refScreen();
-    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "cocktails"]);
+    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "bar"]);
     expect(html).not.toContain("data-ref-edit");
     expect(text(html)).toContain("6 глав с фото");
   });
   it("с правками: свой раздел карточкой с обложкой, скрытого раздела нет; владельцу — «Редактор»", async () => {
     await book(OWN);
     const html = refScreen();
-    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "rs-a", "cocktails"]);
+    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "bar", "rs-a"]);   // v172: «Бар: Основы» — после штатных, перед своими
     expect(text(html)).toContain("Стандарты заведения");
     expect(text(html)).toContain("1 глава");
     expect(html).toMatch(/data-ref-card="rs-a" data-ref-cover="(own|wait)"/);
@@ -633,7 +634,7 @@ describe("v167 · 4: справочник с правками на экране 
     await book(OWN, { noStage53: true });
     expect(refBookNow().missing).toBe(true);
     const html = refScreen();
-    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "cocktails"]);
+    expect([...html.matchAll(/data-ref-card="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "bar"]);
   });
   it("обложки своих разделов готовятся заранее, как у штатных", () => {
     const map = { "ref:rs-a": { best: { ver: "v1" } }, "ref:coffee": { best: { ver: "v2" } }, "mod:m1": { best: { ver: "v3" } }, "rp:x1": { best: { ver: "v4" } } };
@@ -646,15 +647,16 @@ describe("v167 · 4: справочник с правками на экране 
 const edScreen = (p = {}) => noDoc(() => R(h(RefEditorScreen, { T: S, a11y: false, profile: ROMAN, onBack: noop, ...p })));
 
 describe("v167 · 5: экран редактора (ui/ref-editor.jsx)", () => {
-  it("разделы: штатные и свои, пометки, «Новый раздел», отдельно — «Бар», про «Гид» — строка", async () => {
+  it("разделы: штатные и свои, пометки, «Новый раздел», про «Гид» — строка (v172: «Бар: Основы» — в общем списке, блока «Отдельно» нет)", async () => {
     await book(OWN);
     const html = edScreen();
     expect(html).toContain('data-re-screen="list"');
-    expect([...html.matchAll(/data-re-sec="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "rs-a", "bar"]);
+    expect([...html.matchAll(/data-re-sec="([^"]+)"/g)].map((m) => m[1])).toEqual(["serving", "wine", "coffee", "bar", "rs-a"]);
     const t = text(html);
-    for (const w of ["Редактор справочника", "Стандарты заведения", "свой раздел", "скрыт", "1 глава скрыта", "Новый раздел", "Отдельно", "Бар: истории и техника", "«Гид по приложению» обновляется вместе с приложением"]) expect(t, w).toContain(w);
-    expect(t).toContain("4 раздела");
-    expect(count(html, 'data-re-up=""')).toBe(4);   // порядок — у разделов с карточкой; у «Бара» стрелок нет
+    for (const w of ["Редактор справочника", "Стандарты заведения", "свой раздел", "скрыт", "1 глава скрыта", "Новый раздел", "Бар: Основы", "«Гид по приложению» обновляется вместе с приложением"]) expect(t, w).toContain(w);
+    for (const w of ["Отдельно", "Бар: истории и техника", "из колоды бармена"]) expect(t, w).not.toContain(w);
+    expect(t).toContain("5 разделов");
+    expect(count(html, 'data-re-up=""')).toBe(5);   // порядок — у всех разделов, и у «Бар: Основы»
     expect(html).not.toContain("data-re-missing");
     expect(t).not.toMatch(/[а-яё] — [а-яё]/i);
   });

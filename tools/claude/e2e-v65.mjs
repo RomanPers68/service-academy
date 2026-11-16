@@ -235,13 +235,15 @@ const dock = (page) => page.evaluate(() => {
 
 if (want("DOCK")) {
   const T0 = new Date(); T0.setHours(14, 20, 0, 0);
-  for (const [nm, P, w, expRing, expLab] of [["менеджер 393", MANAGER, 393, 36, "on"], ["менеджер 375", MANAGER, 375, 33, "on"], ["менеджер 360", MANAGER, 360, 30, "on"], ["менеджер 320", MANAGER, 320, null, "off"]]) {
+  // v172 (Доп. 497): в ленте ещё «Бар», рядом с «Меню» — у руководителя шесть значков: на 393 подписи влезают при кружках
+  // 29 px, на 375 и уже — только значки (34 px)
+  for (const [nm, P, w, expRing, expLab] of [["менеджер 393", MANAGER, 393, 29, "on"], ["менеджер 375", MANAGER, 375, 34, "off"], ["менеджер 360", MANAGER, 360, 34, "off"], ["менеджер 320", MANAGER, 320, null, "off"]]) {
     const { ctx, page, errors } = await open({ profile: P, role: "manager", w, h: 852, dsf: 1, clock: T0 });
     let worst = -99, shown = new Set(), d0 = await dock(page);
     for (let k = 0; k < 6; k++) { await page.clock.runFor(4000); await sleep(1000); const d = await dock(page); worst = Math.max(worst, d ? d.over : 99);
       const on = await page.evaluate(() => { const r = document.querySelector("[data-tools-row]"); const c = r && [...r.children].find((x) => x.getBoundingClientRect().width > 50); return c ? c.getAttribute("title") : null; }); if (on) shown.add(on); }
-    ok(`DOCK: ${nm} — пятым «AI-интервью» (после «Чек-листов»), ряд не вылезает ни при одной подписи${expLab === "off" ? " (на 320 — только значки)" : ""}`,
-      !!d0 && d0.titles.join(",") === "Справочник,Меню,Глоссарий,Чек-листы,AI-интервью" && worst <= 0 && d0.labels === expLab && (expRing == null || d0.ring === expRing) && (expLab === "off" || shown.has("AI-интервью")),
+    ok(`DOCK: ${nm} — последним «AI-интервью» (после «Чек-листов»), «Бар» за «Меню»; ряд не вылезает ни при одной подписи${expLab === "off" ? " (только значки)" : ""}`,
+      !!d0 && d0.titles.join(",") === "Справочник,Меню,Бар,Глоссарий,Чек-листы,AI-интервью" && worst <= 0 && d0.labels === expLab && (expRing == null || d0.ring === expRing) && (expLab === "off" || shown.has("AI-интервью")),
       JSON.stringify({ ...d0, worst, shown: [...shown] }));
     if (w === 393) await shot(page, "dock-manager");
     if (w === 393) {
@@ -260,14 +262,15 @@ if (want("DOCK")) {
     await page.evaluate(() => window.__saNav("roleSelect")); await sleep(1200);
     const d = await dock(page);
     const has = !!d && d.titles.includes("AI-интервью");
-    ok(`DOCK: ${nm} — ${P === STAFF ? "без «AI-интервью» (только руководителям), лента прежняя" : "тоже с «AI-интервью»"}`, P === STAFF ? (!has && d.titles.length === 4 && d.ring === 36) : has, JSON.stringify(d));
+    ok(`DOCK: ${nm} — ${P === STAFF ? "без «AI-интервью» (только руководителям): пять значков с «Баром», кружки прежние" : "тоже с «AI-интервью»"}`, P === STAFF ? (!has && d.titles.join(",") === "Справочник,Меню,Бар,Глоссарий,Чек-листы" && d.ring === 36 && d.labels === "on") : has, JSON.stringify(d));
     await ctx.close();
   }
   // сотрудник на 320: раньше «Справочник» вылезал на 15 px — теперь кружки чуть меньше, подпись влезает
+  // v172: с «Баром» значков пять, и на 320 подписи уже не влезают — остаются значки; ряд по-прежнему не вылезает
   const { ctx, page } = await open({ profile: STAFF, w: 320, h: 700, dsf: 1, clock: T0, storage: DONE(STAFF), lessons: ["s0-1"] });
   let worst = -99; for (let k = 0; k < 5; k++) { await page.clock.runFor(4000); await sleep(1000); const d = await dock(page); worst = Math.max(worst, d ? d.over : 99); }
   const d = await dock(page);
-  ok("DOCK: официант на 320 — подписи на месте и ряд больше не вылезает (было 15 px)", d && d.labels === "on" && worst <= 0, JSON.stringify({ ...d, worst }));
+  ok("DOCK: официант на 320 — пять значков без подписей (v172), ряд не вылезает", d && d.titles.length === 5 && d.labels === "off" && d.ring >= 26 && worst <= 0, JSON.stringify({ ...d, worst }));
   await ctx.close();
 }
 

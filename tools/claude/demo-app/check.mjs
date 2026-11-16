@@ -425,9 +425,11 @@ if (!ONLY || ONLY.includes("maria")) {
   await shot("m22-wine-team");
   // v127 (Доп. 440): «Барная карта» — коктейли, вина и крепкое под одной кнопкой; у крепкого всё, как у вин
   await page.evaluate(() => window.__saNav && window.__saNav("reference")); await page.waitForTimeout(1500);
-  const bc = await page.evaluate(() => { const e = document.querySelector('[data-ref-card="barcard"]'); return e ? e.innerText.replace(/\s+/g, " ") : ""; });
-  ok("Справочник: «Барная карта» вместо «Нашей винной карты» и «Бар: коктейли»", /^Барная карта Коктейли \d+ · вина 9 · крепкое 11/.test(bc) && !(await page.locator('[data-ref-card="winelist"], [data-ref-card="cocktails"]').count()), bc);
-  await page.locator('[data-ref-card="barcard"]').click().catch(() => {}); await page.waitForTimeout(1500);
+  // v172 (Доп. 497): «Барная карта» — значок «Бар» в ленте главной, рядом с «Меню»; в Справочнике на её месте раздел «Бар: Основы»
+  const bc = await page.evaluate(() => { const e = document.querySelector('[data-ref-card="bar"]'); return e ? e.innerText.replace(/\s+/g, " ") : ""; });
+  ok("Справочник: раздел «Бар: Основы» вместо карточки «Барная карта»", /^Бар: Основы 6 глав/.test(bc) && !(await page.locator('[data-ref-card="barcard"], [data-ref-card="winelist"], [data-ref-card="cocktails"]').count()), bc);
+  await page.evaluate(() => window.__saNav && window.__saNav("roleSelect")); await page.waitForTimeout(1300);
+  await page.locator('[data-tools-row] [title="Бар"]').click().catch(() => {}); await page.waitForTimeout(1500);
   await page.locator('[data-bar-tab="cocktail"]').click().catch(() => {}); await page.waitForTimeout(600);
   const ck = await page.evaluate(() => ({ tabs: (document.querySelector("[data-bar-tabs]") || { getAttribute: () => "" }).getAttribute("data-bar-tabs"),
     groups: [...document.querySelectorAll("[data-bar-ck-group]")].map((e) => e.getAttribute("data-bar-ck-group")).join(","),

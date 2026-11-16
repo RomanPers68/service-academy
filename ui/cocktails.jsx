@@ -43,7 +43,7 @@ const matches = (c, q) => {
   return norm(c.name).includes(n) || c.ing.some(i => norm(i[0]).includes(n)) || norm(GLASS_RU[c.glass]).includes(n);
 };
 
-export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint, onShareChat = null, startReverse = false }) {
+export function CocktailsScreen({ T, a11y, onBack, startId, onBuild, profile, onOpenDish, onLab, onEdit, onPrint, onShareChat = null, startReverse = false }) {
   // Доп. 210: своя карта бара (флаги в меню команды), свои коктейли из меню, «наоборот», гость спрашивает, мост к меню
   const restaurant = profile?.restaurant || "";
   const uk = profile ? `_${profile.name}_${profile.surname || ""}` : "";
@@ -216,7 +216,8 @@ export function CocktailsScreen({ T, a11y, onBack, onBasics, startId, onBuild, p
             <span style={{ marginLeft:"auto", display:"flex", gap:10, whiteSpace:"nowrap" }}>
               {onEdit && canEdit ? <span ref={ckRefOwn} style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onEdit(null)} {...onActivate(() => onEdit(null))}>Свои ›</span> : null}
               {onLab ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onLab()} {...onActivate(() => onLab())}>Сборка ›</span> : null}
-              {onBasics ? <span style={{ fontFamily:"Georgia, serif", fontSize:12.5, color:GOLD, cursor:"pointer", padding:"6px 2px" }} onClick={() => onBasics("brc-canon")} {...onActivate(() => onBasics("brc-canon"))}>Основы ›</span> : null}
+              {/* v172 (Доп. 497), владелец: «С колоды основы можем убрать, оставить их только в справочнике» — ссылки «Основы ›»
+                  здесь больше нет: главы живут в Справочнике, в разделе «Бар: Основы» */}
             </span>
           </div>
           {(barcard || house.length > 0) && (

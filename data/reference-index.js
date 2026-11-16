@@ -151,42 +151,42 @@ export const REFERENCE_DAILY_INDEX = [
  {
   "id": "brc-canon",
   "title": "Классика как язык бара",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },
  {
   "id": "brc-aperitif",
   "title": "Истории: аперитивы",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },
  {
   "id": "brc-sour",
   "title": "Истории: сауэры и тропики",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },
  {
   "id": "brc-strong",
   "title": "Истории: вечерняя крепость",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },
  {
   "id": "brc-zero",
   "title": "Безалкогольная классика",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },
  {
   "id": "brc-story",
   "title": "Как рассказывать о коктейле",
-  "course": "Бар: истории и техника",
+  "course": "Бар: Основы",
   "cid": "bar",
   "type": "lesson"
  },

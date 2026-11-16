@@ -275,7 +275,7 @@ mkdirSync(OUT + "/in", { recursive: true });
 const { writeFileSync } = await import("node:fs");
 writeFileSync(OUT + "/in/page.jpg", JPG); writeFileSync(OUT + "/in/carta.pdf", PDF);
 // v127 (Доп. 440): «Наша винная карта» теперь — вкладка «Вина» в «Барной карте» (Справочник → «Барная карта» → «Вина»)
-const openBarWines = async (page) => { const okk = await clickText(page, ".sa-card, [data-ref-card]", "Барная карта"); if (!okk) return false; for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
+const openBarWines = async (page) => { await nav(page, "wines", 700);   /* v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет — экран открываем сразу */ for (let i = 0; i < 30; i++) { if (await page.locator('[data-bar-tab="wine"], [data-wine-list]').count()) break; await sleep(200); }
   await page.evaluate(() => { const b = document.querySelector('[data-bar-tab="wine"]'); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }); await sleep(400); return true; };
 const toList = async (page) => { await go(page, "reference", 1800); return openBarWines(page); };
 
@@ -394,7 +394,7 @@ const nb = (t) => String(t || "").replace(/ /g, " ");
 const openBar = async (page, tab = null) => {
   for (let i = 0; i < 3; i++) {
     await go(page, "reference", 1200);
-    await until(() => clickText(page, ".sa-card, [data-ref-card]", "Барная карта"), 9000, 400);
+    await nav(page, "wines", 700);   // v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет — экран открываем сразу
     if (!(await until(() => page.locator("[data-bar-cocktails], [data-wine-list], [data-drink-kind]").count(), 9000))) continue;
     if (!tab) return true;
     await page.evaluate((t) => { const b = document.querySelector(`[data-bar-tab="${t}"]`); if (b && b.getAttribute("aria-selected") !== "true") b.click(); }, tab); await sleep(500);

@@ -2,7 +2,6 @@
 // Раздел «Справочник»: хаб → курс → глава → фото-тест.
 // Использует реальные токены темы приложения (T = S | A), чтобы выглядеть родным.
 import { RefArt } from "./reference-art";
-import { COCKTAILS } from "../data/cocktails";
 import React from "react";
 import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
@@ -14,11 +13,9 @@ import { GOLD, GREEN, RED, labelStyle } from "./tokens";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): курсы и главы — в две колонки на широком экране
 import { refShareItem } from "../lib/share-items";   // v97 (Доп. 410): глава — в чат команды
 import { CHAT_SHARE_IC } from "./share-chat";
-import { cachedShared } from "../lib/deck-extras";   // v120 (Доп. 433): винная карта заведения
 import { wineRecords } from "../lib/wine";
-import { barCounts, barLine } from "../lib/bar-card";   // v127: «Барная карта»
 import { useLessonPhotos, useCover, canEditCovers, CoverEditButton, LessonCover, CoverPhoto, PhotoWait } from "./lesson-photo";   // v157 (Доп. 481): обложки разделов; v158: фото главы; v163: фото проявляется
-import { refCoverId, photoOf, REF_COVER_DEFAULT, lessonPhotoId } from "../lib/lesson-photo";
+import { refCoverPick, photoOf, REF_COVER_DEFAULT, lessonPhotoId } from "../lib/lesson-photo";
 import { chapterThumb } from "../lib/reference-thumb";   // v158 (Доп. 483): плитка главы в списке глав
 import { mergeRefBook, RB_FIXED, REF_PHOTO_RE, refPhotoIds, refreshRefBook } from "../lib/ref-book";   // v167 (Доп. 492): справочник с правками владельца
 import { useRefBook } from "./use-ref-book";
@@ -105,7 +102,7 @@ function Figure({ T, children }) {
 // «Барная карта») — прежний рисунок-витраж, крупнее и справа. Фото — фоном во всю карточку, слева гаснет под текст.
 const REF_PHOTO = { "data-ref-photo": "" }, REF_UNDER = { "data-ref-under": "" };   // фото на виду и снимок из приложения под своим фото
 function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
-  const id = refCoverId(c.id);
+  const id = refCoverPick(photos, c.id);   // v172: у «Бар: Основы» — обложка прежней «Барной карты», пока своей нет
   const own = id && photos && photos !== "missing" ? photoOf(photos, id) : null;
   // v163 (Доп. 488): своё фото проявляется поверх того, что на карточке было (снимок из приложения или пустое стекло), а
   // не встаёт вместо него разом. Не приехало совсем (нет связи) — карточка как без своего фото.
@@ -148,28 +145,29 @@ function RefCard({ c, T, gold, dark, a11y, onGo, photos, profile }) {
 
 // v167 (Доп. 492): карточки хаба — из разделов справочника, как их видит команда: штатные («Сервировка», «Вина», «Кофе»)
 // с прежними подписями и рисунками, за ними свои разделы владельца. Название и число глав — уже с правками.
-// «Бар: истории и техника» и «Гид по приложению» карточками не были и не стали (открываются из колоды, подсказок и поиска).
-export const REF_OFF_HUB = ["bar", "app"];
-const HUB_PRESET = { serving: { icon: Ico.serving, tail: " с фото" }, wine: { icon: Ico.wine, tail: "" }, coffee: { icon: Ico.coffee, tail: " со схемами" } };
+// «Гид по приложению» карточкой не был и не стал (открывается из подсказок и поиска, сам гид — во вкладке «Я»).
+// v172 (Доп. 497), владелец (16.11): «Может бар из справочника рядом с меню вставим?», «В справочнике можем оставить
+// основу», «С колоды основы можем убрать, оставить их только в справочнике. А карточка в справочнике пусть будет «Бар:
+// Основы»». «Барная карта» ушла в ленту главной (значок «Бар»), а её место в Справочнике занял раздел с главами об
+// историях классики и технике: раньше он карточкой не был и открывался из колоды бармена по «Основы ›».
+export const REF_OFF_HUB = ["app"];
+const HUB_PRESET = { serving: { icon: Ico.serving, tail: " с фото" }, wine: { icon: Ico.wine, tail: "" }, coffee: { icon: Ico.coffee, tail: " со схемами" },
+  bar: { icon: Ico.cocktail, tail: "", art: "cocktails" } };   // v172: витраж с бокалом, как был у карточки «Бар: коктейли»
 const chaptersWord = (n) => n % 10 === 1 && n % 100 !== 11 ? "глава" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? "главы" : "глав";
 export function hubCards(sections) {
   return (Array.isArray(sections) ? sections : []).filter(c => c && !REF_OFF_HUB.includes(c.id)).map(c => {
     const n = (c.lessons || []).filter(l => l.type === "lesson").length, p = HUB_PRESET[c.id] || null;
-    return { id: c.id, t: c.title, s: `${n} ${chaptersWord(n)}${p ? p.tail : ""}`, icon: p ? p.icon : Ico.compass, on: true, ...(p ? null : { art: "book" }) };
+    return { id: c.id, t: c.title, s: `${n} ${chaptersWord(n)}${p ? p.tail : ""}`, icon: p ? p.icon : Ico.compass, on: true, ...(p ? (p.art ? { art: p.art } : null) : { art: "book" }) };
   });
 }
 const PEN_IC = (c, s = 15) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" /><path d="M14.5 6.5l3 3" /></svg>);
 
-function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCocktails, onBarLab, hintNode, onWines, restaurant, profile = null, sections = [], onEdit = null }) {
+function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onBarLab, hintNode, profile = null, sections = [], onEdit = null }) {
   const photos = useLessonPhotos();   // v157: свои фото разделов — из того же списка, что фото уроков
-  const cards = [
-    ...hubCards(sections),
-      // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска
-    // v127 (Доп. 440), владелец: «одну общую кнопку… «Барная карта», и закинуть туда вина, коктейли, крепыш» — вместо «Нашей
-    // винной карты» (v120) и «Бар: коктейли»: внутри вкладки «Коктейли · Вина · Крепкое» (ui/bar-card.jsx)
-    onWines ? { id: "barcard", art: "winelist", t: "Барная карта", s: barLine(barCounts(cachedShared(restaurant))), icon: Ico.cocktail, on: true, go: onWines }
-      : { id: "cocktails", t: "Бар: коктейли", s: `${COCKTAILS.length} ${((n) => n % 10 === 1 && n % 100 !== 11 ? "коктейль" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "коктейля" : "коктейлей")(COCKTAILS.length)}: состав, метод и история`, icon: Ico.cocktail, on: true, deck: true },
-  ];
+  // Доп. 144: карточка «Гид по приложению» снята — гид живёт во вкладке «Я»; главы остались для Наставника и поиска.
+  // v127 (Доп. 440) здесь же стояла карточка «Барная карта»; v172 (Доп. 497): она ушла в ленту главной (значок «Бар»),
+  // а в Справочнике остался раздел «Бар: Основы» — обычной карточкой, среди остальных (hubCards).
+  const cards = hubCards(sections);
   return (<div style={T.screen}>
       {hintNode}
     <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "14px 14px 0" }}>
@@ -198,7 +196,7 @@ function Hub({ T, gold, dark, a11y, openCourse, onSearch, onExit, isLeader, onCo
     <div className="sa-g2" style={{ ...T.modList, paddingTop: 8 }}>
       {cards.map(c => (
         <RefCard key={c.id} c={c} T={T} gold={gold} dark={dark} a11y={a11y} photos={photos} profile={profile}
-          onGo={() => (c.go ? c.go() : c.deck && onCocktails ? onCocktails() : openCourse(c.id))} />
+          onGo={() => openCourse(c.id)} />
       ))}
     </div>
   </div>);
@@ -344,7 +342,7 @@ function Quiz({ T, gold, dark, lesson, onBack, onNext, nextLabel }) {
 // v128: onBarItem(kind, id) — коктейль, вино или крепкое из поиска справочника: карточка в «Барной карте»
 // v167 (Доп. 492): onEdit(номер главы или null) — владельцу: редактор справочника (App.jsx даёт его только владельцу)
 // startInside — главу startLessonId открыли как изнутри (вернулись из редактора): «назад» ведёт к программе раздела
-export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCocktails, onBarLab, accent, onShareChat = null, onWines = null, onBarItem = null, onEdit = null, startInside = false }) {
+export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onBarLab, accent, onShareChat = null, onBarItem = null, onEdit = null, startInside = false }) {
   // Цвет входа продолжается внутри — как у SOS. Без параметра прежний золотой.
   const gold = accent || (a11y ? "#7A5D2A" : GOLD);
   const [rHint, rHintDone] = useHintOnce("reference");
@@ -405,7 +403,7 @@ export function ReferenceSection({ T, a11y, onExit, startLessonId, profile, onCo
         step={rStep + 1} total={rSteps.length}
         onNext={rStep >= rSteps.length - 1 ? null : () => setRStep(v => v + 1)}
         onClose={rHintDone} />
-    ) : null} openCourse={openCourse} isLeader={isLeader} onCocktails={onCocktails} onWines={onWines} restaurant={(profile && profile.restaurant) || ""} onSearch={() => setView("search")} onExit={onExit} />;
+    ) : null} openCourse={openCourse} isLeader={isLeader} onSearch={() => setView("search")} onExit={onExit} />;
   if (shown === "course") return <Course T={T} gold={gold} dark={dark} course={course} openLesson={openLesson} onBack={() => setView("hub")} />;
   const back = (entry && lid === entry) ? onExit : () => setView("course");
   if (lesson.type === "quiz") return <Quiz T={T} gold={gold} dark={dark} lesson={lesson} onBack={back} onNext={goNext} nextLabel={nextLabel} />;

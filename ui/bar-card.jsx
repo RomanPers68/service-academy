@@ -337,7 +337,7 @@ function BarCocktails({ T, a11y, gold, text, sub, restaurant, cocktails, spirits
   });
   return (
     <div ref={frameRef} style={T.screen} className="sa-screen" data-bar-cocktails={cocktails.length}>
-      {head("Справочник · " + restaurant, "Барная карта", onBack, onCocktailEdit ? editBtn(() => onCocktailEdit(null), { "data-bar-ck-edit": "" }, "Редактор") : null)}
+      {head(restaurant || "Бар", "Барная карта", onBack, onCocktailEdit ? editBtn(() => onCocktailEdit(null), { "data-bar-ck-edit": "" }, "Редактор") : null)}
       {tabs}
       {som}
       <BarPin box={pinBox} a11y={a11y} gold={gold} tabs={pinTabs} chips={chipList(true)} onSearch={() => focusSearch(searchRef.current)} line={pinLine} active={only} />

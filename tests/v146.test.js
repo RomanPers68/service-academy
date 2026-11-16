@@ -317,8 +317,8 @@ describe("v146 (Доп. 468): инструменты главной — линз
     expect(LOOK).toContain("box-shadow:inset 0 0 0 1px var(--lk-rim),inset 0 0 12px var(--lk-glow),inset 0 1.5px 0 var(--lk-hl),inset 0 -9px 12px -7px var(--tint,transparent)}");
     expect(RS).toContain('"--tint": c + "55",');
   });
-  it("цвета и значки — как были: свой цвет у Справочника, Меню, Глоссария; кружков своего цвета больше нет", () => {
-    expect(Object.keys(TOOL_COLOR)).toEqual(["sp", "menu", "gl"]);
+  it("цвета и значки — как были: свой цвет у Справочника, Меню, Глоссария (v172: и у Бара); кружков своего цвета больше нет", () => {
+    expect(Object.keys(TOOL_COLOR)).toEqual(["sp", "menu", "gl", "bar"]);
     expect(toolColor("cl", false)).toBe(toolColor("sp", false));
     expect(RS).not.toContain('"--tl"');
     expect(LOOK_V146_CSS).not.toContain("--tl");

@@ -331,7 +331,7 @@ describe("v127: экраны", () => {
     const APP = rd("App.jsx");
     for (const s of ['import("./ui/bar-card")', "<WineEditor key={wineKind} kind={wineKind}", "setBarTab(null)"]) expect(APP, s).toContain(s);
     expect(APP).not.toContain('import("./ui/wine-list")');
-    expect(rd("ui/ReferenceSection.jsx")).toContain('s: barLine(barCounts(cachedShared(restaurant)))');
+    expect(rd("ui/ReferenceSection.jsx")).not.toContain("barLine(");   // v172 (Доп. 497): карточки «Барная карта» в Справочнике больше нет, вход — значок «Бар» на главной
   });
   it("редактор крепкого: вид чипами, порция 25, 40, 50 мл или своя, подача, бокал и температура, «ходовое»", () => {
     const E = rd("ui/wine-editor.jsx");

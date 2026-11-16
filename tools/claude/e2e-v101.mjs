@@ -5,7 +5,7 @@
 //            стекло внутри и кольцо по краю кружка (inset 0, внешней тени нет), каждый кружок целиком в ряду (владелец:
 //            «линзы выглядят не ровными, как будто обрезаны» — кольцо снаружи срезалось сверху и снизу), SOS — красная
 //            линза с кольцом, треки — стекло с тонким кольцом, карточки — золотая кромка, «Начать» — линза;
-//   TOOLS  — руководитель (пять инструментов и SOS) на 393, 375, 360 и 320 px: все кружки целиком в ряду и в капсуле;
+//   TOOLS  — руководитель (шесть инструментов и SOS; до v172 — пять) на 393, 375, 360 и 320 px: все кружки целиком в ряду и в капсуле;
 //   LIGHT  — «Для чтения»: стекло и кромка — тёмным золотом;
 //   NOW    — sa_home_look = "now": прежний вид — без класса, у кружков прежний цвет инструмента;
 //   OWNER  — владелец: «Пульс недели» — той же кромкой;   WIDE — 1280 × 800 в две колонки: «Линза» и там;
@@ -121,7 +121,7 @@ if (want("LENS")) {
   ok("LENS: по умолчанию — «Линза»: класс на корне главной", pr.look === "lens" && /\bsa-look-lens\b/.test(pr.cls), pr.cls);
   ok("LENS: медальоны — стекло, эмаль прозрачна, кольцо вокруг", pr.medalBg === "rgba(200, 169, 110, 0.12)" && /rgba\(0, 0, 0, 0\)|none|transparent/.test(pr.enamelFill) && pr.medalRing === "rgba(214, 178, 102, 0.44)", pr.medalBg + " · " + pr.enamelFill + " · " + pr.medalRing);
   ok("LENS: инструменты — стекло внутри кружка (::before на 2,5 px), кольцо по краю (::after, inset 0), без внешней тени",
-    pr.discs.length === 4 && pr.discs.every((d) => d.bg === "rgba(0, 0, 0, 0)" && d.beforeBg === "rgba(200, 169, 110, 0.12)" && d.beforeInset === "2.5px" && d.afterInset === "0px" && /^1px rgba\(214, 178, 102, 0\.44\)$/.test(d.afterBorder) && d.afterShadow === "none"),
+    pr.discs.length === 5 && pr.discs.every((d) => d.bg === "rgba(0, 0, 0, 0)" && d.beforeBg === "rgba(200, 169, 110, 0.12)" && d.beforeInset === "2.5px" && d.afterInset === "0px" && /^1px rgba\(214, 178, 102, 0\.44\)$/.test(d.afterBorder) && d.afterShadow === "none"),
     JSON.stringify(pr.discs[0]));
   ok("LENS: каждый кружок целиком в ряду инструментов — кольцо не срезано", allIn(pr), pr.discs.map((d) => d.inRow).join(","));
   ok("LENS: SOS — красная линза с кольцом, в капсуле", /rgba\(234, 140, 140, 0\.62\)/.test(pr.sosShadow) && pr.sosRing === "rgba(234, 140, 140, 0.42)" && pr.sosIn, pr.sosShadow.slice(0, 60));
@@ -136,7 +136,7 @@ if (want("TOOLS")) {
   for (const w of [393, 375, 360, 320]) {
     const o = await open({ who: MARIA, w });
     const pr = await probe(o.page);
-    ok(`TOOLS ${w}: пять инструментов и SOS — все кружки целиком в ряду и в капсуле`, pr.discs.length === 5 && allIn(pr) && pr.capIn && pr.sosIn, pr.discs.map((d) => d.w + ":" + (d.inRow ? "ok" : "срез")).join(","));
+    ok(`TOOLS ${w}: шесть инструментов (v172: с «Баром») и SOS — все кружки целиком в ряду и в капсуле`, pr.discs.length === 6 && allIn(pr) && pr.capIn && pr.sosIn, pr.discs.map((d) => d.w + ":" + (d.inRow ? "ok" : "срез")).join(","));
     ok(`TOOLS ${w}: без прокрутки вбок и без ошибок`, !pr.hscroll && !o.errors.length, o.errors.join(" | "));
     if (w === 393 || w === 320) await shot(o.page, "tools-" + w);
     await o.ctx.close();
@@ -159,7 +159,7 @@ if (want("NOW")) {
   const o = await open({ look: "now" });
   const pr = await probe(o.page);
   ok("NOW: «как сейчас» — без класса вида", pr.look === "now" && !/sa-look/.test(pr.cls), pr.cls);
-  ok("NOW: у кружков прежний цвет инструмента, без стекла и кольца", pr.discs.length === 4 && pr.discs.every((d) => d.bg !== "rgba(0, 0, 0, 0)" && d.before === "none" && d.after === "none"), JSON.stringify(pr.discs[0]));
+  ok("NOW: у кружков прежний цвет инструмента, без стекла и кольца", pr.discs.length === 5 && pr.discs.every((d) => d.bg !== "rgba(0, 0, 0, 0)" && d.before === "none" && d.after === "none"), JSON.stringify(pr.discs[0]));
   ok("NOW: медальоны — эмаль", pr.medalBg === "rgba(0, 0, 0, 0)" && !/rgba\(0, 0, 0, 0\)|none/.test(pr.enamelFill), pr.medalBg + " · " + pr.enamelFill);
   ok("NOW: без ошибок", !o.errors.length, o.errors.join(" | "));
   await shot(o.page, "now-393");

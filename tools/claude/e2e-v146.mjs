@@ -145,12 +145,13 @@ if (want("HOME")) {
   // v147 (Доп. 471): «Начать» — линза с подсветкой (не золотой корешок), надпись золотом
   ok("HOME: «Начать» — корешок со свечением, надпись золотом (v147)", /^radial-gradient/.test(g.stubBg) && g.ctaColor === "rgb(232, 201, 131)", g.stubBg.slice(0, 80) + " " + g.ctaColor);
   ok("HOME: инструменты — линза с одним кольцом (стекло ::before есть, внешнего кольца ::after нет)", g.toolBefore === "block" && g.toolAfter === "none", g.toolBefore + "/" + g.toolAfter);
-  ok("HOME: инструменты Анны — Справочник, Меню, Глоссарий, Чек-листы", g.tools.map((t) => t.label).join("|") === "Справочник|Меню|Глоссарий|Чек-листы", g.tools.map((t) => t.label).join("|"));
+  // v172 (Доп. 497): в ленте ещё «Бар», сразу за «Меню» — у Анны значков пять
+  ok("HOME: инструменты Анны — Справочник, Меню, Бар, Глоссарий, Чек-листы", g.tools.map((t) => t.label).join("|") === "Справочник|Меню|Бар|Глоссарий|Чек-листы", g.tools.map((t) => t.label).join("|"));
   ok("HOME: стекло как было — во весь кружок, ободок, свет; кружок прозрачный, кольца снаружи нет",
-    g.tools.length === 4 && g.tools.every((t) => t.before === "block" && t.top === "0px" && t.glass === "rgba(200, 169, 110, 0.12)" && t.sh.includes("rgba(214, 178, 102, 0.45)")
+    g.tools.length === 5 && g.tools.every((t) => t.before === "block" && t.top === "0px" && t.glass === "rgba(200, 169, 110, 0.12)" && t.sh.includes("rgba(214, 178, 102, 0.45)")
       && t.after === "none" && t.bg === "rgba(0, 0, 0, 0)"), JSON.stringify(g.tools.map((t) => [t.top, t.glass, t.after, t.bg, t.sh.slice(0, 50)])));
-  ok("HOME: значки золотом, линия 1,8, как были; отсвет снизу — цветом инструмента (Меню — зелёный, Глоссарий — фиолетовый)",
-    g.tools.every((t) => t.stroke === rgb("#C8A96E") && t.sw === "1.8px") && g.tools[1].sh.includes("143, 184, 144") && g.tools[2].sh.includes("155, 143, 196") && g.tools[0].sh.includes("200, 169, 110"),
+  ok("HOME: значки золотом, линия 1,8, как были; отсвет снизу — цветом инструмента (Меню — зелёный, Бар — медный, Глоссарий — фиолетовый)",
+    g.tools.every((t) => t.stroke === rgb("#C8A96E") && t.sw === "1.8px") && g.tools[1].sh.includes("143, 184, 144") && g.tools[2].sh.includes("210, 135, 90") && g.tools[3].sh.includes("155, 143, 196") && g.tools[0].sh.includes("200, 169, 110"),
     g.tools.map((t) => t.stroke + " " + t.sw).join(" · ") + " | " + g.tools.map((t) => (t.sh.match(/rgba\([^)]*\)\s+0px\s+-9px/) || [""])[0]).join(" · "));
   ok("HOME: у медальона кольцо осталось, у «поиска» — нет", g.medRing !== "rgba(0, 0, 0, 0)" && /rgba\(0, 0, 0, 0\)|transparent/.test(g.searchRing), g.medRing + " / " + g.searchRing);
   ok("HOME: стекло Бара — медь (#D2875A2E)", g.barGlass === "rgba(210, 135, 90, 0.18)", g.barGlass);
@@ -341,9 +342,9 @@ if (want("LIGHT")) {
   });
   ok("LIGHT: «Для чтения» — корешок «Начать» со свечением, без золотой заливки (v147)", g.light && /^radial-gradient/.test(g.stub) && !/linear-gradient/.test(g.stub), JSON.stringify(g).slice(0, 200));
   ok("LIGHT: цвет Бара — тёмная медь (#93500F)", g.bar === "#93500F", g.bar);
-  // Доп. 468: у Марии пятый — «AI-интервью»; линзы светлым стеклом с одним кольцом, значки тёмным золотом, как были
+  // Доп. 468: у Марии последним — «AI-интервью» (v172: шестым, после «Бара»); линзы светлым стеклом с одним кольцом, значки тёмным золотом, как были
   ok("LIGHT: инструменты — светлое стекло во весь кружок, без внешнего кольца, значки тёмным золотом",
-    g.tools.map((t) => t.label).join("|") === "Справочник|Меню|Глоссарий|Чек-листы|AI-интервью"
+    g.tools.map((t) => t.label).join("|") === "Справочник|Меню|Бар|Глоссарий|Чек-листы|AI-интервью"
       && g.tools.every((t) => t.stroke === rgb("#7A5D2A") && t.glass === "rgba(139, 106, 48, 0.09)" && t.top === "0px" && t.after === "none"),
     JSON.stringify(g.tools).slice(0, 400));
   await shot(page, "light-home");
@@ -367,7 +368,7 @@ if (want("NOW")) {
       tools: [...document.querySelectorAll("[data-tool-disc]")].map((d) => { const sv = getComputedStyle(d.querySelector("svg")); return getComputedStyle(d).backgroundImage + "/" + sv.stroke + "/" + sv.strokeWidth; }) };
   });
   ok("NOW: вид «как сейчас» — без «Линзы» и без золотого корешка", !g.lens && !/linear-gradient\(165deg/.test(g.stub), JSON.stringify(g).slice(0, 300));
-  ok("NOW: инструменты как были — плоский кружок, значки золотом, линия 1,8", g.tools.length === 4 && g.tools.every((t) => t === "none/" + rgb("#C8A96E") + "/1.8px"), g.tools.join(" · "));
+  ok("NOW: инструменты как были — плоский кружок, значки золотом, линия 1,8", g.tools.length === 5 && g.tools.every((t) => t === "none/" + rgb("#C8A96E") + "/1.8px"), g.tools.join(" · "));
   ok("NOW: подписей под кружками треков нет и здесь", g.caps === 0, String(g.caps));
   await shot(page, "now-home");
   await ctx.close();

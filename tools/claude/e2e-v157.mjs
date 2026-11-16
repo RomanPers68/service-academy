@@ -68,9 +68,10 @@ if (want("REF")) {
   { const { ctx, page, errs } = await open({ who: "anna" });
     await nav(page, "reference"); await page.waitForTimeout(600);
     const c = await refCards(page); const by = Object.fromEntries(c.map((x) => [x.id, x]));
-    ok("REF: четыре раздела — «Сервировка», «Вина», «Кофе», «Барная карта»", c.map((x) => x.id).join() === "serving,wine,coffee,barcard", JSON.stringify(c.map((x) => x.id)));
+    // v172 (Доп. 497): четвёртым — раздел «Бар: Основы»; карточка «Барная карта» ушла в ленту главной (значок «Бар»)
+    ok("REF: четыре раздела — «Сервировка», «Вина», «Кофе», «Бар: Основы»", c.map((x) => x.id).join() === "serving,wine,coffee,bar", JSON.stringify(c.map((x) => x.id)));
     ok("REF: «Сервировка» и «Вина» — с фото из приложения, фото загрузилось и во всю карточку", ["serving", "wine"].every((k) => by[k] && by[k].cover === "app" && by[k].img && by[k].img.ok && by[k].img.w >= by[k].w - 4), JSON.stringify([by.serving, by.wine]));
-    ok("REF: «Кофе» и «Барная карта» — прежний рисунок, без фото", ["coffee", "barcard"].every((k) => by[k] && by[k].cover === "art" && !by[k].img && by[k].art), JSON.stringify([by.coffee, by.barcard]));
+    ok("REF: «Кофе» и «Бар: Основы» — рисунок, без фото", ["coffee", "bar"].every((k) => by[k] && by[k].cover === "art" && !by[k].img && by[k].art), JSON.stringify([by.coffee, by.bar]));
     ok("REF: карточки одной высоты — 112 px и выше", c.every((x) => x.h >= 112 && x.h === c[0].h), c.map((x) => x.h).join());
     ok("REF: название раздела крупнее прежнего (19 px)", c.every((x) => x.title && x.title.size === "19px"), JSON.stringify(c.map((x) => x.title)));
     ok("REF: у официанта фотоаппарата нет", c.every((x) => !x.cam));
@@ -109,11 +110,11 @@ if (want("REF")) {
     await ctx.close(); }
   { const { ctx, page } = await open({ who: "roman" });
     await nav(page, "reference"); await page.waitForTimeout(600);
-    await page.locator('[data-cover-edit="ref:barcard"]').click(); await page.waitForTimeout(700);
+    await page.locator('[data-cover-edit="ref:bar"]').click(); await page.waitForTimeout(700);   // v172: «Бар: Основы»
     const t = (await page.locator("[data-lp-sheet]").innerText()).replace(/\s+/g, " ");
     ok("REF владелец: в листе выбор — «Вся сеть» или своё заведение; по умолчанию сеть", /Вся сеть/.test(t) && /«Два моря, Океан»/.test(t) && /фото встанет обложкой раздела у всей сети\./.test(t), t);
     await page.locator("[data-lp-pick] input[type=file]").setInputFiles({ name: "bar.jpg", mimeType: "image/jpeg", buffer: PHOTO });
-    ok("REF владелец: фото для всей сети встало на «Барную карту»", await waitFor(page, () => { const c2 = document.querySelector('[data-ref-card="barcard"]'); return !!c2 && c2.getAttribute("data-ref-cover") === "own"; }));
+    ok("REF владелец: фото для всей сети встало на «Бар: Основы»", await waitFor(page, () => { const c2 = document.querySelector('[data-ref-card="bar"]'); return !!c2 && c2.getAttribute("data-ref-cover") === "own"; }));
     await page.screenshot({ path: join(OUT, "ref-owner.png") });
     await ctx.close(); }
   { const { ctx, page } = await open({ who: "anna", light: true });

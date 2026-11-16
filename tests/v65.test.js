@@ -42,7 +42,7 @@ describe("v65: AI-интервью в ленте у руководителей",
   it("плитка «AI-интервью» открывает собеседование; в ленте — только у тех, кому App передаёт onCandidate", () => {
     expect(rs).toContain('if (onCandidate) tiles.push({ key:"hire", label:"AI-интервью", onClick:onCandidate, icon:(');
     expect(rs).toContain('...(isStaff && onCandidate ? ["hire"] : [])');
-    expect(rs).toContain('const ORDER = ["sp", "ob", "menu", "gl", "cl", "hire"];');
+    expect(rs).toContain('const ORDER = ["sp", "ob", "menu", "bar", "gl", "cl", "hire"];');   // v172 (Доп. 497): «Бар» — рядом с «Меню»
     const app = rd("App.jsx");
     expect(app).toContain('onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null}');
     // во вкладке «Команда» собеседование осталось
@@ -57,7 +57,7 @@ describe("v65: AI-интервью в ленте у руководителей",
     expect(rs).toContain('data-tools-row="" data-tools-ring={ring} data-tools-labels={labelsOn ? "on" : "off"}');
   });
   it("тур главной руководителя и «Гид» — про AI-интервью", () => {
-    expect(HINTS.home_admin[1]).toBe("Эта лента всегда под рукой: справочник, меню, глоссарий, чек-листы и AI-интервью для кандидатов. Красный круг справа открывает SOS, когда всё горит.");   // v74
+    expect(HINTS.home_admin[1]).toBe("Эта лента всегда под рукой: справочник, меню, бар, глоссарий, чек-листы и AI-интервью для кандидатов. Красный круг справа открывает SOS, когда всё горит.");   // v74; v172: и бар
     expect(rd("ui/guide.jsx")).toContain("Вход: «AI-интервью» в ленте на главной или «Команда» → «Собеседование».");
   });
 });

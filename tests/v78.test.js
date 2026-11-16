@@ -41,13 +41,13 @@ describe("v78: Справочник — без меток «Курс» и «Ко
     expect(src).not.toContain('"Колода" : c.on ? "Курс"');
     expect(src).toContain('{c.tag || !c.on ? <div style={{ ...T.modTag, ...labelStyle(a11y ? 15 : 13), color: gold }}>{c.tag || "Скоро"}</div> : null}');
   });
-  it("«6 глав с фото», «7 глав со схемами», «56 коктейлей: состав, метод и история»", async () => {
+  it("«6 глав с фото», «7 глав со схемами»; карточки «56 коктейлей: состав, метод и история» больше нет (v172)", async () => {
     const src = code(rd("ui/ReferenceSection.jsx"));
     // v167 (Доп. 492): карточки собираются из разделов справочника (hubCards), подписи штатных — прежние
     expect(src).toContain('s: `${n} ${chaptersWord(n)}${p ? p.tail : ""}`');
     expect(src).toContain('serving: { icon: Ico.serving, tail: " с фото" }');
     expect(src).toContain('coffee: { icon: Ico.coffee, tail: " со схемами" }');
-    expect(src).toContain(': состав, метод и история`');
+    expect(src).not.toContain("состав, метод и история");   // v172 (Доп. 497): в Справочнике вместо карточки бара — раздел «Бар: Основы», подпись «6 глав»
     expect(src).not.toContain("состав, метод, история · основы бара");
     const { COCKTAILS } = await import("../data/cocktails.js");
     const word = ((n) => n % 10 === 1 && n % 100 !== 11 ? "коктейль" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "коктейля" : "коктейлей")(COCKTAILS.length);

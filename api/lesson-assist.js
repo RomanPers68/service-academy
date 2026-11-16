@@ -20,6 +20,12 @@
 //   ref_chapter, ref_improve, ref_shorten — v168 (Доп. 493): ассистент редактора справочника (lib/ref-ai.js): глава из
 //                материала, PDF или по теме → { title, content, lost }; улучшить или сократить текст главы →
 //                { content, lost } (lost — сколько строк картинок модель потеряла и они возвращены в конец текста)
+//   ref_plan, ref_part — v169 (Доп. 494): большой документ (текст или PDF) → список глав { chapters: [{ title, about }] };
+//                потом каждая глава отдельным обращением → { title, content, lost }
+//   ref_check, ref_amend — v169: проверить факты главы в интернете → { summary, notes: [{ quote, note }], sources, searched };
+//                поправить текст по отмеченным замечаниям → { content, lost }. ref_chapter с web: true — глава по теме с
+//                поиском → ещё и { sources, searched }. Поиск — тот же, что у Наставника (api/_web.js); отказ на этом
+//                пути помечен web: true, и редактор пишет главу без поиска
 //
 // Ключ — тот же OPENROUTER_API_KEY, что у импорта меню (Vercel → Settings →
 // Environment Variables); отдельный не нужен. Модель по умолчанию —
@@ -29,12 +35,17 @@
 // Защита как у импорта меню: живая сессия (whoami), только руководители
 // (как и сам редактор), не больше 40 обращений в час на человека.
 import { verifySession, rateLimit } from "./_auth.js";
+import { webCall } from "./_web.js";   // v169: поиск в интернете для ассистента справочника
 // v168 (Доп. 493): ассистент редактора справочника — режимы ref_chapter, ref_improve, ref_shorten. Просьбы к модели и
 // разбор ответа — в lib/ref-ai.js (общие с редактором и демо). Только владелец, как и сам редактор справочника.
-import { REF_AI_MODES, REF_AI_LIMITS, refPrompt, refAiCheck, refAiClean } from "../lib/ref-ai.js";
+// v169 (Доп. 494): ещё ref_plan, ref_part (документ на несколько глав), ref_check, ref_amend (проверка фактов в интернете).
+import { REF_AI_MODES, REF_AI_LIMITS, REF_WEB_SYSTEM, refPrompt, refAiCheck, refAiClean, refPlanClean, refCheckClean } from "../lib/ref-ai.js";
 
 const MODELS = [process.env.OPENROUTER_LESSON_MODEL, "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.6"]
   .filter((m, i, a) => m && a.indexOf(m) === i);
+// v169: модели и сроки для режимов с поиском — как у Наставника (api/web-answer.js)
+const WEB_MODELS = () => [process.env.OPENROUTER_WEB_MODEL, "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.6"].filter((m, i, a) => m && a.indexOf(m) === i);
+const webLim = () => ({ each: Number(process.env.WEB_ANSWER_EACH_MS) || 40000, total: Number(process.env.WEB_ANSWER_TOTAL_MS) || 50000 });
 
 const ROLE_RU = {
   seasonal: "новички-официанты в первые недели", core: "официанты", spg: "хостес (служба приёма гостей)",
@@ -319,7 +330,7 @@ export default async function handler(req, res) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
-  const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
+  const { token, mode, role, title, text, pdfBase64, idea, about, others, fixes, web } = req.body || {};
   const isRef = REF_AI_MODES.includes(mode);   // v168: ассистент редактора справочника
   if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", "concept"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
@@ -329,25 +340,37 @@ export default async function handler(req, res) {
   const boss = !!(emp.is_admin || ["manager", "senior"].includes(emp.position));
   if (!boss) return res.status(403).json({ ok: false, error: "Редактор контента — только для руководителей" });
   if (isRef && !emp.is_admin) return res.status(403).json({ ok: false, error: "Редактор справочника доступен только владельцу" });
-  if (!rateLimit("lesson:" + token, 40, 3600_000)) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
+  // v169: у режимов справочника свой счёт — раскладка документа на главы тратит по обращению на главу
+  if (!(isRef ? rateLimit("ref:" + token, 80, 3600_000) : rateLimit("lesson:" + token, 40, 3600_000))) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
 
   const material = cut(text, 30000).trim();
   const b64 = typeof pdfBase64 === "string" && pdfBase64 ? pdfBase64.replace(/^data:[^;]*;base64,/, "") : "";
-  if (b64.length > 14_000_000) return res.status(413).json({ ok: false, error: "PDF слишком большой — до 10 МБ" });
+  // v169: хостинг принимает запрос до 4,5 МБ — PDF крупнее до функции не доходит; предел честный, 3 МБ файла
+  if (b64.length > 4_300_000) return res.status(413).json({ ok: false, error: "PDF слишком большой: до 3 МБ" });
   if (isRef) {
-    // Тема главы — в title, материал или текст главы — в text. Проверка та же, что у кнопок редактора, и до обращения к модели.
-    const topic = cut(title, REF_AI_LIMITS.topic).trim(), src = cut(text, REF_AI_LIMITS.material).trim(), pdf = mode === "ref_chapter" ? b64 : "";
-    const miss = refAiCheck(mode, { topic, text: src, hasPdf: !!pdf, len: String(text == null ? "" : text).length });
+    // Тема или название главы — в title; материал, документ или текст главы — в text. Проверка та же, что у кнопок
+    // редактора, и до обращения к модели.
+    const big = mode === "ref_plan" || mode === "ref_part";   // v169: документ на несколько глав
+    const topic = cut(title, REF_AI_LIMITS.topic).trim(), src = cut(text, big ? REF_AI_LIMITS.doc : REF_AI_LIMITS.material).trim(), pdf = mode === "ref_chapter" || big ? b64 : "";
+    const extra = { about: cut(about, REF_AI_LIMITS.about).trim(), fixes: cut(fixes, REF_AI_LIMITS.fixes).trim(),
+      others: (Array.isArray(others) ? others : []).filter((x) => typeof x === "string").map((x) => cut(x, REF_AI_LIMITS.topic).trim()).filter(Boolean).slice(0, REF_AI_LIMITS.parts) };
+    const miss = refAiCheck(mode, { topic, text: src, hasPdf: !!pdf, len: String(text == null ? "" : text).length, fixes: extra.fixes });
     if (miss) return res.status(400).json({ ok: false, error: miss });
+    // v169: с поиском в интернете — проверка фактов и «Глава по теме» (не из материала: своему документу интернет не указ)
+    const useWeb = mode === "ref_check" || (mode === "ref_chapter" && web === true && !pdf);
+    const bad = (status, error) => res.status(status).json({ ok: false, error, ...(useWeb ? { web: true } : {}) });   // web: true — отказал путь с поиском
     try {
-      const out = await ask(key, refPrompt(mode, topic, src, !!pdf), pdf);
-      if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
-      if (out.cut) return res.status(422).json({ ok: false, error: "Ответ не уместился. Выдели часть текста или дай материал частями." });
-      const result = refAiClean(mode, parseObject(out.text), src);
-      if (!result) return res.status(422).json({ ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз." });
-      return res.status(200).json({ ok: true, ...result, model: out.model });
+      let out;
+      if (useWeb) out = await webCall({ orKey: key, models: WEB_MODELS(), system: REF_WEB_SYSTEM, user: refPrompt(mode, topic, src, false, { web: true }), maxTokens: 3500, lim: webLim() });
+      else out = await ask(key, refPrompt(mode, topic, src, !!pdf, extra), pdf);
+      if (!out.ok) return bad(out.status || 502, out.error);
+      if (out.cut) return bad(422, "Ответ не уместился. Выдели часть текста или дай материал частями.");
+      const o = parseObject(out.text);
+      const result = mode === "ref_plan" ? refPlanClean(o) : mode === "ref_check" ? refCheckClean(o) : refAiClean(mode, o, src, useWeb);
+      if (!result) return bad(422, "Ассистент ответил не по формату. Попробуй ещё раз.");
+      return res.status(200).json({ ok: true, ...result, ...(useWeb ? { sources: out.sources || [], searched: out.searches || 0 } : {}), model: out.model });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: "Сбой ассистента: " + (e && e.message ? e.message : "unknown") });
+      return bad(500, "Сбой ассистента: " + (e && e.message ? e.message : "unknown"));
     }
   }
   const withPdf = mode === "lesson" || mode === "concept";   // v139: «Из документа» в «О нас» — тоже текст или PDF

@@ -29,7 +29,7 @@ import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «�
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
 import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
-import { refAiCheck, refAiClean } from "../../../lib/ref-ai.js";   // v168 (Доп. 493): ассистент редактора справочника — проверка и разбор как на сервере
+import { refAiCheck, refAiClean, refPlanClean, refCheckClean } from "../../../lib/ref-ai.js";   // v168 (Доп. 493): ассистент редактора справочника — проверка и разбор как на сервере; v169: документ на главы и проверка фактов
 import { unpackWeb } from "../../../lib/ai-web.js";   // v155: запросы поиска упакованы
 if (typeof window !== "undefined") window.__demoUnpack = unpackWeb;   // v155: e2e читают упакованные запросы
 import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";
@@ -883,13 +883,44 @@ function demoLessonAssist(b) {
     let flag = ""; try { flag = sessionStorage.getItem("__e2e_ai") || ""; } catch (e) {}
     if (b.token !== "demo-u-roman") return { ok: false, error: "Редактор справочника доступен только владельцу" };
     if (flag === "fail") return { ok: false, error: "Ассистент не ответил. Попробуй ещё раз." };
-    const topic = String(b.title || "").trim();
-    const miss = refAiCheck(b.mode, { topic, text, hasPdf: !!b.pdfBase64, len: String(b.text || "").length });
+    const topic = String(b.title || "").trim(), fixes = String(b.fixes || "").trim();
+    const miss = refAiCheck(b.mode, { topic, text, hasPdf: !!b.pdfBase64, len: String(b.text || "").length, fixes });
     if (miss) return { ok: false, error: miss };
+    // v169 (Доп. 494): с поиском в интернете — проверка фактов и «Глава по теме». "noweb" — поиск не ответил: отказ помечен
+    // web: true, и редактор пишет главу без поиска. "failpart:слово" — не пишется глава, в названии которой есть это слово.
+    const useWeb = b.mode === "ref_check" || (b.mode === "ref_chapter" && b.web === true && !b.pdfBase64);
+    if (useWeb && flag === "noweb") return { ok: false, error: "Ошибка OpenRouter: поиск не ответил.", web: true };
+    const WEB = useWeb ? { sources: [{ url: "https://example.com/demo/service-rules", title: "Страница-пример (демо): правила сервиса" },
+      { url: "https://example.com/demo/second-page", title: "Вторая страница того же сайта" }, { url: "https://example.org/demo/handbook", title: "Страница-пример (демо): справочник" }], searched: 2 } : {};
     const pic = (l) => /^\[(?:img|photo):/.test(l.trim());
     const src = text.split("\n");
+    // документ в демо: темы разделены пустой строкой, первая строка темы — её название, вторая — о чём она
+    const blocks = text.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    const bare = (l) => String(l || "").replace(/^[#•\d.)\s]+/, "").replace(/\*\*/g, "").replace(/[:.]\s*$/, "").trim();
+    if (b.mode === "ref_plan") {
+      const list = blocks.length ? blocks.map((x) => { const ls = x.split("\n"); return { title: bare(ls[0]).slice(0, 80), about: String(ls[1] || "").trim().slice(0, 200) }; })
+        : [{ title: "Встреча гостя", about: "Как встречаем гостя у входа." }, { title: "Подача блюд", about: "Порядок подачи и вынос." }, { title: "Расчёт и прощание", about: "Счёт и проводы гостя." }];
+      const pl = refPlanClean({ chapters: list });
+      return pl ? { ok: true, ...pl, model: "demo" } : { ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз." };
+    }
+    if (b.mode === "ref_check") {
+      const marked = src.map((l) => l.trim()).filter((l) => l && !pic(l) && /\d/.test(l.replace(/^\d+\.\s/, ""))).slice(0, 2);
+      const ck = refCheckClean({ summary: marked.length ? "Демо: проверка показана на строках с цифрами." : "Демо: мест, которые стоит сверить, в тексте нет.",
+        notes: marked.map((l) => ({ quote: bare(l).split(/\s+/).slice(0, 8).join(" "), note: "В демо интернета нет. В приложении ассистент сверит это место с источниками и напишет, что нашёл." })) });
+      return { ok: true, ...ck, ...WEB, model: "demo" };
+    }
     let o;
-    if (b.mode === "ref_chapter") {
+    if (b.mode === "ref_part") {
+      if (flag.startsWith("failpart:") && topic.includes(flag.slice(9))) return { ok: false, error: "Ассистент не ответил. Попробуй ещё раз." };
+      const mine = blocks.find((x) => bare(x.split("\n")[0]).toLowerCase() === topic.toLowerCase()) || (b.about ? blocks.find((x) => x.includes(String(b.about))) : "") || "";
+      const pts = (mine ? mine.split("\n").slice(1) : []).map(bare).filter((l) => l.length > 3 && !pic(l)).slice(0, 6);
+      const body = pts.length ? pts : [bare(b.about) || "Правила из документа"];
+      o = { title: topic, content: "**" + topic + "**\n" + body.map((l, i) => (i + 1) + ". " + l).join("\n") + "\n\u{1F4CC} Это черновик ассистента: проверь факты." };
+    } else if (b.mode === "ref_amend") {
+      // «поправлено по замечаниям»: к строкам, о которых замечания (слова в «ёлочках»), дописывается пометка
+      const qs = [...fixes.matchAll(/«([^»]+)»/g)].map((m) => m[1]);
+      o = { content: src.map((l) => (!pic(l) && qs.some((q) => l.includes(q)) ? l.replace(/\s+$/, "") + " (уточнено по источникам)" : l)).join("\n") };
+    } else if (b.mode === "ref_chapter") {
       const pts = src.map((l) => l.replace(/^[•\d.\s]+/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 8 && !pic(l)).slice(0, 6);
       const body = pts.length ? pts : ["Поздоровайся и назови заведение", "Уточни, ждут ли гостя", "Проводи к столу и подай меню"];
       o = { title: topic || body[0].slice(0, 60), content: "**" + (b.pdfBase64 && !text ? "Из документа" : "Главное") + "**\n" + body.map((l, i) => (i + 1) + ". " + l).join("\n") + "\n\u{1F4CC} Это черновик ассистента: проверь факты." };
@@ -900,8 +931,8 @@ function demoLessonAssist(b) {
       o = { content: src.map((l) => { const t = l.trim(); return !t || pic(t) || /^(\*\*|•|\d+\.)/.test(t) ? t : "• " + t; }).join("\n") };
     }
     if (flag === "drop") o.content = o.content.split("\n").filter((l) => !pic(l)).join("\n") + "\n[img:made_up_by_model]";
-    const res = refAiClean(b.mode, o, text);
-    return res ? { ok: true, ...res, model: "demo" } : { ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз." };
+    const res = refAiClean(b.mode, o, text, useWeb);
+    return res ? { ok: true, ...res, ...WEB, model: "demo" } : { ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз.", ...(useWeb ? { web: true } : {}) };
   }
   if (b.mode === "concept") {
     const paras = (text || "Наша концепция: свежая рыба каждый день и сервис, как дома.\n\nФорма: чёрный верх, фартук, закрытая обувь.").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);

@@ -235,7 +235,8 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
   };
   const pdfPick = (file) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setDoc((x) => ({ ...x, err: "PDF больше 10 МБ. Сократи его или вставь текст." })); return; }
+    // v169: хостинг принимает запрос до 4,5 МБ, а PDF в запросе на треть тяжелее файла — больше 3 МБ до ассистента не дойдёт
+    if (file.size > 3 * 1024 * 1024) { setDoc((x) => ({ ...x, err: "PDF больше 3 МБ: сервер такой не примет. Сожми файл или вставь текст." })); return; }
     const fr = new FileReader();
     fr.onload = () => setDoc((x) => ({ ...x, pdf: { name: file.name, b64: String(fr.result).split(",")[1] }, err: "" }));
     fr.readAsDataURL(file);

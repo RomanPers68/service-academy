@@ -514,7 +514,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
   const aiClose = () => setAi(a => ({ ...a, mode: null, busy: false, err: null, result: null }));
   const pickPdf = (file) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setAi(a => ({ ...a, err: "PDF больше 10 МБ. Сократи его или вставь текст" })); return; }
+    // v169: хостинг принимает запрос до 4,5 МБ, а PDF в запросе на треть тяжелее файла — больше 3 МБ до ассистента не дойдёт
+    if (file.size > 3 * 1024 * 1024) { setAi(a => ({ ...a, err: "PDF больше 3 МБ: сервер такой не примет. Сожми файл или вставь текст" })); return; }
     const fr = new FileReader();
     fr.onload = () => setAi(a => ({ ...a, pdf: { name: file.name, b64: String(fr.result).split(",")[1] }, err: null }));
     fr.readAsDataURL(file);

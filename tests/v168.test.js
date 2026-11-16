@@ -59,10 +59,10 @@ describe("v168 · версия и журнал", () => {
 
 describe("v168 · 1: просьбы к модели (lib/ref-ai.js)", () => {
   it("три режима; пределы; модуль ни от чего не зависит (его подключает и серверная функция)", () => {
-    expect(REF_AI_MODES).toEqual(["ref_chapter", "ref_improve", "ref_shorten"]);
-    expect(REF_AI_LIMITS).toEqual({ topic: 160, material: 30000, text: 6000, out: 20000, min: 40 });
+    expect(REF_AI_MODES.slice(0, 3)).toEqual(["ref_chapter", "ref_improve", "ref_shorten"]);   // v169 добавил режимы: tests/v169.test.js
+    expect(REF_AI_LIMITS).toMatchObject({ topic: 160, material: 30000, text: 6000, out: 20000, min: 40 });
     expect(rd("lib/ref-ai.js")).not.toMatch(/^import /m);
-    expect(rd("api/lesson-assist.js")).toContain('import { REF_AI_MODES, REF_AI_LIMITS, refPrompt, refAiCheck, refAiClean } from "../lib/ref-ai.js";');
+    expect(rd("api/lesson-assist.js")).toMatch(/import \{ REF_AI_MODES, REF_AI_LIMITS, [^}]*refPrompt, refAiCheck, refAiClean[^}]* \} from "\.\.\/lib\/ref-ai\.js";/);
   });
   it("стиль — разметка, которую рисует экран главы: заголовок, списки, «важно», «верно» и «неверно», картинки не трогать", () => {
     for (const w of ["**двойных звёздочках**", "«• »", "«1. »", "«" + REF_MARKS.note + " »", "«" + REF_MARKS.good + " »", "«" + REF_MARKS.bad + " »", "[img:…]", "[photo:…]", "переноси их без изменений", "новых не придумывай", "(#, _, таблиц, HTML)"]) expect(REF_STYLE, w).toContain(w);
@@ -320,7 +320,7 @@ describe("v168 · 4: обращение из редактора (ui/ref-assist.j
     expect(r).toEqual({ ok: true, content: "Текст.", lost: 0, title: "Раф" });
     expect(sent).toEqual([["/api/lesson-assist", { token: "owner", mode: "ref_chapter", title: "Раф", text: "Заметки", pdfBase64: "QUJD" }]]);
     expect(REF_AI_URL).toBe("/api/lesson-assist");
-    expect(REF_AI_PDF_MAX).toBe(10 * 1024 * 1024);
+    expect(REF_AI_PDF_MAX).toBe(3 * 1024 * 1024);   // v169: хостинг принимает запрос до 4,5 МБ, PDF больше 3 МБ до ассистента не дошёл бы
   });
   it("картинки сверяются и в редакторе: сервер не досчитал — потерянное возвращено, счёт складывается", async () => {
     reply = { ok: true, content: "Короче.\n[img:made_up]", lost: 1 };
@@ -336,7 +336,7 @@ describe("v168 · 4: обращение из редактора (ui/ref-assist.j
     status = 404; reply = "мусор";
     expect((await refAiCall("ref_improve", { text: "т" })).error).toBe("Ассистент ещё не развёрнут на сервере.");
     status = 500;
-    expect((await refAiCall("ref_improve", { text: "т" })).error).toBe("Ассистент не ответил. Попробуй ещё раз.");
+    expect((await refAiCall("ref_improve", { text: "т" })).error).toBe("Ассистент не ответил: сервер вернул код 500. Попробуй ещё раз.");   // v169: код виден на снимке
     down = true;
     expect(await refAiCall("ref_improve", { text: "т" })).toEqual({ ok: false, error: "Нет связи с ассистентом." });
   });
@@ -348,7 +348,7 @@ const panel = (p = {}) => R(h(RefAssist, { T: S, a11y: false, title: "", body: "
 describe("v168 · 4: блок «Ассистент» под текстом главы (ui/ref-assist.jsx)", () => {
   it("четыре кнопки; «всё приходит черновиком»; без текста «Улучшить» и «Сократить» не нажимаются", () => {
     const html = panel();
-    expect([...html.matchAll(/data-ra-btn="([^"]+)"/g)].map((m) => m[1])).toEqual(["doc", "topic", "improve", "shorten"]);
+    expect([...html.matchAll(/data-ra-btn="([^"]+)"/g)].map((m) => m[1]).slice(0, 4)).toEqual(["doc", "topic", "improve", "shorten"]);   // v169: пятая — «Проверить факты»
     const t = text(html);
     for (const w of ["Ассистент", "Всё приходит черновиком. В главу текст берёшь ты, записываешь тоже ты.", "Глава из материала", "Глава по теме", "Улучшить текст", "Сократить"]) expect(t, w).toContain(w);
     expect(html).toMatch(/data-ra-btn="improve"[^>]*disabled=""/);
@@ -361,7 +361,7 @@ describe("v168 · 4: блок «Ассистент» под текстом гл�
     const html = panel({ title: "Раф", body: LONG });
     expect(html).not.toMatch(/data-ra-btn="improve"[^>]*disabled=""/);
     expect(html).not.toMatch(/data-ra-btn="shorten"[^>]*disabled=""/);
-    expect(text(html)).toContain("Выдели несколько строк, и ассистент улучшит или сократит только их.");
+    expect(text(html)).toContain("Выдели несколько строк, и ассистент улучшит, сократит или проверит только их.");   // v169: и проверит
     expect(panel({ body: "мало текста" })).toMatch(/data-ra-btn="improve"[^>]*disabled=""/);
   });
   it("блок стоит в редакторе главы между текстом и «Как увидит сотрудник»; светлая тема рисуется", async () => {
@@ -388,21 +388,22 @@ describe("v168 · 4: блок «Ассистент» под текстом гл�
     const src = rd("ui/ref-assist.jsx");
     expect(src).toContain("<RefContent text={r.content} T={T} gold={gold} dark={dark} notes />");
     expect(src).toContain('{filled ? "Заменить текст" : "Взять в главу"}');
-    expect(src).toContain('{ai.frag && ai.frag.part ? "Заменить фрагмент" : "Заменить текст"}');
+    expect(src).toContain('{part ? "Заменить фрагмент" : "Заменить текст"}');
     expect(src).toContain("Добавить в конец");
     expect(src).toContain("Нужна вся глава");   // выделение могло остаться от кнопок оформления
     expect(src).toContain("const [s, e] = whole ? [0, 0] : getSel();");
     expect(src).toContain("Вернуть прежний текст");
     expect(src).toContain("const t = refTake(was.body, { fixed, frag: ai.frag, content: r.content, how });");
     expect(src).toContain("onTake(!fixed && !was.title.trim() && r.title ? { title: r.title, body: t.body } : { body: t.body });");   // своё название владельца не затирается
-    expect(src).toContain('if (!t) { fail(ai.mode, "Текст главы изменился, фрагмент не найден. Попробуй ещё раз."); return; }');
+    expect(src).toContain('"Текст главы изменился, фрагмент не найден. Попробуй ещё раз."); return; }');
     // картинки прежнего текста перенесены в конец — об этом сказано рядом с «Вернуть прежний текст»
     expect(src).toContain("setUndo(was.body.trim() || was.title.trim() ? { ...was, pics: t.pics } : null);");
     expect(src).toContain("Картинка прежнего текста перенесена в конец. Поставь её на место или убери.");
     expect(src).toContain("Картинки прежнего текста перенесены в конец. Поставь их на место или убери.");
     // «Нужна вся глава» предлагается, только когда глава уместится в один запрос
-    expect(src).toContain("{isFix && ai.frag && ai.frag.part && String(body || \"\").length <= REF_AI_LIMITS.text");
-    expect(src).toContain("Без своего материала ассистент пишет по общим правилам ресторанного сервиса. Проверь факты и добавь то, как принято у вас.");
+    expect(src).toContain("{isFix && ai.mode !== \"amend\" && part && String(body || \"\").length <= REF_AI_LIMITS.text");
+    // v169: «Глава по теме» ищет факты в интернете; пометка об этом и о том, что заметки владельца важнее найденного
+    expect(src).toContain("Ассистент поищет факты в интернете и покажет источники. Твои заметки для него важнее найденного. Проверь главу и добавь то, как принято у вас.");
     expect(src).toContain("Это черновик. Проверь факты перед записью.");
   });
   it("в файле блока нет мелкого шрифта, тире между словами, точек-разделителей и значков-эмодзи", () => {
@@ -418,9 +419,9 @@ describe("v168 · 4: блок «Ассистент» под текстом гл�
 describe("v168 · 5: демо и подсказки", () => {
   it("демо отвечает за ассистента теми же проверкой и разбором, что сервер", () => {
     const boot = rd("tools/claude/demo-app/boot.js");
-    expect(boot).toContain('import { refAiCheck, refAiClean } from "../../../lib/ref-ai.js";');
+    expect(boot).toMatch(/import \{ refAiCheck, refAiClean[^}]* \} from "\.\.\/\.\.\/\.\.\/lib\/ref-ai\.js";/);
     expect(boot).toContain('if (b.token !== "demo-u-roman") return { ok: false, error: "Редактор справочника доступен только владельцу" };');
-    expect(boot).toContain("const res = refAiClean(b.mode, o, text);");
+    expect(boot).toContain("const res = refAiClean(b.mode, o, text");
   });
   it("об ассистенте сказано в «Гиде» и в главе «Инструменты руководителя»", () => {
     expect(rd("ui/guide.jsx")).toMatch(/key: "refeditor"[^\n]*Ассистент соберёт главу из регламента, заметок или PDF, улучшит и сократит текст\./);

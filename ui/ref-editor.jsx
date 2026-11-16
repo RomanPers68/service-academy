@@ -11,6 +11,7 @@
 //   • Фото в тексте и обложки — фото уроков на всю сеть (этап 51): в тексте остаётся строка [photo:номер|подпись].
 //   • Черновик главы сам сохраняется на телефоне: закрыл не дописав, открыл и продолжил.
 // «Гид по приложению» здесь не правится: он обновляется вместе со сборками. Ассистент под текстом главы — ui/ref-assist.jsx (v168).
+// «Главы из документа» в экране раздела — ui/ref-split.jsx (v169): большой документ раскладывается на несколько глав.
 import React from "react";
 import { createPortal } from "react-dom";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
@@ -31,6 +32,7 @@ import {
 } from "../lib/ref-edit";
 import { counted } from "../lib/ru-num";
 import { RefAssist } from "./ref-assist";   // v168 (Доп. 493): ассистент под текстом главы
+import { RefSplit, useRefSplit } from "./ref-split";   // v169 (Доп. 494): «Главы из документа» в экране раздела
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const RE_DRAFT = "sa_ref_draft_v1";   // черновик главы на телефоне: { forId, at, title, body, parent }
@@ -43,6 +45,25 @@ const hhmm = (t) => { const d = new Date(t); return String(d.getHours()).padStar
 const fullName = (p) => (p ? [p.name, p.surname].filter(Boolean).join(" ") : "");
 const findCh = (tree, id) => { for (const s of tree) for (const l of s.lessons) if (l.id === id) return l; return null; };
 const move = (ids, i, dir) => { const j = i + dir; if (j < 0 || j >= ids.length) return null; const out = ids.slice(); [out[i], out[j]] = [out[j], out[i]]; return out; };
+
+/**
+ * v169 (Доп. 494): «Главы из документа» — готовая глава сразу ложится в раздел toSec скрытой. Место: после главы after,
+ * иначе перед главой before, иначе последней (так главы стоят в порядке документа, даже если одна дописана позже).
+ * Пишется мимо run() экрана: работа идёт в фоне и не должна ни запирать кнопки, ни подменять сообщения. Место считается
+ * по живому справочнику: пока ассистент писал, глав в разделе могло прибавиться. → { ok: true, id } или { ok: false, error } (словами)
+ */
+export async function addHiddenChapter({ title, content, after = "", before = "" }, toSec) {
+  const secNow = refEditTree(RE_BASE, refItemsNow()).find((s) => s.id === toSec);
+  if (!secNow) return { ok: false, error: "Раздела больше нет: его убрали, пока ассистент писал." };
+  const id = newRefId("ch");
+  const row = { ...chapterRow({ id, own: true, sec: toSec, home: toSec, it: null, content: "" }, { title, body: content, parent: toSec }), hidden: true };
+  const ids = secNow.lessons.map((l) => l.id);
+  ids.splice(after && ids.includes(after) ? ids.indexOf(after) + 1 : before && ids.includes(before) ? ids.indexOf(before) : ids.length, 0, id);
+  const more = reorderPut([...secNow.lessons, { id, own: true, sec: toSec, it: { ...row, sort: null }, nat: null }], ids, "ch");
+  const by = new Map([[id, row]]); more.forEach((r) => by.set(r.id, r));
+  const r = await saveRefBook([...by.values()], []);
+  return r.ok ? { ok: true, id } : { ok: false, error: refBookErr(r.error) };
+}
 
 /** Черновик главы: то, что набрано и не записано (с телефона), иначе сама глава. → { draft, restored (время или null) } */
 export function chapterDraft(node, stored = readDraft()) {
@@ -248,6 +269,7 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
   const caret = React.useRef(null);                     // где стоял курсор, когда открыли лист
   const uploaded = React.useRef([]);                    // фото, загруженные в этой правке главы
   const [stored, setStored] = React.useState(() => readDraft());
+  const split = useRefSplit(addHiddenChapter);   // v169: «Главы из документа» — работа живёт, пока открыт редактор
   // редактор открыли — берём с сервера свежие правки (владелец мог править с другого телефона или с компьютера)
   React.useEffect(() => { loadRefBook(true); }, []);
   const baseOf = (n) => (n ? { title: n.title, body: n.content, parent: n.sec } : null);
@@ -558,6 +580,8 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
             );
           })}
           <button type="button" data-re-new-ch="" data-lens-btn="main" onClick={openNew} style={{ ...primary, marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{ico.plus("currentColor")}{stored && stored.isNew && stored.parent === sec.id ? "Продолжить новую главу" : "Новая глава"}</button>
+          {/* v169 (Доп. 494): большой документ ассистент раскладывает на несколько глав; они ложатся в раздел скрытыми */}
+          <RefSplit a11y={a11y} job={split} sec={sec} ui={{ input, primary, G, txt, muted, gold: a11y ? "#7A5D2A" : GOLD, brd, TN }} />
         </div>
         {sheet === "cover-sec" && coverId ? <LessonPhotoSheet lessonId={coverId} lessonTitle={sec.title} profile={profile} a11y={!!a11y} list={photos} kind="section" onClose={() => setSheet("")} /> : null}
       </div>
@@ -578,7 +602,12 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
             <span style={{ flex: 1 }}>{draftNote}</span>
             <button type="button" data-re-draft-drop="" onClick={restart} style={{ background: "transparent", border: "none", cursor: "pointer", color: gold, fontFamily: SERIF, fontSize: 12.5, padding: 2 }}>Начать заново</button>
           </div>) : null}
-        {chNode && chNode.hidden ? <div style={{ color: TN.bad, fontSize: 12.5, lineHeight: 1.45, margin: "8px 2px 0" }}>Глава скрыта: команда её не видит.</div> : null}
+        {/* v169: главы из документа приходят скрытыми — показать главу можно сразу здесь, не листая до «Ещё» */}
+        {chNode && chNode.hidden ? (
+          <div data-re-ch-hidden="" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: TN.bad, fontSize: 12.5, lineHeight: 1.45, margin: "8px 2px 0" }}>
+            <span style={{ flex: 1, minWidth: 170 }}>Глава скрыта: команда её не видит.</span>
+            <button type="button" data-re-ch-show="" data-lens-btn="soft" disabled={busy} onClick={hideCh} style={{ ...act(), minHeight: 34, padding: "0 12px", fontSize: 13 }}>{ico.eye(muted, 15)}Показать главу</button>
+          </div>) : null}
 
         <SectionLabel a11y={a11y}>Название главы</SectionLabel>
         <input data-re-ch-title="" data-lens-field="" style={input} value={draft.title} maxLength={RB_LIMITS.title} onChange={(e) => patch({ title: e.target.value })} placeholder="Напр. «Как мы встречаем гостя»" />

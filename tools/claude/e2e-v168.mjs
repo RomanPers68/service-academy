@@ -127,7 +127,7 @@ const LINES = "Раф готовим на сливках десять проце
 if (on("PANEL")) {
   const { ctx, page, errs } = await open({ who: "roman" });
   await newChapter(page);
-  same("PANEL: четыре кнопки ассистента", await attrs(page, "data-ra-btn"), ["doc", "topic", "improve", "shorten"]);
+  same("PANEL: кнопки ассистента (пятая, «Проверить факты», пришла в v169)", await attrs(page, "data-ra-btn"), ["doc", "topic", "improve", "shorten", "check"]);
   ok("PANEL: в пустой главе «Улучшить» и «Сократить» закрыты, главы открыты", await page.evaluate(() => { const d = (k) => document.querySelector("[data-ra-btn='" + k + "']").disabled; return d("improve") && d("shorten") && !d("doc") && !d("topic"); }));
   ok("PANEL: сказано, что всё приходит черновиком", /Всё приходит черновиком\. В главу текст берёшь ты, записываешь тоже ты\./.test(await txt(page, "[data-ra]")));
   const order = await page.evaluate(() => { const y = (s) => document.querySelector(s).getBoundingClientRect().top; return y("[data-re-ch-body]") < y("[data-ra]") && y("[data-ra]") < y("[data-re-preview-btn]"); });
@@ -149,7 +149,7 @@ if (on("TOPIC")) {
   await newChapter(page);
   await tap(page, "[data-ra-btn='topic']");
   ok("TOPIC: без темы «Написать главу» не нажимается", await page.evaluate(() => document.querySelector("[data-ra-go='topic']").disabled));
-  ok("TOPIC: честная пометка: без материала ассистент пишет по общим правилам", /Без своего материала ассистент пишет по общим правилам ресторанного сервиса\. Проверь факты/.test(await txt(page, "[data-ra-warn]")));
+  ok("TOPIC: честная пометка (с v169 — про поиск в интернете): проверь главу и добавь то, как принято у вас", /Ассистент поищет факты в интернете и покажет источники\..*Проверь главу и добавь то, как принято у вас\./.test(await txt(page, "[data-ra-warn]")));
   await tap(page, "[data-ra-cancel]");
   ok("TOPIC: «Отмена» закрывает форму", !(await has(page, "[data-ra-form]")));
   await page.fill("[data-re-ch-title]", "Раф и авторские напитки");
@@ -161,7 +161,7 @@ if (on("TOPIC")) {
   await shot(page, "topic-form");
   await page.locator("[data-ra-go='topic']").click();
   await page.waitForTimeout(150);
-  ok("TOPIC: пока ассистент пишет, кнопка говорит «Пишу главу…» и остальные закрыты", /Пишу главу/.test(await txt(page, "[data-ra-go='topic']")) && (await page.evaluate(() => document.querySelector("[data-ra-btn='doc']").disabled)));
+  ok("TOPIC: пока ассистент пишет, кнопка говорит об этом (с v169 — «Ищу и пишу…») и остальные закрыты", /Ищу и пишу/.test(await txt(page, "[data-ra-go='topic']")) && (await page.evaluate(() => document.querySelector("[data-ra-btn='doc']").disabled)));
   await result(page);
   const s1 = await sent(page);
   same("TOPIC: ассистенту ушли режим, тема и заметки", s1.map((b) => [b.mode, b.title, b.text, b.pdfBase64, b.token]), [["ref_chapter", "Раф и авторские напитки", "Раф готовим на сливках 10%\nСироп добавляем до взбивания\nПодаём в бокале айриш", "", "demo-u-roman"]]);
@@ -193,7 +193,7 @@ if (on("DOC")) {
   const { ctx, page, errs } = await open({ who: "roman" });
   await newChapter(page, "serving");
   await tap(page, "[data-ra-btn='doc']");
-  ok("DOC: без текста и PDF «Собрать главу» не нажимается; есть совет про длинный документ", (await page.evaluate(() => document.querySelector("[data-ra-go='doc']").disabled)) && /Длинный документ лучше давать частями/.test(await txt(page, "[data-ra-form]")) && (await has(page, "[data-ra-pdf] input[type=file]")));
+  ok("DOC: без текста и PDF «Собрать главу» не нажимается; есть совет про большой документ (с v169 — «Главы из документа»)", (await page.evaluate(() => document.querySelector("[data-ra-go='doc']").disabled)) && /Большой документ на несколько глав раскладывается в разделе/.test(await txt(page, "[data-ra-form]")) && (await has(page, "[data-ra-pdf] input[type=file]")));
   const MAT = "Стандарт встречи гостя.\nВстречаем гостя в первые десять секунд.\nПровожаем к столу, отодвигаем стул.\nПодаём меню открытым.";
   await page.fill("[data-ra-material]", MAT);
   await blur(page);

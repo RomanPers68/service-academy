@@ -10,7 +10,7 @@
 //     тем же кодом, что справочник (RefContent из ui/ReferenceSection.jsx).
 //   • Фото в тексте и обложки — фото уроков на всю сеть (этап 51): в тексте остаётся строка [photo:номер|подпись].
 //   • Черновик главы сам сохраняется на телефоне: закрыл не дописав, открыл и продолжил.
-// «Гид по приложению» здесь не правится: он обновляется вместе со сборками. Ассистент — следующей версией (v168).
+// «Гид по приложению» здесь не правится: он обновляется вместе со сборками. Ассистент под текстом главы — ui/ref-assist.jsx (v168).
 import React from "react";
 import { createPortal } from "react-dom";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE } from "../data/reference";
@@ -30,6 +30,7 @@ import {
   refFmt, refInsertLine, refPhotoLine, sameText,
 } from "../lib/ref-edit";
 import { counted } from "../lib/ru-num";
+import { RefAssist } from "./ref-assist";   // v168 (Доп. 493): ассистент под текстом главы
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const RE_DRAFT = "sa_ref_draft_v1";   // черновик главы на телефоне: { forId, at, title, body, parent }
@@ -232,6 +233,7 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
   const [draft, setDraft] = React.useState(b0 ? b0.draft : null);
   const [direct, setDirect] = React.useState(!!b0);   // вошли сразу в главу: «назад» и «записать» возвращают туда, откуда пришли
   const [draftNote, setDraftNote] = React.useState(b0 && b0.restored ? "Восстановлен черновик от " + hhmm(b0.restored) : "");
+  const [aiGen, setAiGen] = React.useState(0);   // v168: «Начать заново» — ассистент тоже с чистого листа (возвращать ему уже нечего)
   const [savedAt, setSavedAt] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
@@ -366,7 +368,7 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
   // фото из черновика, которые в записанных главах не стоят, вместе с черновиком и уходят
   const dropDraftPhotos = () => { if (draft) dropPhotos([...refPhotoIds(draft.body), ...uploaded.current], book.items); uploaded.current = []; };
   const cancelCh = () => { dropDraftPhotos(); dropDraft(); leaveCh(); };   // «Отменить» — черновик стирается
-  const restart = () => { dropDraftPhotos(); dropDraft(); if (chNode) setDraft({ id: chNode.id, isNew: false, title: chNode.title, body: chNode.content, parent: chNode.sec }); else if (draft) setDraft({ ...draft, title: "", body: "" }); };
+  const restart = () => { dropDraftPhotos(); dropDraft(); setAiGen((n) => n + 1); if (chNode) setDraft({ id: chNode.id, isNew: false, title: chNode.title, body: chNode.content, parent: chNode.sec }); else if (draft) setDraft({ ...draft, title: "", body: "" }); };
   const saveCh = async () => {
     if (!draft || busy) return;
     const title = draft.title.trim();
@@ -597,6 +599,10 @@ export function RefEditorScreen({ T, a11y, profile, onBack, startId = null }) {
           onChange={(e) => patch({ body: e.target.value })} placeholder={"Напиши текст главы.\n\nЗаголовок, список и пометки ставятся кнопками сверху: выдели строки и нажми. Повторное нажатие снимает оформление."} />
         <div style={{ color: long ? TN.bad : muted, fontSize: 12.5, lineHeight: 1.45, margin: "6px 2px 0" }}>
           {long ? "Глава почти у предела длины. Лучше разделить её на две." : "Кнопки работают со строками, где стоит курсор или выделение. Фото и схема встают отдельной строкой."}</div>
+
+        {/* v168 (Доп. 493): ассистент — глава из материала или по теме, улучшить, сократить; в главу текст берёт владелец */}
+        <RefAssist key={draft.id + ":" + aiGen} T={T} a11y={a11y} title={draft.title} body={draft.body} getSel={sel} onTake={(f) => patch(f)}
+          ui={{ input, primary, G, txt, muted, gold: a11y ? "#7A5D2A" : GOLD, brd, TN }} />
 
         <button type="button" data-re-preview-btn="" data-lens-btn="soft" data-lens-ink="" onClick={() => setPreview((v) => !v)} style={{ ...ghost, marginTop: 12 }}>{preview ? "Скрыть просмотр" : "Как увидит сотрудник"}</button>
         {preview ? (

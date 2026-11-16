@@ -89,6 +89,7 @@ const look = (page) => page.evaluate(() => {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) continue;
     if (r.right > vw + 1 && !wide) wide = el.tagName + " " + Math.round(r.right) + " > " + vw + " " + (el.textContent || "").slice(0, 40);
+    if (el.closest("svg")) continue;   // v168: буквы внутри значка (знак «AI» у ассистента) — рисунок, а не текст
     const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (own) { const fs = parseFloat(getComputedStyle(el).fontSize); if (fs < 10.5 && !small) small = fs + "px «" + el.textContent.trim().slice(0, 40) + "»"; }
   }

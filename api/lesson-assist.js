@@ -17,6 +17,9 @@
 //                { blocks: [{ kind, title, body }] }, kind — вид блока (lib/concept.js, CN_KINDS)
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
+//   ref_chapter, ref_improve, ref_shorten — v168 (Доп. 493): ассистент редактора справочника (lib/ref-ai.js): глава из
+//                материала, PDF или по теме → { title, content, lost }; улучшить или сократить текст главы →
+//                { content, lost } (lost — сколько строк картинок модель потеряла и они возвращены в конец текста)
 //
 // Ключ — тот же OPENROUTER_API_KEY, что у импорта меню (Vercel → Settings →
 // Environment Variables); отдельный не нужен. Модель по умолчанию —
@@ -26,6 +29,9 @@
 // Защита как у импорта меню: живая сессия (whoami), только руководители
 // (как и сам редактор), не больше 40 обращений в час на человека.
 import { verifySession, rateLimit } from "./_auth.js";
+// v168 (Доп. 493): ассистент редактора справочника — режимы ref_chapter, ref_improve, ref_shorten. Просьбы к модели и
+// разбор ответа — в lib/ref-ai.js (общие с редактором и демо). Только владелец, как и сам редактор справочника.
+import { REF_AI_MODES, REF_AI_LIMITS, refPrompt, refAiCheck, refAiClean } from "../lib/ref-ai.js";
 
 const MODELS = [process.env.OPENROUTER_LESSON_MODEL, "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.6"]
   .filter((m, i, a) => m && a.indexOf(m) === i);
@@ -296,7 +302,8 @@ async function ask(key, prompt, pdfBase64) {
     const err = (data && data.error) || (data && data.choices && data.choices[0] && data.choices[0].error);
     if (r.ok && !err) {
       const text = openRouterText(data);
-      if (text.trim()) return { ok: true, text, model: (data && data.model) || model };
+      // cut — модель упёрлась в предел длины ответа (v168: ассистент справочника говорит об этом, а не отдаёт обрывок)
+      if (text.trim()) return { ok: true, text, model: (data && data.model) || model, cut: !!(data && data.choices && data.choices[0] && data.choices[0].finish_reason === "length") };
       lastErr = model + ": пустой ответ"; continue;
     }
     const status = r.status || (err && err.code) || 0;
@@ -313,18 +320,36 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
   const { token, mode, role, title, text, pdfBase64, idea } = req.body || {};
-  if (!["lesson", "improve", "questions", "situations", "dialogue", "build", "review", "concept"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  const isRef = REF_AI_MODES.includes(mode);   // v168: ассистент редактора справочника
+  if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", "concept"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
   if (!emp) return res.status(401).json({ ok: false, error: "Сессия не найдена — войди в приложение заново" });
   const boss = !!(emp.is_admin || ["manager", "senior"].includes(emp.position));
   if (!boss) return res.status(403).json({ ok: false, error: "Редактор контента — только для руководителей" });
+  if (isRef && !emp.is_admin) return res.status(403).json({ ok: false, error: "Редактор справочника доступен только владельцу" });
   if (!rateLimit("lesson:" + token, 40, 3600_000)) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
 
   const material = cut(text, 30000).trim();
   const b64 = typeof pdfBase64 === "string" && pdfBase64 ? pdfBase64.replace(/^data:[^;]*;base64,/, "") : "";
   if (b64.length > 14_000_000) return res.status(413).json({ ok: false, error: "PDF слишком большой — до 10 МБ" });
+  if (isRef) {
+    // Тема главы — в title, материал или текст главы — в text. Проверка та же, что у кнопок редактора, и до обращения к модели.
+    const topic = cut(title, REF_AI_LIMITS.topic).trim(), src = cut(text, REF_AI_LIMITS.material).trim(), pdf = mode === "ref_chapter" ? b64 : "";
+    const miss = refAiCheck(mode, { topic, text: src, hasPdf: !!pdf, len: String(text == null ? "" : text).length });
+    if (miss) return res.status(400).json({ ok: false, error: miss });
+    try {
+      const out = await ask(key, refPrompt(mode, topic, src, !!pdf), pdf);
+      if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
+      if (out.cut) return res.status(422).json({ ok: false, error: "Ответ не уместился. Выдели часть текста или дай материал частями." });
+      const result = refAiClean(mode, parseObject(out.text), src);
+      if (!result) return res.status(422).json({ ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз." });
+      return res.status(200).json({ ok: true, ...result, model: out.model });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: "Сбой ассистента: " + (e && e.message ? e.message : "unknown") });
+    }
+  }
   const withPdf = mode === "lesson" || mode === "concept";   // v139: «Из документа» в «О нас» — тоже текст или PDF
   if (withPdf && !material && !b64) return res.status(400).json({ ok: false, error: "Вставь текст или прикрепи PDF" });
   if (!withPdf && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });

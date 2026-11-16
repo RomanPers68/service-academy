@@ -29,6 +29,7 @@ import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «�
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
 import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
+import { refAiCheck, refAiClean } from "../../../lib/ref-ai.js";   // v168 (Доп. 493): ассистент редактора справочника — проверка и разбор как на сервере
 import { unpackWeb } from "../../../lib/ai-web.js";   // v155: запросы поиска упакованы
 if (typeof window !== "undefined") window.__demoUnpack = unpackWeb;   // v155: e2e читают упакованные запросы
 import { normSpirit, TEMP_HINT_SP } from "../../../lib/spirit.js";
@@ -875,6 +876,33 @@ const CN_T = { idea: "Концепция и история", values: "Ценно
   day: "Распорядок дня менеджера", numbers: "Цифры смены: на что смотрим", own: "Свой блок" };
 function demoLessonAssist(b) {
   const text = String(b.text || "").trim();
+  // v168 (Доп. 493): ассистент редактора справочника. Модели в демо нет: ответ собирается из присланного текста, а проверка
+  // запроса и разбор ответа — те же, что на сервере (lib/ref-ai.js). sessionStorage.__e2e_ai: "fail" — ассистент не ответил,
+  // "drop" — «модель» потеряла картинки и выдумала свою (сверка возвращает потерянные в конец и убирает выдуманную)
+  if (/^ref_/.test(String(b.mode || ""))) {
+    let flag = ""; try { flag = sessionStorage.getItem("__e2e_ai") || ""; } catch (e) {}
+    if (b.token !== "demo-u-roman") return { ok: false, error: "Редактор справочника доступен только владельцу" };
+    if (flag === "fail") return { ok: false, error: "Ассистент не ответил. Попробуй ещё раз." };
+    const topic = String(b.title || "").trim();
+    const miss = refAiCheck(b.mode, { topic, text, hasPdf: !!b.pdfBase64, len: String(b.text || "").length });
+    if (miss) return { ok: false, error: miss };
+    const pic = (l) => /^\[(?:img|photo):/.test(l.trim());
+    const src = text.split("\n");
+    let o;
+    if (b.mode === "ref_chapter") {
+      const pts = src.map((l) => l.replace(/^[•\d.\s]+/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 8 && !pic(l)).slice(0, 6);
+      const body = pts.length ? pts : ["Поздоровайся и назови заведение", "Уточни, ждут ли гостя", "Проводи к столу и подай меню"];
+      o = { title: topic || body[0].slice(0, 60), content: "**" + (b.pdfBase64 && !text ? "Из документа" : "Главное") + "**\n" + body.map((l, i) => (i + 1) + ". " + l).join("\n") + "\n\u{1F4CC} Это черновик ассистента: проверь факты." };
+    } else if (b.mode === "ref_shorten") {
+      const full = src.filter((l) => l.trim());
+      o = { content: full.filter((l, i) => pic(l) || /^\*\*/.test(l.trim()) || i % 2 === 0).join("\n") };
+    } else {
+      o = { content: src.map((l) => { const t = l.trim(); return !t || pic(t) || /^(\*\*|•|\d+\.)/.test(t) ? t : "• " + t; }).join("\n") };
+    }
+    if (flag === "drop") o.content = o.content.split("\n").filter((l) => !pic(l)).join("\n") + "\n[img:made_up_by_model]";
+    const res = refAiClean(b.mode, o, text);
+    return res ? { ok: true, ...res, model: "demo" } : { ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз." };
+  }
   if (b.mode === "concept") {
     const paras = (text || "Наша концепция: свежая рыба каждый день и сервис, как дома.\n\nФорма: чёрный верх, фартук, закрытая обувь.").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
     const by = {};

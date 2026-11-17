@@ -14,6 +14,7 @@ import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam, hapticsOn, setHaptics } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { sfx, sfxOn, setSfx } from "../lib/sfx";   // v57 (Доп. 370): настройки звука
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
@@ -571,7 +572,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
         )}
 
         <input data-lens-field="" style={{ ...inputStyle, marginBottom:16 }} placeholder="Поиск по имени или ресторану..."
-          value={search} onChange={e => setSearch(e.target.value)} />
+          value={search} onChange={e => setSearch(e.target.value)} {...SEARCH_ATTRS} />
 
         {list === null && <SkelCards a11y={!!T.a11y} rows={4} h={64} label="Загружаем команду…" style={{ padding:"4px 0 16px" }} />}
 

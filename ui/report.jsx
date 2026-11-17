@@ -13,6 +13,7 @@ import { ROLE_SKILLS } from "../data/skills";
 import { buildCustomModules } from "../lib/custom-modules";
 import { personModel, teamModel, listRow, stepIndex, trackTotals, pl, shortDate } from "../lib/report-model";
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { serverMissing, serverStage } from "../lib/server-text";   // v58 (Доп. 371): без «этап 23» у руководителя без прав владельца
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
@@ -320,7 +321,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
           ) : null}
           {msg ? <div className={"rp-msg" + (msg.bad ? " bad" : "")} role="status">{msg.text}</div> : null}
           {list.rows.length > 4 ? (
-            <div className="rp-search"><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти сотрудника по имени" /></div>
+            <div className="rp-search"><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти сотрудника по имени" {...SEARCH_ATTRS} /></div>
           ) : null}
           {attN || rests.length > 1 ? (
             <div className="rp-chips" role="group" aria-label="Фильтр">

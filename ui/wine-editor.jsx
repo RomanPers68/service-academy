@@ -43,6 +43,7 @@ import { TasteEdit } from "./taste";   // v132: вкус по шкалам
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./wine-list";
@@ -914,7 +915,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
         {impPanel}
         {note}
         {wines.length ? <>
-          <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={K.t.findOne} aria-label={K.t.findOne} style={{ ...inputSt, marginTop: 14 }} />
+          <input data-lens-field="" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={K.t.findOne} aria-label={K.t.findOne} style={{ ...inputSt, marginTop: 14 }} {...SEARCH_ATTRS} />
           <div className="sa-hscroll" role="group" aria-label="Показать" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px" }}>
             {[["all", "Все"], ...(uncheckedN ? [["unchecked", "Не проверено · " + uncheckedN]] : []), ["glass", K.t.pathChip], ["stop", "Сегодня нет"], ...(archN ? [["archive", "Архив"]] : []),
               ...K.GAPS.filter(([k]) => k === only).map(([k, t]) => [k, t + " · " + gaps[k]])].map(([k, t]) => (

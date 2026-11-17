@@ -14,6 +14,7 @@ import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки ответов
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { Sign, TopicNo, topicNoText } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи и ✦
@@ -1965,6 +1966,7 @@ export function GlossaryScreen({ T, onBack, color = "#C8A96E", a11y, saved = {},
             background: T.modCard?.background || "rgba(255,255,255,0.05)",
             color: T.para?.color || CREAM, fontSize:14, fontFamily:"Georgia, serif",
             outline:"none", boxSizing:"border-box", marginBottom:12 }}
+          {...SEARCH_ATTRS}
         />
         <div style={{ marginBottom:10 }}>
           <LiquidSegment a11y={a11y} equal={false} scroll accent={color}

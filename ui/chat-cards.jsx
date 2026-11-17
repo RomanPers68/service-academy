@@ -11,6 +11,7 @@
 // брифинг, открыть экран), — app (App.jsx, демо — entry.jsx). Расчёт — lib/chat-smart.js.
 import React from "react";
 import { vibrate, isFemaleName } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { bubbleName, hhmm, quoteText, chatInitials } from "../lib/chat";
 import { shiftState, shiftLine, wantLine, dayLong, dayShort, dayParts, nextDays, taskLine, dueLine, dueChoices, pollView, pollProblem, POLL_MAX, actTiles, actLayout, INTENT_LABEL, AI_NAME, aiQuestion,
   posWord, insteadLine, schedView } from "../lib/chat-smart";   // v97: «Ищем в смену», «График готов»
@@ -531,7 +532,7 @@ export function PickSheet({ app, kinds, title, hint, data, onPick, onClose, chil
   return (
     <Sheet title={title} data={data} onClose={onClose}>
       {children}
-      <input className="ch-field sa-field" style={{ marginTop: 0 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по названию" aria-label="Найти по названию" data-chat-picksearch="" />
+      <input className="ch-field sa-field" style={{ marginTop: 0 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по названию" aria-label="Найти по названию" data-chat-picksearch="" {...SEARCH_ATTRS} />
       {!items.length ? <div className="ch-hint">{q.trim() ? "Ничего не нашёл." : "Пока нечего выбрать."}</div> : null}
       {items.slice(0, 40).map((it) => (
         <button key={it.kind + ":" + it.id} type="button" className="ch-opt" data-chat-pick={it.kind + ":" + it.id} onClick={() => { vibrate("light"); onPick(it); }}>

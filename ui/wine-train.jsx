@@ -16,6 +16,7 @@ import React from "react";
 import { titleParts } from "../lib/bar-view";   // v128: «Русское / Original» — в две строки
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { bumpDaily } from "../lib/deck-extras";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { COLOR_GROUP, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked } from "../lib/wine";
@@ -244,7 +245,7 @@ export function WineDeck({ T, a11y, gold, green, red, wines, dishes = [], restau
         {open ? (
           <div className="sa-fadein" style={{ marginBottom: 12 }}>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={K.t.deckPh} data-lens-field="" aria-label={K.t.deckAria}
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: SERIF, fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: SERIF, fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} {...SEARCH_ATTRS} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
               <span role="button" tabIndex={0} data-wine-deck-reverse={reverse ? "on" : ""} style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse((r) => !r); vibrate("light"); }} {...onActivate(() => setReverse((r) => !r))}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
               {chips.map(([k, t, n]) => <span key={k} role="button" tabIndex={0} data-wine-deck-chip={k} style={{ ...pill(only === k), padding: "4px 10px", fontSize: 11 }} data-lens-btn={only === k ? "tab" : "soft"} data-lens-ink="" onClick={() => { setOnly(k); vibrate("light"); }} {...onActivate(() => setOnly(k))}>{t} · {n}</span>)}

@@ -10,6 +10,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GO_MAX, GO_KINDS, GO_KIND_WORD, GO_LIMITS, goCandidates, goSearch, goItem, goNormalize, goRows, goAiPrompt, goParseAi, goSoldNormalize, goSoldLine, dayBefore } from "../lib/golist";
@@ -64,7 +65,7 @@ export function GoPicker({ a11y, c, menu, picked, onPick, onClose }) {
         <div data-go-count="" style={{ fontSize: 13, color: c.gold, whiteSpace: "nowrap" }}>{ids.size} из {GO_MAX}</div>
       </div>
       <div style={{ padding: "0 16px 8px" }}>
-        <input data-lens-field="" data-go-search="" type="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 40))} placeholder="Найти в меню" aria-label="Найти в меню" className="sa-field" style={field(c)} />
+        <input data-lens-field="" data-go-search="" type="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 40))} placeholder="Найти в меню" aria-label="Найти в меню" className="sa-field" style={field(c)} {...SEARCH_ATTRS} />
         {!q.trim() && kinds.length > 1 ? (
           // капсула, как вкладки «Барной карты» (ui/bar-card.jsx): выбранная — золотая плашка
           <div data-lens-seg="flat" role="tablist" aria-label="Что выбрать" style={{ display: "flex", gap: 4, marginTop: 10, padding: 3, borderRadius: 999,

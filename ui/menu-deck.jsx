@@ -1,6 +1,7 @@
 import React from "react";
 import { useGoToday } from "../lib/use-go-today";   // v141
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { GOLD, labelStyle } from "./tokens";
 import { Sign } from "./signs";   // v75 (Доп. 388): блюдо без фото — значком вместо 🍽
 import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
@@ -152,7 +153,7 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
         {open && (
           <div className="sa-fadein" style={{ marginBottom: 12 }}>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" autoFocus={filters && !q} data-lens-field=""
-              style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: "Georgia, serif", fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 12, border: `1px solid ${bd}`, background: bg, color: text, fontFamily: "Georgia, serif", fontSize: 12.5, outline: "none", boxSizing: "border-box", marginBottom: 8 }} {...SEARCH_ATTRS} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
               <span style={{ ...pill(reverse), padding: "4px 10px", fontSize: 11 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
               <span style={{ ...pill(!cat), padding: "4px 10px", fontSize: 11 }} data-lens-btn={!cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat("")}>Все · {dishes.filter(x => dishMatches(x, q)).length}</span>

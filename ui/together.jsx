@@ -15,6 +15,7 @@ import { Candle, Ic } from "./table-bits";
 import { ensureTableCss } from "./table-css";
 import { frostOf } from "./home-hubs";
 import { vibrate, onActivate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { taskProgress, goalLine, plural, GOAL_WORDS } from "../lib/quest";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
@@ -521,7 +522,7 @@ export function PairSheet({ a11y, profile, onClose, onGo, onChange }) {
               </div>
             ) : (
               <>
-                <input className="tg-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти коллегу" aria-label="Найти коллегу" />
+                <input className="tg-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти коллегу" aria-label="Найти коллегу" {...SEARCH_ATTRS} />
                 {cands == null ? <div className="tg-sub">Загружаю коллег…</div> : !list.length ? <div className="tg-sub">{cands.length ? "Никого не нашлось" : "В заведении пока нет коллег в приложении"}</div> : null}
                 <div>
                   {list.slice(0, 60).map((c) => (

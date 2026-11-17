@@ -8,6 +8,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate, isFemaleName } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { serverMissing } from "../lib/server-text";
 import { labelStyle } from "./tokens";
 import {
@@ -300,7 +301,7 @@ function PickSheet({ a11y, title, mark, rows: all, onPick, onClose, note = "" })
     <Sheet a11y={a11y} title={title} onClose={onClose} mark={mark}>
       {note ? <p style={{ margin: "0 0 8px", fontSize: 13, color: sub, lineHeight: 1.5 }}>{note}</p> : null}
       {many ? <input className="sa-field" type="search" data-lens-field="" data-nb-search="" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени"
-        style={{ width: "100%", boxSizing: "border-box", margin: "2px 0 8px", padding: "10px 14px", borderRadius: 14, border: "1px solid " + c.line, background: c.chip, color: text, fontFamily: "Georgia, serif", fontSize: 14.5 }} /> : null}
+        style={{ width: "100%", boxSizing: "border-box", margin: "2px 0 8px", padding: "10px 14px", borderRadius: 14, border: "1px solid " + c.line, background: c.chip, color: text, fontFamily: "Georgia, serif", fontSize: 14.5 }} {...SEARCH_ATTRS} /> : null}
       {rows.length ? rows.map((r) => (
         <button key={r.key} type="button" data-nb-pick={r.key} onClick={() => { vibrate("light"); onPick(r); }}
           style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "10px 4px", border: 0, borderTop: "1px solid " + c.line, background: "none", cursor: "pointer", color: text }}>

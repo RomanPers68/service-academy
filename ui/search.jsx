@@ -11,6 +11,7 @@ import React from "react";
 import { GLOSSARY } from "../data/glossary";
 import { REFERENCE_COURSE, REFERENCE_WINE_COURSE, REFERENCE_COFFEE_COURSE, REFERENCE_BAR_COURSE, REFERENCE_APP_COURSE } from "../data/reference";
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { UI_SVG, GAME_SVG } from "./icons";
 import { menuDishesFromStorage, sharedOf, barCocktails } from "../lib/menu-dishes";   // v71: меню команды и коктейли карты бара
 import { allergenLabel } from "../lib/deck-extras";
@@ -143,6 +144,7 @@ export function SearchScreen({ T, a11y, role, modules = [], profile, onOpen, onR
           onChange={(e) => { setQ(e.target.value); setOpenKey(null); }}
           placeholder="Блюдо, аллерген, вино, коктейль…"
           style={{ width: "100%", boxSizing: "border-box", padding: "13px 15px", borderRadius: 14, border: `1px solid ${gold}88`, borderTop: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.12) inset", color: textColor, fontSize: 16, outline: "none" }}
+          {...SEARCH_ATTRS}
         />
         {!q && recent.length > 0 && (
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:8 }}>

@@ -8,6 +8,7 @@ import { CocktailArt } from "./cocktail-art";
 import { Sign } from "./signs";   // v75 (Доп. 388): лёд и гарниш в порядке сборки — значками вместо ❄ ✿
 import { COCKTAIL_STORIES } from "../data/cocktail-stories";
 import { vibrate, onActivate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { GOLD, INK_DEEP, labelStyle } from "./tokens";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor, hintKey } from "../data/hints";
@@ -232,7 +233,7 @@ export function CocktailsScreen({ T, a11y, onBack, startId, onBuild, profile, on
             <div className="sa-fadein" style={{ marginBottom:12 }}>
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="Название, ингредиент или бокал…" autoFocus={filters && !q} data-lens-field=""
                 style={{ width:"100%", padding:"9px 12px", borderRadius:12, border:`1px solid ${glass.bd}`, background:glass.bg, color:glass.tx,
-                  fontFamily:"Georgia, serif", fontSize:12.5, outline:"none", boxSizing:"border-box", marginBottom:8 }} />
+                  fontFamily:"Georgia, serif", fontSize:12.5, outline:"none", boxSizing:"border-box", marginBottom:8 }} {...SEARCH_ATTRS} />
               <div className="sa-hscroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2, WebkitOverflowScrolling:"touch" }}>
                 <span style={{ ...pill(reverse), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={reverse ? "tab" : "soft"} data-lens-ink="" onClick={() => { setReverse(r => !r); setFlip(false); vibrate("light"); }}>{reverse ? "Наоборот ✓" : "Наоборот"}</span>
                 <span style={{ ...pill(!base), padding:"4px 10px", fontSize:11, flexShrink:0 }} data-lens-btn={!base ? "tab" : "soft"} data-lens-ink="" onClick={() => setBase("")}>Все · {ALL.filter(c => matches(c, q)).length}</span>

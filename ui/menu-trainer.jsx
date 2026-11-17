@@ -23,6 +23,7 @@ import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { RESTAURANTS } from "../data/roles";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи
@@ -282,7 +283,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v172</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v173</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -509,7 +510,7 @@ function MenuList({ T, gold, red, dishes, Head, restaurant, a11y }) {
       {Head("Меню по разделам")}
       <div style={{ padding: "8px 16px 0" }}>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Блюдо, ингредиент, аллерген…" data-lens-field=""
-          style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.05)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none" }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.5)" : "rgba(255,248,230,0.05)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none" }} {...SEARCH_ATTRS} />
         <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "10px 0 4px", WebkitOverflowScrolling: "touch" }}>
           <span style={pill(!cat)} data-lens-btn={!cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat("")}>Все · {dishes.filter(d => dishMatches(d, q)).length}</span>
           {allGroups.map(g => <span key={g.cat} style={pill(cat === g.cat)} data-lens-btn={cat === g.cat ? "tab" : "soft"} data-lens-ink="" onClick={() => setCat(cat === g.cat ? "" : g.cat)}>{g.cat} · {g.items.length}</span>)}
@@ -1442,7 +1443,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
         )}
         {(list.length + orphanShared.length + sampleList.length) > 6 && (
           <div style={{ marginTop: 12 }}>
-            <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" data-lens-field="" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} />
+            <input className="sa-field" value={eq} onChange={e => setEq(e.target.value)} placeholder="Найти блюдо в редакторе…" data-lens-field="" style={{ ...inputSt, marginBottom: 8, padding: "9px 12px", fontSize: 14 }} {...SEARCH_ATTRS} />
             <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
               {[{ cat: "", n: list.length + orphanShared.length + sampleList.length }, ...groupByCat([...list, ...orphanShared, ...sampleList]).map(g => ({ cat: g.cat, n: g.items.length }))].map(g => (
                 <span key={g.cat || "_all"} data-lens-btn={(g.cat || "") === ecat ? "tab" : "soft"} data-lens-ink="" onClick={() => setEcat(g.cat === ecat ? "" : g.cat)} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${ecat === g.cat ? gold : gold + "55"}`, background: ecat === g.cat ? "rgba(214,178,102,0.16)" : "transparent", color: ecat === g.cat ? textColor : T.modSub.color }}>{g.cat || "Все"} · {g.n}</span>

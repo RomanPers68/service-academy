@@ -27,6 +27,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate, onActivate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { LABEL_CSS } from "./tokens";
 import { MicButton } from "./mic";
 import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
@@ -684,7 +685,7 @@ function SearchView({ api, me, chats, chat = null, q0 = "", onQ = null, onBack, 
       <button type="button" className="ch-back" data-sa-back="" aria-label="Назад" onClick={onBack}>{IC.back}</button>
       <span className="ch-qw">
         <input ref={inRef} className="ch-q sa-field" type="search" value={q} maxLength={80} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
-          placeholder={chat ? "Поиск в «" + chatTitle(chat) + "»" : "Поиск по сообщениям"} aria-label={chat ? "Поиск в этом чате" : "Поиск по сообщениям"} data-chat-q="" />
+          placeholder={chat ? "Поиск в «" + chatTitle(chat) + "»" : "Поиск по сообщениям"} aria-label={chat ? "Поиск в этом чате" : "Поиск по сообщениям"} data-chat-q="" {...SEARCH_ATTRS} />
         {q ? <button type="button" className="ch-qx" data-chat-qx="" aria-label="Очистить" onMouseDown={(e) => e.preventDefault()}
           onClick={() => { setQ(""); try { if (inRef.current) inRef.current.focus(); } catch (e) { /* */ } }}>{IC.x}</button> : null}
       </span>
@@ -740,7 +741,7 @@ function People({ me, api, title, sub = "Коллеги вашего завед�
   };
   const body = (<>
     {top}
-    <input className="ch-search sa-field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени" data-chat-search="" />
+    <input className="ch-search sa-field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти по имени" data-chat-search="" {...SEARCH_ATTRS} />
     {!list ? <div className="ch-empty">Загружаю команду…</div> : bad ? <div className="ch-empty" role="alert" data-chat-people-bad="">Список коллег не загрузился. Проверь связь и открой ещё раз.</div>
       : !shown.length ? <div className="ch-empty">{q.trim() ? "Никого не нашёл." : emptyText}</div> : null}
     {onShift.length ? <div className="ch-sec">Сегодня в смене</div> : null}

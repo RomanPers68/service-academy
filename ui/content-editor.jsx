@@ -37,6 +37,7 @@ import { LiveDialogue, dlgWalkText, dlgGram } from "./screens-dialogue";   // v4
 import { practiceRound } from "../lib/practice-round";
 import { tfLabel } from "../lib/practice-mistake";
 import { vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
 import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
@@ -1114,7 +1115,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {!draft.build ? (
           <div data-lens-edge="" style={G({ padding: "12px 12px", marginBottom: 6 })}>
             <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.45, marginBottom: 8 }}>Собрать напиток по шагам: бокал, лёд, дозы, метод, гарниш. Бокал на экране наполняется, ошибка тянет за собой вкус. Как штатные «Сборки».</div>
-            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" />
+            <input data-lens-field="" style={{ ...input, fontSize: 13.5 }} value={ckQuery} onChange={e => setCkQuery(e.target.value)} placeholder="Найти коктейль из карты бара: «негрони»" {...SEARCH_ATTRS} />
             {ckQuery.trim().length >= 2 ? (() => {
               const qq = ckQuery.trim().toLowerCase().replace(/ё/g, "е");
               const found = [...barShared.map(c => ({ ...c, own: true })), ...COCKTAILS].filter(c => (c.name || "").toLowerCase().replace(/ё/g, "е").includes(qq)).slice(0, 6);

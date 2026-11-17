@@ -8,6 +8,7 @@
 import React from "react";
 import { labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { topInsetPx } from "../lib/tg-screen";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
@@ -46,7 +47,7 @@ export function SearchField({ inputRef, value, onChange, placeholder, aria, a11y
   return (
     <div style={{ position: "relative", flex: 1, minWidth: 0, ...style }}>
       <input ref={inputRef} data-lens-field="" data-bar-search="" type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={aria}
-        style={{ width: "100%", boxSizing: "border-box", padding: value ? "11px 40px 11px 14px" : "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none" }} />
+        style={{ width: "100%", boxSizing: "border-box", padding: value ? "11px 40px 11px 14px" : "11px 14px", borderRadius: 14, border: `1px solid ${gold}55`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)", color: text, fontSize: 14.5, fontFamily: SERIF, outline: "none" }} {...SEARCH_ATTRS} />
       {value ? <button type="button" data-bar-search-clear="" aria-label="Очистить поиск" onClick={clear}
         style={{ position: "absolute", right: 5, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: 16, border: "none", background: "transparent", color: a11y ? "#6B4E1A" : gold, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button> : null}
     </div>);

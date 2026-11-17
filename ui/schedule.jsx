@@ -16,6 +16,7 @@ import { rpc, saToken } from "../api/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
+import { NO_AUTOCORRECT } from "../lib/search-field";   // v173 (Доп. 498): строка «Найти…» без автозамены
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
 import { Sign } from "./signs";   // v75 (Доп. 388): треугольник-предупреждение значком вместо ⚠
 // v46 (Доп. 359): верх графика сотрудника — ближайшая смена карточкой и медальоны месяца; у руководителя —
@@ -237,7 +238,7 @@ function Num({ v, min, max, set, inp }) {
   );
 }
 // Текстовое поле: правки идут локально, наверх уходят по окончании ввода
-function Text({ v, set, inp, style, maxLength, placeholder }) {   // v108: подсказка формата («дд.мм») видна
+function Text({ v, set, inp, style, maxLength, placeholder, find = false }) {   // v108: подсказка формата («дд.мм») видна; v173: find — строка поиска
   const ref = React.useRef(null);
   React.useEffect(() => {
     if (ref.current && document.activeElement !== ref.current) ref.current.value = v;
@@ -245,7 +246,7 @@ function Text({ v, set, inp, style, maxLength, placeholder }) {   // v108: по�
   return (
     <input ref={ref} data-lens-field="" defaultValue={v} maxLength={maxLength} placeholder={placeholder} style={{ ...inp, ...style }}
       enterKeyHint="done" onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
-      onFocus={focusScroll} onChange={e => set(e.target.value)} />
+      onFocus={focusScroll} onChange={e => set(e.target.value)} {...(find ? NO_AUTOCORRECT : null)} />
   );
 }
 // Длинная справка под кнопкой. Абзацы курсива нужны один раз при знакомстве,
@@ -2741,7 +2742,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       </Sec>
 
       <Sec no={5} title="Сотрудники" hint={openSec===5 ? "Кто работает, на какой позиции и сколько часов" : sum5} P={P} open={openSec===5} onToggle={() => setOpenSec(openSec===5?0:5)}>
-        <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter}
+        <Text inp={{ ...inp, width:"100%", boxSizing:"border-box", marginBottom:8 }} v={empFilter} find
           placeholder="Найти по имени или должности…" set={setEmpFilter} />
         <div style={{ marginBottom:12, padding:"10px 12px", borderRadius:12,
           background: a11y ? "rgba(200,169,110,0.14)" : "rgba(200,169,110,0.10)",

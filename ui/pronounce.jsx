@@ -9,6 +9,7 @@
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { labelStyle } from "./tokens";
 import { liveVoiceAvailable, voiceUrl } from "../lib/radio-voice";
 import { stressText, plainText, findPronounce, searchPronounce, hasStress, syllables } from "../lib/pronounce";
@@ -176,7 +177,7 @@ export function PronounceScreen({ T, a11y, gold, dishes = [], Head, glass, ownLa
           Знак над гласной показывает ударение, ниже слово по слогам: ударный слог заглавными. Динамик включает голос, «медленно» повторит его не спеша, «ориг.» звучит на языке оригинала, «повторить» запишет тебя, чтобы сравнить.
         </div>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти: шардоне, burrata, апероль…" className="sa-field" data-lens-field=""
-          style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none", marginBottom: 10 }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 12, border: `1px solid ${gold}66`, background: a11y ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.25)", color: text, fontFamily: "Georgia, serif", fontSize: 14, outline: "none", marginBottom: 10 }} {...SEARCH_ATTRS} />
         <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
           {cats.map((c) => <button type="button" key={c.id} data-pron-cat={c.id} data-lens-btn={!q && cat === c.id ? "tab" : "soft"} data-lens-ink="" style={chip(!q && cat === c.id)} onClick={() => { setCat(c.id); setQ(""); vibrate("light"); }}>{c.label}</button>)}
         </div>

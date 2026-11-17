@@ -27,6 +27,7 @@ import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
@@ -1052,7 +1053,7 @@ function PlayersManager({ players, scores, T, a11y, onResetPlayer, onUnlockQuiz,
         style={{ width: "100%", boxSizing: "border-box", padding: "10px 13px", borderRadius: 13, marginBottom: 8, outline: "none",
           fontFamily: "Georgia, serif", fontSize: 13.5, color: T.modTitle.color,
           background: a11y ? "rgba(255,252,245,0.8)" : "rgba(20,14,6,0.5)",
-          border: `1px solid ${a11y ? "rgba(139,106,48,0.24)" : "rgba(200,169,110,0.22)"}` }} />
+          border: `1px solid ${a11y ? "rgba(139,106,48,0.24)" : "rgba(200,169,110,0.22)"}` }} {...SEARCH_ATTRS} />
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
         {chip("all", "Все")}{chip("new", "Не начали")}{chip("sleep", "Уснули")}
       </div>

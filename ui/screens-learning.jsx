@@ -1404,9 +1404,10 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             {/* Нижняя тень */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"20%", borderRadius:"0 0 22px 22px", background:"linear-gradient(0deg, rgba(0,0,0,0.12) 0%, transparent 100%)", pointerEvents:"none" }} />
             <div style={{ position:"relative", zIndex:1 }}>
-          {/* v174 (Доп. 499): видео-знакомство в первом уроке роли — на месте фото урока, тоже на первой карточке */}
+          {/* v174 (Доп. 499): видео-знакомство в первом уроке роли — на месте фото урока, тоже на первой карточке.
+              v175 (Доп. 500): урок открыли с начала — ролик первым экраном, пока его не досмотрели и не выбрали текст */}
           {(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)
-            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} /> : null}
+            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} autoOpen={!cardMode || resumeFrom === 0} uk={posUk} /> : null}
           {/* v146: фото урока — к краям карточки, на первой карточке (в ленте — сверху) */}
           {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id) && !introVideoOf(lesson.id)
             ? <LessonCover lessonId={lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}

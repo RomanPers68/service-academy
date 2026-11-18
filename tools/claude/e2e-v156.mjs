@@ -51,7 +51,11 @@ async function open({ who = "maria", light = false, width = 390, height = 844 } 
   return { ctx, page, errs };
 }
 const nav = async (page, s, ms = 1600) => { await page.evaluate((x) => window.__saNav(x), s); await page.waitForTimeout(ms); };
-const lesson = async (page, id, ms = 1800) => { await page.evaluate((x) => window.__saLesson && window.__saLesson(x), id); await page.waitForTimeout(ms); };
+// v175 (Доп. 500): урок с роликом, открытый с начала, показывает видео первым экраном (e2e-v175.mjs). Здесь уроки — как
+// раньше: перед уроком человеку ставится «выбрал текст» во всех шести роликах.
+const textFirst = (page) => page.evaluate(() => { try { const p = JSON.parse(localStorage.getItem("sa_profile") || "null"); if (p && p.name) localStorage.setItem("sa_intro_seen_" + p.name + "_" + (p.surname || ""),
+  JSON.stringify({ "spg-0-1": "text", "s0-1": "text", "c0-1": "text", "m0-1": "text", "sm0-1": "text", "bar0-1": "text" })); } catch (e) { /* */ } });
+const lesson = async (page, id, ms = 1800) => { await textFirst(page); await page.evaluate((x) => window.__saLesson && window.__saLesson(x), id); await page.waitForTimeout(ms); };
 const scrollTip = async (page) => { await page.evaluate(() => { const el = document.querySelector("[data-lesson-tip]"); if (el) el.scrollIntoView({ block: "center" }); }); await page.waitForTimeout(900); };
 const today = (page) => page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
 const dm = (day) => day.slice(8, 10) + "." + day.slice(5, 7);

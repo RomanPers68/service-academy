@@ -38,7 +38,8 @@ describe("v40: плитки действий темы", () => {
     expect(html).toContain('<button type="button" class="tbm-cellar">Погреб тем ›</button>');
     expect(html).toContain('<span class="tbm-fresh-t"><span>Тема выдохлась</span></span>');
     // меню пройденного раздела — с местом под печать, сама печать — на углу
-    expect(html).toContain('class="tbm-menu sealed"');
+    // v175 (Доп. 500): у раздела s0 — кадр видео-знакомства, обложка (covered)
+    expect(html).toContain('class="tbm-menu sealed covered"');
     expect(html).toMatch(/<span class="tbm-seal(?: stamp)?" aria-hidden="true"><svg width="46" height="46"/);
   });
 
@@ -77,7 +78,7 @@ describe("v40: плитки действий темы", () => {
     const html = R(h(ModuleMenu, { mod: S0, completed: c, quizDone: q, onLesson: noop, embedded: true, passive: true, topic: { f: { level: "faded" }, canGold: true }, acts: { onRefresh: noop, onGold: noop, onCellar: noop } }));
     expect(tiles(html).every((x) => x.attrs.includes('tabindex="-1"'))).toBe(true);
     expect(html).toContain('<button type="button" class="tbm-cellar" tabindex="-1">');
-    expect(html).toContain('class="tbm-menu sealed"');   // печать ещё не «опустилась», а отступ уже есть
+    expect(html).toContain('class="tbm-menu sealed covered"');   // печать ещё не «опустилась», а отступ уже есть (v175: обложка — кадр видео)
     expect(html).not.toMatch(/class="tbm-seal[ "]/);
   });
 

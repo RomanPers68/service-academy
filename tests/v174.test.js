@@ -136,7 +136,8 @@ describe("v174 · обложка в уроке", () => {
     const S = rd("ui/screens-learning.jsx");
     expect(S).toContain('import { IntroVideoCover } from "./intro-video";');
     expect(S).toContain('import { introVideoOf } from "../data/intro-videos";');
-    expect(S).toContain("{(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)\n            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} /> : null}");
+    // v175 (Доп. 500): урок открыт с начала — ролик может встать первым экраном (autoOpen), uk — чей телефон
+    expect(S).toContain("{(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)\n            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} autoOpen={!cardMode || resumeFrom === 0} uk={posUk} /> : null}");
     expect(S).toContain("{(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id) && !introVideoOf(lesson.id)");
     // обложка видео стоит раньше фото урока и живого диалога
     expect(S.indexOf("<IntroVideoCover")).toBeLessThan(S.indexOf("<LessonCover lessonId={lesson.id}"));
@@ -169,17 +170,19 @@ describe("v174 · плеер", () => {
   it("по исходнику: звук из касания, «Назад» Telegram закрывает видео, касания не уходят в урок", () => {
     const S = rd("ui/intro-video.jsx");
     // плеер ставится прямо в касании, play() — там же
-    expect(S).toContain("flushSync(() => setOpen(true));");
-    expect(S.indexOf("flushSync(() => setOpen(true));")).toBeLessThan(S.indexOf("playSafe(v);"));
-    // крестик — первый data-sa-back поверх приложения (lib/utils.js, clickScreenBack)
-    expect(S).toMatch(/data-sa-back="" data-intro-x="" aria-label="Закрыть"/);
+    // v175 (Доп. 500): открыт ли плеер и как — mode ("view" — с обложки, "title" — первым экраном)
+    expect(S).toContain('flushSync(() => setMode("view"));');
+    expect(S.indexOf('flushSync(() => setMode("view"));')).toBeLessThan(S.indexOf("playSafe(v);"));
+    // крестик — первый data-sa-back поверх приложения (lib/utils.js, clickScreenBack); v175: первым экраном — «Читать текстом»
+    expect(S).toMatch(/data-sa-back="" data-intro-x="close" aria-label="Закрыть"/);
+    expect(S).toMatch(/data-sa-back="" data-intro-x="text" aria-label="Читать текстом"/);
     expect(S).toContain("createPortal(body, document.body)");
     expect(S).toContain("onClick={keep} onTouchStart={keep} onTouchEnd={keep}");
     expect(S).toContain('if (ev.key === "Escape")');
     // ушли из урока — загрузка обрывается
     expect(S).toContain('v.removeAttribute("src"); v.load();');
     expect(S).toMatch(/Ещё раз/);
-    expect(S).toMatch(/К уроку/);
+    expect(S).toMatch(/К тексту урока/);   // v175: было «К уроку»
     expect(S).toContain("Видео не загрузилось. Проверь связь и попробуй ещё раз.");
   });
 });

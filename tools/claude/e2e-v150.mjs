@@ -51,7 +51,11 @@ async function open({ who = "anna", light = false, width = 390, height = 844 } =
 }
 const nav = async (page, s, ms = 1600) => { await page.evaluate((n) => window.__saNav && window.__saNav(n), s); await page.waitForTimeout(ms);
   await page.evaluate(() => { const r = document.getElementById("root"); if (r) r.scrollTop = 0; window.scrollTo(0, 0); }); await page.waitForTimeout(250); };
-const lesson = async (page, id, ms = 2200) => { await page.evaluate((x) => window.__saLesson && window.__saLesson(x), id); await page.waitForTimeout(ms); };
+// v175 (Доп. 500): урок с роликом, открытый с начала, показывает видео первым экраном (e2e-v175.mjs). Здесь уроки — как
+// раньше: перед уроком человеку ставится «выбрал текст» во всех шести роликах.
+const textFirst = (page) => page.evaluate(() => { try { const p = JSON.parse(localStorage.getItem("sa_profile") || "null"); if (p && p.name) localStorage.setItem("sa_intro_seen_" + p.name + "_" + (p.surname || ""),
+  JSON.stringify({ "spg-0-1": "text", "s0-1": "text", "c0-1": "text", "m0-1": "text", "sm0-1": "text", "bar0-1": "text" })); } catch (e) { /* */ } });
+const lesson = async (page, id, ms = 2200) => { await textFirst(page); await page.evaluate((x) => window.__saLesson && window.__saLesson(x), id); await page.waitForTimeout(ms); };
 const overflowX = (page) => page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
 
 // заголовок хаба: значок и надпись

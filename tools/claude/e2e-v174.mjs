@@ -10,6 +10,9 @@
 //   ALL   — шесть ролей: у первого урока каждой своя обложка, длительность и кадр; ролик каждой роли начинается;
 //   FEED  — урок лентой: обложка сверху, над текстом;
 //   LOOK  — 320 px и «Для чтения»: обложка в карточке, без прокрутки вбок; снимки для владельца (390 px, ×3).
+// v175 (Доп. 500): урок с роликом, открытый с начала, показывает видео первым экраном (e2e-v175.mjs). Здесь проверяется
+// обложка, как в v174, поэтому до уроков Анне ставится «выбрала текст» во всех шести. Полоска времени теперь внизу
+// (data-intro-fill, ширина в %), в конце — «К тексту урока».
 // Запуск: E2E_SITE=<демо> E2E_PORT=<порт> E2E_OUT=<папка снимков> node e2e-v174.mjs [разделы]
 import { createRequire } from "node:module";
 import http from "node:http";
@@ -64,6 +67,8 @@ async function open({ who = "anna", light = false, cards = true, width = 390, he
   await page.evaluate((w) => { localStorage.clear(); localStorage.setItem("__demo_who", w); }, who);
   await page.goto(URL0, { waitUntil: "load" });
   await boot(page, errs, cards);
+  // v175: видео первым экраном — не здесь (e2e-v175.mjs): все шесть роликов — «выбрала текст»
+  await page.evaluate(() => localStorage.setItem("sa_intro_seen_Анна_Смирнова", JSON.stringify({ "spg-0-1": "text", "s0-1": "text", "c0-1": "text", "m0-1": "text", "sm0-1": "text", "bar0-1": "text" })));
   if (light) { await page.getByText("Для чтения").first().click().catch(() => errs.push("нет «Для чтения»")); await page.waitForTimeout(1200); }
   return { ctx, page, errs };
 }
@@ -82,11 +87,11 @@ const cover = (page) => page.evaluate(() => {
 const player = (page) => page.evaluate(() => {
   const p = document.querySelector("[data-intro-player]");
   if (!p) return null;
-  const v = p.querySelector("video[data-intro-el]"), bar = p.querySelector("[data-intro-bar]");
+  const v = p.querySelector("video[data-intro-el]"), bar = p.querySelector("[data-intro-fill]");   // v175: полоска внизу
   const r = p.getBoundingClientRect();
   return { role: p.getAttribute("data-intro-player"), state: p.getAttribute("data-intro-state"), inBody: p.parentElement === document.body, full: r.width === innerWidth && r.height === innerHeight,
     src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, dur: v ? v.duration : 0, inline: v ? v.hasAttribute("playsinline") : false,
-    bar: bar ? (bar.style.transform || "") : "", x: !!p.querySelector("[data-intro-x][data-sa-back]"), resume: !!p.querySelector("[data-intro-resume]"), end: (p.querySelector("[data-intro-end]") || {}).innerText || "" };
+    bar: bar ? bar.style.width || "" : "", x: !!p.querySelector("[data-intro-x][data-sa-back]"), resume: !!p.querySelector("[data-intro-resume]"), end: (p.querySelector("[data-intro-end]") || {}).innerText || "" };
 });
 const videoLeft = (page) => page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); return v ? { inDoc: true, paused: v.paused } : { inDoc: false }; });
 const waitState = async (page, want, ms = 8000) => {
@@ -94,7 +99,7 @@ const waitState = async (page, want, ms = 8000) => {
   while (Date.now() - t0 < ms) { const p = await player(page); if (p && p.state === want) return p; await page.waitForTimeout(150); }
   return player(page);
 };
-const barScale = (s) => { const m = /scaleX\(([\d.]+)\)/.exec(s || ""); return m ? Number(m[1]) : -1; };
+const barScale = (s) => { const m = /^([\d.]+)%$/.exec(s || ""); return m ? Number(m[1]) / 100 : -1; };   // v175: ширина в %
 // «Назад» Telegram: тот же поиск, что lib/utils.js clickScreenBack — сначала слои поверх приложения, потом #root
 const tgBack = (page) => page.evaluate(() => {
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
@@ -119,7 +124,7 @@ if (want("COVER")) {
   const c = await cover(page);
   ok("COVER: обложка в первой карточке", !!c && c.role === "spg", c);
   ok("COVER: к краям стеклянной карточки (как фото урока)", !!c && Math.abs(c.left) <= 1 && Math.abs(c.right) <= 1 && Math.abs(c.top) <= 1, c);
-  ok("COVER: высота 210–300 px", !!c && c.h >= 210 && c.h <= 300, c && c.h);
+  ok("COVER: высота 230–310 px (v175: 72vw)", !!c && c.h >= 230 && c.h <= 310, c && c.h);
   ok("COVER: кадр загрузился", !!c && c.img && c.img.done && c.img.nw === 720 && /video\/intro-spg\.jpg$/.test(c.img.src), c && c.img);
   ok("COVER: «Видео-знакомство», «С чего начинается роль», 0:54, ▶", !!c && /Видео-знакомство/i.test(c.text) && /С чего начинается роль/.test(c.text) && c.dur === "0:54" && c.play, c);
   ok("COVER: подпись для экранного диктора", !!c && c.label === "Смотреть видео-знакомство, 54 секунды", c && c.label);
@@ -219,7 +224,7 @@ if (want("END")) {
   await waitState(page, "playing");
   await page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); v.currentTime = Math.max(0, v.duration - 0.8); });
   const p = await waitState(page, "ended", 6000);
-  ok("END: конец ролика — «Ещё раз» и «К уроку»", !!p && p.state === "ended" && /Ещё раз/.test(p.end) && /К уроку/.test(p.end), p);
+  ok("END: конец ролика — «Ещё раз» и «К тексту урока» (v175)", !!p && p.state === "ended" && /Ещё раз/.test(p.end) && /К тексту урока/.test(p.end), p);
   ok("END: полоска времени — до конца", !!p && barScale(p.bar) > 0.97, p && p.bar);
   await shot(page, "player-end");
   await page.locator("[data-intro-again]").first().tap();
@@ -231,7 +236,7 @@ if (want("END")) {
   await waitState(page, "ended", 6000);
   await page.locator("[data-intro-done]").first().tap();
   await page.waitForTimeout(500);
-  ok("END: «К уроку» — урок, обложка на месте", !(await player(page)) && !!(await cover(page)));
+  ok("END: «К тексту урока» — урок, обложка на месте", !(await player(page)) && !!(await cover(page)));
   ok("END: без ошибок страницы", errs.length === 0, errs);
   await ctx.close();
 }

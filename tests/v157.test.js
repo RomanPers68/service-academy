@@ -324,13 +324,14 @@ describe("v157: обложки разделов — те же фото, что �
     expect(ref).toContain('<CoverEditButton id={id} title={c.t} profile={profile} a11y={!!a11y} list={photos} note={note} onPhoto={!!photo} />');
     expect(ref).toContain("<Hub T={T} gold={gold} dark={dark} a11y={a11y} onBarLab={onBarLab} profile={profile}");
     const mm = rd("ui/module-menu.jsx");
-    expect(mm).toContain('<div className={"tbm-menu" + (sealed ? " sealed" : "") + (covered ? " covered" : "")} data-mod-cover={covered ? (cov.own ? "own" : "lesson") : undefined}>');
+    // v175 (Доп. 500): у раздела с видео-знакомством, пока нет своего фото, — кадр из видео ("video")
+    expect(mm).toContain('<div className={"tbm-menu" + (sealed ? " sealed" : "") + (covered ? " covered" : "")} data-mod-cover={covered ? (poster ? "video" : cov.own ? "own" : "lesson") : undefined}>');
     // v163 (Доп. 488): фото — слоями (проявляется), под ним тихая подложка вместо мерцающей заглушки
-    expect(mm).toContain('{covered ? <div className="tbm-cover" aria-hidden="true"><CoverPhoto src={covSrc} wait={<PhotoWait />} /></div> : null}');
+    expect(mm).toContain('{covered ? <div className="tbm-cover" aria-hidden="true">{poster\n          ? <CoverPhoto src={poster} style={{ objectPosition: sectionPos(intro) }} />\n          : <CoverPhoto src={covSrc} wait={<PhotoWait />} />}</div> : null}');
     // место под обложку — сразу, как известно, что фото есть; соседней странице — превью (v163: или целое, если оно уже в
     // памяти, — "ready"); не пришло — карточка прежняя
     expect(mm).toContain('const { src: covSrc, gone: covGone } = useCover(cov ? cov.id : null, cov ? cov.info.ver : "", passive ? "ready" : true);');
-    expect(mm).toContain("const covered = !!cov && !covGone;");
+    expect(mm).toContain("const covered = !!poster || (!!cov && !covGone);");   // v175: кадр видео — в приложении, ждать нечего
     expect(mm).toContain("passive={passive} style={{ top: 10, right: 46 }}");
     expect(TABLE_CSS).toContain(".tbm-cover{position:absolute;left:0;right:0;top:0;height:178px;border-radius:21px 21px 0 0;overflow:hidden;pointer-events:none;");
     expect(TABLE_CSS).toContain(".tbm-menu.covered .tbm-head{position:relative;padding-top:84px}");

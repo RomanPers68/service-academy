@@ -446,7 +446,8 @@ describe("v163 · 4: фото проявляется, а не выскакива
   });
   it("раздел трека, «Справочник», плитка главы, обложка урока — слоями; мерцающей заглушки на месте фото больше нет", async () => {
     const mm = rd("ui/module-menu.jsx"), ref = rd("ui/ReferenceSection.jsx"), lp = rd("ui/lesson-photo.jsx");
-    expect(mm).toContain('<div className="tbm-cover" aria-hidden="true"><CoverPhoto src={covSrc} wait={<PhotoWait />} /></div>');
+    // v175 (Доп. 500): кадр видео-знакомства (он в приложении) — без подложки; фото раздела и урока — как было
+    expect(mm).toContain('<div className="tbm-cover" aria-hidden="true">{poster\n          ? <CoverPhoto src={poster} style={{ objectPosition: sectionPos(intro) }} />\n          : <CoverPhoto src={covSrc} wait={<PhotoWait />} />}</div>');
     expect(mm).toContain('useCover(cov ? cov.id : null, cov ? cov.info.ver : "", passive ? "ready" : true);');
     expect(ref).toContain('{ownOn ? <CoverPhoto src={ownSrc} style={imgSt("50% 50%")} attrs={REF_PHOTO} wait={defImg || <PhotoWait />} /> : defImg}');
     expect(ref).toContain("const defImg = def ? <CoverPhoto key={def.src} src={def.src} style={imgSt(def.pos)} attrs={ownOn ? REF_UNDER : REF_PHOTO} /> : null;");

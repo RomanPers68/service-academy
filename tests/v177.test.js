@@ -86,7 +86,9 @@ describe("v177 · кнопки без подмигивания", () => {
     expect(GLASS_T).toEqual({ show: ".35s ease", calm: ".3s ease", move: ".35s cubic-bezier(.2,.7,.3,1)" });
   });
   it("у плеера нигде нет прозрачности: ни у кнопок, ни у обёрток, ни у самого плеера — только внутри Glass", () => {
-    const P = playerSrc();
+    // v178 (Доп. 503): кроме кадра обложки, пока ролик грузится: он слой под кнопками, а не их обёртка — стеклу не мешает
+    const P = playerSrc().replace(/<img ref=\{posterRef\} data-intro-poster=[\s\S]*?\/>/, "");
+    expect(P).not.toContain("data-intro-poster=");
     expect(P).not.toMatch(/opacity/);
     expect(P).not.toContain("const fade = ");
     expect(P).not.toMatch(/\.\.\.GLASS\./);
@@ -337,13 +339,14 @@ describe("v177 · ролик заранее: где берём", () => {
   it("обложка в уроке: ролик ещё не смотрел и не первым экраном — IntroWarm; досмотрел — нет", () => {
     const S = V();
     expect(S).toContain("const warm = !!video && !introFirst(lessonId, autoOpen, uk) && !introSeenOf(lessonId, uk);");
-    expect(S).toContain("{warm && !mode ? <IntroWarm lessonId={lessonId} uk={uk} /> : null}");
+    expect(S).toContain("{warm && !mode ? <IntroWarm lessonId={lessonId} uk={uk} wait={0} /> : null}");   // v178: без очереди
     expect(R(h(IntroWarm, { lessonId: "s0-1", uk: "_t" }))).toBe("");   // ничего не рисует
     expect(R(h(IntroVideoCover, { lessonId: "s0-1", uk: "_t" }))).toContain('data-intro-cover="seasonal"');
   });
   it("IntroWarm: экран ушёл — отпускает ролик (недокачанное бросаем)", () => {
     const S = V();
-    expect(S).toContain("if (!v || introSeenOf(lessonId, uk)) return undefined;\n    return warmIntro(v);");
+    // v178 (Доп. 503): и сколько ждать очереди (wait)
+    expect(S).toContain("if (!v || introSeenOf(lessonId, uk)) return undefined;\n    return warmIntro(v, wait == null ? undefined : { wait });");
   });
   it("плеер: ролик из памяти (data-intro-from=\"warm\"), нет — из сети; заготовка не пошла — сам переходит на сеть", () => {
     const S = V();

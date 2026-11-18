@@ -350,8 +350,8 @@ await run(["WARM"], async () => {
   // обложка в уроке: вернулся на первую карточку, ролик ещё не смотрел — берём, касание — из памяти
   const a = await open({ pos: { "spg-0-1": 1 } });
   await lesson(a.page, "spg-0-1", 900);
+  const t6 = Date.now();   // v178: обложка берёт ролик сразу, без очереди — время до касания
   await a.page.locator("[aria-label='Предыдущая карточка']").first().click().catch(() => {});
-  const t6 = Date.now();
   const got6 = await waitFor(a.page, async () => fulls(t6, "intro-spg.mp4") > 0 && (await cacheKeys(a.page)).includes("intro-spg.mp4?rev=" + INTRO_VIDEOS["spg-0-1"].rev), 7000);
   ok("WARM: обложка в уроке — ролик берём заранее", !!got6, NET.filter((x) => x.t >= t6));
   await a.page.locator("[data-intro-cover]").first().tap();

@@ -153,7 +153,9 @@ describe("v175 · видео первым экраном", () => {
   it("первым экраном: со звуком; не дали — без звука и «Включить звук»; не дали и так — ▶", () => {
     const V = rd("ui/intro-video.jsx");
     // v176 (Доп. 501): звук выключил телефон — это помнится (forced): «Включить звук» не путается с динамиком человека
-    expect(V).toContain("try { el.muted = false; } catch (e) { /* */ }\n      tryPlay(el).catch(() => {\n        if (!live) return;\n        try { el.muted = true; } catch (e) { /* */ }\n        setForced(true);\n        tryPlay(el).catch(() => {}).then(sync);");
+    // v178 (Доп. 503): глушим, только когда телефон не дал звук (NotAllowedError), — не когда загрузку прервали
+    expect(V).toContain("try { el.muted = false; } catch (e) { /* */ }\n      tryPlay(el).catch((err) => {\n        if (!live) return;");
+    expect(V).toContain('if (!err || err.name !== "NotAllowedError") { sync(); return; }\n        try { el.muted = true; } catch (e) { /* */ }\n        setForced(true);\n        tryPlay(el).catch(() => {}).then(sync);');
     expect(V).toMatch(/data-intro-sound=""[\s\S]{0,300}<SpeakerIcon s=\{20\} off \/>Включить звук/);
     expect(V).toContain("seekTo(soundFrom(video.cues, el.currentTime || 0));");
     // касание по видео без звука — включить звук, а не пауза (v176: иначе — показать или спрятать кнопки)

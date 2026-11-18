@@ -39,6 +39,19 @@
 //   • Ролик — заранее: пока человек на экране перед ним, приложение берёт ролик в память телефона, и плеер играет его
 //     оттуда, без ожидания (lib/intro-warm.js; IntroWarm — на главной, в разделе, в уроке над обложкой).
 //
+// v178 (Доп. 503), владелец (18.11) с записью экрана: «Когда нажимаю на урок, видео не стартует сразу, как раньше», и
+// следом: «я просто сделал сброс своего прогресса, а ролик остался просмотренным, поэтому и не запустился сразу».
+//   • Сброс прогресса стирает и выбор в видео-знакомстве (App.jsx, wipeLocalProgress: sa_intro_seen): после сброса ролик
+//     снова встаёт первым экраном, как у нового человека. Правило прежнее (v175): первым экраном, пока не досмотрел и не
+//     выбрал текст.
+//   • Без чёрного экрана: пока ролик грузится, на его месте — кадр обложки (data-intro-poster), тот же размер и место; ролик
+//     показал первый кадр — кадр обложки тает. iPhone прячет постер, как только видео просят играть, и было чёрно ~1 с.
+//   • Ролик заранее надёжнее: начатое скачивание доводится до конца, даже если человек ушёл с экрана (lib/intro-warm.js);
+//     обложка в уроке берёт ролик сразу, без очереди; закрыли ролик, не досмотрев, — обложка берёт его снова.
+//   • Владелец (18.11): «Бывает такое, что видео долго грузится. И на половине, видимо из-за того что не подгрузилось, оно
+//     продолжается без озвучки». Ролики пережаты легче (до 0,6 Мбит/с, data/intro-videos.js); первым экраном звук
+//     выключается, только когда телефон его не дал (NotAllowedError), а не когда загрузку прервали.
+//
 // iPhone (и Telegram на нём) включает видео со звуком только прямо из касания. Поэтому из обложки плеер встаёт на экран
 // в самом обработчике касания (flushSync), и play() зовётся там же. «Назад» Telegram и Escape закрывают видео, а не урок:
 // у кнопки закрытия data-sa-back (lib/utils.js, clickScreenBack ищет её в слоях поверх приложения первой).
@@ -163,14 +176,15 @@ const calmMotion = () => { try { return !!(window.matchMedia && window.matchMedi
 
 /**
  * v177: ролик урока — заранее, пока человек на экране перед ним (главная под «Начни здесь», раздел, урок над обложкой),
- * если он его ещё не досмотрел и не выбрал текст. Ничего не рисует.
+ * если он его ещё не досмотрел и не выбрал текст. v178: wait — сколько ждать перед скачиванием (по умолчанию — очередь,
+ * как у фото заранее; обложке в уроке ждать нечего: экран уже приехал). Ничего не рисует.
  */
-export function IntroWarm({ lessonId, uk = "" }) {
+export function IntroWarm({ lessonId, uk = "", wait = null }) {
   React.useEffect(() => {
     const v = introVideoOf(lessonId);
     if (!v || introSeenOf(lessonId, uk)) return undefined;
-    return warmIntro(v);   // экран ушёл — недокачанное бросаем (lib/intro-warm.js)
-  }, [lessonId, uk]);
+    return warmIntro(v, wait == null ? undefined : { wait });   // экран ушёл — ожидание бросаем (lib/intro-warm.js)
+  }, [lessonId, uk, wait]);
   return null;
 }
 
@@ -203,7 +217,9 @@ export function IntroVideoCover({ lessonId, a11y = false, autoOpen = false, uk =
     elRef.current = null;
     if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) { /* */ } }
   }, [lessonId, uk]);
-  // v177: обложка на экране, ролик ещё не досмотрен — берём его заранее (первым экраном плеер уже открыт — не берём)
+  // v177: обложка на экране, ролик ещё не досмотрен — берём его заранее (первым экраном плеер уже открыт — не берём).
+  // v178: сразу, без очереди (экран уже приехал); пока открыт плеер — нет (ему нужна вся связь), закрыли, не досмотрев, —
+  // снова
   const warm = !!video && !introFirst(lessonId, autoOpen, uk) && !introSeenOf(lessonId, uk);
   if (!video) return null;
   const start = (e) => {
@@ -239,7 +255,7 @@ export function IntroVideoCover({ lessonId, a11y = false, autoOpen = false, uk =
           background: "rgba(20,15,8,0.6)", boxShadow: "inset 0 0 0 1px rgba(232,201,131,0.45)" }}>{fmtDur(video.dur)}</span>
       </div>
     </div>
-    {warm && !mode ? <IntroWarm lessonId={lessonId} uk={uk} /> : null}
+    {warm && !mode ? <IntroWarm lessonId={lessonId} uk={uk} wait={0} /> : null}
     {mode && elRef.current ? <IntroPlayer video={video} el={elRef.current} mode={mode} onClose={closePlayer} /> : null}
   </>);
 }
@@ -273,6 +289,10 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const [forced, setForced] = React.useState(false); // звук выключил телефон (первым экраном), а не человек
   // v177: плеер встаёт с погасшими кнопками и через кадр проявляет их своим стеклом (не прозрачностью всего плеера)
   const [shown, setShown] = React.useState(false);
+  // v178: пока ролик не показал первый кадр, на его месте — кадр обложки (iPhone прячет постер, как только видео просят
+  // играть, и до первого кадра было чёрно)
+  const [framed, setFramed] = React.useState(false);
+  const posterRef = React.useRef(null);
   const vis = ui && shown;
   React.useEffect(() => {
     let r2 = 0;
@@ -295,10 +315,21 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     const fit = () => {
       const { w, h } = fillSize(stage.clientWidth, stage.clientHeight, el.videoWidth || 720, el.videoHeight || 1280);
       if (!w || !h) return;
-      Object.assign(el.style, { position: "absolute", left: "50%", top: "50%", width: w + "px", height: h + "px", maxWidth: "none",
-        transform: "translate(-50%, -50%)", objectFit: "cover" });
+      const box = { position: "absolute", left: "50%", top: "50%", width: w + "px", height: h + "px", maxWidth: "none", transform: "translate(-50%, -50%)", objectFit: "cover" };
+      Object.assign(el.style, box);
+      if (posterRef.current) Object.assign(posterRef.current.style, box);   // v178: кадр обложки — там же, тем же размером
     };
     fit();
+    // v178: ролик идёт и показал кадр — кадр обложки тает (точно — по кадру, где телефон умеет; иначе — по времени ролика)
+    let vfc = 0;
+    const framedNow = () => { if (live) setFramed(true); };
+    const onTime = () => { if (!el.paused && (el.currentTime || 0) > 0.04) framedNow(); };
+    const wantFrame = () => {
+      if (typeof el.requestVideoFrameCallback !== "function") return;
+      vfc = el.requestVideoFrameCallback((now, meta) => { if (!el.paused && ((meta && meta.mediaTime > 0) || el.currentTime > 0)) framedNow(); else if (live) wantFrame(); });
+    };
+    wantFrame();
+    el.addEventListener("timeupdate", onTime);
     // v177: ролик из памяти телефона не пошёл — берём из сети, с того же места
     const fromNet = () => {
       const at = el.currentTime || 0;
@@ -324,8 +355,11 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     if (title) {
       // первым экраном: со звуком; телефон не дал — без звука (титры в кадре) и «Включить звук»; не дал и так — ▶
       try { el.muted = false; } catch (e) { /* */ }
-      tryPlay(el).catch(() => {
+      tryPlay(el).catch((err) => {
         if (!live) return;
+        // v178: без звука — только когда телефон не дал звук (NotAllowedError). Загрузку прервали (пауза, другой источник
+        // ролика) — не глушим: ролик пойдёт со звуком, когда его снова пустят
+        if (!err || err.name !== "NotAllowedError") { sync(); return; }
         try { el.muted = true; } catch (e) { /* */ }
         setForced(true);
         tryPlay(el).catch(() => {}).then(sync);
@@ -363,6 +397,8 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("resize", fit);
       el.removeEventListener("loadedmetadata", fit);
+      el.removeEventListener("timeupdate", onTime);
+      try { if (vfc && typeof el.cancelVideoFrameCallback === "function") el.cancelVideoFrameCallback(vfc); } catch (e) { /* */ }
       evs.forEach((n) => el.removeEventListener(n, sync));
       try { el.pause(); } catch (e) { /* */ }
       if (el.parentNode === stage) stage.removeChild(el);
@@ -496,6 +532,11 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
       {/* v177: проявляются подложка и видео, а не весь плеер: прозрачный плеер выключил бы стекло кнопок */}
       <div aria-hidden="true" data-intro-bg="" className="sa-fadein" style={{ position: "absolute", inset: 0, background: "#000" }} />
       <div ref={stageRef} data-intro-stage="" className="sa-fadein" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />
+      {/* v178: пока ролик грузится — кадр обложки на его месте; касания — к видео под ним */}
+      <div aria-hidden="true" className="sa-fadein" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+        <img ref={posterRef} data-intro-poster={framed ? "off" : "on"} src={video.poster} alt="" draggable={false}
+          style={{ position: "absolute", objectFit: "cover", display: "block", opacity: framed ? 0 : 1, transition: "opacity .25s ease", userSelect: "none", WebkitTouchCallout: "none" }} />
+      </div>
       {/* сверху: слева — закрыть (первым экраном — «Читать текстом»), справа — динамик */}
       <div data-intro-top="" style={{ position: "absolute", left: 12, right: 12, top: "calc(" + top + " + 12px)", display: "flex", justifyContent: "space-between", alignItems: "center",
         gap: 12, pointerEvents: "none" }}>

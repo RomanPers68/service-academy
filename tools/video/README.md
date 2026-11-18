@@ -26,9 +26,14 @@ python3 fa.py out spg:chunks/spg_chunks.txt:spg.wav bar:chunks/bar_chunks.txt:ba
 # 3. титры
 python3 make_captions.py chunks/spg_chunks.txt --times out/spg_fa.json -o spg.ass
 
-# 4. титры в кадр и сжатие для приложения (720×1280, около 5 МБ на минуту)
-ffmpeg -i spg.mp4 -vf "ass=spg.ass:fontsdir=/usr/share/fonts/opentype/inter" -c:v libx264 -preset veryfast -crf 26 \
-  -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ../../public/video/intro-spg.mp4
+# 4. титры в кадр и сжатие для приложения (720×1280). v178 (Доп. 503): легче для слабой связи — не больше 550 кбит/с
+#    на картинку (среднее — 0,4–0,55), ключевой кадр каждые 4 с (перемотка и продолжение после паузы быстрее), звук моно
+#    64 кбит/с: 2,7–3,9 МБ на ролик. До v178 было -preset veryfast -crf 26, -b:a 96k: 3–6,2 МБ и до 1 Мбит/с
+ffmpeg -i spg.mp4 -vf "ass=spg.ass:fontsdir=/usr/share/fonts/opentype/inter" -c:v libx264 -preset slow -crf 30 \
+  -maxrate 550k -bufsize 1100k -g 100 -keyint_min 25 -pix_fmt yuv420p -profile:v high \
+  -c:a aac -b:a 64k -ac 1 -movflags +faststart ../../public/video/intro-spg.mp4
+# заменили ролик — в data/intro-videos.js новый rev (первые 8 знаков sha256sum файла): иначе телефоны, взявшие ролик
+# заранее, играли бы прежний (lib/intro-warm.js)
 
 # 5. обложка — кадр с улыбкой на «Привет!» (около 1,3 с)
 ffmpeg -ss 1.3 -i spg.mp4 -frames:v 1 -q:v 4 ../../public/video/intro-spg.jpg

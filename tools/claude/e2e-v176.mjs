@@ -119,7 +119,8 @@ const player = (page) => page.evaluate(() => {
   const v = q("video[data-intro-el]"), r = p.getBoundingClientRect(), x = q("[data-intro-x]");
   return { role: p.getAttribute("data-intro-player"), mode: p.getAttribute("data-intro-mode"), state: p.getAttribute("data-intro-state"), muted: p.getAttribute("data-intro-muted") === "1",
     inBody: p.parentElement === document.body, full: Math.abs(r.width - innerWidth) < 1 && Math.abs(r.height - innerHeight) < 1,
-    src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, vmuted: v ? v.muted : null, dur: v ? v.duration : 0,
+    src: v ? (v.getAttribute("data-intro-from") === "warm" ? v.getAttribute("data-intro-src") : v.currentSrc || v.src) : "",   // v177: из памяти телефона (blob:) — файл в data-intro-src
+    t: v ? v.currentTime : -1, paused: v ? v.paused : null, vmuted: v ? v.muted : null, dur: v ? v.duration : 0,
     fill: q("[data-intro-fill]") ? parseFloat(q("[data-intro-fill]").style.width) : -1, now: (q("[data-intro-now]") || {}).textContent || "",
     x: x ? x.getAttribute("data-intro-x") : null, xBack: !!q("[data-intro-x][data-sa-back]"), xText: x ? x.innerText.trim() : "", xLabel: x ? x.getAttribute("aria-label") : "",
     resume: !!q('[data-intro-toggle][aria-label="Смотреть"]'), sound: !!q("[data-intro-sound]"), wait: !!q("[data-intro-wait]"), end: (q("[data-intro-end]") || {}).innerText || "",
@@ -152,8 +153,10 @@ const tgBack = (page) => page.evaluate(() => {
   return "none";
 });
 // линза: стекло (градиент), золотой ободок (inset-тень), размытие под ним
+// v177 (Доп. 502): у кнопок плеера заливка и кромка — в [data-glass-skin] внутри кнопки, размытие — у самой кнопки
 const lensOf = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) return null; const cs = getComputedStyle(el);
-  return { bg: cs.backgroundImage, sh: cs.boxShadow, bf: cs.backdropFilter || cs.webkitBackdropFilter || "", color: cs.color, rad: cs.borderRadius }; }, sel);
+  const sk = getComputedStyle(el.querySelector(":scope > [data-glass-skin]") || el);
+  return { bg: sk.backgroundImage, sh: sk.boxShadow, bf: cs.backdropFilter || cs.webkitBackdropFilter || "", color: cs.color, rad: cs.borderRadius }; }, sel);
 const isLens = (l) => !!l && /gradient/.test(l.bg) && /inset/.test(l.sh) && /blur\(/.test(l.bf);
 // ▶ по центру: центр тяжести треугольника (треть ширины от левого края) — в центре кружка
 const center = (page, sel) => page.evaluate((s) => { const b = document.querySelector(s); const p = b && b.querySelector("[data-play-ic] path"); if (!p) return null;
@@ -171,17 +174,23 @@ const look = (page) => page.evaluate(() => {
   const p = document.querySelector("[data-intro-player]");
   if (!p) return null;
   const v = p.querySelector("video[data-intro-el]"), r = v.getBoundingClientRect();
-  // прозрачность — с учётом всех обёрток; переход — у обёртки, которая гаснет (у полоски — сама капсула)
+  // прозрачность — с учётом всех обёрток; переход — у обёртки, которая гаснет (у полоски — сама капсула).
+  // v177 (Доп. 502): гаснет не обёртка, а значок и заливка кнопки (Glass): прозрачность — со значком ([data-glass-face]),
+  // переход — у стекла (размытие и сдвиг) и у значка (прозрачность)
   const one = (s) => { const el = p.querySelector(s); if (!el) return null; let w = el, op = 1;
     while (w && w !== p) { op *= Number(getComputedStyle(w).opacity); w = w.parentElement; }
-    const b = el.getBoundingClientRect();
+    const face = el.querySelector(":scope > [data-glass-face]");
+    if (face) op *= Number(getComputedStyle(face).opacity);
+    const b = el.getBoundingClientRect(), g = el.closest("[data-glass]"), gf = g && g.querySelector(":scope > [data-glass-face]");
     return { op: Math.round(op * 100) / 100, box: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
-      tr: getComputedStyle(el.closest("[data-intro-controls]") || el.parentElement).transition }; };
+      tr: (g ? getComputedStyle(g).transition : getComputedStyle(el.parentElement).transition) + " | " + (gf ? getComputedStyle(gf).transition : "") }; };
   return { ui: p.getAttribute("data-intro-ui"), state: p.getAttribute("data-intro-state"), W: innerWidth, H: innerHeight,
     vid: { l: r.left, t: r.top, w: r.width, h: r.height }, fit: getComputedStyle(v).objectFit,
     x: one("[data-intro-x]"), mute: one("[data-intro-mute]"), toggle: one("[data-intro-toggle]"), back: one("[data-intro-back]"), next: one("[data-intro-next]"), bar: one("[data-intro-controls] [data-intro-seek]") };
 });
-const opac = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) return -1; let w = el, op = 1; while (w && w !== document.body) { op *= Number(getComputedStyle(w).opacity); w = w.parentElement; } return Math.round(op * 100) / 100; }, sel);
+// v177: и прозрачность значка кнопки ([data-glass-face]) — гаснет он, а не обёртка
+const opac = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) return -1; let w = el, op = 1; while (w && w !== document.body) { op *= Number(getComputedStyle(w).opacity); w = w.parentElement; }
+  const f = el.querySelector(":scope > [data-glass-face]"); if (f) op *= Number(getComputedStyle(f).opacity); return Math.round(op * 100) / 100; }, sel);
 const hit = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) return null; const b = el.getBoundingClientRect(); const t = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!t && (t === el || el.contains(t)); }, sel);
 const waitUi = async (page, want, ms = 6000) => (await waitFor(page, async () => { const l = await look(page); return l && l.ui === want ? l : null; }, ms)) || look(page);
 
@@ -216,6 +225,7 @@ await run(["HIDE"], async () => {
   const { ctx, page, errs } = await open({ dsf: 3 });
   await lesson(page, "spg-0-1", 300);
   await waitState(page, "playing");
+  await page.waitForTimeout(450);   // v177 (Доп. 502): при открытии кнопки проявляются своим стеклом (0,35 с)
   let l = await look(page);
   ok("HIDE: видео первым экраном — сначала кнопки на экране", !!l && l.ui === "on" && l.toggle.op === 1 && l.x.op === 1 && l.bar.op === 1, l && [l.ui, l.toggle, l.x]);
   ok("HIDE: переход плавный — прозрачность и сдвиг за 0,35 с", !!l && /opacity 0\.35s/.test(l.bar.tr) && /transform 0\.35s/.test(l.bar.tr), l && l.bar.tr);
@@ -340,9 +350,10 @@ await run(["GLASS"], async () => {
   await waitState(page, "playing");
   await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
-  const g = await page.evaluate(() => [...document.querySelectorAll("[data-intro-player] button, [data-intro-controls]")].map((el) => { const cs = getComputedStyle(el);
+  // v177 (Доп. 502): заливка и кромка — в [data-glass-skin] кнопки, размытие — у самой кнопки
+  const g = await page.evaluate(() => [...document.querySelectorAll("[data-intro-player] button, [data-intro-controls]")].map((el) => { const cs0 = getComputedStyle(el), cs = getComputedStyle(el.querySelector(":scope > [data-glass-skin]") || el);
     const alphas = [...cs.backgroundImage.matchAll(/rgba\(\s*[\d.]+,\s*[\d.]+,\s*[\d.]+,\s*([\d.]+)\)/g)].map((x) => Number(x[1])); return { k: [...el.attributes].map((a) => a.name).find((n) => n.startsWith("data-intro")),
-      maxA: Math.max(0, ...alphas), n: alphas.length, bf: cs.backdropFilter || cs.webkitBackdropFilter || "", gold: /232, 201, 131|214, 178, 102/.test(cs.boxShadow),
+      maxA: Math.max(0, ...alphas), n: alphas.length, bf: cs0.backdropFilter || cs0.webkitBackdropFilter || "", gold: /232, 201, 131|214, 178, 102/.test(cs.boxShadow),
       rim: /rgba\(255, 255, 255, [\d.]+\) 0px 0px 0px 1px inset/.test(cs.boxShadow) }; }));
   ok("GLASS: колец вокруг кнопок нет", !(await page.$("[data-intro-player] [data-lens-ring]")));
   ok("GLASS: у кнопок плеера нет золотого ободка — светлая кромка, как у iPhone", g.length >= 6 && g.every((x) => !x.gold && x.rim), g);

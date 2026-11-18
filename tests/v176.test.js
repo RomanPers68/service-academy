@@ -17,7 +17,7 @@ if (typeof globalThis.navigator === "undefined") globalThis.navigator = { userAg
 
 import { INTRO_VIDEOS } from "../data/intro-videos.js";
 import { fillSize, FILL_SAFE } from "../lib/intro-video";
-import { IntroVideoCover, GLASS, HIDE_MS } from "../ui/intro-video";
+import { IntroVideoCover, GLASS, GLASS_T, HIDE_MS } from "../ui/intro-video";
 
 const rd = (p) => readFileSync(p, "utf8");
 const h = React.createElement;
@@ -130,7 +130,8 @@ describe("v176 · видео на весь экран", () => {
     expect(V).toContain("const { w, h } = fillSize(stage.clientWidth, stage.clientHeight, el.videoWidth || 720, el.videoHeight || 1280);");
     expect(V).toContain('el.addEventListener("loadedmetadata", fit);');
     expect(V).toContain('window.addEventListener("resize", fit);');
-    expect(V).toContain('<div ref={stageRef} data-intro-stage="" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />');
+    // v177 (Доп. 502): видео проявляется само (sa-fadein), а не весь плеер
+    expect(V).toContain('<div ref={stageRef} data-intro-stage="" className="sa-fadein" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />');
   });
 });
 
@@ -140,19 +141,22 @@ describe("v176 · кнопки гаснут", () => {
   });
   it("плавно: прозрачность и лёгкий сдвиг к краю за 0,35 с; «уменьшить движение» — одной прозрачностью", () => {
     const V = rd("ui/intro-video.jsx");
-    expect(V).toContain('transition: calm ? "opacity .3s ease" : "opacity .35s ease, transform .35s cubic-bezier(.2,.7,.3,1)",');
-    expect(V).toContain('const fade = (dx, dy, sc = 1) => ({ opacity: ui ? 1 : 0, pointerEvents: ui ? "auto" : "none",');
+    // v177 (Доп. 502): гаснут не прозрачностью обёртки, а своим стеклом (Glass): размытие, заливка и значок — за те же
+    // 0,35 с («уменьшить движение» — 0,3 с, без сдвига), сдвиг — тот же
+    expect(GLASS_T).toEqual({ show: ".35s ease", calm: ".3s ease", move: ".35s cubic-bezier(.2,.7,.3,1)" });
+    expect(V).toContain('transition: "-webkit-backdrop-filter " + t + ", backdrop-filter " + t + (calm || !away ? "" : ", transform " + GLASS_T.move),');
+    expect(V).toContain("const glass = (away) => ({ on: vis, calm, away });");
     expect(V).toContain('window.matchMedia("(prefers-reduced-motion: reduce)")');
     // сверху — вверх, полоска — вниз, середина — чуть меньше
-    expect(V).toContain("...fade(0, -10)");
-    expect(V).toContain("...fade(0, 12)");
-    expect(V).toContain("...fade(0, 0, 0.94)");
+    expect(V).toContain('glass("translateY(-10px)")');
+    expect(V).toContain('glass("translateY(12px)")');
+    expect(V).toContain('glass("scale(0.94)")');
   });
   it("когда гаснут: пока ролик идёт; на паузе, в конце и при ошибке — на экране; пока ждёт загрузки — не выскакивают", () => {
     const V = rd("ui/intro-video.jsx");
     expect(V).toContain("if (!st.playing) { clearTimeout(hideT.current); setUi(true); return; }");
     expect(V).toContain("if (!st.waiting) { arm(firstHide.current ? HIDE_MS.first : HIDE_MS.next); firstHide.current = false; }");
-    expect(V).toContain('{state === "waiting" && !ui ? (');
+    expect(V).toContain('{state === "waiting" && !vis ? (');   // v177: vis — кнопки на экране (и уже проявились)
   });
   it("касание по видео: показать или спрятать; без звука от телефона — включить звук; тянут полоску — на экране", () => {
     const V = rd("ui/intro-video.jsx");
@@ -162,7 +166,7 @@ describe("v176 · кнопки гаснут", () => {
     expect(V).toMatch(/const onDown = \(e\) => \{[\s\S]{0,200}clearTimeout\(hideT\.current\);\n\s+setUi\(true\);/);
     // спрятанные кнопки — под касанием видео, а клавиатура (фокус) их показывает
     expect(V).toContain('onFocus={() => { if (!ui) poke(); }}');
-    expect(V).toContain('data-intro-ui={ui ? "on" : "off"}');
+    expect(V).toContain('data-intro-ui={vis ? "on" : "off"}');   // v177: vis = ui и плеер уже проявил кнопки
   });
 });
 
@@ -183,17 +187,19 @@ describe("v176 · стекло, раскладка, динамик", () => {
   });
   it("посередине — назад на фразу (58), ▶ / ❚❚ (82), вперёд на фразу (58); внизу — время, полоска и сколько осталось", () => {
     const V = rd("ui/intro-video.jsx");
-    expect(V).toContain('<div style={{ display: "flex", alignItems: "center", gap: 30, ...fade(0, 0, 0.94) }}>');
-    expect(V).toContain('data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={{ ...disc(58), ...GLASS.bubble }}');
-    expect(V).toContain('data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={{ ...disc(82), ...GLASS.bubble }}');
-    expect(V).toContain('data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={{ ...disc(58), ...GLASS.bubble }}');
+    // v177 (Доп. 502): кнопки — <Glass kind="bubble">, без прозрачной обёртки
+    expect(V).toContain('<div style={{ display: "flex", alignItems: "center", gap: 30 }}>');
+    expect(V).toContain('<Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={disc(58)}>');
+    expect(V).toContain('<Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={disc(82)}>');
+    expect(V).toContain('<Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={disc(58)}>');
     expect(V).toContain('if (leftRef.current) leftRef.current.textContent = "−" + fmtDur(Math.max(0, Math.round(dur() - (el.currentTime || 0))));');
     expect(V).not.toContain("data-intro-resume");
     expect(V).not.toContain("data-intro-total");
   });
   it("динамик сверху справа: выключить звук по желанию и включить; звук выключил телефон — с начала фразы", () => {
     const V = rd("ui/intro-video.jsx");
-    expect(V).toContain('<button type="button" data-intro-mute="" aria-label={st.muted ? "Включить звук" : "Выключить звук"} aria-pressed={st.muted ? "true" : "false"} onClick={toggleMute}');
+    // v177 (Доп. 502): кнопка — <Glass>
+    expect(V).toContain('<Glass {...glass("translateY(-10px)")} type="button" data-intro-mute="" aria-label={st.muted ? "Включить звук" : "Выключить звук"} aria-pressed={st.muted ? "true" : "false"} onClick={toggleMute}');
     expect(V).toContain("<SpeakerIcon off={st.muted} />");
     expect(V).toContain("if (el.muted) { if (forced) unmute(); else { try { el.muted = false; } catch (err) { /* */ } } }");
     expect(V).toContain("else { try { el.muted = true; } catch (err) { /* */ } setForced(false); }");

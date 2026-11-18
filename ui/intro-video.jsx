@@ -26,6 +26,19 @@
 //   • Обложка в уроке — как в v174: ▶ в тёмном кружке с золотой кромкой, «Видео-знакомство», «С чего начинается роль»,
 //     длительность; ▶ — по центру.
 //
+// v177 (Доп. 502), владелец (18.11) с записью экрана: «когда нажимаешь на экран, элементы управления подмигивают. <…> цифры
+// стоят не ровно, относительно окантовки цифр. <…> Мы можем сделать загрузку видео бесшовной, что бы оно грузилось сразу?»
+//   • Без подмигивания. Кнопки гасли прозрачностью обёртки, а стекло (backdrop-filter) под полупрозрачной обёрткой телефон
+//     не рисует: размытие видео под кнопкой включалось рывком в конце проявления и пропадало рывком в начале угасания.
+//     Теперь прозрачность — только у того, что внутри кнопки (заливка с кромкой и значок), а само стекло плавно
+//     «запотевает» и «отпотевает»: размытие 0 → 16 px за те же 0,35 с (Glass). Ни у кнопки, ни у её обёрток
+//     прозрачности нет; у плеера при открытии проявляются только чёрная подложка и видео, кнопки — своим стеклом.
+//   • Цифры — Piazzolla, как цифры во всём приложении (ui/styles.js, ACCENT_SERIF): у Georgia на iPhone цифры «старого»
+//     рисунка — 0 ниже 5, а 5 опускается под строку, и «0:55» в рамке стоял неровно. Цифры Piazzolla ровные и одной
+//     ширины; строка в рамке поднята на 1 px — по середине рамки (DIGITS).
+//   • Ролик — заранее: пока человек на экране перед ним, приложение берёт ролик в память телефона, и плеер играет его
+//     оттуда, без ожидания (lib/intro-warm.js; IntroWarm — на главной, в разделе, в уроке над обложкой).
+//
 // iPhone (и Telegram на нём) включает видео со звуком только прямо из касания. Поэтому из обложки плеер встаёт на экран
 // в самом обработчике касания (flushSync), и play() зовётся там же. «Назад» Telegram и Escape закрывают видео, а не урок:
 // у кнопки закрытия data-sa-back (lib/utils.js, clickScreenBack ищет её в слоях поверх приложения первой).
@@ -33,10 +46,14 @@ import React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { introVideoOf, fmtDur, durWords } from "../data/intro-videos";
-import { cueBack, cueNext, soundFrom, introFirst, markIntroSeen, coverPos, fillSize } from "../lib/intro-video";
+import { cueBack, cueNext, soundFrom, introFirst, introSeenOf, markIntroSeen, coverPos, fillSize } from "../lib/intro-video";
+import { warmIntro, introSrc, introWarmFailed } from "../lib/intro-warm";
+import { ACCENT_SERIF } from "./styles";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const GOLD = "#E8C983", CREAM = "#F4E9CF", INK = "#FFFFFF";
+// v177: цифры (длительность на обложке, время в плеере) — ровные и одной ширины
+export const DIGITS = { fontFamily: ACCENT_SERIF, fontWeight: 700, fontVariantNumeric: "lining-nums tabular-nums" };
 
 // v176: стекло, как у плеера iPhone. bubble — прозрачный пузырь (посередине: ▶ / ❚❚ и фразы), dark — дымчатое стекло
 // (крестик, динамик, «Читать текстом», капсула внизу, «Ещё раз»): текст и значки читаются и на светлом кадре
@@ -49,6 +66,26 @@ export const GLASS = {
     boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 20px rgba(0,0,0,0.25)",
     WebkitBackdropFilter: BLUR, backdropFilter: BLUR },
 };
+// v177: стекло гаснет без подмигивания. on — на экране: размытие под кнопкой, заливка с кромкой (skin) и значок (face);
+// погасла — размытие 0 (видео под ней как есть), заливка и значок прозрачные, касания проходят к видео. away — куда
+// кнопка чуть уезжает, пока гаснет (без него и при «уменьшить движение» — на месте). Прозрачность — только у skin и face:
+// прозрачная кнопка или обёртка выключила бы стекло под собой (так и подмигивало в v176).
+const GLASS_OFF = "blur(0px) saturate(100%)";
+export const GLASS_T = { show: ".35s ease", calm: ".3s ease", move: ".35s cubic-bezier(.2,.7,.3,1)" };
+export const Glass = React.forwardRef(function Glass({ as: Tag = "button", kind = "dark", on = true, calm = false, away = "", style = {}, face = null, children, ...rest }, ref) {
+  const g = GLASS[kind] || GLASS.dark, t = calm ? GLASS_T.calm : GLASS_T.show, f = on ? BLUR : GLASS_OFF;
+  return (
+    <Tag ref={ref} {...rest} data-glass={kind} data-glass-on={on ? "1" : "0"}
+      style={{ ...style, color: g.color, background: "transparent", WebkitBackdropFilter: f, backdropFilter: f, pointerEvents: on ? "auto" : "none",
+        transition: "-webkit-backdrop-filter " + t + ", backdrop-filter " + t + (calm || !away ? "" : ", transform " + GLASS_T.move),
+        transform: !on && !calm && away ? away : style.transform }}>
+      <span aria-hidden="true" data-glass-skin="" style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
+        background: g.background, boxShadow: g.boxShadow, opacity: on ? 1 : 0, transition: "opacity " + t }} />
+      <span data-glass-face="" style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "inherit",
+        opacity: on ? 1 : 0, transition: "opacity " + t, ...face }}>{children}</span>
+    </Tag>
+  );
+});
 // обложка в уроке (v174): ▶ в тёмном кружке с золотой кромкой и мягким ореолом
 const COVER_DISC = { background: "rgba(20,15,8,0.55)", boxShadow: "inset 0 0 0 1.5px rgba(232,201,131,0.8), 0 0 0 5px rgba(232,201,131,0.12), 0 6px 18px rgba(0,0,0,0.45)",
   WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)", color: GOLD };
@@ -97,7 +134,10 @@ const Spinner = ({ s = 40 }) => (
   </svg>
 );
 
-/** Новый <video> для ролика: без своих кнопок, внутри страницы (без системного плеера iPhone) */
+/**
+ * Новый <video> для ролика: без своих кнопок, внутри страницы (без системного плеера iPhone).
+ * v177: ролик уже в памяти телефона (lib/intro-warm.js) — играет оттуда (data-intro-from="warm"), нет — из сети ("net").
+ */
 export function makeIntroVideoEl(video) {
   if (typeof document === "undefined" || !video) return null;
   const v = document.createElement("video");
@@ -107,7 +147,10 @@ export function makeIntroVideoEl(video) {
   v.setAttribute("data-intro-el", video.role || "");
   v.playsInline = true;
   v.poster = video.poster;
-  v.src = video.src;
+  const src = introSrc(video) || video.src;
+  v.setAttribute("data-intro-src", video.src);
+  v.setAttribute("data-intro-from", src === video.src ? "net" : "warm");
+  v.src = src;
   Object.assign(v.style, { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "#000" });
   return v;
 }
@@ -117,6 +160,19 @@ const useLayout = typeof document !== "undefined" && typeof document.createEleme
 const tryPlay = (v) => { try { const p = v.play(); return p && typeof p.then === "function" ? p : Promise.resolve(); } catch (e) { return Promise.reject(e); } };
 const playSafe = (v) => { tryPlay(v).catch(() => {}); };
 const calmMotion = () => { try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } };
+
+/**
+ * v177: ролик урока — заранее, пока человек на экране перед ним (главная под «Начни здесь», раздел, урок над обложкой),
+ * если он его ещё не досмотрел и не выбрал текст. Ничего не рисует.
+ */
+export function IntroWarm({ lessonId, uk = "" }) {
+  React.useEffect(() => {
+    const v = introVideoOf(lessonId);
+    if (!v || introSeenOf(lessonId, uk)) return undefined;
+    return warmIntro(v);   // экран ушёл — недокачанное бросаем (lib/intro-warm.js)
+  }, [lessonId, uk]);
+  return null;
+}
 
 /**
  * Обложка видео-знакомства в карточке урока (нет ролика у урока — ничего).
@@ -147,6 +203,8 @@ export function IntroVideoCover({ lessonId, a11y = false, autoOpen = false, uk =
     elRef.current = null;
     if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) { /* */ } }
   }, [lessonId, uk]);
+  // v177: обложка на экране, ролик ещё не досмотрен — берём его заранее (первым экраном плеер уже открыт — не берём)
+  const warm = !!video && !introFirst(lessonId, autoOpen, uk) && !introSeenOf(lessonId, uk);
   if (!video) return null;
   const start = (e) => {
     if (e) e.stopPropagation();
@@ -176,10 +234,12 @@ export function IntroVideoCover({ lessonId, a11y = false, autoOpen = false, uk =
           <div style={{ fontFamily: SERIF, fontSize: 11.5, letterSpacing: 1.4, textTransform: "uppercase", color: GOLD, opacity: 0.92 }}>Видео-знакомство</div>
           <div style={{ fontFamily: SERIF, fontSize: a11y ? 18.5 : 17.5, fontWeight: "bold", lineHeight: 1.2, color: CREAM, marginTop: 2, textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}>С чего начинается роль</div>
         </div>
-        <span data-intro-dur="" style={{ flexShrink: 0, alignSelf: "flex-end", fontFamily: SERIF, fontSize: 13, color: CREAM, padding: "3px 9px", borderRadius: 999,
+        {/* v177: цифры Piazzolla; середина цифр у неё на 1 px ниже середины строки — поэтому сверху 2 px, снизу 4 */}
+        <span data-intro-dur="" style={{ flexShrink: 0, alignSelf: "flex-end", ...DIGITS, fontSize: 13, lineHeight: "18px", color: CREAM, padding: "2px 9px 4px", borderRadius: 999,
           background: "rgba(20,15,8,0.6)", boxShadow: "inset 0 0 0 1px rgba(232,201,131,0.45)" }}>{fmtDur(video.dur)}</span>
       </div>
     </div>
+    {warm && !mode ? <IntroWarm lessonId={lessonId} uk={uk} /> : null}
     {mode && elRef.current ? <IntroPlayer video={video} el={elRef.current} mode={mode} onClose={closePlayer} /> : null}
   </>);
 }
@@ -211,6 +271,14 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const [st, setSt] = React.useState({ playing: false, waiting: false, ended: false, failed: false, muted: false });
   const [ui, setUi] = React.useState(true);          // кнопки на экране
   const [forced, setForced] = React.useState(false); // звук выключил телефон (первым экраном), а не человек
+  // v177: плеер встаёт с погасшими кнопками и через кадр проявляет их своим стеклом (не прозрачностью всего плеера)
+  const [shown, setShown] = React.useState(false);
+  const vis = ui && shown;
+  React.useEffect(() => {
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setShown(true)); });
+    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
+  }, []);
   const calm = React.useMemo(calmMotion, []);
   const dur = () => (el && Number.isFinite(el.duration) && el.duration > 0 ? el.duration : video.dur || 1);
   const close = React.useCallback((how) => {
@@ -231,8 +299,21 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
         transform: "translate(-50%, -50%)", objectFit: "cover" });
     };
     fit();
+    // v177: ролик из памяти телефона не пошёл — берём из сети, с того же места
+    const fromNet = () => {
+      const at = el.currentTime || 0;
+      introWarmFailed(video);
+      try {
+        el.setAttribute("data-intro-from", "net");
+        el.src = video.src;
+        el.load();
+        if (at > 0.5) el.addEventListener("loadedmetadata", () => { try { el.currentTime = at; } catch (e) { /* */ } }, { once: true });
+      } catch (e) { /* */ }
+      playSafe(el);
+    };
     const sync = () => {
       if (!live) return;
+      if (el.error && el.getAttribute("data-intro-from") === "warm") { fromNet(); return; }
       if (el.ended) endedOnce.current = true;
       setSt({ playing: !el.paused && !el.ended, waiting: !el.paused && !el.ended && el.readyState < 3, ended: !!el.ended, failed: !!el.error, muted: !!el.muted });
     };
@@ -356,7 +437,7 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const again = (e) => {
     if (e) e.stopPropagation();
     vibrate("light");
-    try { if (st.failed) { el.src = video.src; el.load(); } el.muted = false; } catch (err) { /* */ }
+    try { if (st.failed) { el.setAttribute("data-intro-from", "net"); el.src = video.src; el.load(); } el.muted = false; } catch (err) { /* */ }
     setForced(false);
     seekTo(0);
     playSafe(el);
@@ -398,81 +479,83 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const bottom = "env(safe-area-inset-bottom, 0px)";
   const state = st.failed ? "failed" : st.ended ? "ended" : st.playing ? (st.waiting ? "waiting" : "playing") : "paused";
   const cues = (video.cues || []).filter((x) => x > 0.5 && x < (video.dur || 1) - 0.5);
-  // гаснут плавно: прозрачность и лёгкий сдвиг к краю (без сдвига, если в телефоне «уменьшить движение»)
-  const fade = (dx, dy, sc = 1) => ({ opacity: ui ? 1 : 0, pointerEvents: ui ? "auto" : "none",
-    transition: calm ? "opacity .3s ease" : "opacity .35s ease, transform .35s cubic-bezier(.2,.7,.3,1)",
-    transform: (ui || calm) ? undefined : "translate(" + dx + "px, " + dy + "px)" + (sc !== 1 ? " scale(" + sc + ")" : "") });
+  // v177: гаснут и проявляются своим стеклом (Glass): размытие, заливка и значок — плавно за 0,35 с, и лёгкий сдвиг к
+  // краю (сверху — вверх, полоска — вниз, середина — чуть меньше); «уменьшить движение» — без сдвига
+  const glass = (away) => ({ on: vis, calm, away });
   const pill = { position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, padding: "0 18px", borderRadius: 999, border: 0,
     fontFamily: SERIF, fontSize: 15.5, cursor: "pointer", whiteSpace: "nowrap" };
   const disc = (s) => ({ position: "relative", width: s, height: s, borderRadius: "50%", border: 0, padding: 0, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 });
   const center = { position: "absolute", left: "50%", top: "50%" };
+  // время в капсуле: цифры Piazzolla, середина цифр — по середине капсулы (снизу 2 px, как у длительности на обложке)
+  const time = { flexShrink: 0, ...DIGITS, fontSize: 13, lineHeight: "18px", paddingBottom: 2 };
   const body = (
-    <div data-intro-player={video.role} data-intro-mode={mode} data-intro-state={state} data-intro-muted={st.muted ? "1" : undefined} data-intro-ui={ui ? "on" : "off"}
-      data-lens-dark="" role="dialog" aria-modal="true" aria-label="Видео-знакомство" className="sa-fadein"
+    <div data-intro-player={video.role} data-intro-mode={mode} data-intro-state={state} data-intro-muted={st.muted ? "1" : undefined} data-intro-ui={vis ? "on" : "off"}
+      data-lens-dark="" role="dialog" aria-modal="true" aria-label="Видео-знакомство"
       onClick={keep} onTouchStart={keep} onTouchEnd={keep} onFocus={() => { if (!ui) poke(); }}
-      style={{ position: "fixed", inset: 0, zIndex: 9700, background: "#000", touchAction: "manipulation", overscrollBehavior: "contain", WebkitTapHighlightColor: "transparent", userSelect: "none" }}>
-      <div ref={stageRef} data-intro-stage="" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />
+      style={{ position: "fixed", inset: 0, zIndex: 9700, touchAction: "manipulation", overscrollBehavior: "contain", WebkitTapHighlightColor: "transparent", userSelect: "none" }}>
+      {/* v177: проявляются подложка и видео, а не весь плеер: прозрачный плеер выключил бы стекло кнопок */}
+      <div aria-hidden="true" data-intro-bg="" className="sa-fadein" style={{ position: "absolute", inset: 0, background: "#000" }} />
+      <div ref={stageRef} data-intro-stage="" className="sa-fadein" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />
       {/* сверху: слева — закрыть (первым экраном — «Читать текстом»), справа — динамик */}
       <div data-intro-top="" style={{ position: "absolute", left: 12, right: 12, top: "calc(" + top + " + 12px)", display: "flex", justifyContent: "space-between", alignItems: "center",
         gap: 12, pointerEvents: "none" }}>
-        <div style={{ ...fade(0, -10) }}>
-          {title ? (
-            <button ref={xRef} type="button" data-sa-back="" data-intro-x="text" aria-label="Читать текстом" onClick={(e) => { e.stopPropagation(); close("text"); }}
-              style={{ ...pill, minHeight: 42, padding: "0 16px 0 13px", fontSize: 15, ...GLASS.dark }}>
-              <TextIcon />Читать текстом
-            </button>
-          ) : (
-            <button ref={xRef} type="button" data-sa-back="" data-intro-x="close" aria-label="Закрыть" onClick={(e) => { e.stopPropagation(); close("close"); }}
-              style={{ ...disc(44), ...GLASS.dark }}><XIcon /></button>
-          )}
-        </div>
-        <div style={{ ...fade(0, -10) }}>
-          <button type="button" data-intro-mute="" aria-label={st.muted ? "Включить звук" : "Выключить звук"} aria-pressed={st.muted ? "true" : "false"} onClick={toggleMute}
-            style={{ ...disc(44), ...GLASS.dark }}><SpeakerIcon off={st.muted} /></button>
-        </div>
+        {title ? (
+          <Glass ref={xRef} {...glass("translateY(-10px)")} type="button" data-sa-back="" data-intro-x="text" aria-label="Читать текстом" onClick={(e) => { e.stopPropagation(); close("text"); }}
+            style={{ ...pill, minHeight: 42, padding: "0 16px 0 13px", fontSize: 15 }}>
+            <TextIcon />Читать текстом
+          </Glass>
+        ) : (
+          <Glass ref={xRef} {...glass("translateY(-10px)")} type="button" data-sa-back="" data-intro-x="close" aria-label="Закрыть" onClick={(e) => { e.stopPropagation(); close("close"); }}
+            style={disc(44)}><XIcon /></Glass>
+        )}
+        <Glass {...glass("translateY(-10px)")} type="button" data-intro-mute="" aria-label={st.muted ? "Включить звук" : "Выключить звук"} aria-pressed={st.muted ? "true" : "false"} onClick={toggleMute}
+          style={disc(44)}><SpeakerIcon off={st.muted} /></Glass>
       </div>
       {/* звук выключил телефон — просим включить; не гаснет, пока звук не включат */}
       {forced && st.muted && state === "playing" ? (
-        <button type="button" data-intro-sound="" onClick={(e) => { e.stopPropagation(); vibrate("light"); unmute(); }}
-          style={{ ...pill, ...center, top: "calc(50% - 112px)", transform: "translate(-50%, -50%)", minHeight: 46, padding: "0 20px 0 16px", ...GLASS.dark }}>
+        <Glass type="button" data-intro-sound="" onClick={(e) => { e.stopPropagation(); vibrate("light"); unmute(); }}
+          style={{ ...pill, ...center, top: "calc(50% - 112px)", transform: "translate(-50%, -50%)", minHeight: 46, padding: "0 20px 0 16px" }}>
           <SpeakerIcon s={20} off />Включить звук
-        </button>
+        </Glass>
       ) : null}
       {/* посередине: назад на фразу, ▶ / ❚❚, вперёд на фразу */}
       {state !== "ended" && state !== "failed" ? (
         <div data-intro-center="" style={{ ...center, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 30, ...fade(0, 0, 0.94) }}>
-            <button type="button" data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={{ ...disc(58), ...GLASS.bubble }}><span style={shade}><PhraseIcon s={26} /></span></button>
-            <button type="button" data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={{ ...disc(82), ...GLASS.bubble }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+            <Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={disc(58)}>
+              <span style={shade}><PhraseIcon s={26} /></span></Glass>
+            <Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={disc(82)}>
               {state === "waiting" ? <Spinner s={38} /> : <span style={{ ...shade, display: "grid" }}>{st.playing ? <PauseIcon s={34} /> : <PlayIcon s={38} />}</span>}
-            </button>
-            <button type="button" data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={{ ...disc(58), ...GLASS.bubble }}><span style={shade}><PhraseIcon s={26} fwd /></span></button>
+            </Glass>
+            <Glass kind="bubble" {...glass("scale(0.94)")} type="button" data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={disc(58)}>
+              <span style={shade}><PhraseIcon s={26} fwd /></span></Glass>
           </div>
         </div>
       ) : null}
       {/* кнопки спрятаны, а ролик ждёт загрузки — круг посередине */}
-      {state === "waiting" && !ui ? (
+      {state === "waiting" && !vis ? (
         <div aria-hidden="true" data-intro-wait="" style={{ ...center, transform: "translate(-50%, -50%)", pointerEvents: "none" }}><Spinner /></div>
       ) : null}
       {state === "ended" || state === "failed" ? (
         <div data-intro-end={state} onClick={keep}
           style={{ ...center, transform: "translate(-50%, -50%)", width: "calc(100% - 24px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           {state === "failed" ? (
-            <div style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.45, color: INK, textAlign: "center", padding: "10px 16px", borderRadius: 16, ...GLASS.dark }}>
-              Видео не загрузилось. Проверь связь и попробуй ещё раз.</div>
+            <Glass as="div" style={{ position: "relative", fontFamily: SERIF, fontSize: 15, lineHeight: 1.45, textAlign: "center", padding: "10px 16px", borderRadius: 16 }} face={{ display: "block" }}>
+              Видео не загрузилось. Проверь связь и попробуй ещё раз.</Glass>
           ) : null}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button type="button" data-intro-again="" onClick={again} style={{ ...pill, ...GLASS.dark }}><AgainIcon />Ещё раз</button>
-            <button type="button" data-intro-done="" onClick={(e) => { e.stopPropagation(); close(st.ended ? "end" : title ? "text" : "close"); }}
-              style={{ ...pill, fontWeight: "bold", ...GLASS.dark }}>К тексту урока</button>
+            <Glass type="button" data-intro-again="" onClick={again} style={pill}><AgainIcon />Ещё раз</Glass>
+            <Glass type="button" data-intro-done="" onClick={(e) => { e.stopPropagation(); close(st.ended ? "end" : title ? "text" : "close"); }}
+              style={{ ...pill, fontWeight: "bold" }}>К тексту урока</Glass>
           </div>
         </div>
       ) : null}
       {/* внизу: сколько прошло, полоска с рисками фраз, сколько осталось */}
-      <div data-intro-controls="" onClick={keep}
-        style={{ position: "absolute", left: 12, right: 12, bottom: "calc(" + bottom + " + 12px)", height: 46, display: "flex", alignItems: "center", gap: 12,
-          padding: "0 16px", borderRadius: 999, boxSizing: "border-box", ...GLASS.dark, ...fade(0, 12) }}>
-        <span ref={nowRef} data-intro-now="" style={{ flexShrink: 0, minWidth: 30, fontFamily: SERIF, fontSize: 13, color: INK, fontVariantNumeric: "tabular-nums" }}>0:00</span>
+      <Glass as="div" {...glass("translateY(12px)")} data-intro-controls="" onClick={keep}
+        style={{ position: "absolute", left: 12, right: 12, bottom: "calc(" + bottom + " + 12px)", height: 46, display: "flex", alignItems: "center",
+          padding: "0 16px", borderRadius: 999, boxSizing: "border-box" }}
+        face={{ display: "flex", flex: 1, minWidth: 0, height: "100%", gap: 12, justifyContent: "flex-start" }}>
+        <span ref={nowRef} data-intro-now="" style={{ ...time, minWidth: 30, color: INK }}>0:00</span>
         <div ref={seekRef} data-intro-seek="" role="slider" tabIndex={0} aria-label="Перемотка" aria-valuemin={0} aria-valuemax={Math.round(video.dur || 1)}
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onKeyDown={onSeekKey}
           style={{ position: "relative", flex: 1, minWidth: 60, height: 46, cursor: "pointer", touchAction: "none", outline: "none" }}>
@@ -488,9 +571,9 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
               background: "#FFF8EA", boxShadow: "0 1px 4px rgba(0,0,0,0.4)" }} />
           </div>
         </div>
-        <span ref={leftRef} data-intro-left="" style={{ flexShrink: 0, minWidth: 34, textAlign: "right", fontFamily: SERIF, fontSize: 13, color: "rgba(255,255,255,0.78)", fontVariantNumeric: "tabular-nums" }}>
+        <span ref={leftRef} data-intro-left="" style={{ ...time, minWidth: 34, textAlign: "right", color: "rgba(255,255,255,0.78)" }}>
           {"−" + fmtDur(video.dur)}</span>
-      </div>
+      </Glass>
     </div>
   );
   return typeof document !== "undefined" ? createPortal(body, document.body) : null;

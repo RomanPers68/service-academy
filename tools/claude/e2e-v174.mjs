@@ -91,7 +91,8 @@ const player = (page) => page.evaluate(() => {
   const v = p.querySelector("video[data-intro-el]"), bar = p.querySelector("[data-intro-fill]");   // v175: полоска внизу
   const r = p.getBoundingClientRect();
   return { role: p.getAttribute("data-intro-player"), state: p.getAttribute("data-intro-state"), inBody: p.parentElement === document.body, full: r.width === innerWidth && r.height === innerHeight,
-    src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, dur: v ? v.duration : 0, inline: v ? v.hasAttribute("playsinline") : false,
+    src: v ? (v.getAttribute("data-intro-from") === "warm" ? v.getAttribute("data-intro-src") : v.currentSrc || v.src) : "",   // v177: из памяти телефона (blob:) — файл в data-intro-src
+    t: v ? v.currentTime : -1, paused: v ? v.paused : null, dur: v ? v.duration : 0, inline: v ? v.hasAttribute("playsinline") : false,
     bar: bar ? bar.style.width || "" : "", x: !!p.querySelector("[data-intro-x][data-sa-back]"), resume: !!p.querySelector('[data-intro-toggle][aria-label="Смотреть"]'), end: (p.querySelector("[data-intro-end]") || {}).innerText || "" };
 });
 const videoLeft = (page) => page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); return v ? { inDoc: true, paused: v.paused } : { inDoc: false }; });

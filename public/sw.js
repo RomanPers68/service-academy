@@ -11,6 +11,9 @@ const SHELL = VERSION + "-shell";
 const ASSETS = VERSION + "-assets";
 const IMAGES = VERSION + "-images";
 const IMG_LIMIT = 300;
+// v177 (Доп. 502): видео-знакомства, взятые заранее (lib/intro-warm.js, VIDEO_CACHE), кладёт и читает сама страница;
+// воркер их не трогает и при обновлении не стирает
+const VIDEO = "sa-video-v1";
 
 self.addEventListener("install", (e) => {
   e.waitUntil((async () => {
@@ -25,7 +28,7 @@ self.addEventListener("message", (e) => { if (e.data === "skip-waiting") self.sk
 
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
-    const keep = new Set([SHELL, ASSETS, IMAGES]);
+    const keep = new Set([SHELL, ASSETS, IMAGES, VIDEO]);
     for (const k of await caches.keys()) if (!keep.has(k)) await caches.delete(k);
     await self.clients.claim();
   })());

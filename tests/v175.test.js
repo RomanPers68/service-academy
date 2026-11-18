@@ -244,14 +244,19 @@ describe("v175 · линзы и ▶ по центру", () => {
     const V = rd("ui/intro-video.jsx");
     expect(V).not.toContain("<Ring");
     expect(V).not.toContain("data-lens-ring");
-    for (const [sel, glass] of [['data-intro-x="close"', "dark"], ['data-intro-x="text"', "dark"], ["data-intro-mute", "dark"], ["data-intro-sound", "dark"], ["data-intro-again", "dark"],
+    for (const [sel, glass] of [['data-intro-x="close"', "dark"], ['data-intro-x="text"', "dark"], ['data-intro-mute=""', "dark"], ["data-intro-sound", "dark"], ["data-intro-again", "dark"],
       ["data-intro-done", "dark"], ["data-intro-back", "bubble"], ["data-intro-toggle", "bubble"], ["data-intro-next", "bubble"]]) {
       const i = V.indexOf(sel);
       expect(i, sel).toBeGreaterThan(0);
-      const tail = V.slice(i, V.indexOf("</button>", i));
-      expect(tail, sel).toContain("...GLASS." + glass);
+      // v177 (Доп. 502): кнопки — <Glass>: kind="bubble" — пузырь посередине, без kind — дымчатое стекло (GLASS.dark);
+      // динамик ищем по data-intro-mute="" (data-intro-muted — у самого плеера)
+      const at = V.lastIndexOf("<Glass", i);
+      expect(at, sel).toBeGreaterThan(V.lastIndexOf("</Glass>", i));
+      const head = V.slice(at, i);
+      if (glass === "bubble") expect(head, sel).toContain('kind="bubble"'); else expect(head, sel).not.toContain("kind=");
     }
-    expect(V).toMatch(/data-intro-controls=""[\s\S]{0,400}\.\.\.GLASS\.dark/);
+    expect(V).toContain('<Glass as="div" {...glass("translateY(12px)")} data-intro-controls="" onClick={keep}');   // v177: дымчатое (по умолчанию)
+    expect(V).toContain("const g = GLASS[kind] || GLASS.dark");
   });
 });
 

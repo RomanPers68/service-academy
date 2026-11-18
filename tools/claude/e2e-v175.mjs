@@ -121,7 +121,8 @@ const player = (page) => page.evaluate(() => {
   const v = q("video[data-intro-el]"), r = p.getBoundingClientRect(), x = q("[data-intro-x]");
   return { role: p.getAttribute("data-intro-player"), mode: p.getAttribute("data-intro-mode"), state: p.getAttribute("data-intro-state"), muted: p.getAttribute("data-intro-muted") === "1",
     inBody: p.parentElement === document.body, full: Math.abs(r.width - innerWidth) < 1 && Math.abs(r.height - innerHeight) < 1,
-    src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, vmuted: v ? v.muted : null, dur: v ? v.duration : 0,
+    src: v ? (v.getAttribute("data-intro-from") === "warm" ? v.getAttribute("data-intro-src") : v.currentSrc || v.src) : "",   // v177: из памяти телефона (blob:) — файл в data-intro-src
+    t: v ? v.currentTime : -1, paused: v ? v.paused : null, vmuted: v ? v.muted : null, dur: v ? v.duration : 0,
     fill: q("[data-intro-fill]") ? parseFloat(q("[data-intro-fill]").style.width) : -1, now: (q("[data-intro-now]") || {}).textContent || "",
     x: x ? x.getAttribute("data-intro-x") : null, xBack: !!q("[data-intro-x][data-sa-back]"), xText: x ? x.innerText.trim() : "", xLabel: x ? x.getAttribute("aria-label") : "",
     resume: !!q('[data-intro-toggle][aria-label="Смотреть"]'), sound: !!q("[data-intro-sound]"), wait: !!q("[data-intro-wait]"), end: (q("[data-intro-end]") || {}).innerText || "",
@@ -154,8 +155,10 @@ const tgBack = (page) => page.evaluate(() => {
   return "none";
 });
 // линза: стекло (градиент), золотой ободок (inset-тень), размытие под ним
+// v177 (Доп. 502): у кнопок плеера заливка и кромка — в [data-glass-skin] внутри кнопки, размытие — у самой кнопки
 const lensOf = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) return null; const cs = getComputedStyle(el);
-  return { bg: cs.backgroundImage, sh: cs.boxShadow, bf: cs.backdropFilter || cs.webkitBackdropFilter || "", color: cs.color, rad: cs.borderRadius }; }, sel);
+  const sk = getComputedStyle(el.querySelector(":scope > [data-glass-skin]") || el);
+  return { bg: sk.backgroundImage, sh: sk.boxShadow, bf: cs.backdropFilter || cs.webkitBackdropFilter || "", color: cs.color, rad: cs.borderRadius }; }, sel);
 const isLens = (l) => !!l && /gradient/.test(l.bg) && /inset/.test(l.sh) && /blur\(/.test(l.bf);
 // ▶ по центру: центр тяжести треугольника (треть ширины от левого края) — в центре кружка
 const center = (page, sel) => page.evaluate((s) => { const b = document.querySelector(s); const p = b && b.querySelector("[data-play-ic] path"); if (!p) return null;

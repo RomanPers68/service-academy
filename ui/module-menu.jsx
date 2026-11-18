@@ -16,7 +16,8 @@ import { practicePool, quizPool } from "../lib/table-pick";
 import { INFO_NOTE } from "../lib/info-topics";   // v144 (Доп. 465): тема «для ознакомления» — записка под названием
 import { useLessonPhotos, useCover, CoverEditButton, CoverPhoto, PhotoWait } from "./lesson-photo";   // v157 (Доп. 481): обложка раздела; v163: фото проявляется
 import { moduleCover, modCoverId } from "../lib/lesson-photo";
-import { sectionIntro, sectionPos } from "../lib/intro-video";   // v175 (Доп. 500): кадр видео-знакомства — обложкой раздела
+import { sectionIntro, sectionPos, introLessonOfModule, introUk } from "../lib/intro-video";   // v175 (Доп. 500): кадр видео-знакомства — обложкой раздела
+import { IntroWarm } from "./intro-video";   // v177 (Доп. 502): ролик раздела — заранее, пока человек в разделе
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
 const DONE_WORD = { lesson: "пройден", quiz: "сдан", practice: "сыграно", dialogue: "пройден", build: "собрано" };
@@ -180,6 +181,8 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
           note={poster ? "Сейчас на обложке кадр из видео-знакомства. Своё фото раздела встанет вместо него."
             : cov && !cov.own ? "Сейчас на обложке фото урока «" + cov.lesson + "». Своё фото раздела встанет вместо него." : ""}
           also="Это же фото видно на главной, в билете «Начать», пока сотрудник проходит раздел." />
+        {/* v177 (Доп. 502): человек в разделе с видео-знакомством — ролик берём заранее, чтобы в уроке он пошёл сразу */}
+        {!passive && introLessonOfModule(mod) ? <IntroWarm lessonId={introLessonOfModule(mod)} uk={introUk(profile)} /> : null}
         {showSeal ? <span className={"tbm-seal" + (stampNow ? " stamp" : "")} aria-hidden="true"><Wax s={46} /></span> : null}
         <div className="tbm-head">
           {/* v32 (Доп. 334): значок темы — в одной строке с меткой (меню компактнее, без лишней прокрутки) */}

@@ -36,6 +36,8 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 import { _estMins, _fmtMins } from "./screens-learning";
 import { NowInvitation } from "./now-hero";   // v68 (Доп. 381): главная карточка «Приглашение»
 import { PhotosAhead } from "./lesson-photo";   // v163 (Доп. 488): фото разделов готовятся заранее, пока человек на главной
+import { IntroWarm } from "./intro-video";   // v177 (Доп. 502): видео-знакомство первого урока — заранее
+import { introUk } from "../lib/intro-video";
 import { lookClass } from "../lib/home-look";   // v101 (Доп. 414): вид главной с общим элементом
 import { ensureLookCss } from "./home-look";
 import { fitValues, fitOver, fitNext, fitTailFor, fitTail, fitBudget, FIT_ABOVE, FIT_NONE } from "../lib/home-fit";   // v101: главная целиком на экране
@@ -489,6 +491,9 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
               {dayNote}
               {/* v163 (Доп. 488): пока человек на главной, фото разделов его трека и «Справочника» готовятся заранее */}
               <PhotosAhead first={next ? next.mod : null} lesson={next ? next.lesson : null} mods={[...(MODULES[role] || []), ...(customByRole[role] || [])]} />
+              {/* v177 (Доп. 502): следующий урок — с видео-знакомством, которое человек ещё не видел (первый урок роли), — ролик
+                  берём заранее, пока он на главной: «Начать» — и ролик идёт сразу, без ожидания (lib/intro-warm.js) */}
+              {next ? <IntroWarm lessonId={next.lesson.id} uk={introUk(profile)} /> : null}
               {/* подсказка главной (шаг 1) показывает на эту карточку — ref на обёртке.
                   v163 (Доп. 488): билет зовёт в урок трека — на фоне фото его раздела (coverMod); билет о смене — без фото */}
               <div ref={refTrack}>

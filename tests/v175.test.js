@@ -22,7 +22,7 @@ import { INTRO_VIDEOS, introVideoOf } from "../data/intro-videos.js";
 import { SEASONAL_MODULES } from "../data/modules-seasonal";
 import { cueIndex, cueBack, cueNext, soundFrom, introSeenOf, markIntroSeen, introFirst, introOfModule, sectionIntro, INTRO_SEEN_KEY,
   posterY, coverPos, sectionPos, COVER_BOX, SECTION_BOX } from "../lib/intro-video";
-import { IntroVideoCover, PlayIcon, LENS } from "../ui/intro-video";
+import { IntroVideoCover, PlayIcon, GLASS } from "../ui/intro-video";
 import { ModuleMenu } from "../ui/module-menu";
 
 const rd = (p) => readFileSync(p, "utf8");
@@ -152,11 +152,12 @@ describe("v175 · видео первым экраном", () => {
   });
   it("первым экраном: со звуком; не дали — без звука и «Включить звук»; не дали и так — ▶", () => {
     const V = rd("ui/intro-video.jsx");
-    expect(V).toContain("try { el.muted = false; } catch (e) { /* */ }\n      tryPlay(el).catch(() => { if (!live) return; try { el.muted = true; } catch (e) { /* */ } tryPlay(el).catch(() => {}).then(sync); });");
-    expect(V).toMatch(/data-intro-sound=""[\s\S]{0,260}<SoundIcon \/>Включить звук/);
+    // v176 (Доп. 501): звук выключил телефон — это помнится (forced): «Включить звук» не путается с динамиком человека
+    expect(V).toContain("try { el.muted = false; } catch (e) { /* */ }\n      tryPlay(el).catch(() => {\n        if (!live) return;\n        try { el.muted = true; } catch (e) { /* */ }\n        setForced(true);\n        tryPlay(el).catch(() => {}).then(sync);");
+    expect(V).toMatch(/data-intro-sound=""[\s\S]{0,300}<SpeakerIcon s=\{20\} off \/>Включить звук/);
     expect(V).toContain("seekTo(soundFrom(video.cues, el.currentTime || 0));");
-    // касание по видео без звука — включить звук, а не пауза
-    expect(V).toContain("if (st.muted) unmute(); else toggle();");
+    // касание по видео без звука — включить звук, а не пауза (v176: иначе — показать или спрятать кнопки)
+    expect(V).toContain("if (forced && st.muted && st.playing) { unmute(); return; }");
   });
   it("сверху первым экраном — «Читать текстом» для «Назад» Telegram и Escape; с обложки — крестик", () => {
     const V = rd("ui/intro-video.jsx");
@@ -183,7 +184,7 @@ describe("v175 · перемотка в плеере", () => {
     expect(V).toContain('touchAction: "none"');   // тянуть пальцем, а не листать страницу
     expect(V).toContain("const cues = (video.cues || []).filter((x) => x > 0.5 && x < (video.dur || 1) - 0.5);");
     expect(V).toContain('const to = dir < 0 ? cueBack(video.cues, t) : cueNext(video.cues, t);');
-    expect(V).toContain('if (e.key === "ArrowLeft") { e.preventDefault(); seekTo((el.currentTime || 0) - 5); }');
+    expect(V).toContain('if (e.key === "ArrowLeft") { e.preventDefault(); poke(); seekTo((el.currentTime || 0) - 5); }');   // v176: и кнопки — на экран
     // пока тянут — перематываем не чаще раза в 60 мс, отпустили — точно туда
     expect(V).toContain("if (now - drag.current.last < 60) return;");
     expect(V).toContain("seekTo(at(e.clientX));");
@@ -215,40 +216,42 @@ describe("v175 · линзы и ▶ по центру", () => {
     expect(Math.abs((top + bottom) / 2 - 12)).toBeLessThan(0.05);
     expect(rd("ui/intro-video.jsx")).not.toMatch(/paddingLeft|padding: "0 0 0/);
   });
-  it("нижняя строка обложки — стеклянная капсула: ▶ — золотая линза с кольцом, подпись, длительность", () => {
+  // v176 (Доп. 501), владелец: «мне нравился первый твой вариант кнопки запуска и подписи видео» — нижняя строка обложки снова
+  // как в v174 (без стеклянной капсулы), ▶ — по центру (см. выше)
+  it("нижняя строка обложки — как в v174: ▶ в тёмном кружке с золотой кромкой, подпись, длительность (v176)", () => {
     const html = R(h(IntroVideoCover, { lessonId: "spg-0-1" }));
     const bar = /<div aria-hidden="true" data-intro-bar="" style="([^"]+)"/.exec(html);
     expect(bar).not.toBe(null);
-    expect(bar[1]).toMatch(/border-radius:999px/);
-    expect(bar[1]).toMatch(/backdrop-filter:blur\(12px\)/);
-    expect(bar[1]).toMatch(/box-shadow:inset 0 0 0 1px rgba\(214,178,102,0\.34\)/);
+    expect(bar[1]).not.toMatch(/backdrop-filter|border-radius/);
     const play = /<span data-intro-play="" style="([^"]+)">([\s\S]*?)<\/span><div/.exec(html);
-    expect(play[1]).toMatch(/radial-gradient\(circle at 50% 28%, rgba\(240,214,150,0\.42\)/);
+    expect(play[1]).toMatch(/background:rgba\(20,15,8,0\.55\)/);
+    expect(play[1]).toMatch(/box-shadow:inset 0 0 0 1\.5px rgba\(232,201,131,0\.8\), 0 0 0 5px rgba\(232,201,131,0\.12\)/);
     expect(play[1]).not.toMatch(/padding/);
     expect(play[2]).toContain("data-play-ic");
-    expect(play[2]).toContain('data-lens-ring=""');
-    expect(html).toMatch(/data-intro-dur="" style="[^"]*box-shadow:inset 0 0 0 1px rgba\(214,178,102,0\.45\)[^"]*">0:54</);
+    expect(play[2]).not.toContain("data-lens-ring");
+    expect(html).toMatch(/data-intro-dur="" style="[^"]*box-shadow:inset 0 0 0 1px rgba\(232,201,131,0\.45\)[^"]*">0:55</);
     expect(html).toContain(">Видео-знакомство<");
     expect(html).toContain(">С чего начинается роль<");
   });
-  it("линзы плеера: стекло на тёмной подложке, золотой ободок, свет сверху, размытие; у каждой кнопки — кольцо", () => {
-    for (const k of ["disc", "play", "main", "soft", "panel"]) {
-      expect(LENS[k].background, k).toMatch(/gradient/);
-      expect(LENS[k].boxShadow, k).toMatch(/^inset 0 0 0 1px rgba\(2\d\d,\d+,\d+,0\.\d+\)/);   // золотой ободок
-      expect(LENS[k].boxShadow, k).toMatch(/inset 0 1\.5px 0 rgba\(255,255,255,0\.\d+\)/);
-      expect(LENS[k].backdropFilter, k).toMatch(/^blur\(\d+px\)$/);
-      expect(LENS[k].WebkitBackdropFilter, k).toBe(LENS[k].backdropFilter);
+  // v176 (Доп. 501), владелец: «линзы без дополнительного обруча, более прозрачными» — стекло, как у плеера iPhone
+  it("кнопки плеера — прозрачное стекло со светлой кромкой и бликом, без колец (v176)", () => {
+    for (const k of ["bubble", "dark"]) {
+      expect(GLASS[k].background, k).toMatch(/gradient/);
+      expect(GLASS[k].boxShadow, k).toMatch(/^inset 0 0 0 1px rgba\(255,255,255,0\.\d+\)/);   // светлая кромка
+      expect(GLASS[k].backdropFilter, k).toMatch(/^blur\(\d+px\) saturate\(\d+%\)$/);
+      expect(GLASS[k].WebkitBackdropFilter, k).toBe(GLASS[k].backdropFilter);
     }
     const V = rd("ui/intro-video.jsx");
-    for (const [sel, lens] of [['data-intro-x="close"', "disc"], ['data-intro-x="text"', "soft"], ["data-intro-resume", "play"], ["data-intro-sound", "main"], ["data-intro-again", "soft"],
-      ["data-intro-done", "main"], ["data-intro-back", "disc"], ["data-intro-toggle", "play"], ["data-intro-next", "disc"]]) {
+    expect(V).not.toContain("<Ring");
+    expect(V).not.toContain("data-lens-ring");
+    for (const [sel, glass] of [['data-intro-x="close"', "dark"], ['data-intro-x="text"', "dark"], ["data-intro-mute", "dark"], ["data-intro-sound", "dark"], ["data-intro-again", "dark"],
+      ["data-intro-done", "dark"], ["data-intro-back", "bubble"], ["data-intro-toggle", "bubble"], ["data-intro-next", "bubble"]]) {
       const i = V.indexOf(sel);
       expect(i, sel).toBeGreaterThan(0);
       const tail = V.slice(i, V.indexOf("</button>", i));
-      expect(tail, sel).toContain("...LENS." + lens);
-      expect(tail, sel).toContain("<Ring");
+      expect(tail, sel).toContain("...GLASS." + glass);
     }
-    expect(V).toMatch(/data-intro-controls=""[\s\S]{0,300}\.\.\.LENS\.panel/);
+    expect(V).toMatch(/data-intro-controls=""[\s\S]{0,400}\.\.\.GLASS\.dark/);
   });
 });
 

@@ -124,13 +124,20 @@ const player = (page) => page.evaluate(() => {
     src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, vmuted: v ? v.muted : null, dur: v ? v.duration : 0,
     fill: q("[data-intro-fill]") ? parseFloat(q("[data-intro-fill]").style.width) : -1, now: (q("[data-intro-now]") || {}).textContent || "",
     x: x ? x.getAttribute("data-intro-x") : null, xBack: !!q("[data-intro-x][data-sa-back]"), xText: x ? x.innerText.trim() : "", xLabel: x ? x.getAttribute("aria-label") : "",
-    resume: !!q("[data-intro-resume]"), sound: !!q("[data-intro-sound]"), wait: !!q("[data-intro-wait]"), end: (q("[data-intro-end]") || {}).innerText || "",
+    resume: !!q('[data-intro-toggle][aria-label="Смотреть"]'), sound: !!q("[data-intro-sound]"), wait: !!q("[data-intro-wait]"), end: (q("[data-intro-end]") || {}).innerText || "",
     ticks: p.querySelectorAll("[data-intro-cue]").length, controls: !!q("[data-intro-controls]") };
 });
 const waitFor = async (page, fn, ms = 8000) => { const t0 = Date.now(); let v; while (Date.now() - t0 < ms) { v = await fn(); if (v) return v; await page.waitForTimeout(120); } return v; };
 const waitState = async (page, want, ms = 8000) => (await waitFor(page, async () => { const p = await player(page); return p && (want instanceof RegExp ? want.test(p.state) : p.state === want) ? p : null; }, ms)) || player(page);
 const seek = (page, t) => page.evaluate((x) => new Promise((r) => { const v = document.querySelector("video[data-intro-el]"); const done = () => r(v.currentTime); v.addEventListener("seeked", done, { once: true }); v.currentTime = x; setTimeout(done, 1500); }), t);
 const vt = (page) => page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); return v ? v.currentTime : -1; });
+// v176 (Доп. 501): кнопки плеера гаснут через 3 с после начала — перед касанием кнопки показать их касанием по видео
+// («Включить звук» не гаснет; касание по видео без звука включило бы звук — его не трогаем)
+const reveal = async (page) => {
+  const off = await page.evaluate(() => { const p = document.querySelector("[data-intro-player]"); return !!p && p.getAttribute("data-intro-ui") === "off"; });
+  if (off) { await page.locator("[data-intro-stage]").first().tap({ position: { x: 30, y: 200 } }); await page.waitForTimeout(450); }
+};
+const tapCtl = async (page, sel) => { if (sel !== "[data-intro-sound]") await reveal(page); await page.locator(sel).first().tap(); };
 // «Назад» Telegram: тот же поиск, что lib/utils.js clickScreenBack — сначала слои поверх приложения, потом #root
 const tgBack = (page) => page.evaluate(() => {
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
@@ -175,7 +182,7 @@ await run(["TITLE"], async () => {
   await shot(page, "title-playing");
   const p2 = await player(page);
   ok("TITLE: время и полоска растут", !!p2 && p2.t > 1.2 && p2.fill > 2 && /^0:0[1-9]$/.test(p2.now), p2 && [p2.t, p2.fill, p2.now]);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(500);
   ok("TITLE: «Читать текстом» — текст урока, обложка на месте", !(await player(page)) && !!(await cover(page)));
   ok("TITLE: выбор запомнен у Анны: «text»", (await seenOf(page))["s0-1"] === "text", await seenOf(page));
@@ -192,7 +199,7 @@ await run(["TITLE"], async () => {
   await lesson(page, "s0-1", 300);
   const pm = await waitState(page, "playing");
   ok("TITLE: Мария на этом телефоне — у неё видео первым экраном", !!pm && pm.mode === "title", pm);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(400);
   const keys = await page.evaluate((k) => Object.keys(localStorage).filter((x) => x.startsWith(k)), SEEN_KEY);
   ok("TITLE: выбор Марии — под её именем (как место в уроке)", keys.length === 1 && keys[0] === SEEN_KEY + "_Мария_Ким", keys);
@@ -210,7 +217,7 @@ await run(["MUTED"], async () => {
   await page.waitForTimeout(2200);
   await shot(page, "muted");
   const t0 = await vt(page);
-  await page.locator("[data-intro-sound]").first().tap();
+  await tapCtl(page, "[data-intro-sound]");
   await page.waitForTimeout(700);
   const p2 = await player(page);
   ok("MUTED: касание — звук включён, ролик идёт", !!p2 && p2.state === "playing" && !p2.vmuted && !p2.sound, p2);
@@ -218,7 +225,7 @@ await run(["MUTED"], async () => {
   const plays = await page.evaluate(() => window.__e2ePlays);
   ok("MUTED: со звуком — только из касания", plays.filter((x) => !x.muted && x.ok).every((x) => x.gesture), plays);
   // посреди ролика звук — с начала звучащей фразы
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(400);
   await page.evaluate(([k, uk]) => localStorage.setItem(k + uk, "{}"), [SEEN_KEY, ANNA]);
   await lesson(page, "s0-2", 700); await lesson(page, "s0-1", 300);
@@ -227,17 +234,17 @@ await run(["MUTED"], async () => {
   const at = await seek(page, 15.2);
   await page.waitForTimeout(300);
   const tt = await vt(page);
-  await page.locator("[data-intro-sound]").first().tap();
+  await tapCtl(page, "[data-intro-sound]");
   await page.waitForTimeout(250);
   const t3 = await vt(page);
   ok("MUTED: посреди ролика «Включить звук» — с начала звучащей фразы", Math.abs(t3 - expBack(cues, tt, 0)) < 0.6 && t3 < tt, { at, tt, t3, exp: expBack(cues, tt, 0) });
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(400);
   // с обложки — сразу со звуком: play() из касания
   await page.locator("[data-intro-cover]").first().tap();
   const p4 = await waitState(page, "playing");
   ok("MUTED: с обложки — сразу со звуком, крестик", !!p4 && p4.mode === "view" && !p4.vmuted && !p4.sound && p4.x === "close" && p4.xLabel === "Закрыть", p4);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   ok("MUTED: без ошибок страницы", errs.length === 0, errs);
   await ctx.close();
 });
@@ -250,10 +257,10 @@ await run(["BLOCKED"], async () => {
   ok("BLOCKED: не включилось и без звука — кадр, ▶ посередине, «Читать текстом» сверху", !!p && p.mode === "title" && p.state === "paused" && p.resume && p.x === "text" && !p.sound, p);
   await page.waitForTimeout(400);
   await shot(page, "blocked");
-  await page.locator("[data-intro-resume]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   const p2 = await waitState(page, "playing", 5000);
   ok("BLOCKED: ▶ — ролик идёт со звуком", !!p2 && p2.state === "playing" && !p2.vmuted, p2);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(400);
   ok("BLOCKED: «Читать текстом» — запомнено", (await seenOf(page))["m0-1"] === "text");
   ok("BLOCKED: без ошибок страницы", errs.length === 0, errs);
@@ -277,7 +284,7 @@ await run(["BACK"], async () => {
   await page.evaluate(([k, uk]) => localStorage.setItem(k + uk, "{}"), [SEEN_KEY, ANNA]);
   await lesson(page, "c0-2", 700); await lesson(page, "c0-1", 300);
   await waitState(page, "playing");
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(300);
   await page.locator("[data-intro-cover]").first().tap();
   await waitState(page, "playing");
@@ -321,11 +328,11 @@ await run(["END"], async () => {
   ok("END: полоска — до конца", !!p && p.fill > 97, p && p.fill);
   ok("END: «Ещё раз» и «К тексту урока» — линзы", isLens(await lensOf(page, "[data-intro-again]")) && isLens(await lensOf(page, "[data-intro-done]")));
   await shot(page, "end");
-  await page.locator("[data-intro-again]").first().tap();
+  await tapCtl(page, "[data-intro-again]");
   await page.waitForTimeout(900);
   const p2 = await player(page);
   ok("END: «Ещё раз» — с начала и идёт", !!p2 && p2.state === "playing" && p2.t < 2.5, p2);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(400);
   ok("END: досмотрел однажды — запомнено «end», хоть ушёл потом «Читать текстом»", (await seenOf(page))["sm0-1"] === "end", await seenOf(page));
   await lesson(page, "sm0-2", 700); await lesson(page, "sm0-1", 700);
@@ -345,32 +352,32 @@ await run(["SEEK"], async () => {
   const expT = cues.filter((c) => c > 0.5 && c < INTRO_VIDEOS["s0-1"].dur - 0.5).map((c) => +(c / INTRO_VIDEOS["s0-1"].dur * 100).toFixed(2));
   ok("SEEK: риски на полоске — начала фраз", ticks.length === expT.length && ticks.every((x, i) => Math.abs(x - expT[i]) < 0.05), { ticks, expT });
   // пауза, чтобы время стояло
-  await page.locator("[data-intro-toggle]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
   // посреди фразы — к её началу
   let t = await seek(page, cues[5] + 2.5);
-  await page.locator("[data-intro-back]").first().tap();
+  await tapCtl(page, "[data-intro-back]");
   await page.waitForTimeout(500);
   let t2 = await vt(page);
   ok("SEEK: «назад на фразу» посреди фразы — к её началу", Math.abs(t2 - expBack(cues, t)) < 0.45, { t, t2, exp: expBack(cues, t) });
   const p = await player(page);
   ok("SEEK: после перемотки ролик идёт", !!p && p.state === "playing", p);
-  await page.locator("[data-intro-toggle]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
   // фраза только началась — к предыдущей
   t = await seek(page, cues[8] + 0.3);
-  await page.locator("[data-intro-back]").first().tap();
+  await tapCtl(page, "[data-intro-back]");
   await page.waitForTimeout(350);
   t2 = await vt(page);
   ok("SEEK: фраза только началась — «назад» к предыдущей", Math.abs(t2 - expBack(cues, t)) < 0.45 && t2 < cues[8] - 0.5, { t, t2, exp: expBack(cues, t) });
-  await page.locator("[data-intro-toggle]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
   t = await seek(page, cues[3] + 0.6);
-  await page.locator("[data-intro-next]").first().tap();
+  await tapCtl(page, "[data-intro-next]");
   await page.waitForTimeout(350);
   t2 = await vt(page);
   ok("SEEK: «вперёд на фразу» — к началу следующей", Math.abs(t2 - expNext(cues, t)) < 0.45, { t, t2, exp: expNext(cues, t) });
-  await page.locator("[data-intro-toggle]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
   // полоска: касание
   const box = await page.locator("[data-intro-seek]").boundingBox();
@@ -402,7 +409,7 @@ await run(["SEEK"], async () => {
   const a1 = await vt(page);
   ok("SEEK: стрелка влево — на 5 с назад", Math.abs(a0 - 5 - a1) < 0.6, { a0, a1 });
   const sl = await page.evaluate(() => { const s = document.querySelector("[data-intro-seek]"); return { now: s.getAttribute("aria-valuenow"), max: s.getAttribute("aria-valuemax"), text: s.getAttribute("aria-valuetext"), label: s.getAttribute("aria-label") }; });
-  ok("SEEK: для экранного диктора — «Перемотка», сколько из скольки", sl.label === "Перемотка" && sl.max === String(dur) && / из 0:47$/.test(sl.text || ""), sl);
+  ok("SEEK: для экранного диктора — «Перемотка», сколько из скольки", sl.label === "Перемотка" && sl.max === String(dur) && (sl.text || "").endsWith(" из 0:" + String(dur).padStart(2, "0")), sl);
   ok("SEEK: без ошибок страницы", errs.length === 0, errs);
   await ctx.close();
 });
@@ -412,10 +419,12 @@ await run(["LENS", "CENTER"], async () => {
   const { ctx, page, errs } = await open({ seen: allText(), dsf: 3 });
   await lesson(page, "spg-0-1");
   if (want("LENS")) {
-    ok("LENS: нижняя строка обложки — стеклянная капсула", isLens(await lensOf(page, "[data-intro-bar]")), await lensOf(page, "[data-intro-bar]"));
-    ok("LENS: ▶ на обложке — золотая линза", isLens(await lensOf(page, "[data-intro-play]")));
+    // v176 (Доп. 501): нижняя строка обложки — снова как в v174 (владелец: «мне нравился первый твой вариант»)
+    const lb = await lensOf(page, "[data-intro-bar]"), lp = await lensOf(page, "[data-intro-play]");
+    ok("LENS: нижняя строка обложки — как в v174, без стеклянной капсулы (v176)", !!lb && !/blur/.test(lb.bf) && lb.bg === "none", lb);
+    ok("LENS: ▶ на обложке — тёмный кружок с золотой кромкой (v176)", !!lp && /rgba\(232, 201, 131, 0\.8\) 0px 0px 0px 1\.5px inset/.test(lp.sh), lp);
     const c = await cover(page);
-    ok("LENS: капсула — внизу обложки, с полями 12 px", !!c && !!c.bar && Math.abs(c.bar.b - 12) < 1 && Math.abs(c.bar.l - 12) < 1 && Math.abs(c.bar.r - 12) < 1, c && c.bar);
+    ok("LENS: строка — внизу обложки, поля 13 и 14 px (v176)", !!c && !!c.bar && Math.abs(c.bar.b - 13) < 1 && Math.abs(c.bar.l - 14) < 1 && Math.abs(c.bar.r - 14) < 1, c && c.bar);
   }
   if (want("CENTER")) {
     const c0 = await center(page, "[data-intro-play]");
@@ -429,16 +438,16 @@ await run(["LENS", "CENTER"], async () => {
       ok("LENS: " + name + " — линза", isLens(l), l);
     }
   }
-  await page.locator("[data-intro-toggle]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await waitState(page, "paused", 3000);
-  if (want("LENS")) ok("LENS: ▶ посередине — золотая линза с кольцом", isLens(await lensOf(page, "[data-intro-resume]")) && (await page.evaluate(() => document.querySelector("[data-intro-resume]").children.length)) === 2);
+  if (want("LENS")) ok("LENS: ▶ посередине — стеклянный пузырь, без кольца (v176)", isLens(await lensOf(page, "[data-intro-toggle]")) && !(await page.$("[data-intro-player] [data-lens-ring]")));
   if (want("CENTER")) {
-    const c1 = await center(page, "[data-intro-resume]"), c2 = await center(page, "[data-intro-toggle]");
+    // v176: ▶ / ❚❚ — посередине экрана, одна кнопка
+    const c1 = await center(page, "[data-intro-toggle]");
     ok("CENTER: ▶ посередине — по центру кружка", !!c1 && Math.abs(c1.dx) <= 1 && Math.abs(c1.dy) <= 1 && c1.pad === "0px", c1);
-    ok("CENTER: ▶ в капсуле — по центру кружка", !!c2 && Math.abs(c2.dx) <= 1 && Math.abs(c2.dy) <= 1, c2);
   }
   await shot(page, "paused");
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   ok("LENS/CENTER: без ошибок страницы", errs.length === 0, errs);
   await ctx.close();
 });
@@ -507,13 +516,13 @@ await run(["NARROW"], async () => {
     const p = await waitState(page, "playing");
     ok("NARROW " + name + ": видео первым экраном, на весь экран", !!p && p.mode === "title" && p.full, p);
     const fit = await page.evaluate(() => { const W = innerWidth, H = innerHeight; const out = [];
-      for (const s of ["[data-intro-x]", "[data-intro-controls]", "[data-intro-back]", "[data-intro-toggle]", "[data-intro-next]", "[data-intro-now]", "[data-intro-seek]", "[data-intro-total]"]) {
+      for (const s of ["[data-intro-x]", "[data-intro-mute]", "[data-intro-controls]", "[data-intro-back]", "[data-intro-toggle]", "[data-intro-next]", "[data-intro-now]", "[data-intro-seek]", "[data-intro-left]"]) {
         const el = document.querySelector(s); if (!el) { out.push(s + ": нет"); continue; } const r = el.getBoundingClientRect(); if (r.left < 0 || r.right > W + 0.5 || r.top < 0 || r.bottom > H + 0.5 || r.width < 1) out.push(s + ": " + [r.left, r.right, r.top, r.bottom].map(Math.round)); }
       const seek = document.querySelector("[data-intro-seek]").getBoundingClientRect();
       return { out, seekW: Math.round(seek.width) }; });
     ok("NARROW " + name + ": кнопки и полоска — в экране, полоске хватает места", fit.out.length === 0 && fit.seekW >= 80, fit);
     await shot(page, "narrow-" + name);
-    await page.locator("[data-intro-x]").first().tap();
+    await tapCtl(page, "[data-intro-x]");
     await page.waitForTimeout(500);
     const c = await cover(page);
     ok("NARROW " + name + ": обложка в карточке, капсула в обложке", !!c && !!c.bar && c.bar.l >= 11 && c.bar.r >= 11, c);
@@ -535,9 +544,9 @@ await run(["SHOTS"], async () => {
   await clean();
   await seek(page, 11.2); await page.waitForTimeout(700);
   await page.screenshot({ path: OUT + "/owner-1-title.png" });
-  await page.locator("[data-intro-toggle]").first().tap(); await waitState(page, "paused", 3000); await page.waitForTimeout(300);
+  await tapCtl(page, "[data-intro-toggle]"); await waitState(page, "paused", 3000); await page.waitForTimeout(300);
   await page.screenshot({ path: OUT + "/owner-2-paused.png" });
-  await page.locator("[data-intro-x]").first().tap(); await page.waitForTimeout(700); await clean();
+  await tapCtl(page, "[data-intro-x]"); await page.waitForTimeout(700); await clean();
   await page.screenshot({ path: OUT + "/owner-3-lesson.png" });
   ok("SHOTS: снимки сделаны", true);
   ok("SHOTS: без ошибок страницы", errs.length === 0, errs);

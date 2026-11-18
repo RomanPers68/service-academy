@@ -49,7 +49,8 @@ let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { if (cond) { pass++; console.log("✓ " + name); } else { fail++; console.log("✗ " + name + (extra ? " — " + String(typeof extra === "string" ? extra : JSON.stringify(extra)).slice(0, 600) : "")); } };
 const browser = await chromium.launch({ args: ["--autoplay-policy=user-gesture-required"] });
 
-const FIRST = { spg: ["spg-0-1", "0:54"], seasonal: ["s0-1", "0:47"], core: ["c0-1", "0:49"], manager: ["m0-1", "0:52"], service_manager: ["sm0-1", "0:53"], bar: ["bar0-1", "0:48"] };
+// v176 (Доп. 501): ролики пересняты — длительности новые
+const FIRST = { spg: ["spg-0-1", "0:55"], seasonal: ["s0-1", "0:48"], core: ["c0-1", "0:50"], manager: ["m0-1", "0:53"], service_manager: ["sm0-1", "0:55"], bar: ["bar0-1", "0:49"] };
 
 const boot = async (page, errs, cards = true) => {
   await page.waitForFunction(() => !document.getElementById("sa-splash"), null, { timeout: 25000 }).catch(() => errs.push("заставка не ушла"));
@@ -91,7 +92,7 @@ const player = (page) => page.evaluate(() => {
   const r = p.getBoundingClientRect();
   return { role: p.getAttribute("data-intro-player"), state: p.getAttribute("data-intro-state"), inBody: p.parentElement === document.body, full: r.width === innerWidth && r.height === innerHeight,
     src: v ? v.currentSrc || v.src : "", t: v ? v.currentTime : -1, paused: v ? v.paused : null, dur: v ? v.duration : 0, inline: v ? v.hasAttribute("playsinline") : false,
-    bar: bar ? bar.style.width || "" : "", x: !!p.querySelector("[data-intro-x][data-sa-back]"), resume: !!p.querySelector("[data-intro-resume]"), end: (p.querySelector("[data-intro-end]") || {}).innerText || "" };
+    bar: bar ? bar.style.width || "" : "", x: !!p.querySelector("[data-intro-x][data-sa-back]"), resume: !!p.querySelector('[data-intro-toggle][aria-label="Смотреть"]'), end: (p.querySelector("[data-intro-end]") || {}).innerText || "" };
 });
 const videoLeft = (page) => page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); return v ? { inDoc: true, paused: v.paused } : { inDoc: false }; });
 const waitState = async (page, want, ms = 8000) => {
@@ -100,6 +101,13 @@ const waitState = async (page, want, ms = 8000) => {
   return player(page);
 };
 const barScale = (s) => { const m = /^([\d.]+)%$/.exec(s || ""); return m ? Number(m[1]) / 100 : -1; };   // v175: ширина в %
+// v176 (Доп. 501): кнопки плеера гаснут через 3 с после начала — перед касанием кнопки показать их касанием по видео
+// («Включить звук» не гаснет; касание по видео без звука включило бы звук — его не трогаем)
+const reveal = async (page) => {
+  const off = await page.evaluate(() => { const p = document.querySelector("[data-intro-player]"); return !!p && p.getAttribute("data-intro-ui") === "off"; });
+  if (off) { await page.locator("[data-intro-stage]").first().tap({ position: { x: 30, y: 200 } }); await page.waitForTimeout(450); }
+};
+const tapCtl = async (page, sel) => { if (sel !== "[data-intro-sound]") await reveal(page); await page.locator(sel).first().tap(); };
 // «Назад» Telegram: тот же поиск, что lib/utils.js clickScreenBack — сначала слои поверх приложения, потом #root
 const tgBack = (page) => page.evaluate(() => {
   const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
@@ -126,8 +134,8 @@ if (want("COVER")) {
   ok("COVER: к краям стеклянной карточки (как фото урока)", !!c && Math.abs(c.left) <= 1 && Math.abs(c.right) <= 1 && Math.abs(c.top) <= 1, c);
   ok("COVER: высота 230–310 px (v175: 72vw)", !!c && c.h >= 230 && c.h <= 310, c && c.h);
   ok("COVER: кадр загрузился", !!c && c.img && c.img.done && c.img.nw === 720 && /video\/intro-spg\.jpg$/.test(c.img.src), c && c.img);
-  ok("COVER: «Видео-знакомство», «С чего начинается роль», 0:54, ▶", !!c && /Видео-знакомство/i.test(c.text) && /С чего начинается роль/.test(c.text) && c.dur === "0:54" && c.play, c);
-  ok("COVER: подпись для экранного диктора", !!c && c.label === "Смотреть видео-знакомство, 54 секунды", c && c.label);
+  ok("COVER: «Видео-знакомство», «С чего начинается роль», 0:55, ▶", !!c && /Видео-знакомство/i.test(c.text) && /С чего начинается роль/.test(c.text) && c.dur === "0:55" && c.play, c);
+  ok("COVER: подпись для экранного диктора", !!c && c.label === "Смотреть видео-знакомство, 55 секунд", c && c.label);
   ok("COVER: фото урока на её месте не стоит", !!c && !c.photo, c);
   ok("COVER: ролик ещё не качается", hits.length === 0, hits);
   await shot(page, "cover-spg");
@@ -160,16 +168,17 @@ if (want("PLAY")) {
   ok("PLAY: крестик помечен для «Назад» Telegram", !!p2 && p2.x, p2);
   await page.waitForTimeout(900);
   await shot(page, "player-spg");
-  await page.locator("[data-intro-stage]").first().tap();
+  // v176: касание по видео показывает и прячет кнопки, пауза — кнопкой посередине
+  await tapCtl(page, "[data-intro-toggle]");
   const p3 = await waitState(page, "paused", 3000);
-  ok("PLAY: касание по видео — пауза и ▶", !!p3 && p3.state === "paused" && p3.paused && p3.resume, p3);
+  ok("PLAY: пауза — и ▶ посередине", !!p3 && p3.state === "paused" && p3.paused && p3.resume, p3);
   await shot(page, "player-paused");
   const t3 = p3 ? p3.t : 0;
-  await page.locator("[data-intro-resume]").first().tap();
+  await tapCtl(page, "[data-intro-toggle]");
   await page.waitForTimeout(1500);
   const p4 = await player(page);
   ok("PLAY: ▶ — дальше с того же места", !!p4 && p4.state === "playing" && p4.t > t3 + 0.8, { t3, p4 });
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(500);
   ok("PLAY: крестик — снова урок", !(await player(page)) && !!(await cover(page)));
   const vl = await videoLeft(page);
@@ -177,7 +186,7 @@ if (want("PLAY")) {
   await page.locator("[data-intro-cover]").first().tap();
   const p5 = await waitState(page, "playing");
   ok("PLAY: снова открыли — с начала", !!p5 && p5.state === "playing" && p5.t < 2.5, p5);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(300);
   ok("PLAY: без ошибок страницы", errs.length === 0, errs);
   await ctx.close();
@@ -208,7 +217,7 @@ if (want("BACK")) {
     el.dispatchEvent(new TouchEvent("touchend", { bubbles: true, cancelable: true, touches: [], changedTouches: [mk(40)] }));
   }, box);
   await page.waitForTimeout(500);
-  await page.locator("[data-intro-x]").first().tap();
+  await tapCtl(page, "[data-intro-x]");
   await page.waitForTimeout(500);
   ok("BACK: смахнули по видео — урок на первой карточке, обложка на месте", !!(await cover(page)));
   ok("BACK: «Назад» без видео — уже экран урока", (await tgBack(page)) === "screen");
@@ -227,14 +236,14 @@ if (want("END")) {
   ok("END: конец ролика — «Ещё раз» и «К тексту урока» (v175)", !!p && p.state === "ended" && /Ещё раз/.test(p.end) && /К тексту урока/.test(p.end), p);
   ok("END: полоска времени — до конца", !!p && barScale(p.bar) > 0.97, p && p.bar);
   await shot(page, "player-end");
-  await page.locator("[data-intro-again]").first().tap();
+  await tapCtl(page, "[data-intro-again]");
   const p2 = await waitState(page, "playing", 5000);
   await page.waitForTimeout(600);
   const p3 = await player(page);
   ok("END: «Ещё раз» — с начала и идёт", !!p2 && !!p3 && p3.state === "playing" && p3.t < 3, p3);
   await page.evaluate(() => { const v = document.querySelector("video[data-intro-el]"); v.currentTime = Math.max(0, v.duration - 0.6); });
   await waitState(page, "ended", 6000);
-  await page.locator("[data-intro-done]").first().tap();
+  await tapCtl(page, "[data-intro-done]");
   await page.waitForTimeout(500);
   ok("END: «К тексту урока» — урок, обложка на месте", !(await player(page)) && !!(await cover(page)));
   ok("END: без ошибок страницы", errs.length === 0, errs);
@@ -251,7 +260,7 @@ if (want("ALL")) {
     await page.locator("[data-intro-cover]").first().tap();
     const p = await waitState(page, "playing");
     ok("ALL: " + role + " — ролик идёт", !!p && p.state === "playing" && p.src.endsWith("intro-" + role + ".mp4"), p);
-    await page.locator("[data-intro-x]").first().tap();
+    await tapCtl(page, "[data-intro-x]");
     await page.waitForTimeout(400);
     if (role === "bar") await shot(page, "cover-bar");
   }
@@ -289,7 +298,7 @@ if (want("LOOK")) {
     await page.locator("[data-intro-cover]").first().tap();
     const p = await waitState(page, "playing");
     ok("LOOK " + name + ": плеер на весь экран", !!p && p.full, p);
-    await page.locator("[data-intro-x]").first().tap();
+    await tapCtl(page, "[data-intro-x]");
     ok("LOOK " + name + ": без ошибок страницы", errs.length === 0, errs);
     await ctx.close();
   }

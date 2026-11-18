@@ -86,7 +86,7 @@ describe("v174 · ролики", () => {
   });
   it("introVideoOf: только свои уроки", () => {
     expect(introVideoOf("spg-0-1").role).toBe("spg");
-    expect(introVideoOf("bar0-1").dur).toBe(48);
+    expect(introVideoOf("bar0-1").dur).toBe(49);   // v176: ролики пересняты, бар — 49 с (было 48)
     for (const x of ["spg-0-2", "", null, undefined, "toString", "__proto__", 5]) expect(introVideoOf(x), String(x)).toBe(null);
   });
   it("длительность: «0:54», словами «54 секунды»", () => {
@@ -108,12 +108,12 @@ describe("v174 · обложка в уроке", () => {
     const s = R(h(IntroVideoCover, { lessonId: "spg-0-1" }));
     expect(s).toContain('data-intro-cover="spg"');
     expect(s).toContain('role="button"');
-    expect(s).toContain('aria-label="Смотреть видео-знакомство, 54 секунды"');
+    expect(s).toContain('aria-label="Смотреть видео-знакомство, 55 секунд"');   // v176: ролик хостес — 55 с (было 54)
     expect(s).toContain('src="/video/intro-spg.jpg"');
     expect(s).toContain("data-intro-play");
     expect(s).toContain("Видео-знакомство");
     expect(s).toContain("С чего начинается роль");
-    expect(s).toMatch(/data-intro-dur=""[^>]*>0:54</);
+    expect(s).toMatch(/data-intro-dur=""[^>]*>0:55</);
     // к краям стеклянной карточки, как фото урока
     expect(s).toContain("margin:-20px -18px 16px");
     // до касания ролика нет: ни <video>, ни плеера

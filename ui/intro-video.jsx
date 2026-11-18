@@ -4,22 +4,27 @@
 // Обложка стоит там же, где фото урока (ui/lesson-photo.jsx, LessonCover): первой строкой стеклянной карточки, к её
 // краям, на первой карточке урока (лентой — сверху). Касание — ролик на весь экран, как сторис.
 //
-// v175 (Доп. 500), владелец (18.11) на снимках с телефона отметил кнопки плеера и нижнюю строку обложки: сделать их
-// линзами, «да и все выделенное. Иконку плей нужно отцентровать. Видео мы можем сделать титульным? <…> нужно добавить
-// возможность перемотки видео, вдруг что-то не услышал».
-//   • Линзы. Все кнопки плеера — стекло с золотым ободком, светом сверху и одним кольцом, как у «Радио в дорогу»: крестик,
-//     «Читать текстом», «Включить звук», «назад / вперёд на фразу», «Ещё раз», «К тексту урока»; ▶ и ❚❚ — золотая линза,
-//     как «Слушать». Нижняя строка обложки — стеклянная капсула: ▶, подпись, длительность. Стекло лежит на тёмной
-//     подложке: под ним видео, и без неё значки терялись бы на светлом кадре.
+// v175 (Доп. 500), владелец (18.11) на снимках с телефона: кнопки — линзами, «Иконку плей нужно отцентровать. Видео мы
+// можем сделать титульным? <…> нужно добавить возможность перемотки видео, вдруг что-то не услышал».
 //   • ▶ по центру: треугольник нарисован так, что его центр тяжести — в центре кружка, без сдвига отступом.
 //   • Видео первым экраном: урок открыли с начала, а ролик ещё не досмотрен и «Читать текстом» не выбрано — ролик сразу на
 //     весь экран (lib/intro-video.js, introFirst). Сверху «Читать текстом» — к тексту урока. Звук: если телефон даёт
-//     включить видео со звуком без отдельного касания — со звуком, нет — без звука (титры в кадре) и «Включить звук»
-//     посередине; не дал и так — ▶. Что выбрал человек, помнится: досмотрел или ушёл к тексту — дальше урок открывается
-//     текстом, видео — на обложке.
-//   • Перемотка: внизу капсула — «назад на фразу», ▶ / ❚❚, «вперёд на фразу» и полоска времени, её можно тянуть пальцем
-//     (риски на ней — начала предложений, время — под ней). «Назад на фразу» — к началу предложения, которое звучит, а
-//     если оно только началось — к предыдущему: не расслышал — одно касание.
+//     включить видео со звуком без отдельного касания — со звуком, нет — без звука (титры в кадре) и «Включить звук»;
+//     не дал и так — ▶. Что выбрал человек, помнится: досмотрел или ушёл к тексту — дальше урок открывается текстом.
+//   • Перемотка: «назад на фразу» — к началу предложения, которое звучит, а если оно только началось — к предыдущему;
+//     «вперёд на фразу»; полоска времени, её можно тянуть пальцем (риски на ней — начала предложений).
+//
+// v176 (Доп. 501), владелец (18.11) со снимком плеера iPhone: «Давай сделаем линзы без дополнительного обруча, более
+// прозрачными. И что бы видео было на весь экран, и после начала, все элементы изчезали, с аккуратной анимацией. И так же
+// мне нравился первый твой вариант кнопки запуска и подписи видео. <…> И да, с дополнительной кнопкой динамика».
+//   • Кнопки — стекло, как у плеера iPhone: прозрачные, со светлой кромкой и бликом сверху, без колец. Посередине —
+//     «назад на фразу», ▶ / ❚❚ и «вперёд на фразу»; внизу — капсула со временем, полоской и сколько осталось; сверху
+//     слева — крестик (первым экраном — «Читать текстом»), справа — динамик: выключить и включить звук.
+//   • Видео на весь экран: кадр растягивается, пока не закроет экран, но вшитые титры остаются целиком (fillSize).
+//   • Ролик пошёл — через 3 с кнопки плавно гаснут (прозрачность и лёгкий сдвиг, 0,35 с); касание по видео — снова на
+//     экране, ещё касание — гаснут. На паузе, в конце и пока тянут полоску — на экране.
+//   • Обложка в уроке — как в v174: ▶ в тёмном кружке с золотой кромкой, «Видео-знакомство», «С чего начинается роль»,
+//     длительность; ▶ — по центру.
 //
 // iPhone (и Telegram на нём) включает видео со звуком только прямо из касания. Поэтому из обложки плеер встаёт на экран
 // в самом обработчике касания (flushSync), и play() зовётся там же. «Назад» Telegram и Escape закрывают видео, а не урок:
@@ -28,34 +33,26 @@ import React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { introVideoOf, fmtDur, durWords } from "../data/intro-videos";
-import { cueBack, cueNext, soundFrom, introFirst, markIntroSeen, coverPos } from "../lib/intro-video";
+import { cueBack, cueNext, soundFrom, introFirst, markIntroSeen, coverPos, fillSize } from "../lib/intro-video";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
-const GOLD = "#E8C983", GOLD2 = "#C8A96E", CREAM = "#F4E9CF";
-// линзы на тёмной подложке (как «Линза» в ui/home-look.jsx и радио, но всегда тёмные: под ними кадр видео)
-const DARK = "rgba(16,12,7,0.62)";
-const SOFT_RIM = "inset 0 0 0 1px rgba(214,178,102,0.45), inset 0 1.5px 0 rgba(255,255,255,0.18)";
-export const LENS = {
-  disc: { background: "radial-gradient(circle at 50% 28%, rgba(232,201,131,0.16), rgba(200,169,110,0.07) 70%), " + DARK,
-    boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.55), inset 0 0 12px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.35)",
-    color: GOLD, WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)" },
-  play: { background: "radial-gradient(circle at 50% 28%, rgba(240,214,150,0.42), rgba(200,169,110,0.18) 62%, rgba(200,169,110,0.1)), " + DARK,
-    boxShadow: "inset 0 0 0 1px rgba(232,201,131,0.8), inset 0 0 18px rgba(255,230,170,0.14), inset 0 1.5px 0 rgba(255,255,255,0.22), inset 0 -12px 18px -10px rgba(232,197,106,0.5), 0 8px 20px rgba(0,0,0,0.4)",
-    color: GOLD, WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)" },
-  main: { background: "radial-gradient(120% 160% at 50% 0%, rgba(232,201,131,0.26), rgba(200,169,110,0.12) 62%), " + DARK,
-    boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.6), inset 0 0 18px rgba(255,230,170,0.12), inset 0 1.5px 0 rgba(255,255,255,0.2), 0 4px 14px rgba(0,0,0,0.32)",
-    color: GOLD, fontWeight: "bold", WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)" },
-  soft: { background: "radial-gradient(120% 160% at 50% 0%, rgba(232,201,131,0.12), rgba(200,169,110,0.06) 62%), " + DARK,
-    boxShadow: SOFT_RIM + ", 0 4px 12px rgba(0,0,0,0.3)", color: GOLD, WebkitBackdropFilter: "blur(10px)", backdropFilter: "blur(10px)" },
-  tag: { background: "rgba(200,169,110,0.1)", boxShadow: SOFT_RIM, color: CREAM },
-  panel: { background: "radial-gradient(120% 80px at 20% 0%, rgba(214,178,102,0.12), transparent 60%), rgba(16,12,7,0.66)",
-    boxShadow: "inset 0 0 0 1px rgba(214,178,102,0.34), inset 0 1.5px 0 rgba(255,255,255,0.16), inset 0 0 22px rgba(255,248,230,0.06), 0 6px 18px rgba(0,0,0,0.45)",
-    WebkitBackdropFilter: "blur(12px)", backdropFilter: "blur(12px)" },
+const GOLD = "#E8C983", CREAM = "#F4E9CF", INK = "#FFFFFF";
+
+// v176: стекло, как у плеера iPhone. bubble — прозрачный пузырь (посередине: ▶ / ❚❚ и фразы), dark — дымчатое стекло
+// (крестик, динамик, «Читать текстом», капсула внизу, «Ещё раз»): текст и значки читаются и на светлом кадре
+const BLUR = "blur(16px) saturate(180%)";
+export const GLASS = {
+  bubble: { color: INK, background: "radial-gradient(120% 120% at 50% 0%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 55%, rgba(255,255,255,0.12) 100%)",
+    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.24), inset 0 1.5px 1px rgba(255,255,255,0.32), inset 0 -8px 14px -8px rgba(255,255,255,0.2), 0 8px 24px rgba(0,0,0,0.22)",
+    WebkitBackdropFilter: BLUR, backdropFilter: BLUR },
+  dark: { color: INK, background: "linear-gradient(180deg, rgba(58,54,48,0.42) 0%, rgba(28,26,22,0.42) 100%)",
+    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 20px rgba(0,0,0,0.25)",
+    WebkitBackdropFilter: BLUR, backdropFilter: BLUR },
 };
-// кольцо вокруг линзы — одно, как у кнопок радио (ui/home-look.jsx: .tb-radio, ::after); у золотой ▶ — заметнее
-const Ring = ({ inset = -3.5, gold = false }) => (
-  <span aria-hidden="true" data-lens-ring="" style={{ position: "absolute", inset, borderRadius: 999, border: "1px solid " + (gold ? "rgba(214,178,102,0.55)" : "rgba(214,178,102,0.44)"), pointerEvents: "none" }} />
-);
+// обложка в уроке (v174): ▶ в тёмном кружке с золотой кромкой и мягким ореолом
+const COVER_DISC = { background: "rgba(20,15,8,0.55)", boxShadow: "inset 0 0 0 1.5px rgba(232,201,131,0.8), 0 0 0 5px rgba(232,201,131,0.12), 0 6px 18px rgba(0,0,0,0.45)",
+  WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)", color: GOLD };
+const shade = { filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" };
 
 // ▶: центр тяжести треугольника — ровно в центре (12, 12), поэтому кружку отступ не нужен
 export const PlayIcon = ({ s = 24, c = "currentColor" }) => (
@@ -72,9 +69,11 @@ const XIcon = ({ s = 20, c = "currentColor" }) => (
 const TextIcon = ({ s = 17, c = "currentColor" }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 6.5h14M5 11h14M5 15.5h9" /></svg>
 );
-const SoundIcon = ({ s = 18, c = "currentColor" }) => (
-  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4.5 9.5h3.2L12 5.8v12.4l-4.3-3.7H4.5z" fill={c} stroke="none" /><path d="M15.5 9.2a4 4 0 0 1 0 5.6" /><path d="M18 6.8a7.5 7.5 0 0 1 0 10.4" />
+// динамик: со звуком — волны, без звука — крестик
+const SpeakerIcon = ({ s = 22, c = "currentColor", off = false }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-speaker={off ? "off" : "on"}>
+    <path d="M4 9.5h3.4L12 5.6v12.8l-4.6-3.9H4z" fill={c} stroke="none" />
+    {off ? <path d="M16 9.5l5 5M21 9.5l-5 5" /> : <><path d="M15.5 9.2a4 4 0 0 1 0 5.6" /><path d="M18 6.8a7.5 7.5 0 0 1 0 10.4" /></>}
   </svg>
 );
 // «назад / вперёд на фразу»: круговая стрелка
@@ -89,10 +88,10 @@ const AgainIcon = ({ s = 18, c = "currentColor" }) => (
     <path d="M4.6 12a7.4 7.4 0 1 0 2.2-5.2" /><path d="M5 3.8v4.6h4.6" />
   </svg>
 );
-const Spinner = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
-    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(232,201,131,0.25)" strokeWidth="3" />
-    <path d="M22 4a18 18 0 0 1 18 18" fill="none" stroke={GOLD} strokeWidth="3" strokeLinecap="round">
+const Spinner = ({ s = 40 }) => (
+  <svg width={s} height={s} viewBox="0 0 44 44" aria-hidden="true" data-intro-spin="">
+    <circle cx="22" cy="22" r="17" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
+    <path d="M22 5a17 17 0 0 1 17 17" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round">
       <animateTransform attributeName="transform" type="rotate" from="0 22 22" to="360 22 22" dur="0.9s" repeatCount="indefinite" />
     </path>
   </svg>
@@ -117,6 +116,7 @@ export function makeIntroVideoEl(video) {
 const useLayout = typeof document !== "undefined" && typeof document.createElement === "function" ? React.useLayoutEffect : React.useEffect;
 const tryPlay = (v) => { try { const p = v.play(); return p && typeof p.then === "function" ? p : Promise.resolve(); } catch (e) { return Promise.reject(e); } };
 const playSafe = (v) => { tryPlay(v).catch(() => {}); };
+const calmMotion = () => { try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } };
 
 /**
  * Обложка видео-знакомства в карточке урока (нет ролика у урока — ничего).
@@ -158,31 +158,34 @@ export function IntroVideoCover({ lessonId, a11y = false, autoOpen = false, uk =
     playSafe(v);                        // всё ещё внутри касания
   };
   return (<>
-    <div data-intro-cover={video.role} data-lens-dark="" role="button" tabIndex={0} aria-label={"Смотреть видео-знакомство, " + durWords(video.dur)}
+    <div data-intro-cover={video.role} role="button" tabIndex={0} aria-label={"Смотреть видео-знакомство, " + durWords(video.dur)}
       onClick={start} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); start(e); } }}
       style={{ position: "relative", display: "block", margin: "-20px -18px 16px", borderRadius: "21px 21px 0 0", overflow: "hidden", cursor: "pointer",
         height: "clamp(230px, 72vw, 310px)", background: "#1B150D", WebkitTapHighlightColor: "transparent" }}>
-      {/* кадр — так, чтобы лицо было над капсулой (у каждого ролика своё место лица — face в data/intro-videos.js) */}
+      {/* кадр — так, чтобы лицо было над нижней строкой (у каждого ролика своё место лица — face в data/intro-videos.js) */}
       <img src={video.poster} alt="" draggable={false}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: coverPos(video), display: "block", userSelect: "none", WebkitTouchCallout: "none" }} />
-      <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "46%", pointerEvents: "none",
-        background: "linear-gradient(180deg, rgba(14,11,6,0) 0%, rgba(14,11,6,0.45) 60%, rgba(14,11,6,0.7) 100%)" }} />
-      {/* нижняя строка — стеклянная капсула: ▶ (золотая линза), подпись, длительность */}
-      <div aria-hidden="true" data-intro-bar="" style={{ position: "absolute", left: 12, right: 12, bottom: 12, display: "flex", alignItems: "center", gap: 12,
-        padding: "7px 10px 7px 7px", borderRadius: 999, ...LENS.panel }}>
-        <span data-intro-play="" style={{ position: "relative", flexShrink: 0, width: 46, height: 46, borderRadius: "50%", display: "grid", placeItems: "center", ...LENS.play }}>
-          <PlayIcon s={22} /><Ring inset={-4} gold />
+      <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "52%", pointerEvents: "none",
+        background: "linear-gradient(180deg, rgba(14,11,6,0) 0%, rgba(14,11,6,0.55) 48%, rgba(14,11,6,0.86) 100%)" }} />
+      {/* v176: нижняя строка — как в v174: ▶ в тёмном кружке с золотой кромкой, подпись, длительность */}
+      <div aria-hidden="true" data-intro-bar="" style={{ position: "absolute", left: 14, right: 14, bottom: 13, display: "flex", alignItems: "center", gap: 12 }}>
+        <span data-intro-play="" style={{ flexShrink: 0, width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center", ...COVER_DISC }}>
+          <PlayIcon s={22} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: SERIF, fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: GOLD2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Видео-знакомство</div>
-          <div style={{ fontFamily: SERIF, fontSize: a11y ? 17 : 16, fontWeight: "bold", lineHeight: 1.2, color: CREAM, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>С чего начинается роль</div>
+          <div style={{ fontFamily: SERIF, fontSize: 11.5, letterSpacing: 1.4, textTransform: "uppercase", color: GOLD, opacity: 0.92 }}>Видео-знакомство</div>
+          <div style={{ fontFamily: SERIF, fontSize: a11y ? 18.5 : 17.5, fontWeight: "bold", lineHeight: 1.2, color: CREAM, marginTop: 2, textShadow: "0 1px 6px rgba(0,0,0,0.55)" }}>С чего начинается роль</div>
         </div>
-        <span data-intro-dur="" style={{ flexShrink: 0, fontFamily: SERIF, fontSize: 13, padding: "4px 10px", borderRadius: 999, ...LENS.tag }}>{fmtDur(video.dur)}</span>
+        <span data-intro-dur="" style={{ flexShrink: 0, alignSelf: "flex-end", fontFamily: SERIF, fontSize: 13, color: CREAM, padding: "3px 9px", borderRadius: 999,
+          background: "rgba(20,15,8,0.6)", boxShadow: "inset 0 0 0 1px rgba(232,201,131,0.45)" }}>{fmtDur(video.dur)}</span>
       </div>
     </div>
     {mode && elRef.current ? <IntroPlayer video={video} el={elRef.current} mode={mode} onClose={closePlayer} /> : null}
   </>);
 }
+
+// кнопки гаснут через столько после начала (первый раз — чуть позже: успеть увидеть «Читать текстом») и после касания
+export const HIDE_MS = { first: 3200, next: 2600 };
 
 /**
  * Ролик на весь экран. el — <video> урока (плеер ставит его к себе). mode: "view" — открыли с обложки (play() уже
@@ -197,12 +200,18 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const fillRef = React.useRef(null);
   const knobRef = React.useRef(null);
   const nowRef = React.useRef(null);
+  const leftRef = React.useRef(null);
   const xRef = React.useRef(null);
   const drag = React.useRef(null);
   const endedOnce = React.useRef(false);
+  const hideT = React.useRef(0);
+  const firstHide = React.useRef(true);
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
   const [st, setSt] = React.useState({ playing: false, waiting: false, ended: false, failed: false, muted: false });
+  const [ui, setUi] = React.useState(true);          // кнопки на экране
+  const [forced, setForced] = React.useState(false); // звук выключил телефон (первым экраном), а не человек
+  const calm = React.useMemo(calmMotion, []);
   const dur = () => (el && Number.isFinite(el.duration) && el.duration > 0 ? el.duration : video.dur || 1);
   const close = React.useCallback((how) => {
     vibrate("light");
@@ -214,6 +223,14 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     if (!stage || !el) return undefined;
     let live = true;
     stage.appendChild(el);
+    // на весь экран, но вшитые титры — целиком (lib/intro-video.js, fillSize)
+    const fit = () => {
+      const { w, h } = fillSize(stage.clientWidth, stage.clientHeight, el.videoWidth || 720, el.videoHeight || 1280);
+      if (!w || !h) return;
+      Object.assign(el.style, { position: "absolute", left: "50%", top: "50%", width: w + "px", height: h + "px", maxWidth: "none",
+        transform: "translate(-50%, -50%)", objectFit: "cover" });
+    };
+    fit();
     const sync = () => {
       if (!live) return;
       if (el.ended) endedOnce.current = true;
@@ -221,10 +238,17 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     };
     const evs = ["play", "playing", "pause", "waiting", "canplay", "canplaythrough", "ended", "error", "loadeddata", "seeked", "volumechange"];
     evs.forEach((n) => el.addEventListener(n, sync));
+    el.addEventListener("loadedmetadata", fit);
+    window.addEventListener("resize", fit);
     if (title) {
       // первым экраном: со звуком; телефон не дал — без звука (титры в кадре) и «Включить звук»; не дал и так — ▶
       try { el.muted = false; } catch (e) { /* */ }
-      tryPlay(el).catch(() => { if (!live) return; try { el.muted = true; } catch (e) { /* */ } tryPlay(el).catch(() => {}).then(sync); });
+      tryPlay(el).catch(() => {
+        if (!live) return;
+        try { el.muted = true; } catch (e) { /* */ }
+        setForced(true);
+        tryPlay(el).catch(() => {}).then(sync);
+      });
     }
     sync();
     // время и полоска — каждый кадр, без перерисовки React
@@ -236,9 +260,10 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
         if (knobRef.current) knobRef.current.style.left = (f * 100).toFixed(2) + "%";
       }
       const s = Math.floor(el.currentTime || 0);
-      if (s !== shown && nowRef.current) {
+      if (s !== shown) {
         shown = s;
-        nowRef.current.textContent = fmtDur(s);
+        if (nowRef.current) nowRef.current.textContent = fmtDur(s);
+        if (leftRef.current) leftRef.current.textContent = "−" + fmtDur(Math.max(0, Math.round(dur() - (el.currentTime || 0))));
         if (seekRef.current) { seekRef.current.setAttribute("aria-valuenow", String(s)); seekRef.current.setAttribute("aria-valuetext", fmtDur(s) + " из " + fmtDur(dur())); }
       }
       raf = requestAnimationFrame(tick);
@@ -253,13 +278,28 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     return () => {
       live = false;
       cancelAnimationFrame(raf);
+      clearTimeout(hideT.current);
       window.removeEventListener("keydown", key, true);
+      window.removeEventListener("resize", fit);
+      el.removeEventListener("loadedmetadata", fit);
       evs.forEach((n) => el.removeEventListener(n, sync));
       try { el.pause(); } catch (e) { /* */ }
       if (el.parentNode === stage) stage.removeChild(el);
       try { if (prev && prev !== document.body && typeof prev.focus === "function" && document.contains(prev)) prev.focus({ preventScroll: true }); } catch (e) { /* */ }
     };
   }, [el, video, close, title]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // кнопки гаснут, пока ролик идёт; на паузе, в конце и при ошибке — на экране
+  const arm = React.useCallback((ms) => {
+    clearTimeout(hideT.current);
+    hideT.current = setTimeout(() => { if (!drag.current) setUi(false); }, ms || HIDE_MS.next);
+  }, []);
+  // ждёт загрузки посреди ролика — кнопки не выскакивают: при спрятанных посередине крутится круг
+  React.useEffect(() => {
+    if (!st.playing) { clearTimeout(hideT.current); setUi(true); return; }
+    if (!st.waiting) { arm(firstHide.current ? HIDE_MS.first : HIDE_MS.next); firstHide.current = false; }
+  }, [st.playing, st.waiting, arm]);
+  const poke = () => { setUi(true); if (st.playing) arm(); };
 
   const seekTo = (t, smooth = false) => {
     const to = Math.max(0, Math.min(dur() - 0.05, t));
@@ -268,26 +308,45 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     if (fillRef.current) fillRef.current.style.width = (f * 100).toFixed(2) + "%";
     if (knobRef.current) knobRef.current.style.left = (f * 100).toFixed(2) + "%";
     if (nowRef.current) nowRef.current.textContent = fmtDur(Math.floor(to));
+    if (leftRef.current) leftRef.current.textContent = "−" + fmtDur(Math.max(0, Math.round(dur() - to)));
   };
+  // звук выключил телефон: включаем и возвращаем к началу фразы (в первые секунды — к «Привет!»)
   const unmute = () => {
     try { el.muted = false; } catch (e) { /* */ }
+    setForced(false);
     seekTo(soundFrom(video.cues, el.currentTime || 0));
     playSafe(el);
+  };
+  // динамик: выключить звук — по желанию человека; включить
+  const toggleMute = (e) => {
+    if (e) e.stopPropagation();
+    vibrate("light");
+    poke();
+    if (el.muted) { if (forced) unmute(); else { try { el.muted = false; } catch (err) { /* */ } } }
+    else { try { el.muted = true; } catch (err) { /* */ } setForced(false); }
   };
   const toggle = (e) => {
     if (e) e.stopPropagation();
     if (st.failed) return;
+    poke();
     if (st.ended || el.paused) {
-      if (el.muted) { try { el.muted = false; } catch (err) { /* */ } }
+      if (forced && el.muted) { try { el.muted = false; } catch (err) { /* */ } setForced(false); }
       if (st.ended) seekTo(0);
       playSafe(el);
     } else el.pause();
   };
-  // касание по видео: без звука — включить звук; иначе пауза и дальше
-  const stageTap = (e) => { e.stopPropagation(); if (st.ended || st.failed) return; if (st.muted) unmute(); else toggle(); };
+  // касание по видео: звук выключил телефон — включить; иначе — показать или спрятать кнопки
+  const stageTap = (e) => {
+    e.stopPropagation();
+    if (st.ended || st.failed) return;
+    if (forced && st.muted && st.playing) { unmute(); return; }
+    if (!st.playing) { setUi(true); return; }
+    if (ui) { clearTimeout(hideT.current); setUi(false); } else poke();
+  };
   const phrase = (dir) => (e) => {
     if (e) e.stopPropagation();
     vibrate("light");
+    poke();
     const t = el.currentTime || 0;
     const to = dir < 0 ? cueBack(video.cues, t) : cueNext(video.cues, t);
     if (to == null) return;
@@ -298,6 +357,7 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     if (e) e.stopPropagation();
     vibrate("light");
     try { if (st.failed) { el.src = video.src; el.load(); } el.muted = false; } catch (err) { /* */ }
+    setForced(false);
     seekTo(0);
     playSafe(el);
   };
@@ -309,6 +369,8 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const onDown = (e) => {
     e.stopPropagation();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* */ }
+    clearTimeout(hideT.current);
+    setUi(true);
     drag.current = { last: 0 };
     seekTo(at(e.clientX), true);
   };
@@ -325,91 +387,109 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     drag.current = null;
     seekTo(at(e.clientX));
     if (st.ended) playSafe(el);
+    if (st.playing) arm();
   };
   const onSeekKey = (e) => {
-    if (e.key === "ArrowLeft") { e.preventDefault(); seekTo((el.currentTime || 0) - 5); }
-    else if (e.key === "ArrowRight") { e.preventDefault(); seekTo((el.currentTime || 0) + 5); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); poke(); seekTo((el.currentTime || 0) - 5); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); poke(); seekTo((el.currentTime || 0) + 5); }
   };
   const keep = (e) => e.stopPropagation();   // касания в плеере не уходят в урок под ним (портал — потомок урока в React)
   const top = "var(--sa-st, env(safe-area-inset-top, 0px))";
   const bottom = "env(safe-area-inset-bottom, 0px)";
+  const state = st.failed ? "failed" : st.ended ? "ended" : st.playing ? (st.waiting ? "waiting" : "playing") : "paused";
+  const cues = (video.cues || []).filter((x) => x > 0.5 && x < (video.dur || 1) - 0.5);
+  // гаснут плавно: прозрачность и лёгкий сдвиг к краю (без сдвига, если в телефоне «уменьшить движение»)
+  const fade = (dx, dy, sc = 1) => ({ opacity: ui ? 1 : 0, pointerEvents: ui ? "auto" : "none",
+    transition: calm ? "opacity .3s ease" : "opacity .35s ease, transform .35s cubic-bezier(.2,.7,.3,1)",
+    transform: (ui || calm) ? undefined : "translate(" + dx + "px, " + dy + "px)" + (sc !== 1 ? " scale(" + sc + ")" : "") });
   const pill = { position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, padding: "0 18px", borderRadius: 999, border: 0,
     fontFamily: SERIF, fontSize: 15.5, cursor: "pointer", whiteSpace: "nowrap" };
   const disc = (s) => ({ position: "relative", width: s, height: s, borderRadius: "50%", border: 0, padding: 0, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 });
-  const state = st.failed ? "failed" : st.ended ? "ended" : st.playing ? (st.waiting ? "waiting" : "playing") : "paused";
-  const cues = (video.cues || []).filter((x) => x > 0.5 && x < (video.dur || 1) - 0.5);
+  const center = { position: "absolute", left: "50%", top: "50%" };
   const body = (
-    <div data-intro-player={video.role} data-intro-mode={mode} data-intro-state={state} data-intro-muted={st.muted ? "1" : undefined} data-lens-dark=""
-      role="dialog" aria-modal="true" aria-label="Видео-знакомство" className="sa-fadein"
-      onClick={keep} onTouchStart={keep} onTouchEnd={keep}
+    <div data-intro-player={video.role} data-intro-mode={mode} data-intro-state={state} data-intro-muted={st.muted ? "1" : undefined} data-intro-ui={ui ? "on" : "off"}
+      data-lens-dark="" role="dialog" aria-modal="true" aria-label="Видео-знакомство" className="sa-fadein"
+      onClick={keep} onTouchStart={keep} onTouchEnd={keep} onFocus={() => { if (!ui) poke(); }}
       style={{ position: "fixed", inset: 0, zIndex: 9700, background: "#000", touchAction: "manipulation", overscrollBehavior: "contain", WebkitTapHighlightColor: "transparent", userSelect: "none" }}>
-      <div ref={stageRef} data-intro-stage="" onClick={stageTap} style={{ position: "absolute", inset: 0 }} />
-      {/* закрыть: первым экраном — «Читать текстом», с обложки — крестик */}
-      {title ? (
-        <button ref={xRef} type="button" data-sa-back="" data-intro-x="text" aria-label="Читать текстом" onClick={(e) => { e.stopPropagation(); close("text"); }}
-          style={{ ...pill, position: "absolute", top: "calc(" + top + " + 12px)", right: 12, minHeight: 40, padding: "0 16px 0 13px", fontSize: 15, ...LENS.soft }}>
-          <TextIcon />Читать текстом<Ring />
-        </button>
-      ) : (
-        <button ref={xRef} type="button" data-sa-back="" data-intro-x="close" aria-label="Закрыть" onClick={(e) => { e.stopPropagation(); close("close"); }}
-          style={{ ...disc(44), position: "absolute", top: "calc(" + top + " + 12px)", right: 12, ...LENS.disc }}><XIcon /><Ring /></button>
-      )}
-      {state === "paused" ? (
-        <button type="button" data-intro-resume="" aria-label="Смотреть" onClick={toggle}
-          style={{ ...disc(78), position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", ...LENS.play }}><PlayIcon s={34} /><Ring inset={-5} gold /></button>
-      ) : null}
-      {state === "waiting" ? (
-        <div aria-hidden="true" data-intro-wait="" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}><Spinner /></div>
-      ) : null}
-      {st.muted && state === "playing" ? (
+      <div ref={stageRef} data-intro-stage="" onClick={stageTap} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />
+      {/* сверху: слева — закрыть (первым экраном — «Читать текстом»), справа — динамик */}
+      <div data-intro-top="" style={{ position: "absolute", left: 12, right: 12, top: "calc(" + top + " + 12px)", display: "flex", justifyContent: "space-between", alignItems: "center",
+        gap: 12, pointerEvents: "none" }}>
+        <div style={{ ...fade(0, -10) }}>
+          {title ? (
+            <button ref={xRef} type="button" data-sa-back="" data-intro-x="text" aria-label="Читать текстом" onClick={(e) => { e.stopPropagation(); close("text"); }}
+              style={{ ...pill, minHeight: 42, padding: "0 16px 0 13px", fontSize: 15, ...GLASS.dark }}>
+              <TextIcon />Читать текстом
+            </button>
+          ) : (
+            <button ref={xRef} type="button" data-sa-back="" data-intro-x="close" aria-label="Закрыть" onClick={(e) => { e.stopPropagation(); close("close"); }}
+              style={{ ...disc(44), ...GLASS.dark }}><XIcon /></button>
+          )}
+        </div>
+        <div style={{ ...fade(0, -10) }}>
+          <button type="button" data-intro-mute="" aria-label={st.muted ? "Включить звук" : "Выключить звук"} aria-pressed={st.muted ? "true" : "false"} onClick={toggleMute}
+            style={{ ...disc(44), ...GLASS.dark }}><SpeakerIcon off={st.muted} /></button>
+        </div>
+      </div>
+      {/* звук выключил телефон — просим включить; не гаснет, пока звук не включат */}
+      {forced && st.muted && state === "playing" ? (
         <button type="button" data-intro-sound="" onClick={(e) => { e.stopPropagation(); vibrate("light"); unmute(); }}
-          style={{ ...pill, position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", minHeight: 48, padding: "0 20px 0 16px", ...LENS.main }}>
-          <SoundIcon />Включить звук<Ring />
+          style={{ ...pill, ...center, top: "calc(50% - 112px)", transform: "translate(-50%, -50%)", minHeight: 46, padding: "0 20px 0 16px", ...GLASS.dark }}>
+          <SpeakerIcon s={20} off />Включить звук
         </button>
+      ) : null}
+      {/* посередине: назад на фразу, ▶ / ❚❚, вперёд на фразу */}
+      {state !== "ended" && state !== "failed" ? (
+        <div data-intro-center="" style={{ ...center, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 30, ...fade(0, 0, 0.94) }}>
+            <button type="button" data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={{ ...disc(58), ...GLASS.bubble }}><span style={shade}><PhraseIcon s={26} /></span></button>
+            <button type="button" data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={{ ...disc(82), ...GLASS.bubble }}>
+              {state === "waiting" ? <Spinner s={38} /> : <span style={{ ...shade, display: "grid" }}>{st.playing ? <PauseIcon s={34} /> : <PlayIcon s={38} />}</span>}
+            </button>
+            <button type="button" data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={{ ...disc(58), ...GLASS.bubble }}><span style={shade}><PhraseIcon s={26} fwd /></span></button>
+          </div>
+        </div>
+      ) : null}
+      {/* кнопки спрятаны, а ролик ждёт загрузки — круг посередине */}
+      {state === "waiting" && !ui ? (
+        <div aria-hidden="true" data-intro-wait="" style={{ ...center, transform: "translate(-50%, -50%)", pointerEvents: "none" }}><Spinner /></div>
       ) : null}
       {state === "ended" || state === "failed" ? (
         <div data-intro-end={state} onClick={keep}
-          style={{ position: "absolute", left: 12, right: 12, bottom: "calc(" + bottom + " + 86px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          style={{ ...center, transform: "translate(-50%, -50%)", width: "calc(100% - 24px)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           {state === "failed" ? (
-            <div style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.45, color: "#EFE4C8", textAlign: "center", padding: "8px 14px", borderRadius: 14, ...LENS.panel }}>
+            <div style={{ fontFamily: SERIF, fontSize: 15, lineHeight: 1.45, color: INK, textAlign: "center", padding: "10px 16px", borderRadius: 16, ...GLASS.dark }}>
               Видео не загрузилось. Проверь связь и попробуй ещё раз.</div>
           ) : null}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button type="button" data-intro-again="" onClick={again} style={{ ...pill, ...LENS.soft }}><AgainIcon />Ещё раз<Ring /></button>
+            <button type="button" data-intro-again="" onClick={again} style={{ ...pill, ...GLASS.dark }}><AgainIcon />Ещё раз</button>
             <button type="button" data-intro-done="" onClick={(e) => { e.stopPropagation(); close(st.ended ? "end" : title ? "text" : "close"); }}
-              style={{ ...pill, ...LENS.main }}>К тексту урока<Ring /></button>
+              style={{ ...pill, fontWeight: "bold", ...GLASS.dark }}>К тексту урока</button>
           </div>
         </div>
       ) : null}
-      {/* внизу: назад на фразу, ▶ / ❚❚, вперёд на фразу и полоска времени (время — под ней: полоске — вся ширина, что осталась) */}
+      {/* внизу: сколько прошло, полоска с рисками фраз, сколько осталось */}
       <div data-intro-controls="" onClick={keep}
-        style={{ position: "absolute", left: 10, right: 10, bottom: "calc(" + bottom + " + 10px)", display: "flex", alignItems: "center", gap: 11,
-          padding: "6px 16px 6px 8px", borderRadius: 999, ...LENS.panel }}>
-        <button type="button" data-intro-back="" aria-label="Назад на фразу" onClick={phrase(-1)} style={{ ...disc(40), ...LENS.disc }}><PhraseIcon /><Ring /></button>
-        <button type="button" data-intro-toggle="" aria-label={st.playing ? "Пауза" : "Смотреть"} onClick={toggle} style={{ ...disc(48), ...LENS.play }}>
-          {st.playing ? <PauseIcon s={22} /> : <PlayIcon s={24} />}<Ring inset={-4} gold /></button>
-        <button type="button" data-intro-next="" aria-label="Вперёд на фразу" onClick={phrase(1)} style={{ ...disc(40), ...LENS.disc }}><PhraseIcon fwd /><Ring /></button>
-        {/* полоска: ловит касание по всей высоте капсулы, тянуть — пальцем */}
+        style={{ position: "absolute", left: 12, right: 12, bottom: "calc(" + bottom + " + 12px)", height: 46, display: "flex", alignItems: "center", gap: 12,
+          padding: "0 16px", borderRadius: 999, boxSizing: "border-box", ...GLASS.dark, ...fade(0, 12) }}>
+        <span ref={nowRef} data-intro-now="" style={{ flexShrink: 0, minWidth: 30, fontFamily: SERIF, fontSize: 13, color: INK, fontVariantNumeric: "tabular-nums" }}>0:00</span>
         <div ref={seekRef} data-intro-seek="" role="slider" tabIndex={0} aria-label="Перемотка" aria-valuemin={0} aria-valuemax={Math.round(video.dur || 1)}
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onKeyDown={onSeekKey}
-          style={{ position: "relative", flex: 1, minWidth: 60, height: 48, marginLeft: 2, cursor: "pointer", touchAction: "none", outline: "none" }}>
-          <div ref={trackRef} aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 9, height: 20 }}>
-            <div style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 4, marginTop: -2, borderRadius: 2, background: "rgba(244,233,207,0.22)" }} />
+          style={{ position: "relative", flex: 1, minWidth: 60, height: 46, cursor: "pointer", touchAction: "none", outline: "none" }}>
+          <div ref={trackRef} aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 20, marginTop: -10 }}>
+            <div style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 4, marginTop: -2, borderRadius: 2, background: "rgba(255,255,255,0.24)" }} />
             {cues.map((c) => (
               <i key={c} data-intro-cue="" style={{ position: "absolute", top: "50%", left: (c / (video.dur || 1) * 100).toFixed(2) + "%", width: 2, height: 8, marginTop: -4, marginLeft: -1,
-                borderRadius: 1, background: "rgba(232,201,131,0.45)" }} />
+                borderRadius: 1, background: "rgba(255,255,255,0.42)" }} />
             ))}
             <div ref={fillRef} data-intro-fill="" style={{ position: "absolute", left: 0, top: "50%", height: 4, marginTop: -2, width: "0%", borderRadius: 2,
-              background: "linear-gradient(90deg, #C8A96E, #F1DBA4)" }} />
-            <div ref={knobRef} data-intro-knob="" style={{ position: "absolute", top: "50%", left: "0%", width: 14, height: 14, marginTop: -7, marginLeft: -7, borderRadius: "50%",
-              background: "#F1DBA4", boxShadow: "0 0 0 3px rgba(232,201,131,0.25), 0 2px 6px rgba(0,0,0,0.5)" }} />
-          </div>
-          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 3, display: "flex", justifyContent: "space-between",
-            fontFamily: SERIF, fontSize: 11.5, lineHeight: "14px", fontVariantNumeric: "tabular-nums", pointerEvents: "none" }}>
-            <span ref={nowRef} data-intro-now="" style={{ color: CREAM }}>0:00</span>
-            <span data-intro-total="" style={{ color: "rgba(244,233,207,0.7)" }}>{fmtDur(video.dur)}</span>
+              background: "linear-gradient(90deg, #E8C983, #FFF4D8)" }} />
+            <div ref={knobRef} data-intro-knob="" style={{ position: "absolute", top: "50%", left: "0%", width: 12, height: 12, marginTop: -6, marginLeft: -6, borderRadius: "50%",
+              background: "#FFF8EA", boxShadow: "0 1px 4px rgba(0,0,0,0.4)" }} />
           </div>
         </div>
+        <span ref={leftRef} data-intro-left="" style={{ flexShrink: 0, minWidth: 34, textAlign: "right", fontFamily: SERIF, fontSize: 13, color: "rgba(255,255,255,0.78)", fontVariantNumeric: "tabular-nums" }}>
+          {"−" + fmtDur(video.dur)}</span>
       </div>
     </div>
   );

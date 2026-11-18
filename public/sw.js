@@ -45,6 +45,9 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const u = new URL(req.url);
   if (isApi(u)) return; // данные — только сеть
+  // v174 (Доп. 499): видео-знакомства (/video/*.mp4) — мимо воркера, прямо в сеть: плеер iPhone берёт ролик кусками
+  // (запросы Range), кэш здесь не нужен и только мешает. Обложки роликов (.jpg) — как прочие картинки.
+  if (u.origin === self.location.origin && u.pathname.startsWith("/video/") && !isImage(u)) return;
 
   if (req.mode === "navigate") {
     e.respondWith((async () => {

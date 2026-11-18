@@ -57,6 +57,8 @@ import { CHAT_SHARE_IC } from "./share-chat";
 import { ConceptPhotos } from "./concept-photo";   // v139 (Доп. 454): фото блоков «О нас» в уроках раздела «Наш ресторан»
 import { LessonCover } from "./lesson-photo";   // v146 (Доп. 467): фото урока сверху карточки, руководитель меняет с телефона
 import { lessonLead, lessonPhotoId } from "../lib/lesson-photo";   // v146: первая мысль урока — крупно
+import { IntroVideoCover } from "./intro-video";   // v174 (Доп. 499): видео-знакомство в первом уроке роли
+import { introVideoOf } from "../data/intro-videos";
 import { isInfo, countable, INFO_LABEL } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления»
 
 // Доп. 289–292: формат «у стола» (практика, проверка после урока) — отдельный
@@ -1402,8 +1404,11 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
             {/* Нижняя тень */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"20%", borderRadius:"0 0 22px 22px", background:"linear-gradient(0deg, rgba(0,0,0,0.12) 0%, transparent 100%)", pointerEvents:"none" }} />
             <div style={{ position:"relative", zIndex:1 }}>
+          {/* v174 (Доп. 499): видео-знакомство в первом уроке роли — на месте фото урока, тоже на первой карточке */}
+          {(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)
+            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} /> : null}
           {/* v146: фото урока — к краям карточки, на первой карточке (в ленте — сверху) */}
-          {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id)
+          {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id) && !introVideoOf(lesson.id)
             ? <LessonCover lessonId={lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (

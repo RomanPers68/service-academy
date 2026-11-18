@@ -11,10 +11,10 @@ const SRC = process.argv[2], OUT = process.argv[3];
 if (!SRC || !OUT) throw new Error("node build.mjs <исходники> <папка>");
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT + "/dist", { recursive: true });
-for (const d of ["menu", "reference", "icons", "assets"]) { try { cpSync(join(SRC, "public", d), join(OUT, d), { recursive: true }); } catch (e) {} }
+for (const d of ["menu", "reference", "icons", "assets", "video"]) { try { cpSync(join(SRC, "public", d), join(OUT, d), { recursive: true }); } catch (e) {} }   // v174: и видео-знакомства
 try { cpSync(SRC + "/assets/fonts", OUT + "/assets/fonts", { recursive: true }); } catch (e) {}
 // пути от корня сайта → от страницы: демо открывается не из корня
-const rel = (s) => s.replace(/(["'`(])\/(menu|reference|icons|assets)\//g, "$1$2/");
+const rel = (s) => s.replace(/(["'`(])\/(menu|reference|icons|assets|video)\//g, "$1$2/");
 const demoPlugin = {
   name: "demo-paths",
   setup(b) {

@@ -8,11 +8,14 @@
 //   • PhotoCard — фото под сеткой: насколько видно, «Расставить столы по фото» (ИИ), повернуть, другое фото, убрать;
 //   • CopyBtn — «Ещё такой» в карточке стола, RenumberBtn — «Пронумеровать по порядку».
 // v180 (Доп. 505): в палитре и длинные вертикально (сервер с этапом 54), TurnBtn — «Повернуть» длинный стол.
+// v183 (Доп. 508): ChairSides — «Стулья по сторонам» в карточке стола: сколько сверху, справа, снизу, слева и где
+// диван (сервер с этапом 55).
 // Схема и экран — ui/seating.jsx, расчёт — lib/seating.js и lib/floor-scan.js, фото на телефоне — lib/floor-photo.js.
 import React from "react";
 import { labelStyle } from "./tokens";
 import { TABLE_KINDS } from "../lib/seating";
-import { KindIcon } from "./table-art";
+import { SIDE_MAX, tableGeom, seatsOfSides } from "../lib/floor-art";
+import { KindIcon, TableArt } from "./table-art";
 
 const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
 const chip = (c, on, a11y) => ({ padding: "7px 12px", borderRadius: 999, border: `1px solid ${on ? c.gold : c.line}`, background: on ? (a11y ? "rgba(139,106,48,0.18)" : "rgba(200,169,110,0.22)") : "transparent",
@@ -141,3 +144,43 @@ export const TurnBtn = ({ c, onClick }) => (
 export const RenumberBtn = ({ c, sure, onClick }) => (
   <button type="button" data-renumber="" onClick={onClick} style={{ ...link(sure ? c.red : c.gold), textAlign: "left", lineHeight: 1.4 }}>
     {sure ? "Номера станут 1, 2, 3… по залам и рядам. Нажми ещё раз" : "Пронумеровать по порядку"}</button>);
+
+// ── v183: стулья по сторонам ──
+const SIDE_ROWS = [[0, "Сверху"], [3, "Справа"], [1, "Снизу"], [2, "Слева"]];
+/** Стулья по сторонам у выбранного стола (кроме круглого): рисунок стола и по стороне — минус, сколько, плюс и «диван».
+ *  sides — [верх, низ, лево, право], минус — диван на столько мест; own — расставлены вручную (тогда «Как было»).
+ *  onStep(i, ±1), onSofa(i), onReset() — сторона по индексу sides. */
+export function ChairSides({ c, a11y, t, sides, own, onStep, onSofa, onReset }) {
+  const mx = SIDE_MAX[t.shape] || [3, 3, 3, 3], total = seatsOfSides(sides);
+  const pv = 52, W = t.shape === "long" ? pv * 2 : pv, H = t.shape === "tall" ? pv * 2 : pv;
+  const g = tableGeom(t.shape, total, W, H, sides);
+  const step = (off) => ({ ...chip(c, false, a11y), width: 34, padding: "4px 0", fontSize: 17, lineHeight: 1.2, textAlign: "center", opacity: off ? 0.35 : 1, cursor: off ? "default" : "pointer" });
+  return (
+    <div data-chair-sides="" role="group" aria-label="Стулья по сторонам" style={{ margin: "2px 0 12px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+        <span style={{ ...labelStyle(13.5), color: c.gold, flex: 1 }}>Стулья по сторонам</span>
+        {own ? <button type="button" data-sides-reset="" onClick={onReset} style={link(c.sub)}>Как было</button> : null}
+      </div>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+        <span data-sides-preview="" aria-hidden="true" style={{ position: "relative", width: W, height: H, flex: "none", margin: "0 4px" }}>
+          <TableArt g={g} W={W} H={H} top="transparent" stroke={c.gold} chair={{ fill: "transparent", stroke: c.sub }} chairOn={c.gold} />
+        </span>
+        <div style={{ flex: 1, minWidth: 214 }}>
+          {SIDE_ROWS.map(([i, name]) => {
+            const v = sides[i], sofa = v < 0, n = Math.abs(v), less = n <= (sofa ? 1 : 0) || total <= 1, more = n >= mx[i];
+            return (
+              <div key={i} data-side={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <span style={{ width: 64, fontSize: 13.5, color: c.text }}>{name}</span>
+                <button type="button" data-side-minus="" aria-label={name + ": меньше"} disabled={less} onClick={() => onStep(i, -1)} style={step(less)}>−</button>
+                <span data-side-n="" style={{ minWidth: 26, textAlign: "center", fontSize: 16, color: c.text }}>{n}</span>
+                <button type="button" data-side-plus="" aria-label={name + ": больше"} disabled={more} onClick={() => onStep(i, 1)} style={step(more)}>+</button>
+                <button type="button" data-side-sofa="" aria-pressed={sofa} aria-label={name + ": диван"} onClick={() => onSofa(i)}
+                  data-lens-btn={sofa ? "tab" : "soft"} data-lens-ink="" style={{ ...chip(c, sofa, a11y), padding: "4px 10px", fontSize: 13 }}>диван</button>
+              </div>);
+          })}
+        </div>
+      </div>
+      <div style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.45 }}>Цифра: сколько стульев с этой стороны. «Диван» ставит диван вместо стульев, тогда плюс и минус меняют, на сколько он человек.</div>
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
 // ui/table-art.jsx — v179 (Доп. 504): стол на схеме зала сверху — столешница и стулья вокруг (геометрия —
 // lib/floor-art.js). У стола с гостями закрашено столько стульев, сколько гостей; у брони — сколько придёт.
+// v183 (Доп. 508): диван у стола — спинка и подушки по местам (подушки закрашиваются, как стулья).
 import React from "react";
 import { tableGeom } from "../lib/floor-art";
 
@@ -24,8 +25,11 @@ export function TableArt({ g, W, H, top, stroke, chair, chairOn, filled = 0, das
       {glow ? (g.top.kind === "circle"
         ? <circle data-table-glow="" cx={W / 2} cy={H / 2} r={Math.min(W, H) / 2 - 0.5} fill={glow.fill} stroke={glow.stroke} strokeWidth={1.3} />
         : <rect data-table-glow="" x={0.6} y={0.6} width={W - 1.2} height={H - 1.2} rx={Math.min(W, H) * 0.24} fill={glow.fill} stroke={glow.stroke} strokeWidth={1.3} />) : null}
+      {(g.backs || []).map((b, i) => (
+        <rect key={"b" + i} data-sofa-back="" x={b.x.toFixed(2)} y={b.y.toFixed(2)} width={b.w.toFixed(2)} height={b.h.toFixed(2)} rx={(Math.min(b.w, b.h) * 0.5).toFixed(2)}
+          fill={chair.stroke} stroke={chair.stroke} strokeWidth={0.6} opacity={dash ? 0.6 : 0.9} />))}
       {g.chairs.map((c, i) => (
-        <rect key={i} data-chair={i < n ? "on" : "off"} x={(-c.w / 2).toFixed(2)} y={(-c.h / 2).toFixed(2)} width={c.w.toFixed(2)} height={c.h.toFixed(2)} rx={(Math.min(c.w, c.h) * 0.42).toFixed(2)}
+        <rect key={i} data-chair={i < n ? "on" : "off"} data-sofa={c.sofa ? "" : undefined} x={(-c.w / 2).toFixed(2)} y={(-c.h / 2).toFixed(2)} width={c.w.toFixed(2)} height={c.h.toFixed(2)} rx={(Math.min(c.w, c.h) * (c.sofa ? 0.2 : 0.42)).toFixed(2)}
           transform={`translate(${c.cx.toFixed(2)} ${c.cy.toFixed(2)}) rotate(${c.rot.toFixed(1)})`}
           fill={i < n ? chairOn : chair.fill} stroke={i < n ? chairOn : chair.stroke} strokeWidth={0.9} strokeDasharray={dash && i >= n ? "2 1.5" : undefined} />))}
       {g.top.kind === "circle"

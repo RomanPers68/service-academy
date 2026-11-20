@@ -29,10 +29,10 @@ import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
-  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable } from "../lib/seating";
-import { tableGeom, filledChairs } from "../lib/floor-art";   // v179
+  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides } from "../lib/seating";
+import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
-import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn } from "./floor-tools";
+import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides } from "./floor-tools";
 import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeats, mergeSeats } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
 
@@ -185,7 +185,8 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         // клеток — между соседними столами проход, как на плане (кнопка — по-прежнему вся клетка, попасть легко).
         // У круглого отступ меньше: углы клетки у него и так свободны, а столешнице нужно место под подпись
         const gap = Math.max(1.5, cell * 0.07) * (t.shape === "rd" ? 0.6 : 1), aw = W - 2 * gap, ah = H - 2 * gap;
-        const g = tableGeom(t.shape, t.seats, aw, ah), lb0 = labelBox(g), lb = { ...lb0, x: lb0.x + gap, y: lb0.y + gap };
+        // v183: свои стулья по сторонам и диваны (sides), если расставлены вручную
+        const g = tableGeom(t.shape, t.seats, aw, ah, t.sides), lb0 = labelBox(g), lb = { ...lb0, x: lb0.x + gap, y: lb0.y + gap };
         const sub = tableSub(t, r, now);
         // подпись влезает в стол: длинную — мельче; «уборка» на маленьком столе — значком-веником (пунктир и легенда рядом)
         const avail = lb.w - 2, fsN = Math.max(10.5, Math.min(lb.h * 0.5, cell * 0.32));
@@ -316,7 +317,7 @@ const TOOL_HINT = {
   bar: "Нажми на клетку, где бар начинается, потом на клетку, где он кончается.",
   door: "Нажми на клетку, где вход.",
 };
-function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel }) {
+function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel, sidesOn = false }) {
   const [plan, setPlan] = React.useState(() => plan0 || emptyPlan());
   const planRef = React.useRef(plan);
   planRef.current = plan;
@@ -541,10 +542,12 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
     if (!tall && (plan.tables || []).some((q) => q.shape === "tall")) { setErr("Вертикальные длинные столы сохранятся, когда на сервер добавят этап 54 (supabase-stage54-tall-tables.sql)."); return; }
     const body = floor2 ? withZones(plan) : planV1(plan);
     if (!body) { setErr("Залы, стены, бар и вход сохранятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql)."); return; }
+    // v183: приложение знает стулья по сторонам — сервер (этап 55) берёт их как есть: стол без sides — «как по местам»
+    const sent = sidesOn ? { ...body, sides: true } : body;
     setBusy(true); setErr(""); setSureLeave(false);
-    rpc("floor_save", { p_token: saToken(), p_plan: body }).then((r) => {
+    rpc("floor_save", { p_token: saToken(), p_plan: sent }).then((r) => {
       setBusy(false);
-      if (r && r.ok) { vibrate("success"); onSaved(body); }
+      if (r && r.ok) { vibrate("success"); onSaved(sent); }
       else if (r && r.error === "duplicate") setErr("Номера столов или названия залов повторяются.");
       else if (r && r.error === "overlap") setErr("Стол стоит на баре или входе.");
       else if (r && r.error === "old_app") setErr("На сервере схема новее: обнови приложение.");
@@ -617,6 +620,10 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
             <span data-seats="" style={{ minWidth: 28, textAlign: "center", fontSize: 20, color: c.text }}>{t.seats}</span>
             <button type="button" aria-label="Больше мест" data-seats-plus="" onClick={() => seats(1)} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
           </div>
+          {sidesOn && t.shape !== "rd" ? <ChairSides c={c} a11y={a11y} t={t} sides={sidesOf(t)} own={!!okSides(t.shape, t.sides)}
+            onStep={(i, d) => { vibrate("light"); setErr(""); commit(sideStep(planRef.current, t.id, i, d), "sd:" + t.id + ":" + i); }}
+            onSofa={(i) => { vibrate("light"); setErr(""); commit(toggleSofa(planRef.current, t.id, i)); }}
+            onReset={() => { vibrate("light"); setErr(""); commit(resetSides(planRef.current, t.id)); }} /> : null}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }} role="group" aria-label="Форма">
             {SHAPES.map(([k, l]) => <button key={k} type="button" data-edit-shape={k} onClick={() => { if (t.shape === k || (k === "long" && t.shape === "tall")) return; if (k === "long") { toLong(); return; } setErr(""); commit(updateTable(plan, t.id, { shape: k })); }} data-lens-btn={t.shape === k || (k === "long" && t.shape === "tall") ? "tab" : "soft"} data-lens-ink="" style={chip(c, t.shape === k || (k === "long" && t.shape === "tall"), a11y)}>{l}</button>)}
           </div>
@@ -745,7 +752,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         {st.status === "norest" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
         {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
           <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} data-lens-btn="soft" style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
-        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} tall={!!st.tall} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
+        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} tall={!!st.tall} sidesOn={!!st.sides} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}

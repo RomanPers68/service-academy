@@ -69,7 +69,7 @@ describe("v180 · этап 54 на сервере", () => {
     expect(sql).toContain("grant execute on function floor_save(text, jsonb) to anon, authenticated;");
     expect(sql).toContain("grant execute on function seat_board(text) to anon, authenticated;");
     expect(sql).toContain("raise exception 'Сначала этап 37 (supabase-stage37-halls-qday.sql): нужны залы и стены на схеме зала';");
-    expect(STAGES[STAGES.length - 1]).toEqual({ n: "54", file: "supabase-stage54-tall-tables.sql", what: "Длинные столы вертикально на схеме зала", fn: "_sa_floor_shapes" });
+    expect(STAGES.find((q) => q.n === "54")).toEqual({ n: "54", file: "supabase-stage54-tall-tables.sql", what: "Длинные столы вертикально на схеме зала", fn: "_sa_floor_shapes" });   // v183: за ним 55
   });
 });
 
@@ -223,7 +223,7 @@ describe("v180 · экран", () => {
   });
   it("редактор в коде: признак этапа 54, «Повернуть», «Длинный» вертикально, сохранение и ИИ", () => {
     const s = rd("ui/seating.jsx");
-    expect(s).toContain("tall={!!st.tall} onCancel={() => setEdit(false)}");
+    expect(s).toMatch(/tall=\{!!st\.tall\}( sidesOn=\{!!st\.sides\})? onCancel=\{\(\) => setEdit\(false\)\}/);   // v183: и признак этапа 55
     expect(s).toContain("function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = \"\"");
     expect(s).toContain('{tall && (t.shape === "long" || t.shape === "tall") ? <TurnBtn c={c} onClick={turn} /> : null}');
     expect(s).toContain('if (p === planRef.current && tall) p = updateTable(planRef.current, t.id, { shape: "tall" });');

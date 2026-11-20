@@ -88,7 +88,7 @@ describe("v181 · второй проход в приложении", () => {
     expect(s).toContain('const boxes = Number(res.v) >= 2 && res.plan !== false ? seatBoxes(res) : [];');
     // v182: в картинках закрыты номера столов — tableCrops получает ещё и все столы ответа
     expect(s).toMatch(/const (seats|full) = await tableCrops\(r0, boxes(, 224, seatMasks\(res\))?\)\.then\(\(crops\) => scanSeats(Full)?\(crops, opts\)\)\.catch\(\(\) => null\);/);   // v184: scanSeatsFull
-    expect(s).toMatch(/if \((seats|full)\) scan = mergeSeats\(res, (seats|full\.seats, sidesOn \? full\.sides : null)\)\.scan;/);   // v184: и стулья по сторонам
+    expect(s).toMatch(/if \((seats|full)\) scan = mergeSeats\(res, (seats|full\.seats, (sidesOn \? full\.sides : null|full\.sides))\)\.scan;/);   // v184: и стулья по сторонам
     expect(s).toContain('" Места посчитаны по общему плану: пересчитать у каждого стола не вышло."');
     expect(s).toContain('setNote(scanSummary(out) + seatsNote);');
     expect(s).toContain('scanStage={scanStage}');

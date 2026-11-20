@@ -10,6 +10,8 @@
 // v180 (Доп. 505): в палитре и длинные вертикально (сервер с этапом 54), TurnBtn — «Повернуть» длинный стол.
 // v183 (Доп. 508): ChairSides — «Стулья по сторонам» в карточке стола: сколько сверху, справа, снизу, слева и где
 // диван (сервер с этапом 55).
+// v185 (Доп. 510): TakeNumbers — «Взять номера с фото» под итогом распознавания, когда номера с фото были заняты;
+// DropDupes — «Убрать повторы из «Зал 1»» под ошибкой сохранения, когда те же номера есть в другом зале.
 // Схема и экран — ui/seating.jsx, расчёт — lib/seating.js и lib/floor-scan.js, фото на телефоне — lib/floor-photo.js.
 import React from "react";
 import { labelStyle } from "./tokens";
@@ -181,6 +183,30 @@ export function ChairSides({ c, a11y, t, sides, own, onStep, onSofa, onReset }) 
         </div>
       </div>
       <div style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.45 }}>Цифра: сколько стульев с этой стороны. «Диван» ставит диван вместо стульев, тогда плюс и минус меняют, на сколько он человек.</div>
+    </div>
+  );
+}
+
+// ── v185: номера с фото ──
+/** Номера с плана уже были на схеме (обычно — прошлое распознавание того же плана в другом зале): кнопка, которая
+ *  отдаёт распознанным столам номера с фото, и что при этом уберётся (hint — takeHint). */
+export function TakeNumbers({ c, a11y, hint, onTake }) {
+  return (
+    <div data-take-numbers="" style={{ margin: "-4px 2px 14px" }}>
+      <button type="button" data-take-btn="" onClick={onTake} data-lens-btn="tab" data-lens-ink=""
+        style={{ ...chip(c, true, a11y), padding: "9px 18px", fontSize: 15 }}>Взять номера с фото</button>
+      <div data-take-hint="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.45, marginTop: 7 }}>{hint}</div>
+    </div>
+  );
+}
+/** Схема не сохраняется: номера этого зала есть и в другом — кнопка убрать те столы оттуда (label, hint — dropLabel,
+ *  dropHint) */
+export function DropDupes({ c, a11y, label, hint, onDrop }) {
+  return (
+    <div data-drop-dupes="" style={{ margin: "-2px 2px 12px" }}>
+      <button type="button" data-drop-btn="" onClick={onDrop} data-lens-btn="tab" data-lens-ink=""
+        style={{ ...chip(c, true, a11y), padding: "9px 18px", fontSize: 15 }}>{label}</button>
+      <div data-drop-hint="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.45, marginTop: 7 }}>{hint}</div>
     </div>
   );
 }

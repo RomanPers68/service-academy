@@ -119,7 +119,7 @@ describe("v184 · стулья по сторонам с фото на схему
   it("редактор: стороны — только с этапом 55; в раскладку — с признаком sides", () => {
     const s = rd("ui/seating.jsx");
     expect(s).toContain("const full = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeatsFull(crops, opts)).catch(() => null);");
-    expect(s).toContain("if (full) scan = mergeSeats(res, full.seats, sidesOn ? full.sides : null).scan;");
+    expect(s).toContain("if (full) scan = mergeSeats(res, full.seats, full.sides).scan;");   // v185: стороны — всегда, на схему — с этапом 55
     expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });");
   });
 });
@@ -148,7 +148,7 @@ const call = async (payload) => { const res = await fn.handle(new Request("https
 describe("v184 · функция floor-scan версии 4", () => {
   beforeEach(() => { NET = { who: { id: "e1", position: "manager", is_admin: false }, bodies: [], replies: [] }; });
   it("ответ по сторонам → seats и sides [верх, низ, лево, право]; диван — минус; ничего — null; больше 20 — null", () => {
-    expect(fn.FLOOR_SCAN_V).toBe(4);
+    expect(fn.FLOOR_SCAN_V).toBeGreaterThanOrEqual(4);   // v185: 5
     const o = { tables: [
       { chairs: [2, 0, 0, 0], sofa: [0, 0, 2, 0] },          // два стула сверху, диван снизу
       { chairs: [0, 0, 0, 1], sofa: [0, 1, 0, 0] },          // стул слева, диван справа
@@ -173,7 +173,7 @@ describe("v184 · функция floor-scan версии 4", () => {
     expect(S).toContain("Номера на столах закрыты пятном цвета стола");
     NET.replies.push('{"tables":[{"chairs":[2,0,0,0],"sofa":[0,0,2,0]},null]}');
     const r = await call({ mode: "seats", crops: [CROP, CROP] });
-    expect(r).toEqual({ status: 200, ok: true, v: 4, mode: "seats", seats: [4, null], sides: [[2, -2, 0, 0], null], model: "anthropic/claude-haiku-5.5" });
+    expect(r).toEqual({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, mode: "seats", seats: [4, null], sides: [[2, -2, 0, 0], null], model: "anthropic/claude-haiku-5.5" });
     expect(NET.bodies[0].max_tokens).toBe(Math.ceil((400 + 30 * 2) * 1.35) + 4000);
   });
 });

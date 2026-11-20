@@ -268,8 +268,9 @@ if (want("RENAME")) {
   const at = await tablesAt(o.page), nums = at.map((q) => q.n).sort((a, b) => a - b);
   ok("RENAME: в «Зал 2» стол с плана «15» получил 20 (15 — в «Зал 1»), остальные — свои номера", JSON.stringify(nums) === JSON.stringify(["2", "6", "19", "20"]), JSON.stringify(nums));
   const note = await txt(ed.locator("[data-editor-note]"));
-  ok("RENAME: итог — «Номер 15 уже есть на схеме: у этого стола теперь 20» и что делать, если это тот же зал",
-    note.includes("Номер 15 уже есть на схеме: у этого стола теперь 20.") && note.includes("Если это тот же зал, что уже нарисован, распознай план в нём и выбери «Вместо них»."), note);
+  // v185: что делать — кнопка «Взять номера с фото» под итогом (подробно — e2e-v185.mjs)
+  ok("RENAME: итог — «Номер 15 уже есть на схеме: у этого стола теперь 20» и кнопка «Взять номера с фото»",
+    note.includes("Номер 15 уже есть на схеме: у этого стола теперь 20.") && (await ed.locator("[data-take-btn]").count()) === 1, note);
   await shot(o.page, "rename-editor");
   ok("RENAME: без ошибок в консоли", !o.errors.length, o.errors.slice(0, 3).join(" | "));
   await o.ctx.close();

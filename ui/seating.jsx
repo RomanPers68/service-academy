@@ -29,11 +29,11 @@ import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
-  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides } from "../lib/seating";
+  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides, takeNumbers, crossDupes, dropDupes, isCrossDup } from "../lib/seating";
 import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
-import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides } from "./floor-tools";
-import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeatsFull, mergeSeats } from "../lib/floor-scan";
+import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides, TakeNumbers, DropDupes } from "./floor-tools";
+import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeatsFull, mergeSeats, takeHint, takeSummary, dropLabel, dropHint, dropSummary } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
 
 const POLL_MS = 15000;
@@ -348,6 +348,8 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
   const [note, setNote] = React.useState("");
+  // v185: номера с фото были заняты — { at: схема сразу после распознавания, z, pairs }; кнопка видна, пока схема та же
+  const [take, setTake] = React.useState(null);
   // v179: какой стол ставить — телефон помнит
   const [kind, setKind] = React.useState(() => { try { return kindOf(localStorage.getItem("sa_floor_kind") || "").k; } catch (e) { return kindOf("").k; } });
   const pickKind = (k) => { vibrate("light"); setKind(k); setErr(""); try { localStorage.setItem("sa_floor_kind", k); } catch (e) {} };
@@ -355,7 +357,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
   const it = zoneItems(plan, z).find((q) => q.id === selItem) || null;
   const reset = () => { setSel(null); setSelItem(null); setPend(null); setMoving(false); setErr(""); };
   const pickTool = (k) => { vibrate("light"); reset(); setTool(k); };
-  const pickZone = (id) => { vibrate("light"); reset(); setNote(""); setAsk(false); setZone(id); };
+  const pickZone = (id) => { vibrate("light"); reset(); setNote(""); setTake(null); setAsk(false); setZone(id); };
   // пустая клетка: «Столы» — новый стол выбранного вида (или «Передвинуть» — стол встаёт сюда); «Бар» — два угла; «Вход» — клетка
   const cell = (x, y) => {
     setErr("");
@@ -498,7 +500,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
     setAsk(false);
     if (!mode || !rec || scanBusy) return;
     const zz = z, r0 = rec, opts = { url: SUPABASE_URL, key: SUPABASE_KEY, token: saToken() };
-    setScanBusy(true); setScanStage("plan"); setErr(""); setNote("");
+    setScanBusy(true); setScanStage("plan"); setErr(""); setNote(""); setTake(null);
     aiImage(r0).then((ai) => scanFloor(ai.data, opts).then((res) => ({ res, ai })))
       .then(async ({ res, ai }) => {
         if (!live.current) return;
@@ -512,7 +514,8 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
           // v184: и стулья по сторонам с диванами — как на фото (их хранит сервер с этапом 55)
           const full = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeatsFull(crops, opts)).catch(() => null);
           if (!live.current) return;
-          if (full) scan = mergeSeats(res, full.seats, sidesOn ? full.sides : null).scan;
+          // v185: стороны — всегда (по ним места: диван — сколько стульев напротив); на схему — только с этапом 55
+          if (full) scan = mergeSeats(res, full.seats, full.sides).scan;
           else seatsNote = " Места посчитаны по общему плану: пересчитать у каждого стола не вышло.";
         }
         const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });
@@ -522,6 +525,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
         vibrate("success");
         setSel(null); setSelItem(null); setMoving(false); setPend(null); setTool("table");
         setNote(scanSummary(out) + seatsNote);
+        setTake(out.renamed && out.renamed.length ? { at: out.plan, z: zz, pairs: out.renamed } : null);
         // подложка — как легли столы: обрезана по залу, повёрнута и лежит там, где её столы (at)
         const whole = out.crop[0] <= 0.5 && out.crop[1] <= 0.5 && out.crop[2] >= 99.5 && out.crop[3] >= 99.5;
         if (out.rot || !whole) cropRotate(r0, out.crop, out.rot).then((nb) => { if (live.current) putBg(zz, { ...nb, at: out.at }); }).catch(() => {});
@@ -529,6 +533,23 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
       })
       .catch(() => { if (live.current) setErr(scanErrorText("")); })
       .then(() => { if (live.current) { setScanBusy(false); setScanStage(""); } });
+  };
+  // v185: «Взять номера с фото» — распознанные столы получают номера с плана, те же номера в других залах убираются
+  const takeInfo = take && take.at === plan ? takeNumbers(plan, take.z, take.pairs) : null;
+  const takeNow = () => {
+    if (!take) return;
+    const r = takeNumbers(planRef.current, take.z, take.pairs);
+    setTake(null);
+    if (!r.taken) return;
+    vibrate("success"); setErr(""); commit(r.plan); setNote(takeSummary(r));
+  };
+  // v185: не сохраняется — номера этого зала есть и в другом: «Убрать повторы из …» (столы этого зала остаются)
+  const dropInfo = isCrossDup(err) && crossDupes(plan, z).length ? dropDupes(plan, z) : null;
+  const [fixNote, setFixNote] = React.useState("");
+  const dropNow = () => {
+    const r = dropDupes(planRef.current, z);
+    if (!r.removed.length) return;
+    vibrate("success"); setErr(""); commit(r.plan); setFixNote(dropSummary(r));
   };
   const startScan = () => {
     if (!rec || scanBusy) return;
@@ -539,6 +560,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
 
   const save = () => {
     const pr = planProblem(plan);
+    setFixNote("");
     if (pr) { setErr(pr); return; }
     if (!tall && (plan.tables || []).some((q) => q.shape === "tall")) { setErr("Вертикальные длинные столы сохранятся, когда на сервер добавят этап 54 (supabase-stage54-tall-tables.sql)."); return; }
     const body = floor2 ? withZones(plan) : planV1(plan);
@@ -594,6 +616,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
           onTable={(q) => { vibrate("light"); setErr(""); setMoving(false); setSelItem(null); setSel(sel === q.id ? null : q.id); }} />
       </div>
       {note ? <div role="status" data-editor-note="" style={{ fontSize: 13.5, color: c.text, lineHeight: 1.5, margin: "0 2px 12px" }}>{note}</div> : null}
+      {takeInfo && takeInfo.taken ? <TakeNumbers c={c} a11y={a11y} hint={takeHint(takeInfo)} onTake={takeNow} /> : null}
       {rec ? <PhotoCard c={c} a11y={a11y} rec={rec} scanBusy={scanBusy} scanStage={scanStage} ask={ask} nTables={zoneTables(plan, z).length} rotating={rotating}
         onOp={setOp} onScan={startScan} onAnswer={runScan} onRotate={rotate} onDrop={dropBg} onPhoto={openPicker} /> : null}
       {floor2 && zoneItems(plan, z).length ? (
@@ -637,6 +660,8 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
         </div>) : null}
       {canRenumber(plan) || sureRenum ? <div style={{ margin: "0 0 10px" }}><RenumberBtn c={c} sure={sureRenum} onClick={renum} /></div> : null}
       {err ? <div role="alert" style={{ fontSize: 13, color: c.red, margin: "0 2px 10px" }}>{err}</div> : null}
+      {dropInfo ? <DropDupes c={c} a11y={a11y} label={dropLabel(dropInfo)} hint={dropHint(dropInfo)} onDrop={dropNow} /> : null}
+      {fixNote && !err ? <div role="status" data-fix-note="" style={{ fontSize: 13, color: c.text, lineHeight: 1.5, margin: "0 2px 10px" }}>{fixNote}</div> : null}
       <div style={{ display: "flex", gap: 10 }}>
         <button type="button" onClick={() => { if (tryLeave()) onCancel(); }} data-lens-btn="soft" style={{ ...btn(c), flex: 1 }}>Отмена</button>
         <button type="button" data-floor-save="" onClick={save} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), flex: 1.4, opacity: busy ? 0.6 : 1 }}>{busy ? "Сохраняю…" : "Сохранить схему"}</button>

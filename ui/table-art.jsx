@@ -14,12 +14,13 @@ export function labelBox(g) {
  * chairOn — цвет занятого, filled — сколько стульев закрасить, dash — пунктир (уборка), ring — выделенный контур
  * (выбран, подходит компании), glow — подсветка вокруг стола { fill, stroke }.
  */
-export function TableArt({ g, W, H, top, stroke, chair, chairOn, filled = 0, dash = false, ring = null, glow = null }) {
+export function TableArt({ g, W, H, top, stroke, chair, chairOn, filled = 0, dash = false, ring = null, glow = null, at = 0 }) {
   const n = Math.min(filled, g.chairs.length);
   const tw = ring ? 2 : 1.25;
+  // at — отступ рисунка от края кнопки стола (v181: между соседними столами проход)
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W.toFixed(2)} ${H.toFixed(2)}`} aria-hidden="true" focusable="false"
-      style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }}>
+      style={{ position: "absolute", left: at, top: at, overflow: "visible", pointerEvents: "none" }}>
       {glow ? (g.top.kind === "circle"
         ? <circle data-table-glow="" cx={W / 2} cy={H / 2} r={Math.min(W, H) / 2 - 0.5} fill={glow.fill} stroke={glow.stroke} strokeWidth={1.3} />
         : <rect data-table-glow="" x={0.6} y={0.6} width={W - 1.2} height={H - 1.2} rx={Math.min(W, H) * 0.24} fill={glow.fill} stroke={glow.stroke} strokeWidth={1.3} />) : null}

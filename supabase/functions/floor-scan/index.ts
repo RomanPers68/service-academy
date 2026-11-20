@@ -15,6 +15,13 @@
 // Деплой: Supabase → Edge Functions → Deploy a new function → Via Editor → имя floor-scan → вставить этот файл → Deploy
 // (или `supabase functions deploy floor-scan`). Секреты новые не нужны: OPENROUTER_API_KEY и OPENROUTER_MODEL общие для
 // всех функций проекта, адрес базы и сервисный ключ функция получает сама.
+//
+// v181 (Доп. 506), версия 2. Владелец: «И можно сделать так, что бы он и места переносил с фото?» Глядя на весь план
+// разом, модель путала число стульев (у одного стола то 5, то 6). Теперь второй проход:
+// POST { token, mode: "seats", crops: [data: URL, …] } → { ok: true, v: 2, mode: "seats", seats: [число или null, …] }.
+// crops — каждый стол крупно, отдельной картинкой (телефон вырезает их из фото по рамкам первого прохода, до 40 штук);
+// модель считает стулья у стола в центре каждой картинки. В дневной лимит второй проход не идёт: он — часть
+// распознавания. Первый проход тоже считает стулья по сторонам стола.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +34,8 @@ const json = (data: unknown, status = 200) =>
 const isJwt = (k: string) => /^eyJ/.test(k || "");
 const keyHeaders = (k: string): Record<string, string> => (isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k });
 
-export const FLOOR_SCAN_V = 1;
+export const FLOOR_SCAN_V = 2;
+export const MAX_CROPS = 40, MAX_CROP = 400_000;   // второй проход: столов за раз и знаков на картинку
 export const LEAD_POS = ["manager", "senior", "owner", "head", "admin", "service_manager"];
 export const DAILY_SCANS = 20;
 export const MAX_IMAGE = 4_000_000;   // знаков data: URL (~3 МБ фото); телефон шлёт 0,2–0,6 МБ
@@ -61,7 +69,7 @@ export const SCAN_SYSTEM = [
   "Найди все столы для гостей. Для каждого стола:",
   "- b — рамка стола без стульев: [лево, верх, право, низ] в процентах; сверяйся с сеткой, точность важна;",
   '- shape — "round" (круглый или овальный), "square" (квадратный) или "rect" (прямоугольный, вытянутый);',
-  "- seats — сколько мест: по нарисованным стульям или по подписи («4», «4 места», «×4», «4p»); не видно — null;",
+  "- seats — сколько мест: посчитай стулья у стола по сторонам (сверху, справа, снизу, слева) и сложи; если у стола написано число мест («4», «4 места», «×4», «4p») — бери его; не видно — null;",
   '- n — номер стола, если он подписан («5», «№5», «Стол 5», «В3»); нет — "".',
   "Если есть, ещё:",
   "- box — рамка самого зала по внешним стенам: [лево, верх, право, низ];",
@@ -83,6 +91,27 @@ export function scanRequest(m: string, image: string) {
     ],
     ...genOpts(m, 3000, 0.2, "low"),
   };
+}
+
+// ── второй проход: стулья у каждого стола (v181) ──
+export const SEATS_SYSTEM = [
+  "Ты считаешь места за столами на плане зала ресторана (вид сверху).",
+  "Тебе дают несколько картинок. На каждой — кусок плана: в центре один стол, вокруг его стулья. По краям картинки могут попасть соседние столы и их стулья — их не считай.",
+  "Для стола в центре каждой картинки посчитай стулья: обойди стол по сторонам — сверху, справа, снизу, слева — и сложи. Стул — маленький прямоугольник, квадрат, кружок или дуга у края стола.",
+  "Если на столе или рядом написано число мест («4», «4 места», «×4», «4p»), бери его. Номер стола («№5», «Стол 5») — не число мест.",
+  "Диван или банкетка у стола: считай места по нарисованным подушкам или делениям; делений не видно — не считай.",
+  "Не видно ни стульев, ни подписи — null.",
+  'Ответ — только JSON, без пояснений и без разметки: {"seats":[число или null для картинки 1, для картинки 2, …]} — ровно столько значений, сколько картинок, по порядку.',
+].join("\n");
+export function seatsRequest(m: string, crops: string[]) {
+  const content: Record<string, unknown>[] = [{ type: "text", text: "Картинок: " + crops.length + ". Посчитай места у стола в центре каждой." }];
+  crops.forEach((url, i) => { content.push({ type: "text", text: "Картинка " + (i + 1) }); content.push({ type: "image_url", image_url: { url } }); });
+  return { model: m, messages: [{ role: "system", content: SEATS_SYSTEM }, { role: "user", content }], ...genOpts(m, 300 + 12 * crops.length, 0.1, "low") };
+}
+/** Ответ второго прохода → n значений: целое 1–20 или null */
+export function cleanSeats(o: Record<string, unknown>, n: number): (number | null)[] {
+  const a = Array.isArray(o.seats) ? o.seats : [];
+  return Array.from({ length: n }, (_, i) => { const v = Math.round(num(a[i])); return v >= 1 && v <= 20 ? v : null; });
 }
 
 // ── ответ модели ──
@@ -141,15 +170,55 @@ export async function visionFree(): Promise<string[]> {
   } catch (_e) { return []; }
 }
 
+// ── модели: из секретов; не принимают фото — бесплатные с фото (одна попытка списка) ──
+type Ask = { ok: true; data: any; o: Record<string, unknown>; model: string } | { ok: false; error: string; detail: string };
+async function askModels(apiKey: string, build: (m: string) => unknown): Promise<Ask> {
+  const own = [Deno.env.get("FLOOR_MODEL"), Deno.env.get("OPENROUTER_MODEL")].map((x) => String(x || "").trim()).filter(Boolean);
+  const mine = [...new Set(own)];
+  let queue = mine.length ? mine : (await visionFree()).slice(0, 3);
+  let lastErr = queue.length ? "" : "no_vision", triedFree = !mine.length, detail = "";
+  for (let i = 0; i < queue.length; i++) {
+    const m = queue[i];
+    let resp: Response;
+    try {
+      resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://service-academy.app", "X-Title": "Service Academy" },
+        body: JSON.stringify(build(m)),
+      });
+    } catch (_e) { lastErr = "provider"; continue; }
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      console.error("floor-scan openrouter", m, resp.status, t.slice(0, 240));
+      detail = t.slice(0, 160);
+      lastErr = /image|vision|modalit/i.test(t) && (resp.status === 400 || resp.status === 404) ? "no_vision" : resp.status === 429 || resp.status === 402 ? "rate_limit" : "provider";
+    } else {
+      const data = await resp.json().catch(() => null);
+      const o = extractJson(textOf(data?.choices?.[0]?.message?.content));
+      if (o) return { ok: true, data, o, model: data?.model || m };
+      console.error("floor-scan", m, "no_json");
+      lastErr = "parse";
+    }
+    if (i === queue.length - 1 && !triedFree && lastErr === "no_vision") {
+      triedFree = true;
+      queue = [...queue, ...(await visionFree()).filter((x) => !queue.includes(x)).slice(0, 2)];
+    }
+  }
+  return { ok: false, error: lastErr || "provider", detail };
+}
+const okImage = (x: unknown) => typeof x === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]/.test(x) && x.length >= 200;
+
 export async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
   try {
     const body = await req.json().catch(() => null);
     const token = String(body?.token || "");
+    const seatsMode = body?.mode === "seats";   // v181: второй проход — стулья у каждого стола
     const image = String(body?.image || "");
-    if (!token || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]/.test(image) || image.length < 200) return json({ ok: false, error: "bad_request" }, 400);
-    if (image.length > MAX_IMAGE) return json({ ok: false, error: "too_large" }, 413);
+    const crops: string[] = seatsMode && Array.isArray(body?.crops) ? body.crops : [];
+    if (!token || (seatsMode ? !crops.length || !crops.every(okImage) : !okImage(image))) return json({ ok: false, error: "bad_request" }, 400);
+    if (seatsMode ? crops.length > MAX_CROPS || crops.some((c) => c.length > MAX_CROP) : image.length > MAX_IMAGE) return json({ ok: false, error: "too_large" }, 413);
 
     const URL_ = Deno.env.get("SUPABASE_URL") || "";
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -162,6 +231,15 @@ export async function handle(req: Request): Promise<Response> {
 
     const API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     if (!API_KEY) return json({ ok: false, error: "not_configured" });
+
+    // ── второй проход: в лимит не идёт ──
+    if (seatsMode) {
+      const r = await askModels(API_KEY, (m) => seatsRequest(m, crops));
+      if (!r.ok) return json({ ok: false, error: r.error, detail: r.detail });
+      const seats = cleanSeats(r.o, crops.length);
+      console.log("floor-scan seats", r.model, crops.length, seats.filter((x) => x != null).length);
+      return json({ ok: true, v: FLOOR_SCAN_V, mode: "seats", seats, model: r.model });
+    }
 
     // ── лимит в день (админ — без лимита) ──
     let remaining = -1;
@@ -180,44 +258,11 @@ export async function handle(req: Request): Promise<Response> {
       } catch (_e) { /* счётчик недоступен — не мешаем работе */ }
     }
 
-    // ── модели: из секретов; не принимают фото — бесплатные с фото ──
-    const own = [Deno.env.get("FLOOR_MODEL"), Deno.env.get("OPENROUTER_MODEL")].map((x) => String(x || "").trim()).filter(Boolean);
-    const mine = [...new Set(own)];
-    let queue = mine.length ? mine : (await visionFree()).slice(0, 3);
-    let lastErr = queue.length ? "" : "no_vision", triedFree = !mine.length, detail = "";
-    for (let i = 0; i < queue.length; i++) {
-      const m = queue[i];
-      let resp: Response;
-      try {
-        resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json", "HTTP-Referer": "https://service-academy.app", "X-Title": "Service Academy" },
-          body: JSON.stringify(scanRequest(m, image)),
-        });
-      } catch (_e) { lastErr = "provider"; continue; }
-      if (!resp.ok) {
-        const t = await resp.text().catch(() => "");
-        console.error("floor-scan openrouter", m, resp.status, t.slice(0, 240));
-        detail = t.slice(0, 160);
-        lastErr = /image|vision|modalit/i.test(t) && (resp.status === 400 || resp.status === 404) ? "no_vision" : resp.status === 429 || resp.status === 402 ? "rate_limit" : "provider";
-      } else {
-        const data = await resp.json().catch(() => null);
-        const o = extractJson(textOf(data?.choices?.[0]?.message?.content));
-        if (o) {
-          const out = cleanReply(o);
-          console.log("floor-scan", m, "tables", out.tables.length, out.plan ? "" : "not_plan");
-          return json({ ok: true, v: FLOOR_SCAN_V, ...out, model: data?.model || m, remaining });
-        }
-        console.error("floor-scan", m, "no_json");
-        lastErr = "parse";
-      }
-      // модели из секретов фото не принимают — дальше бесплатные с фото (одна попытка списка)
-      if (i === queue.length - 1 && !triedFree && lastErr === "no_vision") {
-        triedFree = true;
-        queue = [...queue, ...(await visionFree()).filter((x) => !queue.includes(x)).slice(0, 2)];
-      }
-    }
-    return json({ ok: false, error: lastErr || "provider", detail });
+    const r = await askModels(API_KEY, (m) => scanRequest(m, image));
+    if (!r.ok) return json({ ok: false, error: r.error, detail: r.detail });
+    const out = cleanReply(r.o);
+    console.log("floor-scan", r.model, "tables", out.tables.length, out.plan ? "" : "not_plan");
+    return json({ ok: true, v: FLOOR_SCAN_V, ...out, model: r.model, remaining });
   } catch (e) {
     console.error("floor-scan", e);
     return json({ ok: false, error: "server" }, 500);

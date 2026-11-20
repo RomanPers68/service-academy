@@ -16,6 +16,8 @@
 // столы по фото» — ИИ, функция floor-scan (ui/floor-tools.jsx, lib/floor-scan.js, lib/floor-photo.js).
 // v180 (Доп. 505): длинный стол и вертикально (этап 54, seat_board отдаёт tall: true): в выборе вида, «Повернуть» у
 // длинного стола, ИИ ставит вертикальные столы с плана вертикально.
+// v181 (Доп. 506): между соседними столами проход (рисунок стола чуть меньше клетки); по фото — второй проход: стулья
+// у каждого стола крупно.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
@@ -31,8 +33,8 @@ import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boar
 import { tableGeom, filledChairs } from "../lib/floor-art";   // v179
 import { TableArt, labelBox } from "./table-art";
 import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn } from "./floor-tools";
-import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary } from "../lib/floor-scan";
-import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage } from "../lib/floor-photo";
+import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, scanSeats, mergeSeats } from "../lib/floor-scan";
+import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
 
 const POLL_MS = 15000;
 const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
@@ -179,8 +181,11 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         const r = stateOf(map, t.id), s = c.st[r.status] || c.st.free, [wide, high] = spanOf(t);
         const pad = Math.max(1, cell * 0.03), on = hi.includes(t.id), isSel = sel === t.id;
         const W = wide * cell - 2 * pad, H = high * cell - 2 * pad;
-        // v179: стол сверху — столешница и стулья; номер и подпись — на столешнице
-        const g = tableGeom(t.shape, t.seats, W, H), lb = labelBox(g);
+        // v179: стол сверху — столешница и стулья; номер и подпись — на столешнице. v181: рисунок чуть меньше своих
+        // клеток — между соседними столами проход, как на плане (кнопка — по-прежнему вся клетка, попасть легко).
+        // У круглого отступ меньше: углы клетки у него и так свободны, а столешнице нужно место под подпись
+        const gap = Math.max(1.5, cell * 0.07) * (t.shape === "rd" ? 0.6 : 1), aw = W - 2 * gap, ah = H - 2 * gap;
+        const g = tableGeom(t.shape, t.seats, aw, ah), lb0 = labelBox(g), lb = { ...lb0, x: lb0.x + gap, y: lb0.y + gap };
         const sub = tableSub(t, r, now);
         // подпись влезает в стол: длинную — мельче; «уборка» на маленьком столе — значком-веником (пунктир и легенда рядом)
         const avail = lb.w - 2, fsN = Math.max(10.5, Math.min(lb.h * 0.5, cell * 0.32));
@@ -197,7 +202,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
             style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.2), color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, fontFamily: "Georgia, serif", lineHeight: 1.05,
               opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
-            <TableArt g={g} W={W} H={H} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
+            <TableArt g={g} W={aw} H={ah} at={gap} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
               ring={isSel ? c.selRing : on ? c.gold : null} glow={on ? c.glow : null} />
             <span style={{ position: "absolute", left: lb.x, top: lb.y, width: lb.w, height: lb.h, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               overflow: "hidden", pointerEvents: "none", textShadow: fb ? c.halo : "none" }}>
@@ -448,6 +453,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
   const [bg, setBg] = React.useState(null);   // { z, rec, fresh }
   const [photoBusy, setPhotoBusy] = React.useState(false);
   const [scanBusy, setScanBusy] = React.useState(false);
+  const [scanStage, setScanStage] = React.useState("");   // v181: "plan" — ищу столы, "seats" — считаю стулья
   const [ask, setAsk] = React.useState(false);
   const [rotating, setRotating] = React.useState(false);
   const fileRef = React.useRef(null), opTimer = React.useRef(null), live = React.useRef(true);
@@ -490,26 +496,36 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
   const runScan = (mode) => {
     setAsk(false);
     if (!mode || !rec || scanBusy) return;
-    const zz = z, r0 = rec;
-    setScanBusy(true); setErr(""); setNote("");
-    aiImage(r0).then((ai) => scanFloor(ai.data, { url: SUPABASE_URL, key: SUPABASE_KEY, token: saToken() }).then((res) => ({ res, ai })))
-      .then(({ res, ai }) => {
+    const zz = z, r0 = rec, opts = { url: SUPABASE_URL, key: SUPABASE_KEY, token: saToken() };
+    setScanBusy(true); setScanStage("plan"); setErr(""); setNote("");
+    aiImage(r0).then((ai) => scanFloor(ai.data, opts).then((res) => ({ res, ai })))
+      .then(async ({ res, ai }) => {
         if (!live.current) return;
         if (!res || res.ok !== true) { setErr(scanErrorText(res && res.error)); return; }
-        const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2, tall });
+        // v181: второй проход — каждый стол крупно, функция считает стулья у него одного (функция версии 2)
+        let scan = res, seatsNote = "";
+        const boxes = Number(res.v) >= 2 && res.plan !== false ? seatBoxes(res) : [];
+        if (boxes.length) {
+          setScanStage("seats");
+          const seats = await tableCrops(r0, boxes).then((crops) => scanSeats(crops, opts)).catch(() => null);
+          if (!live.current) return;
+          if (seats) scan = mergeSeats(res, seats).scan;
+          else seatsNote = " Места посчитаны по общему плану: пересчитать у каждого стола не вышло.";
+        }
+        const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall });
         if (out.notPlan) { setErr(scanErrorText("not_plan")); return; }
         if (out.empty || !out.added) { setErr(scanErrorText("empty")); return; }
         commit(out.plan);
         vibrate("success");
         setSel(null); setSelItem(null); setMoving(false); setPend(null); setTool("table");
-        setNote(scanSummary(out));
+        setNote(scanSummary(out) + seatsNote);
         // подложка — как легли столы: обрезана по залу, повёрнута и лежит там, где её столы (at)
         const whole = out.crop[0] <= 0.5 && out.crop[1] <= 0.5 && out.crop[2] >= 99.5 && out.crop[3] >= 99.5;
         if (out.rot || !whole) cropRotate(r0, out.crop, out.rot).then((nb) => { if (live.current) putBg(zz, { ...nb, at: out.at }); }).catch(() => {});
         else putBg(zz, { ...r0, at: out.at });
       })
       .catch(() => { if (live.current) setErr(scanErrorText("")); })
-      .then(() => { if (live.current) setScanBusy(false); });
+      .then(() => { if (live.current) { setScanBusy(false); setScanStage(""); } });
   };
   const startScan = () => {
     if (!rec || scanBusy) return;
@@ -573,7 +589,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
           onTable={(q) => { vibrate("light"); setErr(""); setMoving(false); setSelItem(null); setSel(sel === q.id ? null : q.id); }} />
       </div>
       {note ? <div role="status" data-editor-note="" style={{ fontSize: 13.5, color: c.text, lineHeight: 1.5, margin: "0 2px 12px" }}>{note}</div> : null}
-      {rec ? <PhotoCard c={c} a11y={a11y} rec={rec} scanBusy={scanBusy} ask={ask} nTables={zoneTables(plan, z).length} rotating={rotating}
+      {rec ? <PhotoCard c={c} a11y={a11y} rec={rec} scanBusy={scanBusy} scanStage={scanStage} ask={ask} nTables={zoneTables(plan, z).length} rotating={rotating}
         onOp={setOp} onScan={startScan} onAnswer={runScan} onRotate={rotate} onDrop={dropBg} onPhoto={openPicker} /> : null}
       {floor2 && zoneItems(plan, z).length ? (
         <div data-items="" role="group" aria-label="Стены, бар и вход" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>

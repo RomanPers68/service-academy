@@ -363,7 +363,7 @@ describe("v179 · экран: стол со стульями, редактор, 
     expect(s).toContain('<FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard}');
     expect(s).toContain("onClick={() => { if (edit) { if (!guard.current || guard.current()) setEdit(false); } else onBack(); }}>‹</button>");
     expect(s).toContain('<button type="button" onClick={() => { if (tryLeave()) onCancel(); }} data-lens-btn="soft"');
-    expect(s).toContain("const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2, tall });");   // v180: и вертикальные
+    expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall });");   // v180: и вертикальные; v181: места второго прохода
     expect(s).toContain("const kd = kindOf(kind, tall), p = addTable(plan, x, y, z, kd);");   // v180: вид с учётом этапа 54
     expect(s).toContain('React.useEffect(() => { live.current = true; return () => { live.current = false; clearTimeout(opTimer.current); }; }, []);');
     expect(s).toContain('<input ref={fileRef} type="file" accept="image/*" data-floor-file=""');
@@ -413,7 +413,7 @@ describe("v179 · функция floor-scan", () => {
   it("модель с фото: картинка в сообщении, размышления лёгкие (Haiku 5.5), ответ чистый", async () => {
     NET.replies.push("```json\n" + JSON.stringify({ plan: true, box: [2, 2, 98, 98], tables: [{ b: [10, 10, 20, 20], shape: "round", seats: "4", n: "№3" }, { b: [1, 2] }], bars: [], doors: [[50, 99]], note: "" }) + "\n```");
     const r = await call({});
-    expect(r).toMatchObject({ status: 200, ok: true, v: 1, plan: true, model: "anthropic/claude-haiku-5.5", remaining: 19 });
+    expect(r).toMatchObject({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, plan: true, model: "anthropic/claude-haiku-5.5", remaining: 19 });   // v181: версия 2
     expect(r.tables).toEqual([{ b: [10, 10, 20, 20], shape: "round", seats: 4, n: "№3" }]);
     expect(r.doors).toEqual([[50, 99]]);
     const b = NET.bodies[0];

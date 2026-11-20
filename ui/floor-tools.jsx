@@ -86,7 +86,7 @@ const Spinner = ({ color }) => (<>
  * Фото плана под сеткой: насколько видно, распознать столы, повернуть, другое фото, убрать.
  * ask — в зале уже есть столы: спросить, вместо них или добавить (onAnswer("replace" | "add" | ""))
  */
-export function PhotoCard({ c, a11y, rec, scanBusy, ask, nTables, onOp, onScan, onAnswer, onRotate, onDrop, onPhoto, rotating }) {
+export function PhotoCard({ c, a11y, rec, scanBusy, scanStage = "", ask, nTables, onOp, onScan, onAnswer, onRotate, onDrop, onPhoto, rotating }) {
   const op = Math.round((rec.op || 0.5) * 100);
   return (
     <div data-bg-card="" data-lens-card="" style={{ ...c.frost, padding: "12px 14px", marginBottom: 12 }}>
@@ -112,7 +112,7 @@ export function PhotoCard({ c, a11y, rec, scanBusy, ask, nTables, onOp, onScan, 
         </div>
       ) : scanBusy ? (
         <div data-scan-busy="" role="status" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: c.text, padding: "10px 2px" }}>
-          <Spinner color={c.gold} />Смотрю на план и расставляю столы. Обычно это 10–30 секунд.</div>
+          <Spinner color={c.gold} />{scanStage === "seats" ? "Считаю стулья у каждого стола. Ещё 10–20 секунд." : "Смотрю на план и расставляю столы. Обычно это 10–30 секунд."}</div>
       ) : (
         <button type="button" data-scan="" onClick={onScan} data-lens-btn="main" style={{ ...btn(c, true), width: "100%" }}>Расставить столы по фото</button>
       )}

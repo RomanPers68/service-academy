@@ -86,12 +86,13 @@ describe("v181 · второй проход в приложении", () => {
   it("редактор: второй проход только у функции версии 2; пока считает — своя надпись; не вышло — пометка в итоге", () => {
     const s = rd("ui/seating.jsx");
     expect(s).toContain('const boxes = Number(res.v) >= 2 && res.plan !== false ? seatBoxes(res) : [];');
-    expect(s).toContain('const seats = await tableCrops(r0, boxes).then((crops) => scanSeats(crops, opts)).catch(() => null);');
+    // v182: в картинках закрыты номера столов — tableCrops получает ещё и все столы ответа
+    expect(s).toMatch(/const seats = await tableCrops\(r0, boxes(, 224, seatMasks\(res\))?\)\.then\(\(crops\) => scanSeats\(crops, opts\)\)\.catch\(\(\) => null\);/);
     expect(s).toContain('if (seats) scan = mergeSeats(res, seats).scan;');
     expect(s).toContain('" Места посчитаны по общему плану: пересчитать у каждого стола не вышло."');
     expect(s).toContain('setNote(scanSummary(out) + seatsNote);');
     expect(s).toContain('scanStage={scanStage}');
-    expect(rd("lib/floor-photo.js")).toContain("export async function tableCrops(rec, boxes, side = 224) {");
+    expect(rd("lib/floor-photo.js")).toMatch(/export async function tableCrops\(rec, boxes, side = 224(, masks = \[\])?\) \{/);   // v182: и столы, чьи номера закрыть
   });
   it("карточка фото: «Считаю стулья у каждого стола» во втором проходе", async () => {
     const { PhotoCard } = await import("../ui/floor-tools.jsx");
@@ -160,7 +161,7 @@ describe("v181 · функция floor-scan версии 2: стулья у ка
   it("картинки по порядку с подписями, подсказка про стол в центре; ответ — числа или null по числу картинок; в лимит не идёт", async () => {
     NET.replies.push('```json\n{"seats":[4, "6", null, 30]}\n```');
     const r = await call({ mode: "seats", crops: [CROP, CROP, CROP] });
-    expect(r).toEqual({ status: 200, ok: true, v: 2, mode: "seats", seats: [4, 6, null], model: "anthropic/claude-haiku-5.5" });
+    expect(r).toEqual({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, mode: "seats", seats: [4, 6, null], model: "anthropic/claude-haiku-5.5" });   // v182: версия 3
     const b = NET.bodies[0];
     expect(b.messages[0].content).toBe(fn.SEATS_SYSTEM);
     const parts = b.messages[1].content;
@@ -183,7 +184,7 @@ describe("v181 · функция floor-scan версии 2: стулья у ка
     expect(await call({ mode: "seats", crops: [CROP] })).toMatchObject({ status: 401, error: "auth" });
   });
   it("первый проход: версия 2, стулья считаются по сторонам стола", async () => {
-    expect(fn.FLOOR_SCAN_V).toBe(2);
+    expect(fn.FLOOR_SCAN_V).toBeGreaterThanOrEqual(2);   // v182: 3
     expect(fn.SCAN_SYSTEM).toContain("посчитай стулья у стола по сторонам (сверху, справа, снизу, слева) и сложи");
     expect(fn.cleanSeats({ seats: [1, 20, 21, 0, "3"] }, 6)).toEqual([1, 20, null, null, 3, null]);
   });

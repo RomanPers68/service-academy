@@ -184,7 +184,7 @@ describe("v186 · доска смены", () => {
     expect(s).toContain("const wIdx = React.useMemo(() => waiterColorIndex(st.staff || [], shiftMap, ok ? st.tables : []), [st, shiftMap]);");
     expect(s).toContain('const wPal = WAITER_COLORS[a11y ? "light" : "dark"];');
     expect(s).toContain("const wOn = wsel && !party && team.busy.some((x) => x.id === wsel) ? wsel : null;");
-    expect(s).toContain("hi={party ? hi : hiW}");
+    expect(s).toContain("party ? hi : hiW}");   // v187: перед этим — выбор стола на схеме (pick ? pickHi : …)
     expect(s).toContain("wcolor={wcolor}");
     expect(s).toContain('data-party={n} onClick={() => { vibrate("light"); setWsel(null); setParty(party === n ? 0 : n); }}');
     expect(s).toContain('data-waiter-row={x.id} aria-pressed={on} onClick={() => { vibrate("light"); setParty(0); setWsel(on ? null : x.id); }}');

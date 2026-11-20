@@ -30,12 +30,14 @@ import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boar
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
   kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides, takeNumbers, crossDupes, dropDupes, isCrossDup,
-  sitProgress, WAITER_COLORS, waiterColorIndex, waiterTids, SIT_NORM, SIT_WARN } from "../lib/seating";
+  sitProgress, WAITER_COLORS, waiterColorIndex, waiterTids, SIT_NORM, SIT_WARN,
+  mainOf, joinedOf, groupOf, groupLabel, groupSeats, groupFill, isFreeT, freeNear, joinSuggest, mergeRows, seat2Error, guestsWord } from "../lib/seating";
 import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
 import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides, TakeNumbers, DropDupes } from "./floor-tools";
 import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeatsFull, mergeSeats, takeHint, takeSummary, dropLabel, dropHint, dropSummary } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
+import { PickBanner, JoinChips, SheetMore, WaitList } from "./seat-more";   // v187: объединить, пересадить, лист ожидания
 
 const POLL_MS = 15000;
 const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; };
@@ -148,6 +150,23 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
   };
   const cancel = () => { drag.current = null; setGhost(null); };
   const cellsOn = edit && (tool === "table" || tool === "bar" || tool === "door");
+  // v187: компания за несколькими столами — перемычка от главного к приставленным (под столами; только на доске)
+  // перемычка — между столешницами (поверх стульев, которые между ними), как у сдвинутых столов; по диагонали — от угла к углу
+  const links = edit ? [] : ts.flatMap((t) => joinedOf(map[t.id]).map((j) => [t, ts.find((q) => q.id === j && mainOf(map[q.id]) === t.id)]).filter((x) => x[1]));
+  const topBox = (t) => {
+    const [a, b] = spanOf(t), pd = Math.max(1, cell * 0.03), gp = Math.max(1.5, cell * 0.07) * (t.shape === "rd" ? 0.6 : 1);
+    const g = tableGeom(t.shape, t.seats, a * cell - 2 * pd - 2 * gp, b * cell - 2 * pd - 2 * gp, t.sides), x0 = t.x * cell + pd + gp, y0 = t.y * cell + pd + gp, q = g.top;
+    return q.kind === "circle" ? { x0: x0 + q.cx - q.r, y0: y0 + q.cy - q.r, x1: x0 + q.cx + q.r, y1: y0 + q.cy + q.r } : { x0: x0 + q.x, y0: y0 + q.y, x1: x0 + q.x + q.w, y1: y0 + q.y + q.h };
+  };
+  const bridge = (a, b) => {
+    const A = topBox(a), Q = topBox(b), th = Math.max(4, cell * 0.2);
+    const oy = Math.min(A.y1, Q.y1) - Math.max(A.y0, Q.y0), ox = Math.min(A.x1, Q.x1) - Math.max(A.x0, Q.x0);
+    if (oy > 2) { const y = (Math.max(A.y0, Q.y0) + Math.min(A.y1, Q.y1)) / 2, [l, r] = A.x1 <= Q.x0 ? [A, Q] : [Q, A]; return { x1: l.x1 - 1, y1: y, x2: r.x0 + 1, y2: y, th: Math.min(th, oy * 0.6) }; }
+    if (ox > 2) { const x = (Math.max(A.x0, Q.x0) + Math.min(A.x1, Q.x1)) / 2, [u, d] = A.y1 <= Q.y0 ? [A, Q] : [Q, A]; return { x1: x, y1: u.y1 - 1, x2: x, y2: d.y0 + 1, th: Math.min(th, ox * 0.6) }; }
+    const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), ca = [(A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2], cq = [(Q.x0 + Q.x1) / 2, (Q.y0 + Q.y1) / 2];
+    return { x1: cl(cq[0], A.x0, A.x1), y1: cl(cq[1], A.y0, A.y1), x2: cl(ca[0], Q.x0, Q.x1), y2: cl(ca[1], Q.y0, Q.y1), th: th * 0.7 };
+  };
+  const byN = (id) => { const q = (plan && plan.tables || []).find((x) => x.id === id); return q ? String(q.n) : ""; };
   return (
     <div ref={ref} data-floor="" data-zone={z} style={{ position: "relative", width: "100%", maxWidth: 560, margin: "0 auto", height: rows * cell,
       backgroundImage: edit ? `radial-gradient(${c.line} 1.2px, transparent 1.3px)` : "none", backgroundSize: cell + "px " + cell + "px", backgroundPosition: (cell / 2) + "px " + (cell / 2) + "px" }}>
@@ -193,7 +212,9 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         const gap = Math.max(1.5, cell * 0.07) * (t.shape === "rd" ? 0.6 : 1), aw = W - 2 * gap, ah = H - 2 * gap;
         // v183: свои стулья по сторонам и диваны (sides), если расставлены вручную
         const g = tableGeom(t.shape, t.seats, aw, ah, t.sides), lb0 = labelBox(g), lb = { ...lb0, x: lb0.x + gap, y: lb0.y + gap };
-        const sub = tableSub(t, r, now);
+        // v187: приставленный стол — «к 3»; гости компании садятся по местам: главный, потом приставленные
+        const mainN = !edit && mainOf(r) ? byN(mainOf(r)) : "", grouped = !edit && (mainN || joinedOf(r).length);
+        const sub = tableSub(t, r, now, mainN);
         // подпись влезает в стол: длинную — мельче; «уборка» на маленьком столе — значком-веником (пунктир и легенда рядом)
         const avail = lb.w - 2, fsN = Math.max(10.5, Math.min(lb.h * 0.5, cell * 0.32));
         const fs0 = Math.max(7.5, Math.min(lb.h * 0.36, cell * 0.21)), need = sub.length * 0.58 * fs0;
@@ -202,18 +223,20 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         const dim = edit && tool !== "table";
         const top = r.status === "free" ? (fb ? c.topSolid : c.top) : s.bg;
         // v186: время за столом — полоской по контуру; официант — рамкой своего цвета (только на доске смены)
-        const sit = edit ? null : sitProgress(r, now);
+        const sit = edit || mainN ? null : sitProgress(r, now);
         const mark = !edit && wcolor && isBusy(r) && r.waiter_id ? wcolor(r.waiter_id) : null;
         return (
           <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} tabIndex={dim ? -1 : undefined} className={canDrag ? "sa-drag" : undefined}
             onClick={() => { if (skipClick.current) { skipClick.current = false; return; } if (!dim && onTable) onTable(t); }}
             onPointerDown={canDrag ? down(t) : undefined} onPointerMove={canDrag ? move : undefined} onPointerUp={canDrag ? up : undefined} onPointerCancel={canDrag ? cancel : undefined}
-            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")
-              + (sit ? ", сидят " + sinceLabel(sit.min) : "") + (isBusy(r) && r.waiter_name ? ", официант " + shortName(r.waiter_name) : "")}
+            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + (mainN ? "приставлен к столу " + mainN + ", " + STATUS[r.status].toLowerCase()
+              : STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")
+              + (sit ? ", сидят " + sinceLabel(sit.min) : "") + (isBusy(r) && r.waiter_name ? ", официант " + shortName(r.waiter_name) : "")
+              + (grouped ? ", вместе со " + (joinedOf(r).length === 1 ? "столом " : "столами ") + joinedOf(r).map(byN).join(", ") : ""))}
             style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.2), color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, fontFamily: "Georgia, serif", lineHeight: 1.05,
               opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
-            <TableArt g={g} W={aw} H={ah} at={gap} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
+            <TableArt g={g} W={aw} H={ah} at={gap} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={grouped ? groupFill(plan, map, t.id)[t.id] || 0 : filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
               ring={isSel ? c.selRing : on ? c.gold : null} glow={on ? c.glow : null}
               progress={sit ? { p: sit.p, level: sit.level, color: sit.level === 2 ? c.late : sit.level === 1 ? c.warn : c.fresh, casing: c.casing } : null} mark={mark} />
             <span style={{ position: "absolute", left: lb.x, top: lb.y, width: lb.w, height: lb.h, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -227,6 +250,13 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
             </span>
           </button>);
       })}
+      {links.length ? (
+        <svg data-links="" width={w} height={rows * cell} style={{ position: "absolute", left: 0, top: 0, overflow: "visible", pointerEvents: "none" }} aria-hidden="true" focusable="false">
+          {links.map(([a, b]) => {
+            const k = bridge(a, b), s = c.st[stateOf(map, a.id).status] || c.st.free;
+            return <line key={a.id + ":" + b.id} data-link={a.id + ":" + b.id} x1={k.x1} y1={k.y1} x2={k.x2} y2={k.y2} stroke={s.bd} strokeWidth={k.th} strokeLinecap="butt" opacity={0.8} />;
+          })}
+        </svg>) : null}
       {ghost ? <div data-drag-ghost={ghost.ok ? "ok" : "no"} aria-hidden="true" style={{ position: "absolute", left: ghost.x * cell + 2, top: ghost.y * cell + 2, width: spanOf(ghost.t)[0] * cell - 4, height: spanOf(ghost.t)[1] * cell - 4,
         boxSizing: "border-box", borderRadius: ghost.t.shape === "rd" ? "50%" : Math.max(4, cell * 0.16), border: `2px dashed ${ghost.ok ? c.gold : c.red}`, background: ghost.ok ? "rgba(210,168,90,0.12)" : "rgba(224,138,122,0.12)", pointerEvents: "none" }} /> : null}
       {edit && tool === "wall" && onNode ? Array.from({ length: (GRID_W + 1) * (rows + 1) }, (_, i) => {
@@ -241,9 +271,11 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
 }
 
 // ── Карточка стола ──────────────────────────────────────────────────────────────
-export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose, wcolor = null }) {
+export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose, wcolor = null,
+  seat2 = false, group = [], joinWith = null, fromWait = null, cnt0 = 0, onMove, onJoin, onUnjoin }) {
   const [st, setSt] = React.useState(NEXT[row.status] || "seat");
-  const [cnt, setCnt] = React.useState(() => defaultCnt(t, row, party));
+  // v187: сколько гостей — из листа ожидания или под объединённые столы (не урезаем до мест одного стола)
+  const [cnt, setCnt] = React.useState(() => (cnt0 > 0 ? Math.min(40, cnt0) : defaultCnt(t, row, party)));
   const [name, setName] = React.useState(row.name || "");
   const [rtime, setRtime] = React.useState(row.rtime || "");
   const [waiter, setWaiter] = React.useState(row.waiter_id || "");
@@ -268,6 +300,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
       .then((ok) => { setBusy(false); if (ok !== true) setErr(ok === "need36" ? "Статус «Счёт» появится, когда на сервер добавят этап 36." : "Не сохранилось. Проверь связь."); });
   };
   const min = isBusy(row) ? minutesSince(row.since, now) : 0;
+  const seatsW = (ts) => { const n = ts.reduce((a, q) => a + (Number(q.seats) || 0), 0); return n + " " + pl(n, "место", "места", "мест"); };
   return portal(
     <div className="sa-layer" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: a11y ? "rgba(70,52,24,0.35)" : "rgba(8,6,3,0.62)", display: "flex", alignItems: "flex-end", justifyContent: "center", fontFamily: "Georgia, serif" }}>
       <div data-table-sheet={t.id} role="dialog" aria-modal="true" aria-label={"Стол " + t.n} onClick={(e) => e.stopPropagation()}
@@ -280,6 +313,12 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
           </div>
           <button type="button" data-sa-back="" aria-label="Закрыть" onClick={onClose} style={{ border: 0, background: "none", color: c.sub, fontSize: 26, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
+        {group.length || (joinWith && joinWith.length) || fromWait ? (
+          <div data-sheet-note="" style={{ fontSize: 13, color: c.gold, margin: "2px 0 4px", lineHeight: 1.45 }}>
+            {fromWait ? "Из листа ожидания: " + ((fromWait.name || "").trim() || "без имени") + ", " + guestsWord(Number(fromWait.cnt) || 0) + ". " : ""}
+            {joinWith && joinWith.length ? "Посадим за столы " + [t, ...joinWith].map((q) => q.n).join(" и ") + ": всего " + seatsW([t, ...joinWith]) + ". Столы приставим."
+              : group.length ? "Вместе " + (group.length === 1 ? "со столом " : "со столами ") + group.map((q) => q.n).join(", ") + ": всего " + seatsW([t, ...group]) + "." : ""}
+          </div>) : null}
         <div role="radiogroup" aria-label="Что со столом" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 14px" }}>
           {[["seat", "Гости"], ["bill", "Счёт"], ["clean", "Уборка"], ["free", "Свободен"], ["res", "Бронь"]].map(([k, l]) => (
             <button key={k} type="button" role="radio" aria-checked={st === k} data-sheet-status={k} onClick={() => { vibrate("light"); setErr(""); setSt(k); }} data-lens-btn={st === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, st === k, a11y)}>{l}</button>))}
@@ -315,6 +354,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, marginBottom: 10 }}>{err}</div> : null}
         <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
           {busy ? "Сохраняю…" : st === "seat" ? (isBusy(row) ? "Сохранить" : "Посадить") : st === "bill" ? "Попросили счёт" : st === "res" ? (row.status === "res" ? "Сохранить бронь" : "Забронировать") : st === "clean" ? "На уборку" : "Освободить стол"}</button>
+        {seat2 && (isBusy(row) || row.status === "res") && onMove ? <SheetMore c={c} a11y={a11y} row={row} group={group} onMove={onMove} onJoin={onJoin} onUnjoin={onUnjoin} /> : null}
       </div>
     </div>
   );
@@ -716,6 +756,9 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const [sure, setSure] = React.useState(false);
   const [zone, setZone] = React.useState(() => { try { return localStorage.getItem("sa_seat_zone") || ""; } catch (e) { return ""; } });   // v88: зал на доске
   const [wsel, setWsel] = React.useState(null);   // v186: официант, чьи столы подсвечены
+  const [pick, setPick] = React.useState(null);   // v187: выбрать стол на схеме: { kind: "move" | "join" | "wait", tid, w }
+  const [pend, setPend] = React.useState(null);   // v187: карточка стола с продолжением: { main, with, cnt } или { wait, cnt }
+  const [waitForm, setWaitForm] = React.useState(false);
   const restaurant = (profile && profile.restaurant) || "";
   // v179: редактор спрашивает перед выходом без сохранения; «По фото плана» с пустой доски — сразу в редактор с фото
   const guard = React.useRef(null);
@@ -766,17 +809,97 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const wcolor = (id) => (id && id in wIdx ? wPal[wIdx[id] % wPal.length] : null);
   const wOn = wsel && !party && team.busy.some((x) => x.id === wsel) ? wsel : null;   // ушёл со столов — подсветки нет
   const hiW = wOn ? waiterTids(ok ? st.tables : [], wOn) : [];
+  // v187 (этап 56): объединить столы, пересадить гостей, лист ожидания
+  const seat2 = ok && st.seat2 === true;
+  const rows = ok ? st.tables || [] : [];
+  const waits = seat2 && Array.isArray(st.wait) ? st.wait : [];
+  React.useEffect(() => { if (!sel) setPend(null); }, [sel]);   // карточку закрыли — продолжение не нужно
   const selT = plan && sel ? (plan.tables || []).find((q) => q.id === sel) : null;
   const saveTable = (t, f) => rpc("seat_set", { p_token: saToken(), p_tid: t.id, p_status: f.status, p_cnt: f.cnt, p_name: f.name, p_rtime: f.rtime, p_waiter: f.waiter }).then((r) => {
     if (r && r.ok && r.table) {
       vibrate("success");
-      setSt((s) => ({ ...s, tables: [...(s.tables || []).filter((x) => x.tid !== t.id), r.table] }));
+      const p = pend;
+      setSt((s) => ({ ...s, tables: mergeRows(s.tables, r.tables || [r.table]) }));   // v187: и приставленные
       setSel(null); setParty(0);
       setMsg(f.status === "seat" ? "Стол " + t.n + ": посадили." : f.status === "bill" ? "Стол " + t.n + ": попросили счёт." : f.status === "res" ? "Стол " + t.n + ": бронь на " + f.rtime + "." : f.status === "clean" ? "Стол " + t.n + ": на уборку." : "Стол " + t.n + " свободен.");
+      // v187: посадили за объединённые — приставить; из листа ожидания — отметить «посадили»
+      if (p && p.main === t.id && p.with && p.with.length && (f.status === "seat" || f.status === "res")) doJoin(t.id, p.with, "Стол " + t.n + ": " + (f.status === "res" ? "бронь на " + f.rtime : "посадили") + ". ");
+      if (p && p.wait && f.status === "seat") {
+        rpc("wait_done", { p_token: saToken(), p_id: p.wait.id, p_how: "seat", p_tid: t.id })
+          .then((x) => { if (x && (x.ok || x.error === "not_found")) setSt((s) => ({ ...s, wait: (s.wait || []).filter((w) => w.id !== p.wait.id) })); }).catch(() => {});
+      }
       return true;
     }
     return r && r.error === "bad_request" && f.status === "bill" ? "need36" : false;   // этап 35 без 36 «Счёт» не знает
   }).catch(() => false);
+  // v187: пересадить, приставить, отделить; выбор стола на схеме
+  const apply = (r) => setSt((s) => ({ ...s, tables: mergeRows(s.tables, r.tables || (r.table ? [r.table] : [])) }));
+  const tnum = (id) => tById(id).n;
+  const listN = (ids) => ids.map(tnum).join(", ");
+  const failed = (r) => { vibrate("error"); setMsg(seat2Error(r, tnum)); if (r && (r.error === "not_busy" || r.error === "busy" || r.error === "joined")) load(); };
+  const offline = () => setMsg("Не сохранилось. Проверь связь.");
+  const doMove = (from, to) => {
+    const g = groupOf(map, from), wasRes = stateOf(map, g[0]).status === "res";
+    return rpc("seat_move", { p_token: saToken(), p_from: from, p_to: to }).then((r) => {
+      if (!r || !r.ok) { failed(r); return; }
+      vibrate("success"); apply(r); setPick(null);
+      setMsg(wasRes ? "Бронь " + (g.length > 1 ? "со столов " : "со стола ") + listN(g) + " перенесли на стол " + tnum(to) + "."
+        : "Гостей " + (g.length > 1 ? "со столов " : "со стола ") + listN(g) + " пересадили за стол " + tnum(to) + ". " + (g.length > 1 ? "Столы " + listN(g) + " на уборке." : "Стол " + listN(g) + " на уборке."));
+    }).catch(offline);
+  };
+  const doJoin = (main, ids, pre = "") => rpc("seat_join", { p_token: saToken(), p_tid: main, p_with: ids }).then((r) => {
+    if (!r || !r.ok) { failed(r); return; }
+    vibrate("success"); apply(r); setPick(null);
+    const n = groupSeats(plan, boardMap(mergeRows(rows, r.tables)), main);
+    setMsg(pre + (ids.length === 1 ? "Стол " + tnum(ids[0]) : "Столы " + listN(ids)) + " приставили к столу " + tnum(main) + ": вместе " + n + " " + pl(n, "место", "места", "мест") + ".");
+  }).catch(offline);
+  const doUnjoin = (tid) => {
+    const wasBusy = isBusy(stateOf(map, tid));
+    return rpc("seat_unjoin", { p_token: saToken(), p_tid: tid }).then((r) => {
+      if (!r || !r.ok) { failed(r); return; }
+      vibrate("success"); apply(r); setMsg("Стол " + tnum(tid) + " отделили, " + (wasBusy ? "он на уборке." : "он свободен."));
+    }).catch(offline);
+  };
+  const pickT = (t) => {
+    if (pick.tid && groupOf(map, pick.tid).includes(t.id)) { setMsg("Это стол той же компании. Выбери другой."); return; }
+    if (!isFreeT(map, t.id)) { setMsg("Стол " + t.n + " занят. Выбери свободный."); return; }
+    if (pick.kind === "move") { doMove(pick.tid, t.id); return; }
+    if (pick.kind === "join") {
+      if (zoneOfX(plan, t) !== zoneOfX(plan, tById(pick.tid))) { setMsg("Приставить можно стол того же зала."); return; }
+      doJoin(pick.tid, [t.id]); return;
+    }
+    // из листа ожидания — карточка стола: сколько гостей, официант
+    setPend({ wait: pick.w, cnt: Number(pick.w.cnt) || 2 }); setPick(null); setSel(t.id);
+  };
+  const onTable = (t) => {
+    vibrate("light"); setMsg("");
+    if (pick) { pickT(t); return; }
+    const r = stateOf(map, t.id);
+    setSel(r.main && map[r.main] ? r.main : t.id);   // приставленный — карточка главного
+  };
+  const pickHi = !pick ? [] : pick.kind === "join" ? freeNear(plan, rows, pick.tid)
+    : pick.kind === "wait" ? suggest(plan, rows, Number(pick.w.cnt) || 1)
+    : zoneTables(plan, z).filter((q) => isFreeT(map, q.id) && !groupOf(map, pick.tid).includes(q.id)).map((q) => q.id);
+  const who = (w) => ((w && w.name) || "").trim() || "без имени";
+  const pickText = !pick ? "" : pick.kind === "wait"
+    ? "Куда посадить: " + who(pick.w) + ", " + guestsWord(Number(pick.w.cnt) || 0) + "? " + (pickHi.length ? "Подходящие столы подсвечены." : "Подходящих свободных нет, можно выбрать любой свободный.")
+    : pick.kind === "join" ? "Какой стол приставить к столу " + tnum(pick.tid) + "? " + (pickHi.length ? "Свободные рядом подсвечены." : "Рядом свободных нет, можно выбрать любой свободный в этом зале.")
+    : (stateOf(map, pick.tid).status === "res" ? "Куда перенести бронь со стола " : "Куда пересадить гостей со стола ") + groupLabel(plan, map, pick.tid) + "? Нажми на свободный стол" + (multi ? ", можно в другом зале." : ".");
+  // одного стола на компанию нет — какие соседние можно объединить
+  const joins = seat2 && party && !hi.length ? joinSuggest(plan, rows, party, z) : [];
+  const pickJoin = (j) => { if (j.z !== z) pickZone(j.z); setMsg(""); setPend({ main: j.main, with: j.with, cnt: party }); setSel(j.main); };
+  // лист ожидания
+  const addWait = (x) => rpc("wait_add", { p_token: saToken(), p_name: x.name, p_cnt: x.cnt, p_note: x.note }).then((r) => {
+    if (!r || !r.ok || !r.item) return seat2Error(r);
+    vibrate("success"); setSt((s) => ({ ...s, wait: [...(s.wait || []), r.item] })); setWaitForm(false);
+    setMsg("Записали в лист ожидания: " + who(x) + ", " + guestsWord(x.cnt) + ".");
+    return true;
+  }).catch(() => "Не сохранилось. Проверь связь.");
+  const leftWait = (w) => rpc("wait_done", { p_token: saToken(), p_id: w.id, p_how: "left", p_tid: null }).then((r) => {
+    if (!r || !(r.ok || r.error === "not_found")) { setMsg(seat2Error(r)); return; }
+    setSt((s) => ({ ...s, wait: (s.wait || []).filter((q) => q.id !== w.id) })); setMsg("Убрали из листа: " + who(w) + ", ушли.");
+  }).catch(offline);
+  const seatWait = (w) => { setParty(0); setWsel(null); setSel(null); setMsg(""); setPick({ kind: "wait", w }); };
   // «Очистить доску»: второе нажатие в течение 4 секунд, потом кнопка снова обычная
   React.useEffect(() => { if (!sure) return undefined; const t = setTimeout(() => setSure(false), 4000); return () => clearTimeout(t); }, [sure]);
   const clear = () => {
@@ -828,7 +951,9 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               {sum.bill ? <><span>·</span><span>Счёт <b style={{ color: c.text }}>{sum.bill}</b></span></> : null}
               {sum.res ? <><span>·</span><span>Брони <b style={{ color: c.text }}>{sum.res}</b></span></> : null}
               {sum.clean ? <><span>·</span><span>Уборка <b style={{ color: c.text }}>{sum.clean}</b></span></> : null}
+              {waits.length ? <><span>·</span><span data-wait-sum="">Ждут <b style={{ color: c.text }}>{waits.length}</b></span></> : null}
             </div>
+            {pick ? <PickBanner c={c} text={pickText} onCancel={() => { setPick(null); setMsg(""); }} /> : <>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }} role="group" aria-label="Посадить компанию">
               <span style={{ ...labelStyle(13), color: c.gold }}>Посадить:</span>
               {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setWsel(null); setParty(party === n ? 0 : n); }} data-lens-btn={party === n ? "tab" : "soft"} data-lens-ink="" style={chip(c, party === n, a11y)}>{l}</button>)}
@@ -836,8 +961,10 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
             {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length || soon.length ? c.text : c.red, margin: "0 2px 10px", lineHeight: 1.45 }}>
               {suggestLine(hi, tn0, multi ? (id) => zoneOfX(plan, tById(id)) : null, z, zName)}
               {soon.length ? <span data-soon=""> Скоро освободится: {soon.map(tn).join(", ")} (попросили счёт).</span> : null}</div> : null}
+            <JoinChips c={c} a11y={a11y} list={joins} zName={multi ? zName : null} here={z} onPick={pickJoin} />
+            </>}
             <div data-lens-card="" style={{ ...c.frost, padding: 10 }}>
-              <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={party ? hi : hiW} sel={sel} wcolor={wcolor} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
+              <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={pick ? pickHi : party ? hi : hiW} sel={sel} wcolor={wcolor} onTable={onTable} />
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 12, color: c.sub }}>
               {["free", "res", "seat", "bill", "clean"].map((k) => <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -845,6 +972,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
             </div>
             {sum.seat || sum.bill ? <div data-board-hint="" style={{ fontSize: 12, color: c.sub, margin: "6px 2px 0", lineHeight: 1.45 }}>
               Полоска по краю стола: сколько сидят гости, через час она <span style={{ color: c.warn }}>жёлтая</span>, через полтора <span style={{ color: c.late }}>красная</span>. Рамка вокруг стола цветом официанта.</div> : null}
+            {seat2 ? <WaitList c={c} a11y={a11y} plan={plan} rows={rows} waits={waits} now={now} form={waitForm} onForm={setWaitForm} onAdd={addWait} onSeat={seatWait} onLeft={leftWait} /> : null}
             {team.busy.length || team.idle.length ? <div data-waiters="" style={{ marginTop: 16 }}>
               <div style={{ ...labelStyle(15), color: c.gold, margin: "0 2px 6px" }}>Официанты</div>
               <div data-lens-card="" style={{ ...c.frost, padding: "10px 14px", fontSize: 13.5, color: c.sub, lineHeight: 1.6 }}>
@@ -871,11 +999,16 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
               <button type="button" data-floor-edit="" onClick={() => openEditor(null)} style={{ border: 0, background: "none", color: c.gold, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer", padding: "4px 2px" }}>Схема зала ›</button>
               <button type="button" data-seat-clear="" onClick={clear} style={{ border: 0, background: "none", color: sure ? c.red : c.sub, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer", padding: "4px 2px" }}>{sure ? "Все столы станут свободными. Нажми ещё раз" : "Очистить доску"}</button>
             </div> : null}
+            {st.lead && !seat2 ? <div data-seat2-hint="" style={{ fontSize: 12, color: c.sub, margin: "8px 2px 0", lineHeight: 1.45 }}>
+              Объединять столы, пересаживать гостей и вести лист ожидания можно будет, когда на сервер добавят этап 56 (supabase-stage56-join-move-wait.sql).</div> : null}
             <LineArt kind="table" color={c.gold} size={130} style={{ margin: "30px auto 0", opacity: 0.35 }} />
           </>}
         </> : null}
       </div>
       {selT ? <TableSheet key={selT.id} c={c} a11y={a11y} t={selT} zoneName={multi ? zName(zoneOfX(plan, selT)) : ""} row={stateOf(map, selT.id)} staff={st.staff || []} shiftMap={shiftMap} load={team.count} party={party}
+        seat2={seat2} group={groupOf(map, selT.id).slice(1).map(tById).filter((q) => q.id)} joinWith={pend && pend.main === selT.id && pend.with ? pend.with.map(tById).filter((q) => q.id) : null}
+        fromWait={pend && pend.wait ? pend.wait : null} cnt0={pend ? pend.cnt || 0 : 0} onUnjoin={doUnjoin}
+        onMove={() => { setSel(null); setPick({ kind: "move", tid: selT.id }); }} onJoin={() => { setSel(null); setPick({ kind: "join", tid: selT.id }); }}
         now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} /> : null}
     </div>
   );

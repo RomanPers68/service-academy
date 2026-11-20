@@ -127,7 +127,7 @@ describe("v167 · 1: этап 53 на сервере (supabase-stage53-ref-book.
     expect(read).toContain("'same', true");
   });
   it("этап есть в списке владельца («Сервер») и в памятке", () => {
-    expect(STAGES[STAGES.length - 1]).toEqual({ n: "53", file: "supabase-stage53-ref-book.sql", what: "Редактор справочника", fn: "ref_book" });
+    expect(STAGES.find((x) => x.n === "53")).toEqual({ n: "53", file: "supabase-stage53-ref-book.sql", what: "Редактор справочника", fn: "ref_book" });   // v180: последний — 54
     const rm = rd("supabase/README.md");
     expect(rm).toContain("| 62 | `supabase-stage53-ref-book.sql` | **Редактор справочника** (v167)");
     expect(rm).toContain("### Этап 53 (v167) — редактор справочника");

@@ -7,6 +7,7 @@
 //   • StartCard — пустой зал: «Быстрее всего по фото»;
 //   • PhotoCard — фото под сеткой: насколько видно, «Расставить столы по фото» (ИИ), повернуть, другое фото, убрать;
 //   • CopyBtn — «Ещё такой» в карточке стола, RenumberBtn — «Пронумеровать по порядку».
+// v180 (Доп. 505): в палитре и длинные вертикально (сервер с этапом 54), TurnBtn — «Повернуть» длинный стол.
 // Схема и экран — ui/seating.jsx, расчёт — lib/seating.js и lib/floor-scan.js, фото на телефоне — lib/floor-photo.js.
 import React from "react";
 import { labelStyle } from "./tokens";
@@ -19,7 +20,7 @@ const chip = (c, on, a11y) => ({ padding: "7px 12px", borderRadius: 999, border:
 const btn = (c, main) => ({ padding: "12px 14px", borderRadius: 16, fontFamily: "Georgia, serif", fontSize: 15, cursor: "pointer",
   ...(main ? { border: 0, background: c.gold, color: "#1A1008", fontWeight: "bold" } : { border: `1px solid ${c.gold}`, background: "transparent", color: c.text }) });
 const link = (color) => ({ border: 0, background: "none", color, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", padding: "4px 2px" });
-const SHAPE_WORD = { sq: "Квадратный", rd: "Круглый", long: "Длинный" };
+const SHAPE_WORD = { sq: "Квадратный", rd: "Круглый", long: "Длинный", tall: "Длинный вертикальный" };
 export const kindLabel = (q) => SHAPE_WORD[q.shape] + " на " + q.seats + " " + pl(q.seats, "место", "места", "мест");
 
 const Svg = ({ s, color, children }) => (
@@ -28,11 +29,11 @@ export const CameraIcon = ({ s = 18, color }) => <Svg s={s} color={color}><path 
 export const UndoIcon = ({ s = 16, color }) => <Svg s={s} color={color}><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></Svg>;
 const RotateIcon = ({ s = 15, color }) => <Svg s={s} color={color}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></Svg>;
 
-/** Какой стол ставить: значок стола со стульями и сколько мест */
-export function KindPalette({ c, a11y, kind, onKind }) {
+/** Какой стол ставить: значок стола со стульями и сколько мест; tall — и вертикальные длинные (сервер с этапом 54) */
+export function KindPalette({ c, a11y, kind, tall = false, onKind }) {
   return (
-    <div data-kinds="" role="radiogroup" aria-label="Какой стол ставить" style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
-      {TABLE_KINDS.map((q) => {
+    <div data-kinds="" role="radiogroup" aria-label="Какой стол ставить" style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+      {TABLE_KINDS.filter((q) => tall || q.shape !== "tall").map((q) => {
         const on = kind === q.k;
         return (
           <button key={q.k} type="button" role="radio" aria-checked={on} aria-label={kindLabel(q)} data-kind={q.k} onClick={() => onKind(q.k)}
@@ -130,6 +131,11 @@ export function PhotoCard({ c, a11y, rec, scanBusy, ask, nTables, onOp, onScan, 
 /** «Ещё такой»: копия выбранного стола рядом */
 export const CopyBtn = ({ c, onClick }) => (
   <button type="button" data-edit-copy="" onClick={onClick} style={link(c.gold)}>Ещё такой</button>);
+
+/** v180: «Повернуть» длинный стол — горизонтальный ↔ вертикальный */
+export const TurnBtn = ({ c, onClick }) => (
+  <button type="button" data-edit-turn="" onClick={onClick} style={{ ...link(c.gold), display: "inline-flex", alignItems: "center", gap: 5 }}>
+    <RotateIcon color={c.gold} />Повернуть</button>);
 
 /** «Пронумеровать по порядку»: второе нажатие в течение 4 секунд */
 export const RenumberBtn = ({ c, sure, onClick }) => (

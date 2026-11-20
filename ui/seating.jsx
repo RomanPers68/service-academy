@@ -14,6 +14,8 @@
 // гостей (ui/table-art.jsx). Редактор: вид стола (на 2–8 мест, квадрат, круг, длинный) и нажатия по клеткам, «Ещё такой»,
 // «Шаг назад», «Пронумеровать по порядку», переспрос при выходе без сохранения; фото плана под сеткой и «Расставить
 // столы по фото» — ИИ, функция floor-scan (ui/floor-tools.jsx, lib/floor-scan.js, lib/floor-photo.js).
+// v180 (Доп. 505): длинный стол и вертикально (этап 54, seat_board отдаёт tall: true): в выборе вида, «Повернуть» у
+// длинного стола, ИИ ставит вертикальные столы с плана вертикально.
 import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { createPortal } from "react-dom";
@@ -25,10 +27,10 @@ import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
-  kindOf, copyTable, renumber, canRenumber } from "../lib/seating";
+  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable } from "../lib/seating";
 import { tableGeom, filledChairs } from "../lib/floor-art";   // v179
 import { TableArt, labelBox } from "./table-art";
-import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon } from "./floor-tools";
+import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn } from "./floor-tools";
 import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage } from "../lib/floor-photo";
 
@@ -115,8 +117,8 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
   const canDrag = edit && tool === "table" && !!onDrop;
   const down = (t) => (e) => {
     if (!canDrag || (e.button != null && e.button > 0)) return;
-    const [cx] = cellAt(e);
-    drag.current = { t, dx: Math.max(0, Math.min(cx - t.x, t.shape === "long" ? 1 : 0)), sx: e.clientX, sy: e.clientY, moved: false };
+    const [cx, cy] = cellAt(e);
+    drag.current = { t, dx: Math.max(0, Math.min(cx - t.x, t.shape === "long" ? 1 : 0)), dy: Math.max(0, Math.min(cy - t.y, t.shape === "tall" ? 1 : 0)), sx: e.clientX, sy: e.clientY, moved: false };
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_e) { /* */ }
   };
   const move = (e) => {
@@ -124,7 +126,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
     if (!d) return;
     if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 8) return;
     d.moved = true;
-    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy;
+    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy - d.dy;
     setGhost((g) => (g && g.x === x && g.y === y ? g : { t: d.t, x, y, ok: fits(plan, d.t, x, y) }));
   };
   const up = (e) => {
@@ -133,7 +135,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
     setGhost(null);
     if (!d || !d.moved) return;
     skipClick.current = true; setTimeout(() => { skipClick.current = false; }, 450);
-    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy;
+    const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy - d.dy;
     if (x !== d.t.x || y !== d.t.y) onDrop(d.t, x, y);
   };
   const cancel = () => { drag.current = null; setGhost(null); };
@@ -174,9 +176,9 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
             </g>))}
         </svg>) : null}
       {ts.map((t) => {
-        const r = stateOf(map, t.id), s = c.st[r.status] || c.st.free, wide = t.shape === "long" ? 2 : 1;
+        const r = stateOf(map, t.id), s = c.st[r.status] || c.st.free, [wide, high] = spanOf(t);
         const pad = Math.max(1, cell * 0.03), on = hi.includes(t.id), isSel = sel === t.id;
-        const W = wide * cell - 2 * pad, H = cell - 2 * pad;
+        const W = wide * cell - 2 * pad, H = high * cell - 2 * pad;
         // v179: стол сверху — столешница и стулья; номер и подпись — на столешнице
         const g = tableGeom(t.shape, t.seats, W, H), lb = labelBox(g);
         const sub = tableSub(t, r, now);
@@ -208,7 +210,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
             </span>
           </button>);
       })}
-      {ghost ? <div data-drag-ghost={ghost.ok ? "ok" : "no"} aria-hidden="true" style={{ position: "absolute", left: ghost.x * cell + 2, top: ghost.y * cell + 2, width: (ghost.t.shape === "long" ? 2 : 1) * cell - 4, height: cell - 4,
+      {ghost ? <div data-drag-ghost={ghost.ok ? "ok" : "no"} aria-hidden="true" style={{ position: "absolute", left: ghost.x * cell + 2, top: ghost.y * cell + 2, width: spanOf(ghost.t)[0] * cell - 4, height: spanOf(ghost.t)[1] * cell - 4,
         boxSizing: "border-box", borderRadius: ghost.t.shape === "rd" ? "50%" : Math.max(4, cell * 0.16), border: `2px dashed ${ghost.ok ? c.gold : c.red}`, background: ghost.ok ? "rgba(210,168,90,0.12)" : "rgba(224,138,122,0.12)", pointerEvents: "none" }} /> : null}
       {edit && tool === "wall" && onNode ? Array.from({ length: (GRID_W + 1) * (rows + 1) }, (_, i) => {
         const x = i % (GRID_W + 1), y = Math.floor(i / (GRID_W + 1)), p = pend && pend.x === x && pend.y === y, hit = Math.min(30, cell * 0.7);
@@ -309,7 +311,7 @@ const TOOL_HINT = {
   bar: "Нажми на клетку, где бар начинается, потом на клетку, где он кончается.",
   door: "Нажми на клетку, где вход.",
 };
-function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel }) {
+function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel }) {
   const [plan, setPlan] = React.useState(() => plan0 || emptyPlan());
   const planRef = React.useRef(plan);
   planRef.current = plan;
@@ -364,10 +366,10 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
       return;
     }
     if (t && moving) { const p = moveTable(plan, t.id, x, y); if (p === plan) setErr("Сюда стол не встаёт"); else { vibrate("light"); commit(p); setMoving(false); } return; }
-    const p = addTable(plan, x, y, z, kindOf(kind));
+    const kd = kindOf(kind, tall), p = addTable(plan, x, y, z, kd);
     if (p !== plan) { vibrate("light"); commit(p); setSelItem(null); setSel(p.tables[p.tables.length - 1].id); }
     else if ((plan.tables || []).length >= MAX_TABLES) setErr("Столов не больше " + MAX_TABLES);
-    else if (kindOf(kind).shape === "long") setErr("Длинному столу нужны две свободные клетки рядом.");
+    else if (kd.shape === "long" || kd.shape === "tall") setErr("Длинному столу нужны две свободные клетки рядом.");
   };
   const node = (x, y) => {
     setErr("");
@@ -385,6 +387,19 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
     const r = copyTable(planRef.current, t.id);
     if (!r) { setErr((planRef.current.tables || []).length >= MAX_TABLES ? "Столов не больше " + MAX_TABLES : "Рядом нет места для такого стола."); return; }
     vibrate("light"); setErr(""); commit(r.plan); setSel(r.id); setMoving(false);
+  };
+  // v180: «Повернуть» длинный стол — горизонтальный ↔ вертикальный
+  const turn = () => {
+    const p = rotateTable(planRef.current, t.id);
+    if (p === planRef.current) { setErr("Повернуть некуда: рядом занято."); return; }
+    vibrate("light"); setErr(""); commit(p);
+  };
+  // «Длинный» у квадратного или круглого стола: горизонтально, а не влезает — вертикально (если сервер знает такие)
+  const toLong = () => {
+    let p = updateTable(planRef.current, t.id, { shape: "long" });
+    if (p === planRef.current && tall) p = updateTable(planRef.current, t.id, { shape: "tall" });
+    if (p === planRef.current) { setErr(tall ? "Рядом нет места для длинного стола" : "Справа нет места для длинного стола"); return; }
+    setErr(""); commit(p);
   };
   const newZone = () => {
     const r = addZone(plan);
@@ -481,7 +496,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
       .then(({ res, ai }) => {
         if (!live.current) return;
         if (!res || res.ok !== true) { setErr(scanErrorText(res && res.error)); return; }
-        const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2 });
+        const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2, tall });
         if (out.notPlan) { setErr(scanErrorText("not_plan")); return; }
         if (out.empty || !out.added) { setErr(scanErrorText("empty")); return; }
         commit(out.plan);
@@ -506,6 +521,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
   const save = () => {
     const pr = planProblem(plan);
     if (pr) { setErr(pr); return; }
+    if (!tall && (plan.tables || []).some((q) => q.shape === "tall")) { setErr("Вертикальные длинные столы сохранятся, когда на сервер добавят этап 54 (supabase-stage54-tall-tables.sql)."); return; }
     const body = floor2 ? withZones(plan) : planV1(plan);
     if (!body) { setErr("Залы, стены, бар и вход сохранятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql)."); return; }
     setBusy(true); setErr(""); setSureLeave(false);
@@ -516,6 +532,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
       else if (r && r.error === "overlap") setErr("Стол стоит на баре или входе.");
       else if (r && r.error === "old_app") setErr("На сервере схема новее: обнови приложение.");
       else if (r && r.error === "forbidden") setErr("Схему меняет руководитель или старший.");
+      else if (r && r.error === "bad_plan") setErr("Сервер не принял схему. Обнови приложение; если не поможет, проверь этапы на сервере.");
       else if (rpcMissing(r)) setErr("На сервере ещё нет этапа 35 (supabase-stage35-seating.sql).");
       else setErr("Не сохранилось. Проверь связь.");
     }).catch(() => { setBusy(false); setErr("Нет связи. Схема останется здесь, сохранишь позже."); });
@@ -546,7 +563,8 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
           {TOOLS.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={tool === k} data-tool={k} onClick={() => pickTool(k)} data-lens-btn={tool === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, tool === k, a11y)}>{l}</button>)}
         </div>
       ) : <div data-need37="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.5, marginBottom: 8 }}>Залы, стены, бар и вход появятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql).</div>}
-      {tool === "table" ? <KindPalette c={c} a11y={a11y} kind={kind} onKind={pickKind} /> : null}
+      {tool === "table" ? <KindPalette c={c} a11y={a11y} kind={kindOf(kind, tall).k} tall={tall} onKind={pickKind} /> : null}
+      {tool === "table" && floor2 && !tall ? <div data-need54="" style={{ fontSize: 12, color: c.sub, lineHeight: 1.45, margin: "-4px 2px 10px" }}>Длинные столы вертикально появятся, когда на сервер добавят этап 54 (supabase-stage54-tall-tables.sql).</div> : null}
       {startCard ? null : <div data-editor-hint="" style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>{hint}</div>}
       <div data-lens-card="" style={{ ...c.frost, padding: 10, marginBottom: 12 }}>
         <Floor c={c} a11y={a11y} plan={plan} zone={z} map={{}} now={Date.now()} sel={sel} selItem={selItem} edit tool={tool} pend={pend} bg={rec}
@@ -583,10 +601,11 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, restaurant = "", photo0 =
             <button type="button" aria-label="Больше мест" data-seats-plus="" onClick={() => seats(1)} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }} role="group" aria-label="Форма">
-            {SHAPES.map(([k, l]) => <button key={k} type="button" data-edit-shape={k} onClick={() => { if (t.shape === k) return; const p = updateTable(plan, t.id, { shape: k }); if (p === plan && k === "long") setErr("Справа нет места для длинного стола"); else { setErr(""); commit(p); } }} data-lens-btn={t.shape === k ? "tab" : "soft"} data-lens-ink="" style={chip(c, t.shape === k, a11y)}>{l}</button>)}
+            {SHAPES.map(([k, l]) => <button key={k} type="button" data-edit-shape={k} onClick={() => { if (t.shape === k || (k === "long" && t.shape === "tall")) return; if (k === "long") { toLong(); return; } setErr(""); commit(updateTable(plan, t.id, { shape: k })); }} data-lens-btn={t.shape === k || (k === "long" && t.shape === "tall") ? "tab" : "soft"} data-lens-ink="" style={chip(c, t.shape === k || (k === "long" && t.shape === "tall"), a11y)}>{l}</button>)}
           </div>
           <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
             <CopyBtn c={c} onClick={copy} />
+            {tall && (t.shape === "long" || t.shape === "tall") ? <TurnBtn c={c} onClick={turn} /> : null}
             <span style={{ flex: 1 }} />
             <button type="button" data-edit-remove="" onClick={() => { vibrate("light"); commit(removeTable(planRef.current, t.id)); setSel(null); setMoving(false); }} style={{ border: 0, background: "none", color: c.red, fontFamily: "Georgia, serif", fontSize: 13.5, cursor: "pointer", padding: "4px 2px" }}>Убрать стол</button>
           </div>
@@ -709,7 +728,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         {st.status === "norest" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
         {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
           <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} data-lens-btn="soft" style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
-        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
+        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} tall={!!st.tall} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}

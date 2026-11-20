@@ -50,7 +50,8 @@ describe("v179 · версия и журнал", () => {
 
 describe("v179 · виды столов, «Ещё такой», нумерация (lib/seating.js)", () => {
   it("шесть видов: на 2, 4 (квадрат и круг), 6 (круг и длинный), 8 (длинный); по умолчанию — на 4, квадрат", () => {
-    expect(TABLE_KINDS.map((q) => q.k + ":" + q.seats + q.shape)).toEqual(["2sq:2sq", "4sq:4sq", "4rd:4rd", "6rd:6rd", "6long:6long", "8long:8long"]);
+    // v180 (Доп. 505): за ними — длинные вертикально (6tall, 8tall), только с этапом 54
+    expect(TABLE_KINDS.filter((q) => q.shape !== "tall").map((q) => q.k + ":" + q.seats + q.shape)).toEqual(["2sq:2sq", "4sq:4sq", "4rd:4rd", "6rd:6rd", "6long:6long", "8long:8long"]);
     expect(kindOf("").k).toBe("4sq");
     expect(kindOf("8long")).toEqual({ k: "8long", seats: 8, shape: "long" });
     expect(kindOf("zzz").k).toBe("4sq");
@@ -338,7 +339,7 @@ describe("v179 · экран: стол со стульями, редактор, 
     const pal = R(h(KindPalette, { c, a11y: false, kind: "6rd", onKind() {} }));
     expect((pal.match(/data-kind="/g) || []).length).toBe(6);
     expect(pal).toContain('aria-checked="true" aria-label="Круглый на 6 мест" data-kind="6rd"');
-    expect(TABLE_KINDS.map(kindLabel)).toEqual(["Квадратный на 2 места", "Квадратный на 4 места", "Круглый на 4 места", "Круглый на 6 мест", "Длинный на 6 мест", "Длинный на 8 мест"]);
+    expect(TABLE_KINDS.filter((q) => q.shape !== "tall").map(kindLabel)).toEqual(["Квадратный на 2 места", "Квадратный на 4 места", "Круглый на 4 места", "Круглый на 6 мест", "Длинный на 6 мест", "Длинный на 8 мест"]);
     const act = R(h(EditorActions, { c, a11y: false, canUndo: false, onUndo() {}, hasPhoto: true, photoBusy: false, onPhoto() {} }));
     expect(act).toMatch(/data-undo=""[^>]*disabled=""/);
     expect(act).toContain("Шаг назад");
@@ -362,8 +363,8 @@ describe("v179 · экран: стол со стульями, редактор, 
     expect(s).toContain('<FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard}');
     expect(s).toContain("onClick={() => { if (edit) { if (!guard.current || guard.current()) setEdit(false); } else onBack(); }}>‹</button>");
     expect(s).toContain('<button type="button" onClick={() => { if (tryLeave()) onCancel(); }} data-lens-btn="soft"');
-    expect(s).toContain("const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2 });");
-    expect(s).toContain("const p = addTable(plan, x, y, z, kindOf(kind));");
+    expect(s).toContain("const out = layoutScan(res, ai, planRef.current, zz, { mode, items: floor2, tall });");   // v180: и вертикальные
+    expect(s).toContain("const kd = kindOf(kind, tall), p = addTable(plan, x, y, z, kd);");   // v180: вид с учётом этапа 54
     expect(s).toContain('React.useEffect(() => { live.current = true; return () => { live.current = false; clearTimeout(opTimer.current); }; }, []);');
     expect(s).toContain('<input ref={fileRef} type="file" accept="image/*" data-floor-file=""');
     expect(s).toContain('data-floor-file-board=""');

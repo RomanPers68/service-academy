@@ -36,7 +36,7 @@ export function TableArt({ g, W, H, top, stroke, chair, chairOn, filled = 0, das
 
 /** Значок вида стола (палитра редактора): маленький стол со стульями */
 export function KindIcon({ shape, seats, size = 26, color }) {
-  const W = shape === "long" ? size * 1.7 : size, H = size;
+  const W = shape === "long" ? size * 1.7 : size, H = shape === "tall" ? size * 1.7 : size;
   const g = tableGeom(shape, seats, W, H);
   return (
     <span style={{ position: "relative", display: "inline-block", width: W, height: H, flex: "none" }}>

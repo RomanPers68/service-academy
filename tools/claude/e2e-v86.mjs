@@ -245,7 +245,8 @@ if (want("SEAT")) {
     ok(tag + ": сводка — занято 3 (со «Счётом»), гостей 9, счёт 2", /^Свободно 1 из 5 · Занято 3 · Гостей 9 · Счёт 2 · Уборка 1$/.test(sum), sum);
     ok(tag + ": стол со «Счётом» — свой цвет и «счёт» на столе", (await o.page.locator('[data-table="t2"]').getAttribute("data-status")) === "bill" && (await txt(o.page.locator('[data-table="t2"]'))) === "2 счёт"
       && (await o.page.locator('[data-table="t2"]').getAttribute("aria-label")) === "Стол 2, 4 места: счёт, гостей 4");
-    const bg = await o.page.evaluate(() => { const a = getComputedStyle(document.querySelector('[data-table="t2"]')).backgroundColor, b = getComputedStyle(document.querySelector('[data-table="t1"]')).backgroundColor; return [a, b]; });
+    // v179: стол нарисован сверху (svg) — цвет у столешницы, а не у кнопки
+    const bg = await o.page.evaluate(() => { const fill = (id) => { const top = document.querySelector('[data-table="' + id + '"] [data-table-top]'); return top ? top.getAttribute("fill") : getComputedStyle(document.querySelector('[data-table="' + id + '"]')).backgroundColor; }; return [fill("t2"), fill("t1")]; });
     ok(tag + ": «Счёт» и «Гости» — разные цвета", bg[0] !== bg[1], bg.join(" / "));
     await o.page.locator('[data-party="4"]').click(); await sleep(300);
     ok(tag + ": «Посадить: 3–4» — свободных нет, «Скоро освободится: стол 2, стол 5» (дольше сидят — первыми)", /Свободных столов на столько гостей нет\. Скоро освободится: стол 2, стол 5 \(попросили счёт\)\./.test(await txt(o.page.locator("[data-suggest]"))), await txt(o.page.locator("[data-suggest]")));

@@ -149,7 +149,7 @@ describe("v182 · номер на столе — не места", () => {
   });
   it("редактор: в картинки второго прохода уходят все столы ответа — их номера закрыты", () => {
     const s = rd("ui/seating.jsx");
-    expect(s).toContain("const seats = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeats(crops, opts)).catch(() => null);");
+    expect(s).toContain("const full = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeatsFull(crops, opts)).catch(() => null);");   // v184: и стулья по сторонам
     const p = rd("lib/floor-photo.js");
     expect(p).toContain("export async function tableCrops(rec, boxes, side = 224, masks = []) {");
     expect(p).toContain("hideNumbers(c, g, all.filter((m) => overlaps(m.b, area)), (x, y) => [((x / 100) * W - sx) * k, ((y / 100) * H - sy) * k]);");
@@ -183,7 +183,7 @@ const call = async (payload) => { const res = await fn.handle(new Request("https
 describe("v182 · функция floor-scan версии 3", () => {
   beforeEach(() => { NET = { who: { id: "e1", position: "manager", is_admin: false }, bodies: [], replies: [] }; });
   it("первый проход: число на столе — номер, места — по стульям; пример с номером 15 и пятью местами; прежнего «бери число» нет", async () => {
-    expect(fn.FLOOR_SCAN_V).toBe(3);
+    expect(fn.FLOOR_SCAN_V).toBeGreaterThanOrEqual(3);   // v184: 4
     const S = fn.SCAN_SYSTEM;
     expect(S).toContain("на схемах из программ бронирования и кассы это крупная цифра в центре стола");
     expect(S).toContain("Число на самом столе — его номер, а не места: в seats его не пиши.");
@@ -197,17 +197,17 @@ describe("v182 · функция floor-scan версии 3", () => {
     expect(S.indexOf("- n — номер стола")).toBeLessThan(S.indexOf("- seats — сколько мест"));
     NET.replies.push(JSON.stringify({ plan: true, tables: [{ b: [10, 10, 20, 20], shape: "round", n: "15", seats: 5 }] }));
     const r = await call({ image: IMG64 });
-    expect(r).toMatchObject({ status: 200, ok: true, v: 3, tables: [{ b: [10, 10, 20, 20], shape: "round", seats: 5, n: "15" }] });
+    expect(r).toMatchObject({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, tables: [{ b: [10, 10, 20, 20], shape: "round", seats: 5, n: "15" }] });
   });
   it("второй проход: номера закрыты — считать стулья; надписи не места; диван — как стульев напротив, у стола только с диваном — 2", async () => {
     const S = fn.SEATS_SYSTEM;
     expect(S).toContain("Номера на столах закрыты пятном цвета стола — так и задумано: номер не нужен, нужны только стулья.");
     expect(S).toContain("Цифры и надписи на картинке (номер стола, время вроде «43 мин», остатки подписи) — не места, по ним не считай.");
     expect(S).toContain("стол с двумя стульями сверху и диваном снизу — 4 места, даже если на диване три подушки");
-    expect(S).toContain("У стола только с диваном — не меньше 2.");
+    expect(S).toContain("У стола только с диваном — не меньше 2");
     expect(S).not.toContain("Если на столе или рядом написано число мест («4», «4 места», «×4», «4p»), бери его.");
     NET.replies.push('{"seats":[5, 4]}');
-    expect(await call({ mode: "seats", crops: [CROP, CROP] })).toEqual({ status: 200, ok: true, v: 3, mode: "seats", seats: [5, 4], model: "anthropic/claude-haiku-5.5" });
+    expect(await call({ mode: "seats", crops: [CROP, CROP] })).toEqual({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, mode: "seats", seats: [5, 4], sides: [null, null], model: "anthropic/claude-haiku-5.5" });   // v184: и sides
   });
 });
 

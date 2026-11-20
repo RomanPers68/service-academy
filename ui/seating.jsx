@@ -33,7 +33,7 @@ import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boar
 import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
 import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides } from "./floor-tools";
-import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeats, mergeSeats } from "../lib/floor-scan";
+import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeatsFull, mergeSeats } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
 
 const POLL_MS = 15000;
@@ -508,13 +508,14 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
         const boxes = Number(res.v) >= 2 && res.plan !== false ? seatBoxes(res) : [];
         if (boxes.length) {
           setScanStage("seats");
-          // v182: номера на столах в картинках закрыты — модель считает стулья, а не читает номер
-          const seats = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeats(crops, opts)).catch(() => null);
+          // v182: номера на столах в картинках закрыты — модель считает стулья, а не читает номер.
+          // v184: и стулья по сторонам с диванами — как на фото (их хранит сервер с этапом 55)
+          const full = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeatsFull(crops, opts)).catch(() => null);
           if (!live.current) return;
-          if (seats) scan = mergeSeats(res, seats).scan;
+          if (full) scan = mergeSeats(res, full.seats, sidesOn ? full.sides : null).scan;
           else seatsNote = " Места посчитаны по общему плану: пересчитать у каждого стола не вышло.";
         }
-        const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall });
+        const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });
         if (out.notPlan) { setErr(scanErrorText("not_plan")); return; }
         if (out.empty || !out.added) { setErr(scanErrorText("empty")); return; }
         commit(out.plan);

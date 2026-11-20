@@ -87,8 +87,8 @@ describe("v181 · второй проход в приложении", () => {
     const s = rd("ui/seating.jsx");
     expect(s).toContain('const boxes = Number(res.v) >= 2 && res.plan !== false ? seatBoxes(res) : [];');
     // v182: в картинках закрыты номера столов — tableCrops получает ещё и все столы ответа
-    expect(s).toMatch(/const seats = await tableCrops\(r0, boxes(, 224, seatMasks\(res\))?\)\.then\(\(crops\) => scanSeats\(crops, opts\)\)\.catch\(\(\) => null\);/);
-    expect(s).toContain('if (seats) scan = mergeSeats(res, seats).scan;');
+    expect(s).toMatch(/const (seats|full) = await tableCrops\(r0, boxes(, 224, seatMasks\(res\))?\)\.then\(\(crops\) => scanSeats(Full)?\(crops, opts\)\)\.catch\(\(\) => null\);/);   // v184: scanSeatsFull
+    expect(s).toMatch(/if \((seats|full)\) scan = mergeSeats\(res, (seats|full\.seats, sidesOn \? full\.sides : null)\)\.scan;/);   // v184: и стулья по сторонам
     expect(s).toContain('" Места посчитаны по общему плану: пересчитать у каждого стола не вышло."');
     expect(s).toContain('setNote(scanSummary(out) + seatsNote);');
     expect(s).toContain('scanStage={scanStage}');
@@ -161,7 +161,7 @@ describe("v181 · функция floor-scan версии 2: стулья у ка
   it("картинки по порядку с подписями, подсказка про стол в центре; ответ — числа или null по числу картинок; в лимит не идёт", async () => {
     NET.replies.push('```json\n{"seats":[4, "6", null, 30]}\n```');
     const r = await call({ mode: "seats", crops: [CROP, CROP, CROP] });
-    expect(r).toEqual({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, mode: "seats", seats: [4, 6, null], model: "anthropic/claude-haiku-5.5" });   // v182: версия 3
+    expect(r).toEqual({ status: 200, ok: true, v: fn.FLOOR_SCAN_V, mode: "seats", seats: [4, 6, null], sides: [null, null, null], model: "anthropic/claude-haiku-5.5" });   // v182: версия 3; v184: и sides (у ответа прежнего вида — пусто)
     const b = NET.bodies[0];
     expect(b.messages[0].content).toBe(fn.SEATS_SYSTEM);
     const parts = b.messages[1].content;
@@ -170,7 +170,7 @@ describe("v181 · функция floor-scan версии 2: стулья у ка
     expect(parts[6]).toEqual({ type: "image_url", image_url: { url: CROP } });
     expect(b.reasoning).toEqual({ effort: "low", exclude: true });
     expect(NET.usage).toBe(0);
-    expect(fn.SEATS_SYSTEM).toContain("обойди стол по сторонам — сверху, справа, снизу, слева — и сложи");
+    expect(fn.SEATS_SYSTEM).toContain("обойди стол по сторонам — сверху, справа, снизу, слева");   // v184: без «и сложи» — ответ по сторонам
     expect(fn.SEATS_SYSTEM).toContain("По краям картинки могут попасть соседние столы и их стулья — их не считай.");
   });
   it("проверки: без картинок и с не-картинкой — bad_request; больше 40 или слишком большая — too_large; права — как у распознавания", async () => {

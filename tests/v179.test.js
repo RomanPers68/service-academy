@@ -363,7 +363,7 @@ describe("v179 · экран: стол со стульями, редактор, 
     expect(s).toContain('<FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard}');
     expect(s).toContain("onClick={() => { if (edit) { if (!guard.current || guard.current()) setEdit(false); } else onBack(); }}>‹</button>");
     expect(s).toContain('<button type="button" onClick={() => { if (tryLeave()) onCancel(); }} data-lens-btn="soft"');
-    expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall });");   // v180: и вертикальные; v181: места второго прохода
+    expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });");   // v180: и вертикальные; v181: места второго прохода; v184: стулья по сторонам
     expect(s).toContain("const kd = kindOf(kind, tall), p = addTable(plan, x, y, z, kd);");   // v180: вид с учётом этапа 54
     expect(s).toContain('React.useEffect(() => { live.current = true; return () => { live.current = false; clearTimeout(opTimer.current); }; }, []);');
     expect(s).toContain('<input ref={fileRef} type="file" accept="image/*" data-floor-file=""');

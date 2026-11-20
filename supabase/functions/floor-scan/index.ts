@@ -30,6 +30,12 @@
 // проходе телефон закрывает номера на картинках пятном цвета стола, модель номер не видит и считает стулья.
 // Диван у стола (владелец: «1-2 столы по 4 человека, на против стульев диван где могут разместиться 2-3 человека»;
 // 4–6 — по 2: стул и диван напротив) — мест на нём столько же, сколько стульев напротив; у стола только с диваном — 2.
+//
+// v184 (Доп. 509), версия 4. После «стульев по сторонам» (v183) владелец согласился, чтобы ИИ расставлял их сам. Второй
+// проход отвечает по каждой картинке, сколько стульев сверху, справа, снизу и слева и где диван на сколько мест:
+// { tables: [{ chairs: [сверху, справа, снизу, слева], sofa: [то же] }] }. Приложению — как раньше seats (всего мест)
+// и ещё sides: [верх, низ, лево, право], минус — диван (как хранит схема, этап 55). Ответ прежнего вида
+// ({ seats: [...] }) тоже принимается: тогда sides нет.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +48,7 @@ const json = (data: unknown, status = 200) =>
 const isJwt = (k: string) => /^eyJ/.test(k || "");
 const keyHeaders = (k: string): Record<string, string> => (isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k });
 
-export const FLOOR_SCAN_V = 3;   // 2 — второй проход (v181); 3 — номер на столе не места (v182)
+export const FLOOR_SCAN_V = 4;   // 2 — второй проход (v181); 3 — номер на столе не места (v182); 4 — стулья по сторонам (v184)
 export const MAX_CROPS = 40, MAX_CROP = 400_000;   // второй проход: столов за раз и знаков на картинку
 export const LEAD_POS = ["manager", "senior", "owner", "head", "admin", "service_manager"];
 export const DAILY_SCANS = 20;
@@ -104,24 +110,44 @@ export function scanRequest(m: string, image: string) {
 
 // ── второй проход: стулья у каждого стола (v181) ──
 export const SEATS_SYSTEM = [
-  "Ты считаешь места за столами на плане зала ресторана (вид сверху).",
+  "Ты переносишь в приложение, как стоят стулья у столов на плане зала ресторана (вид сверху).",
   "Тебе дают несколько картинок. На каждой — кусок плана: в центре один стол, вокруг его стулья. По краям картинки могут попасть соседние столы и их стулья — их не считай.",
   "Номера на столах закрыты пятном цвета стола — так и задумано: номер не нужен, нужны только стулья.",
-  "Для стола в центре каждой картинки посчитай стулья: обойди стол по сторонам — сверху, справа, снизу, слева — и сложи. Стул — маленький прямоугольник, квадрат, кружок или дуга у края стола.",
-  "Диван или банкетка вдоль стороны стола: мест на нём столько же, сколько стульев у противоположной стороны (стол той же длины); стульев там нет — сколько стульев поместилось бы вдоль этой стороны. У стола только с диваном — не меньше 2. Подушки и деления дивана не считай: стол с двумя стульями сверху и диваном снизу — 4 места, даже если на диване три подушки.",
-  "Цифры и надписи на картинке (номер стола, время вроде «43 мин», остатки подписи) — не места, по ним не считай. Подпись бери за места, только если в ней прямо сказано, что это места: «4 места», «4 м.», «на 4», «×4», «4p».",
-  "Не видно ни стульев, ни дивана, ни такой подписи — null.",
-  'Ответ — только JSON, без пояснений и без разметки: {"seats":[число или null для картинки 1, для картинки 2, …]} — ровно столько значений, сколько картинок, по порядку.',
+  "Для стола в центре каждой картинки посчитай стулья с каждой стороны: обойди стол по сторонам — сверху, справа, снизу, слева. Стул — маленький прямоугольник, квадрат, кружок или дуга у края стола.",
+  "Диван или банкетка вдоль стороны стола: мест на нём столько же, сколько стульев у противоположной стороны (стол той же длины); стульев там нет — сколько стульев поместилось бы вдоль этой стороны. У стола только с диваном — не меньше 2 мест. Подушки и деления дивана не считай: стол с двумя стульями сверху и диваном снизу — 4 места, даже если на диване три подушки.",
+  "У круглого стола стороны условные: раздели стулья по четвертям — сверху, справа, снизу, слева; главное, чтобы сошлось общее число.",
+  "Цифры и надписи на картинке (номер стола, время вроде «43 мин», остатки подписи) — не места, по ним не считай.",
+  'Ответ — только JSON, без пояснений и без разметки: {"tables":[запись для картинки 1, для картинки 2, …]} — ровно столько записей, сколько картинок, по порядку.',
+  'Запись — {"chairs":[сверху, справа, снизу, слева],"sofa":[сверху, справа, снизу, слева]}: chairs — стулья с каждой стороны, sofa — места на диване вдоль этой стороны; нет — 0. Не видно ни стульев, ни дивана — null вместо записи.',
+  'Примеры: два стула сверху и диван снизу — {"chairs":[2,0,0,0],"sofa":[0,0,2,0]}; стул слева и диван справа — {"chairs":[0,0,0,1],"sofa":[0,1,0,0]}; длинный стол вертикально, по четыре стула слева и справа — {"chairs":[0,4,0,4],"sofa":[0,0,0,0]}.',
 ].join("\n");
 export function seatsRequest(m: string, crops: string[]) {
   const content: Record<string, unknown>[] = [{ type: "text", text: "Картинок: " + crops.length + ". Посчитай места у стола в центре каждой." }];
   crops.forEach((url, i) => { content.push({ type: "text", text: "Картинка " + (i + 1) }); content.push({ type: "image_url", image_url: { url } }); });
-  return { model: m, messages: [{ role: "system", content: SEATS_SYSTEM }, { role: "user", content }], ...genOpts(m, 300 + 12 * crops.length, 0.1, "low") };
+  return { model: m, messages: [{ role: "system", content: SEATS_SYSTEM }, { role: "user", content }], ...genOpts(m, 400 + 30 * crops.length, 0.1, "low") };
 }
 /** Ответ второго прохода → n значений: целое 1–20 или null */
 export function cleanSeats(o: Record<string, unknown>, n: number): (number | null)[] {
+  if (Array.isArray(o.tables)) return cleanSides(o, n).seats;
   const a = Array.isArray(o.seats) ? o.seats : [];
   return Array.from({ length: n }, (_, i) => { const v = Math.round(num(a[i])); return v >= 1 && v <= 20 ? v : null; });
+}
+/** v184: запись второго прохода { chairs, sofa } по сторонам [сверху, справа, снизу, слева] → стороны, как хранит схема:
+ *  [верх, низ, лево, право], число — стулья, минус — диван на столько мест (диван и стулья на одной стороне — диван).
+ *  Всего мест — от 1 до 20, иначе null. Ответ прежнего вида ({ seats }) — только seats. */
+export function cleanSides(o: Record<string, unknown>, n: number): { seats: (number | null)[]; sides: (number[] | null)[] } {
+  if (!Array.isArray(o.tables)) return { seats: cleanSeats(o, n), sides: Array.from({ length: n }, () => null) };
+  const four = (a: unknown) => (Array.isArray(a) ? [0, 1, 2, 3].map((i) => { const v = Math.round(num(a[i])); return v >= 0 && v <= 20 ? v : 0; }) : [0, 0, 0, 0]);
+  const rows = Array.from({ length: n }, (_, i) => {
+    const t = (o.tables as unknown[])[i] as Record<string, unknown> | null;
+    if (!t || typeof t !== "object") return null;
+    const ch = four(t.chairs), sf = four(t.sofa);
+    // по часовой (сверху, справа, снизу, слева) → верх, низ, лево, право
+    const sides = [0, 2, 3, 1].map((k) => (sf[k] > 0 ? -sf[k] : ch[k]));
+    const total = sides.reduce((a, v) => a + Math.abs(v), 0);
+    return total >= 1 && total <= 20 ? { total, sides } : null;
+  });
+  return { seats: rows.map((r) => (r ? r.total : null)), sides: rows.map((r) => (r ? r.sides : null)) };
 }
 
 // ── ответ модели ──
@@ -246,9 +272,9 @@ export async function handle(req: Request): Promise<Response> {
     if (seatsMode) {
       const r = await askModels(API_KEY, (m) => seatsRequest(m, crops));
       if (!r.ok) return json({ ok: false, error: r.error, detail: r.detail });
-      const seats = cleanSeats(r.o, crops.length);
-      console.log("floor-scan seats", r.model, crops.length, seats.filter((x) => x != null).length);
-      return json({ ok: true, v: FLOOR_SCAN_V, mode: "seats", seats, model: r.model });
+      const { seats, sides } = cleanSides(r.o, crops.length);
+      console.log("floor-scan seats", r.model, crops.length, seats.filter((x) => x != null).length, sides.filter(Boolean).length);
+      return json({ ok: true, v: FLOOR_SCAN_V, mode: "seats", seats, sides, model: r.model });
     }
 
     // ── лимит в день (админ — без лимита) ──

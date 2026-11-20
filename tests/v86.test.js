@@ -117,7 +117,7 @@ describe("v86: рассадка — «Счёт» и «Твои столы»", ()
     expect(s2).toContain("сейчас: счёт, 4 гостя, 1 ч 35 мин");
     const fl = R(h(Floor, { a11y: false, plan: PLAN, map, now: NOW }));
     expect(fl).toContain('data-table="t2" data-status="bill"');
-    expect(fl).toContain('aria-label="Стол 2, 4 места: счёт, гостей 4"');
+    expect(fl).toContain('aria-label="Стол 2, 4 места: счёт, гостей 4, сидят 1 ч 35 мин');   // v186: и время за столом
   });
   it("экран: «Счёт» в сводке, легенде и подборе; без этапа 36 — понятная ошибка", () => {
     const src = rd("ui/seating.jsx");

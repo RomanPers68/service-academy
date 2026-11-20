@@ -159,7 +159,7 @@ describe("v85: экран", () => {
     expect((html.match(/data-table="/g) || []).length).toBe(5);
     expect(html).toContain('data-table="t1" data-status="free" data-hi="1"');
     expect(html).toContain('data-table="t3" data-status="res" data-hi="0"');
-    expect(html).toContain('aria-label="Стол 2, 4 места: гости, гостей 4"');
+    expect(html).toContain('aria-label="Стол 2, 4 места: гости, гостей 4, сидят 25 мин');   // v186: диктор слышит и время за столом
     expect(html).toContain('aria-label="Стол 3, 2 места: бронь, на 19:30"');
     expect(html).toContain('aria-label="Стол 5, 6 мест: свободен"');
     expect(html).toContain(">4·25м</span>");

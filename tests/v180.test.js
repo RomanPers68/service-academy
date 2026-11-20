@@ -207,7 +207,7 @@ describe("v180 · экран", () => {
     expect(part("t2")).toMatch(/width:87\.3\d*px;height:42\.3\d*px/);
     expect((part("t1").match(/data-chair="/g) || []).length).toBe(8);
     expect((part("t1").match(/data-chair="on"/g) || []).length).toBe(5);
-    expect(part("t1")).toContain('aria-label="Стол 1, 8 мест: гости, гостей 5"');
+    expect(part("t1")).toContain('aria-label="Стол 1, 8 мест: гости, гостей 5, сидят 20 мин');   // v186: и время за столом
   });
   it("палитра: с этапом 54 — восемь видов (и вертикальные), без — шесть; «Повернуть»", async () => {
     const { KindPalette, TurnBtn, kindLabel } = await import("../ui/floor-tools.jsx");

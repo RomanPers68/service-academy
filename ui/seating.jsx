@@ -29,7 +29,8 @@ import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
-  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides, takeNumbers, crossDupes, dropDupes, isCrossDup } from "../lib/seating";
+  kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides, takeNumbers, crossDupes, dropDupes, isCrossDup,
+  sitProgress, WAITER_COLORS, waiterColorIndex, waiterTids, SIT_NORM, SIT_WARN } from "../lib/seating";
 import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
 import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides, TakeNumbers, DropDupes } from "./floor-tools";
@@ -45,6 +46,11 @@ const C = (a11y) => ({
   line: a11y ? "rgba(139,106,48,0.28)" : "rgba(214,178,102,0.22)",
   red: a11y ? "#A0412F" : "#E08A7A",
   field: a11y ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.25)",
+  // v186: полоска времени за столом — дольше часа и дольше полутора
+  warn: a11y ? "#A86A0C" : "#F2B84B",
+  late: a11y ? "#B3362A" : "#FF7A66",
+  fresh: a11y ? "#2A1F0E" : "#FFF8E8",   // полоска первый час — светлее контура (в светлой теме — темнее)
+  casing: a11y ? "rgba(251,247,238,0.95)" : "rgba(22,17,10,0.9)",   // подложка под полоской
   // состояния стола: свободен — контур, бронь — синеватый, гости — тёплое золото, уборка — серый пунктир
   st: {
     free: { bg: "transparent", bd: a11y ? "rgba(139,106,48,0.55)" : "rgba(214,178,102,0.55)", fg: a11y ? "#2A1F0E" : "#EFE4C8", dash: false },
@@ -100,7 +106,7 @@ const DoorIcon = ({ s, color }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M5 21V4h9v17" /><path d="M14 4l5 2v15l-5-2" /><path d="M11 12.5h.01" /><path d="M3 21h18" /></svg>);
 
-export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop }) {
+export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop, wcolor = null }) {
   const [ref, w] = useWidth();
   const cell = w / GRID_W;
   const z = zone || zone1(plan);
@@ -195,16 +201,21 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         const fs = need > avail ? Math.max(6.5, avail / (sub.length * 0.58)) : fs0;
         const dim = edit && tool !== "table";
         const top = r.status === "free" ? (fb ? c.topSolid : c.top) : s.bg;
+        // v186: время за столом — полоской по контуру; официант — рамкой своего цвета (только на доске смены)
+        const sit = edit ? null : sitProgress(r, now);
+        const mark = !edit && wcolor && isBusy(r) && r.waiter_id ? wcolor(r.waiter_id) : null;
         return (
           <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} tabIndex={dim ? -1 : undefined} className={canDrag ? "sa-drag" : undefined}
             onClick={() => { if (skipClick.current) { skipClick.current = false; return; } if (!dim && onTable) onTable(t); }}
             onPointerDown={canDrag ? down(t) : undefined} onPointerMove={canDrag ? move : undefined} onPointerUp={canDrag ? up : undefined} onPointerCancel={canDrag ? cancel : undefined}
-            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")}
+            aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")
+              + (sit ? ", сидят " + sinceLabel(sit.min) : "") + (isBusy(r) && r.waiter_name ? ", официант " + shortName(r.waiter_name) : "")}
             style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.2), color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, fontFamily: "Georgia, serif", lineHeight: 1.05,
               opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
             <TableArt g={g} W={aw} H={ah} at={gap} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
-              ring={isSel ? c.selRing : on ? c.gold : null} glow={on ? c.glow : null} />
+              ring={isSel ? c.selRing : on ? c.gold : null} glow={on ? c.glow : null}
+              progress={sit ? { p: sit.p, level: sit.level, color: sit.level === 2 ? c.late : sit.level === 1 ? c.warn : c.fresh, casing: c.casing } : null} mark={mark} />
             <span style={{ position: "absolute", left: lb.x, top: lb.y, width: lb.w, height: lb.h, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               overflow: "hidden", pointerEvents: "none", textShadow: fb ? c.halo : "none" }}>
               <span style={{ fontSize: fsN, fontWeight: "bold" }}>{t.n}</span>
@@ -230,7 +241,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
 }
 
 // ── Карточка стола ──────────────────────────────────────────────────────────────
-export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose }) {
+export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose, wcolor = null }) {
   const [st, setSt] = React.useState(NEXT[row.status] || "seat");
   const [cnt, setCnt] = React.useState(() => defaultCnt(t, row, party));
   const [name, setName] = React.useState(row.name || "");
@@ -246,6 +257,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
   const rest = anyOn ? list.filter((e) => !first.includes(e)) : [];
   const wChip = (e) => (
     <button key={e.id} type="button" data-waiter={e.id} onClick={() => { vibrate("light"); setWaiter(e.id); }} data-lens-btn={waiter === e.id ? "tab" : "soft"} data-lens-ink="" style={chip(c, waiter === e.id, a11y)}>
+      {wcolor && wcolor(e.id) ? <span data-waiter-dot="" aria-hidden="true" style={{ display: "inline-block", width: 9, height: 9, borderRadius: 5, border: `2px solid ${wcolor(e.id)}`, marginRight: 6, verticalAlign: "-1px" }} /> : null}
       {shortName(e.name + " " + (e.surname || ""))}{load[e.id] ? " · " + load[e.id] : ""}</button>);
   const save = (status) => {
     if (busy) return;
@@ -703,6 +715,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const [sched, setSched] = React.useState(null);
   const [sure, setSure] = React.useState(false);
   const [zone, setZone] = React.useState(() => { try { return localStorage.getItem("sa_seat_zone") || ""; } catch (e) { return ""; } });   // v88: зал на доске
+  const [wsel, setWsel] = React.useState(null);   // v186: официант, чьи столы подсвечены
   const restaurant = (profile && profile.restaurant) || "";
   // v179: редактор спрашивает перед выходом без сохранения; «По фото плана» с пустой доски — сразу в редактор с фото
   const guard = React.useRef(null);
@@ -747,6 +760,12 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const zoneHi = (id) => hi.some((tid) => zoneOfX(plan, tById(tid)) === id);
   const res = reservations(plan, ok ? st.tables : []);
   const team = waiterLoad(plan, ok ? st.tables : [], st.staff || [], shiftMap);
+  // v186: официант цветом — рамка стола и кружок у имени; нажать на имя — подсветить его столы
+  const wIdx = React.useMemo(() => waiterColorIndex(st.staff || [], shiftMap, ok ? st.tables : []), [st, shiftMap]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const wPal = WAITER_COLORS[a11y ? "light" : "dark"];
+  const wcolor = (id) => (id && id in wIdx ? wPal[wIdx[id] % wPal.length] : null);
+  const wOn = wsel && !party && team.busy.some((x) => x.id === wsel) ? wsel : null;   // ушёл со столов — подсветки нет
+  const hiW = wOn ? waiterTids(ok ? st.tables : [], wOn) : [];
   const selT = plan && sel ? (plan.tables || []).find((q) => q.id === sel) : null;
   const saveTable = (t, f) => rpc("seat_set", { p_token: saToken(), p_tid: t.id, p_status: f.status, p_cnt: f.cnt, p_name: f.name, p_rtime: f.rtime, p_waiter: f.waiter }).then((r) => {
     if (r && r.ok && r.table) {
@@ -812,23 +831,32 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }} role="group" aria-label="Посадить компанию">
               <span style={{ ...labelStyle(13), color: c.gold }}>Посадить:</span>
-              {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setParty(party === n ? 0 : n); }} data-lens-btn={party === n ? "tab" : "soft"} data-lens-ink="" style={chip(c, party === n, a11y)}>{l}</button>)}
+              {PARTY.map(([n, l]) => <button key={n} type="button" data-party={n} onClick={() => { vibrate("light"); setWsel(null); setParty(party === n ? 0 : n); }} data-lens-btn={party === n ? "tab" : "soft"} data-lens-ink="" style={chip(c, party === n, a11y)}>{l}</button>)}
             </div>
             {party ? <div data-suggest="" style={{ fontSize: 13, color: hi.length || soon.length ? c.text : c.red, margin: "0 2px 10px", lineHeight: 1.45 }}>
               {suggestLine(hi, tn0, multi ? (id) => zoneOfX(plan, tById(id)) : null, z, zName)}
               {soon.length ? <span data-soon=""> Скоро освободится: {soon.map(tn).join(", ")} (попросили счёт).</span> : null}</div> : null}
             <div data-lens-card="" style={{ ...c.frost, padding: 10 }}>
-              <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={hi} sel={sel} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
+              <Floor c={c} a11y={a11y} plan={plan} zone={z} map={map} now={now} hi={party ? hi : hiW} sel={sel} wcolor={wcolor} onTable={(t) => { vibrate("light"); setMsg(""); setSel(t.id); }} />
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "10px 2px 0", fontSize: 12, color: c.sub }}>
               {["free", "res", "seat", "bill", "clean"].map((k) => <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 12, height: 12, borderRadius: 3, background: c.st[k].bg, border: `1.2px ${c.st[k].dash ? "dashed" : "solid"} ${c.st[k].bd}` }} />{STATUS[k].toLowerCase()}</span>)}
             </div>
+            {sum.seat || sum.bill ? <div data-board-hint="" style={{ fontSize: 12, color: c.sub, margin: "6px 2px 0", lineHeight: 1.45 }}>
+              Полоска по краю стола: сколько сидят гости, через час она <span style={{ color: c.warn }}>жёлтая</span>, через полтора <span style={{ color: c.late }}>красная</span>. Рамка вокруг стола цветом официанта.</div> : null}
             {team.busy.length || team.idle.length ? <div data-waiters="" style={{ marginTop: 16 }}>
               <div style={{ ...labelStyle(15), color: c.gold, margin: "0 2px 6px" }}>Официанты</div>
               <div data-lens-card="" style={{ ...c.frost, padding: "10px 14px", fontSize: 13.5, color: c.sub, lineHeight: 1.6 }}>
-                {team.busy.map((x) => <div key={x.id}><span style={{ color: c.text }}>{x.name}</span>: {x.tables.length === 1 ? "стол " : "столы "}{x.tables.join(", ")} · {x.guests} {pl(x.guests, "гость", "гостя", "гостей")}</div>)}
+                {team.busy.map((x) => { const on = wOn === x.id, col = wcolor(x.id); return (
+                  <button key={x.id} type="button" data-waiter-row={x.id} aria-pressed={on} onClick={() => { vibrate("light"); setParty(0); setWsel(on ? null : x.id); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "calc(100% + 12px)", textAlign: "left", border: 0, borderRadius: 10, padding: "2px 6px", margin: "0 -6px",
+                      background: on ? (a11y ? "rgba(139,106,48,0.13)" : "rgba(210,168,90,0.13)") : "transparent", color: c.sub, fontFamily: "inherit", fontSize: 13.5, lineHeight: 1.6, cursor: "pointer" }}>
+                    <span data-waiter-dot="" aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, flex: "none", border: `2px solid ${col || c.sub}` }} />
+                    <span><span style={{ color: c.text }}>{x.name}</span>: {x.tables.length === 1 ? "стол " : "столы "}{x.tables.join(", ")} · {x.guests} {pl(x.guests, "гость", "гостя", "гостей")}</span>
+                  </button>); })}
                 {team.idle.length ? <div>В графике, без столов: <span style={{ color: c.text }}>{team.idle.join(", ")}</span></div> : null}
+                {team.busy.length ? <div style={{ fontSize: 12, marginTop: 4 }}>{wOn ? "Столы официанта подсвечены. Нажми на имя ещё раз, чтобы снять." : "Нажми на имя: подсветятся столы официанта."}</div> : null}
               </div>
             </div> : null}
             {res.length ? <div data-res-list="" style={{ marginTop: 16 }}>
@@ -848,7 +876,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         </> : null}
       </div>
       {selT ? <TableSheet key={selT.id} c={c} a11y={a11y} t={selT} zoneName={multi ? zName(zoneOfX(plan, selT)) : ""} row={stateOf(map, selT.id)} staff={st.staff || []} shiftMap={shiftMap} load={team.count} party={party}
-        now={now} onSave={saveTable} onClose={() => setSel(null)} /> : null}
+        now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} /> : null}
     </div>
   );
 }

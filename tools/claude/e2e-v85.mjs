@@ -182,8 +182,9 @@ if (want("BOARD")) {
     ok(tag + ": стол с гостями — «4·25м», свободный — места, уборка — веник", (await txt(o.page.locator('[data-table="t2"]'))) === "2 4·25м" && (await txt(o.page.locator('[data-table="t1"]'))) === "1 4 м."
       && (await txt(o.page.locator('[data-table="t4"]'))) === "4" && (await o.page.locator('[data-table="t4"] [data-broom]').count()) === 1, await txt(o.page.locator('[data-table="t2"]')));
     ok(tag + ": бронь на столе — время; брони списком", (await txt(o.page.locator('[data-table="t3"]'))) === "3 19:30" && /Брони сегодня 19:30 Иванов · 4 гостя стол 3/.test(await txt(o.page.locator("[data-res-list]"))));
-    ok(tag + ": «Официанты» — у Петра стол 2, Анна в графике без столов", /^Официанты Пётр О\.: стол 2 · 4 гостя В графике, без столов: Анна С\.$/.test(await txt(o.page.locator("[data-waiters]"))), await txt(o.page.locator("[data-waiters]")));
-    ok(tag + ": стол 2 озвучен для экранного диктора", (await o.page.locator('[data-table="t2"]').getAttribute("aria-label")) === "Стол 2, 4 места: гости, гостей 4");
+    // v186: под списком подсказка «Нажми на имя»
+    ok(tag + ": «Официанты» — у Петра стол 2, Анна в графике без столов", /^Официанты Пётр О\.: стол 2 · 4 гостя В графике, без столов: Анна С\. Нажми на имя: подсветятся столы официанта\.$/.test(await txt(o.page.locator("[data-waiters]"))), await txt(o.page.locator("[data-waiters]")));
+    ok(tag + ": стол 2 озвучен для экранного диктора", /^Стол 2, 4 места: гости, гостей 4, сидят 25 мин, официант Пётр О\.$/.test(await o.page.locator('[data-table="t2"]').getAttribute("aria-label")));   // v186: время и официант
     // бронь из списка → карточка: гости пришли, 4 из брони
     await o.page.locator("[data-res-list] [role=button]").first().click(); await sleep(300);
     const sh3 = o.page.locator('[data-table-sheet="t3"]');
@@ -208,7 +209,7 @@ if (want("BOARD")) {
     const s1 = B.sets[0] || {};
     ok(tag + ": seat_set — стол 1, гости 3, официант Анна", s1.p_tid === "t1" && s1.p_status === "seat" && s1.p_cnt === 3 && s1.p_waiter === "e-anna", JSON.stringify(s1));
     ok(tag + ": стол 1 — гости, «Стол 1: посадили.», подсветка сброшена", (await o.page.locator('[data-table="t1"]').getAttribute("data-status")) === "seat" && /Стол 1: посадили\./.test(await txt(o.page.locator('[role="status"]'))) && !(await o.page.locator("[data-suggest]").count()));
-    ok(tag + ": «Официанты» — Анна: стол 1, 3 гостя; без столов никого", /^Официанты Анна С\.: стол 1 · 3 гостя Пётр О\.: стол 2 · 4 гостя$/.test(await txt(o.page.locator("[data-waiters]"))), await txt(o.page.locator("[data-waiters]")));
+    ok(tag + ": «Официанты» — Анна: стол 1, 3 гостя; без столов никого", /^Официанты Анна С\.: стол 1 · 3 гостя Пётр О\.: стол 2 · 4 гостя Нажми на имя: подсветятся столы официанта\.$/.test(await txt(o.page.locator("[data-waiters]"))), await txt(o.page.locator("[data-waiters]")));
     // бронь за 5
     await o.page.locator('[data-table="t5"]').click(); await sleep(300);
     const sh5 = o.page.locator('[data-table-sheet="t5"]');

@@ -135,6 +135,8 @@ const modGeo = (page) => page.evaluate(() => { const m = document.querySelector(
 if (want("MOD")) {
   { const { ctx, page, errs } = await open({ who: "anna" });
     await nav(page, "home", 2400);
+    // v191 (Доп. 516): раздел «О нас» — для ознакомления, трек открывается на первой обычной теме: листаем к разделу
+    await page.locator(".tbp-num").first().click(); await page.waitForTimeout(1200);
     await waitFor(page, () => { const i = document.querySelector(".tbp-cur .tbm-cover img"); return !!i && i.complete && i.naturalWidth > 0; });
     const g = await modGeo(page);
     ok("MOD: у раздела «Наш ресторан» обложка — фото его урока", !!g && g.title === "Наш ресторан" && g.cover === "lesson" && g.img === true, JSON.stringify(g));
@@ -150,6 +152,7 @@ if (want("MOD")) {
     await ctx.close(); }
   { const { ctx, page, errs } = await open({ who: "maria" });
     await nav(page, "home", 2400);
+    await page.locator(".tbp-num").first().click(); await page.waitForTimeout(1200);   // v191: к разделу «О нас»
     await waitFor(page, () => { const i = document.querySelector(".tbp-cur .tbm-cover img"); return !!i && i.complete && i.naturalWidth > 0; });
     let g = await modGeo(page);
     ok("MOD менеджер: фотоаппарат справа сверху, левее ленточки, нажимается", !!g && !!g.cam && /^mod:/.test(g.cam.id) && g.cam.hit && g.cam.r <= g.lasse.l && g.cam.w === 34, JSON.stringify(g && [g.cam, g.lasse]));
@@ -168,6 +171,7 @@ if (want("MOD")) {
     await ctx.close(); }
   { const { ctx, page } = await open({ who: "anna", light: true });
     await nav(page, "home", 2400);
+    await page.locator(".tbp-num").first().click(); await page.waitForTimeout(1200);   // v191: к разделу «О нас»
     await waitFor(page, () => { const i = document.querySelector(".tbp-cur .tbm-cover img"); return !!i && i.complete && i.naturalWidth > 0; });
     const g = await modGeo(page);
     const veil = await page.evaluate(() => getComputedStyle(document.querySelector(".tbp-cur .tbm-cover"), "::after").backgroundImage);

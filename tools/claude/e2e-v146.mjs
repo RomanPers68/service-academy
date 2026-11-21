@@ -107,7 +107,9 @@ const openConcept = async (page) => {   // «Новичок» → «Открыт
   await nav(page, "roleSelect", 1200);   // главная с треками (экран «home» — список тем роли)
   await page.locator("[data-track-chip=seasonal]").click(); await page.waitForTimeout(900);
   await page.locator("[data-track-go]").click(); await page.waitForTimeout(1500);
-  await page.locator("button:has-text('Начать'), [role=button]:has-text('Начать')").first().click(); await page.waitForTimeout(2200);
+  // v191 (Доп. 516): раздел «О нас» — для ознакомления, трек открывается на первой обычной теме: листаем к разделу
+  await page.locator(".tbp-num").first().click(); await page.waitForTimeout(1200);
+  await page.locator(".tbp-cur button:has-text('Начать'), .tbp-cur [role=button]:has-text('Начать')").first().click(); await page.waitForTimeout(2200);
 };
 // ряд треков: кружки, «8 %», подписи (Доп. 469 — их нет), цвет трека (--tc), цитата под рядом
 const rowInfo = (page) => page.evaluate(() => {

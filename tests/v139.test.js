@@ -103,21 +103,27 @@ describe("v139: раздел «Наш ресторан» в программе �
   });
   it("записи — как свои уроки: текст сети, потом «В «Океан»», фото полем, вопросы всех блоков", () => {
     const r = conceptRecords(c, "seasonal");
-    expect(r[0]).toMatchObject({ id: "cn-idea", role: "seasonal", module: CN_SECTION, title: "Концепция и история", sort: 0 });
+    // v191 (Доп. 516): номера у трека свои (зачёт по роли), key — прежний номер вида, photoKey — обложка одна на все треки
+    expect(r[0]).toMatchObject({ id: "cn-seasonal-idea", key: "cn-idea", photoKey: "cms-l-cn-idea", role: "seasonal", module: CN_SECTION, title: "Концепция и история", sort: 0 });
     expect(r[0].content).toBe("Сеть выросла из одного зала.\n\n**В «Океан»**\nРыба и аквариум.");
-    expect(r.find((x) => x.id === "cn-dress").photos).toEqual([{ id: 7, cap: "Форма" }]);
-    expect(r.find((x) => x.id === "cn-dress").questions).toEqual([Q1]);
+    expect(r.find((x) => x.key === "cn-dress").photos).toEqual([{ id: 7, cap: "Форма" }]);
+    expect(r.find((x) => x.key === "cn-dress").questions).toEqual([Q1]);
     expect(conceptRecords(c, "")).toEqual([]);
     expect(conceptRecords(null, "seasonal")).toEqual([]);
-    expect(conceptRecordsAll(c).length).toBe(CN_TRACKS.reduce((a, t) => a + conceptRecords(c, t).length, 0));
+    // v191: раздел «для ознакомления» (по умолчанию) в отчёт не идёт; «в зачёт» — все треки
+    expect(conceptRecordsAll(c)).toEqual([]);
+    const cr = { ...c, meta: { net: { title: "", sub: "", mode: "credit" }, venue: { title: "", sub: "", mode: "" } } };
+    expect(conceptRecordsAll(cr).length).toBe(CN_TRACKS.reduce((a, t) => a + conceptRecords(cr, t).length, 0));
   });
   it("модуль: номер cn-<трек>, «О нас», уроки cms-l-cn-…, один тест на раздел, фото у шага урока", () => {
     const [m] = conceptModules(c, "seasonal", "#7C9E87");
-    expect(m).toMatchObject({ id: "cn-seasonal", tag: "О нас", title: "Наш ресторан", subtitle: "Концепция и стандарты", concept: true, custom: true });
-    expect(m.lessons.map((l) => l.id)).toEqual(["cms-l-cn-idea", "cms-l-cn-pitch", "cms-l-cn-dress", "cms-l-cn-check", "cms-l-cn-o3", "cms-q-cn-dress"]);
+    // v191 (Доп. 516): по умолчанию — для ознакомления (info), номера уроков у трека свои, обложка урока — общая (photoKey)
+    expect(m).toMatchObject({ id: "cn-seasonal", tag: "О нас", title: "Наш ресторан", subtitle: "Концепция и стандарты", concept: true, custom: true, info: true });
+    expect(m.lessons.map((l) => l.id)).toEqual(["cms-l-cn-seasonal-idea", "cms-l-cn-seasonal-pitch", "cms-l-cn-seasonal-dress", "cms-l-cn-seasonal-check", "cms-l-cn-seasonal-o3", "cms-q-cn-seasonal-dress"]);
     expect(m.lessons.find((l) => l.type === "quiz").questions.length).toBe(2);
-    expect(m.lessons.find((l) => l.id === "cms-l-cn-dress").photos).toEqual([{ id: 7, cap: "Форма" }]);
-    expect(m.lessons.find((l) => l.id === "cms-l-cn-idea").photos).toBe(undefined);
+    expect(m.lessons.find((l) => l.id === "cms-l-cn-seasonal-dress").photos).toEqual([{ id: 7, cap: "Форма" }]);
+    expect(m.lessons.find((l) => l.id === "cms-l-cn-seasonal-dress").photoKey).toBe("cms-l-cn-dress");
+    expect(m.lessons.find((l) => l.id === "cms-l-cn-seasonal-idea").photos).toBe(undefined);
     expect(m.rev).toMatch(/^r/);
     expect(conceptModules(normConcept({ ok: true, net: { blocks: [] } }), "seasonal")).toEqual([]);
   });
@@ -126,7 +132,9 @@ describe("v139: раздел «Наш ресторан» в программе �
     expect(st).toEqual([{ id: "cms-l-5", title: "Урок", type: "lesson", content: "x" }]);
   });
   it("брифинг: вопрос команде и из «О нас» (новичок и ядро первыми)", () => {
-    const pr = withConceptPrograms({ seasonal: [{ id: "s0" }], bar: [{ id: "b0" }] }, c);
+    // v191: только когда раздел «в зачёт»; для ознакомления (по умолчанию) — программы как есть
+    expect(withConceptPrograms({ seasonal: [{ id: "s0" }] }, c)).toEqual({ seasonal: [{ id: "s0" }] });
+    const pr = withConceptPrograms({ seasonal: [{ id: "s0" }], bar: [{ id: "b0" }] }, { ...c, meta: { net: { title: "", sub: "", mode: "credit" }, venue: null } });
     expect(pr.seasonal.map((m) => m.id)).toEqual(["cn-seasonal", "s0"]);
     expect(pr.core.map((m) => m.id)).toEqual(["cn-core"]);
     expect(pr.bar.map((m) => m.id)).toEqual(["b0"]);
@@ -194,8 +202,9 @@ describe("v139: редактор — что уходит на сервер", () 
       .toEqual({ blocks: [{ kind: "idea", title: "Концепция и история", body: "x" }, { kind: "own", title: "Музыка", body: "z" }] });
     expect(sanitize("concept", { blocks: [] })).toBe(null);
     const api = rd("api/lesson-assist.js");
-    expect(api).toContain('"review", "concept"].includes(mode)');
-    expect(api).toContain('const withPdf = mode === "lesson" || mode === "concept";');
+    // v191 (Доп. 516): режимы «О нас» — списком CN_MODES (concept, план, блок, оформление)
+    expect(api).toContain('"review", ...CN_MODES].includes(mode)');
+    expect(api).toContain('const withPdf = mode === "lesson" || mode === "concept" || mode === "concept_plan" || mode === "concept_block";');
   });
 });
 
@@ -276,7 +285,8 @@ describe("v139: связи в приложении", () => {
     expect(app).toContain('aboutOn && { key:"about", group:"Команда", icon:"about", label:"О нас"');
     expect(app).toContain('badge: conceptNew ? "новое" : null');
     expect(app).toContain('staff && { key:"cn", group:"Управление", icon:"about", label:"Концепция и стандарты"');
-    expect(app).toContain('<AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} />');
+    // v191 (Доп. 516): и «Открыть как сотрудник» — раздел «О нас» в треке своей роли
+    expect(app).toContain('<AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null} />');
     expect(rd("ui/home-hubs.jsx")).toContain("  about: (c) => <svg");
   });
   it("поиск, брифинг, урок с фото", () => {

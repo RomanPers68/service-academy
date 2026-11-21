@@ -171,8 +171,8 @@ describe("v146: фото урока — экран и лист", () => {
   it("урок: обложка первой в карточке (на первой карточке или в ленте), первая мысль — шрифтом заголовков, выделенное — золотом", () => {
     expect(S).toContain('import { LessonCover } from "./lesson-photo";');
     expect(S).toContain('import { lessonLead, lessonPhotoId } from "../lib/lesson-photo";');
-    expect(S).toContain("? <LessonCover lessonId={lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}");
-    expect(S).toContain("{(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id)");
+    expect(S).toContain("? <LessonCover lessonId={lesson.photoKey || lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}");
+    expect(S).toContain("{(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.photoKey || lesson.id)");
     expect(S).toContain('<div data-lesson-first="" style={{ ...T.para, fontFamily: ACCENT_SERIF, fontWeight: 700, fontSize: T.a11y ? 21.5 : 19.5, lineHeight: 1.36,');
     expect(S).toContain("})({ v: false }))}");
   });

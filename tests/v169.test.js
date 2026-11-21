@@ -371,7 +371,8 @@ describe("v169 · 3: сервер: выход в интернет", () => {
     modelAnswer = answer({ content: "Текст урока." });
     expect((await call({ token: "limit", mode: "improve", role: "core", text: LONG })).status).toBe(200);   // редактор контента — свой счёт
     const api = rd("api/lesson-assist.js");
-    expect(api).toContain('isRef ? rateLimit("ref:" + token, 80, 3600_000) : rateLimit("lesson:" + token, 40, 3600_000)');
+    // v191 (Доп. 516): у «О нас» тоже свой счёт — документ идёт планом и по обращению на блок
+    expect(api).toContain('isRef ? rateLimit("ref:" + token, 80, 3600_000) : isCn ? rateLimit("cn:" + token, 150, 3600_000) : rateLimit("lesson:" + token, 40, 3600_000)');
     expect(api).toContain('import { webCall } from "./_web.js";');
     expect(api.indexOf("if (isRef && !emp.is_admin)")).toBeLessThan(api.indexOf("await webCall("));   // чужой запрос поиск не тратит
   });
@@ -439,7 +440,8 @@ describe("v169 · 4: обращение из редактора (ui/ref-assist.j
     expect(REF_AI_PDF_MAX).toBe(3 * 1024 * 1024);
     expect(REF_PDF_BIG).toBe("PDF больше 3 МБ: сервер такой не примет. Сожми файл или вставь текст.");
     // тот же предел у редактора контента и у «О нас»: файл больше трёх мегабайт до ассистента не доходил
-    for (const f of ["ui/content-editor.jsx", "ui/concept.jsx"]) { const src = rd(f); expect(src, f).toContain("file.size > 3 * 1024 * 1024"); expect(src, f).toContain("PDF больше 3 МБ: сервер такой не примет."); expect(src, f).not.toContain("10 МБ"); }
+    // v191: «Из документа» «О нас» — ui/concept-import.jsx
+    for (const f of ["ui/content-editor.jsx", "ui/concept-import.jsx"]) { const src = rd(f); expect(src, f).toContain("file.size > 3 * 1024 * 1024"); expect(src, f).toContain("PDF больше 3 МБ: сервер такой не примет."); expect(src, f).not.toContain("10 МБ"); }
     expect(rd("api/lesson-assist.js")).toContain('if (b64.length > 4_300_000) return res.status(413).json({ ok: false, error: "PDF слишком большой: до 3 МБ" });');
   });
 });

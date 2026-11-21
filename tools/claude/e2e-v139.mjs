@@ -305,11 +305,14 @@ await run("NET", async () => {
   ok("NET: у владельца — «Вся сеть» и заведение, выбор заведения", (await o.page.locator('[data-cn-tab="net"]').count()) === 1 && (await o.page.locator('[data-cn-tab="venue"]').count()) === 1 && (await o.page.locator("[data-cn-rest]").count()) === 1);
   const vs = await o.page.locator("[data-cn-rest] option").allInnerTexts();
   ok("NET: в выборе — все заведения сети из приложения (" + RESTAURANTS.length + "), своё первым", vs[0] === R0 && RESTAURANTS.every((r) => vs.includes(r)) && vs.length === new Set([R0, ...RESTAURANTS, "Порт"]).size, JSON.stringify(vs));
+  // v191 (Доп. 516): владелец начинает со «Всей сети» (там блоки сети); выбранная вкладка — плашкой
   ok("NET: «Линза» — вкладки одной капсулой (data-lens-seg), выбранная — плашкой", (await o.page.locator("[data-cn-tabs][data-lens-seg]").count()) === 1
-    && (await o.page.locator('[data-cn-tab="venue"][data-lens-btn="tab"]').count()) === 1 && !(await o.page.locator('[data-cn-tab="net"]').getAttribute("data-lens-btn")));
+    && (await o.page.locator('[data-cn-tab="net"][data-lens-btn="tab"]').count()) === 1 && !(await o.page.locator('[data-cn-tab="venue"]').getAttribute("data-lens-btn")));
   const missN = await lensMiss(o.page);
   ok("NET: «Линза» — выбор заведения и кнопки с метками", !missN.length, JSON.stringify(missN));
   await shot(o.page, "net-tabs");
+  await o.page.locator('[data-cn-tab="venue"]').click(); await sleep(400);
+  ok("NET: заведение выбрано — плашка переехала", (await o.page.locator('[data-cn-tab="venue"][data-lens-btn="tab"]').count()) === 1 && !(await o.page.locator('[data-cn-tab="net"]').getAttribute("data-lens-btn")));
   await o.page.locator('[data-cn-tab="net"]').click(); await sleep(400);
   ok("NET: «Вся сеть» выбрана — плашка переехала", (await o.page.locator('[data-cn-tab="net"][data-lens-btn="tab"]').count()) === 1 && !(await o.page.locator('[data-cn-tab="venue"]').getAttribute("data-lens-btn")));
   ok("NET: «Вся сеть» — четыре блока сети", (await o.page.locator("[data-cn-row]").count()) === 4);
@@ -320,13 +323,13 @@ await run("NET", async () => {
   await o.page.locator("[data-cn-save]").click();
   ok("NET: свой блок сети сохранён", !!(await until(() => o.page.locator('[data-cn-row="own"]').count(), 5000)) && srv.rpc("concept_get", { p_token: tok(ANNA) }).net.blocks.some((b) => b.title === "Музыка в зале"));
   await o.page.locator("[data-cn-rest]").selectOption("Порт"); await sleep(1500);
-  ok("NET: другое заведение — его блоки («Порт»: 2)", (await o.page.locator('[data-cn-tab="venue"]').innerText()) === "Порт" && (await o.page.locator('[data-cn-tab="venue"]').click().then(() => sleep(300)).then(() => o.page.locator("[data-cn-row]").count())) === 2);
+  ok("NET: другое заведение — его блоки («Порт»: 2)", (await o.page.locator('[data-cn-tab="venue"]').innerText()).replace(/ · \d+$/, "") === "Порт" && (await o.page.locator('[data-cn-tab="venue"]').click().then(() => sleep(300)).then(() => o.page.locator("[data-cn-row]").count())) === 2);
   await shot(o.page, "net-port");
   // заведение без сотрудников и без блоков (есть только в списке приложения) — правится так же
   const empty = RESTAURANTS.find((r) => r !== R0 && r !== "Порт");
   await o.page.locator("[data-cn-rest]").selectOption(empty); await sleep(1500);
   await o.page.locator('[data-cn-tab="venue"]').click(); await sleep(300);
-  ok("NET: «" + empty + "» (сотрудников ещё нет) — вкладка с его названием, «Пока пусто.»", (await o.page.locator('[data-cn-tab="venue"]').innerText()) === empty && /Пока пусто\./.test(await body(o.page)));
+  ok("NET: «" + empty + "» (сотрудников ещё нет) — вкладка с его названием, «Пока пусто.»", (await o.page.locator('[data-cn-tab="venue"]').innerText()).replace(/ · \d+$/, "") === empty && /Пока пусто\./.test(await body(o.page)));
   await o.page.locator("[data-cn-add]").click(); await sleep(400);
   await o.page.locator('[data-cn-kind="idea"]').click(); await sleep(500);
   await o.page.locator("[data-cn-body]").fill("Камчатская кухня и вид на вулканы.");

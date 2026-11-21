@@ -845,12 +845,14 @@ if (!ONLY || ONLY.includes("about")) {
   await down(); await shot("o6-team");
   await page.locator("[data-cn-doc]").click().catch(() => {}); await page.waitForTimeout(500);
   await page.locator("[data-cn-doctext]").fill("Наша история: открылись в 2015 году на набережной, первым был зал на сорок мест.\n\nФорма: белая рубашка, синий фартук, бейдж слева.\n\nМузыка и атмосфера: джаз, свечи, тёплый свет.").catch(() => {});
-  await page.locator("[data-cn-docrun]").click().catch(() => {}); await page.waitForTimeout(2200);
-  const nd = await page.locator("[data-cn-docblock]").count();
-  ok("«Из документа»: помощник разложил текст по блокам", nd >= 2, "блоков: " + nd);
+  // v191 (Доп. 516): план, потом блоки в виде уроков по два сразу, потом просмотр перед сохранением
+  await page.locator("[data-cn-docrun]").click().catch(() => {});
+  for (let i = 0; i < 40 && !(await page.locator('[data-cn-docbox="review"]').count()); i++) await page.waitForTimeout(300);
+  const nd = await page.locator('[data-cn-docblock][data-cn-docstatus="ok"]').count();
+  ok("«Из документа»: помощник разложил текст по блокам и написал их видом уроков", nd >= 2, "блоков: " + nd);
   await shot("o7-doc");
-  await page.locator("[data-cn-docadd]").click().catch(() => {}); await page.waitForTimeout(1800);
-  ok("«Добавить выбранные»: «Добавлено блоков: N»", /Добавлено блоков: \d+/.test(await page.locator("[data-cn-msg]").innerText().catch(() => "")));
+  await page.locator("[data-cn-docadd]").click().catch(() => {}); await page.waitForTimeout(2200);
+  ok("«Сохранить N блоков»: «Готово: добавлено …»", /Готово: (добавлено|обновлено) \d+/.test(await page.locator("[data-cn-msg]").innerText().catch(() => "")));
 }
 if (!ONLY || ONLY.includes("lessons")) {
   // v140 (Доп. 455): трек выбирается в «Сменить» (ключ sa_last_role_<имя>_<фамилия>); здесь — сразу ключом и перезапуском
@@ -1091,8 +1093,10 @@ if (!ONLY || ONLY.includes("info")) {
   await nav("home", 1600); await closeDemo();
   const labels = await page.evaluate(() => [...document.querySelectorAll(".tbp-strip .tbp-num")].map((e) => e.getAttribute("aria-label") || ""));
   // в демо у Анны первым — раздел «Наш ресторан» и свои разделы: темы ищем по названию, сумму шагов — по подписям номеров
+  // v191 (Доп. 516): раздел «О нас» тоже для ознакомления (по умолчанию) — он первым, потом «Урок 7» и «Урок 8»
   const info = labels.filter((l) => /для ознакомления/.test(l));
-  ok("Анна, «Бар»: «для ознакомления» — только у «Урока 7» и «Урока 8»", info.length === 2 && /^Урок 7 · Приём и хранение/.test(info[0]) && /^Урок 8 · Инвентарь/.test(info[1]), JSON.stringify(labels.slice(-4)));
+  ok("Анна, «Бар»: «для ознакомления» — раздел «О нас», «Урок 7» и «Урок 8»", info.length === 3 && /^О нас · /.test(info[0]) && /^Урок 7 · Приём и хранение/.test(info[1]) && /^Урок 8 · Инвентарь/.test(info[2]),
+    JSON.stringify(info));
   const total = labels.filter((l) => !/для ознакомления/.test(l)).reduce((a, l) => a + (Number((l.match(/ из (\d+)/) || [])[1]) || 0), 0);
   ok("шапка трека — «… из " + total + "»: шаги тем для ознакомления не считаются", total > 0 && new RegExp(" из " + total + " ·").test(await txt()), String(total));
   await topic("Приём и хранение");

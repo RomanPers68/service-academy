@@ -28,6 +28,7 @@ import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — сообщение бота
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
+import { lessonize } from "../../../lib/lesson-look.js";   // v191 (Доп. 516): демо-помощник «О нас» пишет в виде уроков
 import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
 import { refAiCheck, refAiClean, refPlanClean, refCheckClean } from "../../../lib/ref-ai.js";   // v168 (Доп. 493): ассистент редактора справочника — проверка и разбор как на сервере; v169: документ на главы и проверка фактов
 import { unpackWeb } from "../../../lib/ai-web.js";   // v155: запросы поиска упакованы
@@ -561,6 +562,8 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   staffPhotos: STAFF_PHOTOS, noStage52: lsGet("__demo_no52") === "1",
   noPhotoPos: lsGet("__demo_nopos") === "1",   // v160: этап 52 ещё прежний — в списке фото нет должности
   noStage53: lsGet("__demo_no53") === "1",     // v167 (Доп. 492): __demo_no53 = "1" — сервер без этапа 53 (редактор справочника)
+  noStage57: lsGet("__demo_no57") === "1",     // v191 (Доп. 516): __demo_no57 = "1" — сервер без этапа 57 (название раздела «О нас»)
+  cnCredit: lsGet("__demo_cn_credit") === "1", // v191: __demo_cn_credit = "1" — раздел «О нас» «в зачёт», как до v191
   // v159 (Доп. 484): __demo_pulse = "1" — тесты сданы на этой неделе (у строк появляется updated_at): у владельца на
   // главной виден «Пульс недели» с лидером, в «Команде» — лента сданных тестов. Без флажка — как раньше (дат нет)
   scores: [
@@ -654,6 +657,8 @@ function seed() {
   keep.add("__demo_pulse");  // v159: «тесты на этой неделе» — тоже
   keep.add("__demo_nopos");  // v160: «сервер без должности в списке фото» — тоже
   keep.add("__demo_no53");   // v167: «сервер без этапа 53» — тоже
+  keep.add("__demo_no57");   // v191: «сервер без этапа 57» — тоже
+  keep.add("__demo_cn_credit");   // v191: «О нас» в зачёт — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}
@@ -934,6 +939,49 @@ function demoLessonAssist(b) {
     const res = refAiClean(b.mode, o, text, useWeb);
     return res ? { ok: true, ...res, ...WEB, model: "demo" } : { ok: false, error: "Ассистент ответил не по формату. Попробуй ещё раз.", ...(useWeb ? { web: true } : {}) };
   }
+  // v191 (Доп. 516): «Из документа» в два шага и «Оформить как урок». План — абзацы по видам (как concept), выдержка src —
+  // сами абзацы; блок — главная мысль, «Что важно», пункты, «📌» и вопросы; оформление — то же из текста блока.
+  // sessionStorage.__e2e_cn: "fail-<вид>" — блок этого вида не пишется (проверка «Повторить»), "nostyle" — оформление не отвечает
+  const flag = (() => { try { return sessionStorage.getItem("__e2e_cn") || ""; } catch (e) { return ""; } })();
+  // предложения текста: сначала разметка уроков (lessonize), заголовки — не предложения
+  const sentences = (t) => lessonize(String(t || "")).split("\n").filter((l) => !/^\*\*.*\*\*$/.test(l.trim())).join("\n")
+    .replace(/\*\*/g, "").replace(/^[•☑✅🚫📌]\s*/gmu, "").split(/(?<=[.!?…])\s+|\n+/).map((x) => x.trim()).filter((x) => x.length > 3);
+  const asLesson = (t, kind) => {
+    const ss = sentences(t);
+    if (!ss.length) return "";
+    const lead = ss[0], rest = ss.slice(1, 7), last = ss.length > 7 ? ss[ss.length - 1] : "";
+    const mark = kind === "dress" ? "✅ " : kind === "day" || kind === "setting" ? "" : "• ";
+    const items = rest.map((x, i) => (mark ? mark : ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"][i] + " ") + x.replace(/[.]$/, ""));
+    return lessonize(lead + (items.length ? "\n\n**Что важно:**\n" + items.join("\n") : "") + "\n\n📌 " + (last || "Так у нас принято. Держим это каждую смену."));
+  };
+  if (b.mode === "concept_plan") {
+    const src = text || (b.pdfBase64 ? "Мы — сеть ресторанов на Камчатке, кормим гостей как своих.\n\nФорма: чёрный верх, фартук, закрытая обувь, волосы собраны." : "");
+    const paras = src.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    const by = {};
+    // о себе («мы — …», «начинали», «наша идея») — концепция, даже если там слово «кухня»
+    const idea = /начинал|наша идея|истори[яи] |концепц|(^|\n)\s*мы\s+—/i;
+    for (const pa of paras) { const k = idea.test(pa) ? "idea" : (CN_WORDS.find(([, re]) => re.test(pa)) || ["own"])[0]; (by[k] = by[k] || []).push(pa); }
+    const order = ["idea", "values", "structure", "guest", "kitchen", "mood", "pitch", "dress", "setting", "check", "day", "numbers", "own"];
+    const blocks = Object.entries(by).sort((a, b2) => order.indexOf(a[0]) - order.indexOf(b2[0]))
+      .map(([k, ps]) => ({ kind: k, title: k === "own" ? "Разное" : CN_T[k], about: sentences(ps[0])[0] || "", src: ps.join("\n\n").slice(0, 900) }));
+    return blocks.length ? { ok: true, blocks, model: "demo" } : { ok: false, error: "Вставь текст или прикрепи PDF" };
+  }
+  if (b.mode === "concept_block") {
+    if (flag === "fail-" + b.kind) return { ok: false, error: "Ассистент не ответил — demo: проверка" };
+    const own = String(b.src || "").trim() || text;   // выдержка блока из плана, если есть
+    const body = asLesson(own, b.kind);
+    if (!body) return { ok: false, error: "Ассистент ответил не по формату — попробуй ещё раз" };
+    const ss = sentences(own).filter((x) => x.length > 12);
+    const wrong = ["Как удобно, стандарта нет", "Решает гость", "Это только для руководителей"];
+    const qn = Math.max(0, Math.min(4, Number(b.qn) || 0));
+    return { ok: true, model: "demo", title: String(b.title || "").trim(), body,
+      questions: ss.slice(0, qn).map((l) => ({ q: "Что из этого наш стандарт («" + String(b.title || "блок") + "»)?", options: [l.slice(0, 190), ...wrong], correct: 0, explanation: "Так написано в «О нас»: " + l.slice(0, 160) })) };
+  }
+  if (b.mode === "concept_style") {
+    if (flag === "nostyle") return { ok: false, error: "Ассистент не ответил — demo: проверка" };
+    const body = asLesson(text, b.kind);
+    return body ? { ok: true, model: "demo", body } : { ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" };
+  }
   if (b.mode === "concept") {
     const paras = (text || "Наша концепция: свежая рыба каждый день и сервис, как дома.\n\nФорма: чёрный верх, фартук, закрытая обувь.").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
     const by = {};
@@ -978,7 +1026,7 @@ window.fetch = function (input, init) {
   // v137: функция push-send на месте (ключи уведомлений созданы)
   if (/\/functions\/v1\/push-send\?init=1/.test(url)) return wait(300).then(() => json({ ok: true, key: srv.rpc("push_status", { p_token: tokOf(me.id) }).key || "" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
-  if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139
+  if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" || b.mode === "concept_plan" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139; v191 — план «О нас»
   if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
   if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}

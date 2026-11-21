@@ -138,9 +138,9 @@ describe("v174 · обложка в уроке", () => {
     expect(S).toContain('import { introVideoOf } from "../data/intro-videos";');
     // v175 (Доп. 500): урок открыт с начала — ролик может встать первым экраном (autoOpen), uk — чей телефон
     expect(S).toContain("{(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)\n            ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} autoOpen={!cardMode || resumeFrom === 0} uk={posUk} /> : null}");
-    expect(S).toContain("{(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id) && !introVideoOf(lesson.id)");
+    expect(S).toContain("{(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.photoKey || lesson.id) && !introVideoOf(lesson.id)");
     // обложка видео стоит раньше фото урока и живого диалога
-    expect(S.indexOf("<IntroVideoCover")).toBeLessThan(S.indexOf("<LessonCover lessonId={lesson.id}"));
+    expect(S.indexOf("<IntroVideoCover")).toBeLessThan(S.indexOf("<LessonCover lessonId={lesson.photoKey || lesson.id}"));
     expect(S.indexOf("<IntroVideoCover")).toBeLessThan(S.indexOf("В этом уроке есть живой диалог"));
   });
 });

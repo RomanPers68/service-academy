@@ -1409,8 +1409,9 @@ export function LessonScreen({ lesson, color="#C8A96E", onBack, onComplete, quiz
           {(!cardMode || cardIdx === 0) && introVideoOf(lesson.id)
             ? <IntroVideoCover lessonId={lesson.id} a11y={!!T.a11y} autoOpen={!cardMode || resumeFrom === 0} uk={posUk} /> : null}
           {/* v146: фото урока — к краям карточки, на первой карточке (в ленте — сверху) */}
-          {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.id) && !introVideoOf(lesson.id)
-            ? <LessonCover lessonId={lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}
+          {/* v191 (Доп. 516): у уроков «О нас» номера по трекам, обложка одна — photoKey */}
+          {(!cardMode || cardIdx === 0) && lessonPhotoId(lesson.photoKey || lesson.id) && !introVideoOf(lesson.id)
+            ? <LessonCover lessonId={lesson.photoKey || lesson.id} lessonTitle={lesson.title} profile={profile} a11y={!!T.a11y} color={color} /> : null}
           {/* Баннер живого диалога — если в уроке есть термин с диалогом */}
           {processedLines.some(l => l.parts.some(p => !p.isPlain && DIALOGUES_DATA.find(d => d.termKey === p.term?.term?.toLowerCase()))) && (
             <div style={{ background: T.modCard?.background || "rgba(255,250,238,0.05)", border:`1px solid ${color||GOLD}44`, borderTop:`1px solid ${color||GOLD}66`, borderRadius:18, padding:"14px 16px", marginBottom:16, boxShadow:`0 6px 22px rgba(0,0,0,0.45), 0 2px 0 ${color||GOLD}18 inset` }}>

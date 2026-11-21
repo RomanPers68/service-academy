@@ -1077,14 +1077,15 @@ function ServiceAcademy() {
   // разминка, «Вопрос дня» и свежесть считаются без них. programAllMods — все темы: листание трека, поиск, «Подсмотреть в уроке»
   const programAllMods = useMemo(() => [...conceptMods, ...modules, ...customOwn], [conceptMods, modules, customOwn]);
   const programModules = useMemo(() => countable(programAllMods), [programAllMods]);
-  // шаги тем для ознакомления (всех загруженных ролей): их ошибки не идут в «Работу над ошибками», тест — самопроверка
-  const infoIds = useMemo(() => infoLessonIds(Object.values(MODULES).flat()), [contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const infoIdsRef = useRef(infoIds); infoIdsRef.current = infoIds;
   const homeMods = useMemo(() => [...conceptMods, ...modules], [conceptMods, modules]);   // v139: экран трека — «Наш ресторан» первым
   const reportCms = useMemo(() => [...customLessons, ...conceptRecordsAll(concept)], [customLessons, concept]);   // v139: отчёт видит и «Наш ресторан»
   // свои разделы по всем ролям — для «Учусь» (проценты треков) и экзамена
   const customByRole = useMemo(() => Object.fromEntries(ROLES.map(r => [r.id, [...conceptModules(concept, r.id, TRACK_COLOR[r.id] || GOLD, customIcon),
     ...buildCustomModules(customLessons, r.id, { color: TRACK_COLOR[r.id] || GOLD, icon: customIcon })]])), [customLessons, concept]);
+  // шаги тем для ознакомления (всех загруженных ролей): их ошибки не идут в «Работу над ошибками», тест — самопроверка.
+  // v191 (Доп. 516): и раздела «О нас», пока он «для ознакомления» (его шаги — в customByRole)
+  const infoIds = useMemo(() => infoLessonIds([...Object.values(MODULES).flat(), ...Object.values(customByRole).flat()]), [contentVer, customByRole]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const infoIdsRef = useRef(infoIds); infoIdsRef.current = infoIds;
   // книга отзывов видит свои разделы с отзывом (правка 166)
   useMemo(() => { setCustomBook(customByRole); setCustomProgram(customByRole); }, [customByRole]);
   // Живые свои шаги (правка 166): что удалено в редакторе — не видно нигде. Пока список своих
@@ -1123,7 +1124,7 @@ function ServiceAcademy() {
   const weeklyOwn = useMemo(() => (customModules || []).filter(m => !m.hidden).flatMap(m => m.lessons.filter(l => l.type === "dialogue" && l.dialogue)), [customModules]);
   const weeklyId = useMemo(() => weeklyDialogueIdFrom(weeklyOwn.map(l => l.dialogue.id)), [weeklyOwn]);
   const weeklyInline = useMemo(() => (weeklyOwn.find(l => l.dialogue.id === weeklyId) || {}).dialogue || null, [weeklyOwn, weeklyId]);
-  const examExtra = useMemo(() => (customByRole[examRole] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").flatMap(l => l.questions || [])), [customByRole, examRole]);
+  const examExtra = useMemo(() => countable(customByRole[examRole] || []).flatMap(m => m.lessons.filter(l => l.type === "quiz").flatMap(l => l.questions || [])), [customByRole, examRole]);   // v191: раздел «О нас» для ознакомления — не в экзамене
   const totalLessons = useMemo(() => programModules.reduce((a, m) => a + m.lessons.filter(l => l.type !== "result").length, 0), [programModules]);
   const roleLesonIds = useMemo(() => new Set(programModules.flatMap(m => m.lessons.filter(l => l.type !== "result").map(l => l.id))), [programModules]);
   const roleQuizIds = useMemo(() => new Set(programModules.flatMap(m => m.lessons.filter(l => l.type === "quiz").map(l => l.id))), [programModules]);
@@ -3655,7 +3656,7 @@ function ServiceAcademy() {
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
-        {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} /></Suspense></div>}
+        {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null} /></Suspense></div>}
         {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} concept={concept} onAbout={() => { setAboutEdit(false); navigate("about"); }} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} onShareChat={chatShare} /></Suspense></div>}
         {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen startReverse={ckReverse} onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onShareChat={chatShare} /></Suspense></div>}

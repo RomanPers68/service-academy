@@ -15,6 +15,11 @@
 //                { build: { title, glass, tint, win, lose, steps: [{ label, q, cost, options: [{ t, ok, fb }] }] } }
 //   concept    — v139 (Доп. 454): «О нас», документ о сети или заведении (текст и/или PDF) → блоки
 //                { blocks: [{ kind, title, body }] }, kind — вид блока (lib/concept.js, CN_KINDS)
+//   concept_plan, concept_block, concept_style — v191 (Доп. 516): «Из документа» в два шага и вид как у уроков.
+//                concept_plan: документ (текст или PDF) → план { blocks: [{ kind, title, about, src }] } (src — выдержка
+//                из документа для блока, по ней пишется блок без повторной отправки PDF); concept_block: один блок по
+//                материалу → { title, body, questions } (qn вопросов теста, 0 — без них); concept_style: текст блока →
+//                { body } в виде уроков, факты те же. Текст ответа приводится к разметке уроков (lib/lesson-look.js)
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //   ref_chapter, ref_improve, ref_shorten — v168 (Доп. 493): ассистент редактора справочника (lib/ref-ai.js): глава из
@@ -35,6 +40,7 @@
 // Защита как у импорта меню: живая сессия (whoami), только руководители
 // (как и сам редактор), не больше 40 обращений в час на человека.
 import { verifySession, rateLimit } from "./_auth.js";
+import { lessonize } from "../lib/lesson-look.js";   // v191 (Доп. 516): текст блоков «О нас» — разметкой уроков
 import { webCall } from "./_web.js";   // v169: поиск в интернете для ассистента справочника
 // v168 (Доп. 493): ассистент редактора справочника — режимы ref_chapter, ref_improve, ref_shorten. Просьбы к модели и
 // разбор ответа — в lib/ref-ai.js (общие с редактором и демо). Только владелец, как и сам редактор справочника.
@@ -67,6 +73,8 @@ const STYLE = [
   WHOLE,
 ].join("\n");
 
+// v191 (Доп. 516): режимы «О нас»
+export const CN_MODES = ["concept", "concept_plan", "concept_block", "concept_style"];
 // v139 (Доп. 454): виды блоков «О нас» — как CN_KINDS в lib/concept.js
 export const CONCEPT_KINDS = {
   idea: "Концепция и история", values: "Ценности", structure: "Структура: кто за что отвечает", guest: "Наш гость",
@@ -75,7 +83,83 @@ export const CONCEPT_KINDS = {
   numbers: "Цифры смены: на что смотрим", own: "Свой блок",
 };
 
+// v191 (Доп. 516): владелец — «давай сделаем так, что бы он красиво составлял текст, по типу того, что у нас уже
+// собранно в уроках. А то выглядит инородно». Вид — как у 246 штатных уроков (data/modules-*.js): так их рисует экран урока.
+export const LOOK = [
+  "Вид — как у уроков приложения (экран урока рисует эти строки по-своему):",
+  "— первая строка — главная мысль одним-двумя предложениями (30–170 знаков), без подзаголовка перед ней: экран покажет её крупно;",
+  "— дальше 2–4 части: подзаголовок отдельной строкой в **двойных звёздочках** (можно с двоеточием внутри: **Что важно:**), под ним 1–3 коротких абзаца по 1–3 предложения или список;",
+  "— части и абзацы разделяй пустой строкой (в JSON — \\n\\n): по пустым строкам урок делится на карточки;",
+  "— список — строки с «• »; что проверить или сделать — «☑ »; принципы и ценности — «🔹 »; шаги по порядку — 1️⃣ 2️⃣ 3️⃣ (до девяти);",
+  "— как правильно — строки с «✅ », так нельзя — «🚫 »;",
+  "— главный вывод — строка с «📌 » в конце (одна, самое большее две на блок);",
+  "— точная фраза гостю — отдельной строкой в «ёлочках»;",
+  "— **жирным** — только ключевые слова внутри строки, не целые предложения;",
+  "— других значков, #, _, таблиц и HTML нет.",
+].join("\n");
+const VOICE = [
+  "Пишешь сотрудникам ресторанов на «ты», живо и по делу, без канцелярита, воды и громких слов.",
+  "Не выдумывай фактов, цен, блюд, имён, цифр и правил, которых нет в материале.",
+  WHOLE,
+].join("\n");
+// что хорошо выходит у каждого вида блока (lib/concept.js, CN_KINDS)
+export const CONCEPT_LOOK = {
+  idea: "кто мы, с чего начинали и чем отличаемся; в конце — «📌 » суть одной фразой",
+  values: "каждая ценность — строкой «🔹 Ценность — как это видно в работе»",
+  structure: "кто за что отвечает — строки «• Должность (имя, если есть в материале) — за что отвечает, с каким вопросом идти»",
+  guest: "кто к нам приходит и за чем; кому что посоветовать",
+  kitchen: "что готовим и наливаем, наше фирменное — списком; цены — только если они есть в материале",
+  mood: "интерьер, музыка, свет, настроение — как гость это чувствует",
+  pitch: "сначала одна строка — когда это говорить; дальше готовая речь гостю 3–5 предложений от «мы», каждая фраза — строкой в «ёлочках»",
+  dress: "по пунктам — форма, обувь, волосы, украшения, ногти: «✅ » как надо и «🚫 » так нельзя",
+  setting: "как накрыт стол — по порядку 1️⃣ 2️⃣ 3️⃣",
+  check: "из чего складывается чек и к какому стремимся — списком, цифры как в материале",
+  day: "распорядок по времени — 1️⃣ 2️⃣ 3️⃣, время в начале строки",
+  numbers: "на какие цифры смотрим — строки «• Показатель — норма или цель»",
+  own: "по смыслу материала",
+};
+const QUIZ_RULES = [
+  "Вопрос — ситуация из работы или проверка важного правила из блока. 4 варианта, ровно один верный; неверные — правдоподобные ошибки новичка, не абсурд.",
+  "Все варианты — примерно одной длины и одинаково уверенные: верный не выделяется ни длиной, ни подробностью. Пояснение — одной фразой: почему верный ответ верный.",
+].join("\n");
+
 export const PROMPT = {
+  // v191: план раздела по документу — какие блоки получаются и выдержка для каждого
+  concept_plan: (where, material) => [
+    `Прочитай материал о ${where || "сети ресторанов"} и составь план раздела «О нас» в приложении для сотрудников ресторанов: какие блоки-уроки из него получаются.`,
+    "Виды блоков (kind — название):",
+    Object.entries(CONCEPT_KINDS).map(([k, t]) => `• ${k} — ${t}`).join("\n"),
+    "Бери только то, о чём в материале есть содержание. Один вид — один блок; own — важное, что не подошло к другим видам (не больше пяти).",
+    "Для каждого блока: kind; title — заголовок урока 2–6 слов, живой и конкретный, можно с названием компании («Кто мы: …», «Наш гость: кому что советовать»); about — что войдёт, одним предложением;",
+    "src — выдержка из материала для этого блока: все факты, цифры, имена, правила и формулировки, которые в него войдут, близко к тексту материала, до 900 знаков.",
+    "Порядок блоков — как в списке видов.",
+    'Ответ — строго JSON без пояснений и без ```: {"blocks": [{"kind": "idea", "title": "…", "about": "…", "src": "…"}]}',
+    material ? "\nМАТЕРИАЛ:\n" + material : "\nМАТЕРИАЛ — во вложенном PDF.",
+  ].join("\n"),
+  // v191: один блок по материалу — в виде уроков и с вопросами теста
+  concept_block: (where, kind, title, about, others, qn, material, src = "") => [
+    `Напиши блок-урок «${title || CONCEPT_KINDS[kind] || "О нас"}» для раздела «О нас» приложения сотрудников (${where || "сеть ресторанов"}). Вид блока — ${CONCEPT_KINDS[kind] || "свой блок"}: ${CONCEPT_LOOK[kind] || CONCEPT_LOOK.own}.`,
+    about ? "Что в нём: " + about : "",
+    src ? "Выдержка из материала для этого блока (остальной материал — ниже, бери из него только то, что относится к блоку):\n" + src : "",
+    others && others.length ? "Другие блоки раздела — их содержание не повторяй: " + others.map((x) => "«" + x + "»").join(", ") + "." : "",
+    "Объём — 120–320 слов, строго по материалу ниже.",
+    LOOK,
+    VOICE,
+    qn > 0 ? `Ещё ${qn} вопрос${qn === 1 ? "" : "а"} для теста по этому блоку.\n` + QUIZ_RULES : "",
+    qn > 0
+      ? 'Ответ — строго JSON без пояснений и без ```: {"title": "…", "body": "…", "questions": [{"q": "…", "options": ["…","…","…","…"], "correct": 0, "explanation": "…"}]}'
+      : 'Ответ — строго JSON без пояснений и без ```: {"title": "…", "body": "…"}',
+    material ? "\nМАТЕРИАЛ:\n" + material : "\nМАТЕРИАЛ — во вложенном PDF.",
+  ].filter(Boolean).join("\n"),
+  // v191: оформить готовый текст блока как урок — смысл и факты те же
+  concept_style: (kind, title, text) => [
+    `Оформи текст блока «${title || CONCEPT_KINDS[kind] || "О нас"}» раздела «О нас» как урок приложения (вид блока — ${CONCEPT_KINDS[kind] || "свой блок"}: ${CONCEPT_LOOK[kind] || CONCEPT_LOOK.own}).`,
+    "Смысл, факты, цифры, имена и правила — те же: ничего не добавляй от себя и ничего важного не теряй; повторы и воду убери.",
+    LOOK,
+    VOICE,
+    'Ответ — строго JSON без пояснений и без ```: {"body": "…"}',
+    "\nТЕКСТ БЛОКА:\n" + text,
+  ].join("\n"),
   concept: (where, material) => [
     `Разложи материал о ресторане (${where || "сеть ресторанов"}) по блокам раздела «О нас» приложения для сотрудников.`,
     "Виды блоков (kind — название):",
@@ -83,7 +167,8 @@ export const PROMPT = {
     "pitch — готовая речь гостю: 3–5 предложений от «мы», без цен. own — всё важное, что не подошло к другим видам; заголовок — свой, 2–5 слов.",
     "Бери только то, что есть в материале: о чём материал молчит, того блока не пиши. Один вид — один блок (own — сколько нужно, но не больше пяти).",
     "Объём текста блока — до 300 слов. Цифры, имена, правила — как в материале, ничего не придумывай.",
-    STYLE,
+    LOOK,   // v191: вид как у уроков
+    VOICE,
     'Ответ — строго JSON без пояснений и без ```: {"blocks": [{"kind": "idea", "title": "…", "body": "…"}]} (переносы строк в body — \\n).',
     material ? "\nМАТЕРИАЛ:\n" + material : "\nМАТЕРИАЛ — во вложенном PDF.",
   ].join("\n"),
@@ -217,15 +302,47 @@ function sanitizeSituation(x) {
   return { ...head, ...(genre === "empathy" ? { guestThought } : {}), scene, question, options, correct, ...tail };
 }
 
+// v191: вопросы теста блока «О нас» — как их принимает сервер (_sa_cn_questions): вопрос, 2–4 непустых варианта, верный из них
+export function cnQuestions(arr) {
+  return (Array.isArray(arr) ? arr : []).map((q) => {
+    if (!q || typeof q !== "object") return null;
+    // пустые варианты убираются, верный — тот же вариант, что назвала модель (его номер мог сдвинуться)
+    const rc = Number.isInteger(q.correct) ? q.correct : parseInt(q.correct, 10);
+    const keep = (Array.isArray(q.options) ? q.options : []).map((x, i) => ({ v: cut(x, 200).trim(), i })).filter((x) => x.v).slice(0, 4);
+    const correct = keep.findIndex((x) => x.i === rc);
+    const text = cut(q.q, 400).trim();
+    if (!text || keep.length < 2 || correct < 0) return null;
+    return { q: text, options: keep.map((x) => x.v), correct, explanation: cut(q.explanation, 500).trim() };
+  }).filter(Boolean).slice(0, 4);
+}
+
 // Только известные поля и разумные длины — что бы модель ни прислала
 export function sanitize(mode, o) {
   if (!o) return null;
   if (mode === "concept") {
     const seen = new Set();
     const blocks = (Array.isArray(o.blocks) ? o.blocks : []).filter((b) => b && typeof b === "object" && CONCEPT_KINDS[b.kind]).map((b) => ({
-      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], body: cut(b.body, 6000).trim() }))
+      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], body: lessonize(cut(b.body, 6000)) }))   // v191: разметкой уроков
       .filter((b) => b.body && (b.kind === "own" || (!seen.has(b.kind) && seen.add(b.kind)))).slice(0, 17);
     return blocks.length ? { blocks } : null;
+  }
+  // v191 (Доп. 516): план, блок, оформление
+  if (mode === "concept_plan") {
+    const seen = new Set();
+    let own = 0;
+    const blocks = (Array.isArray(o.blocks) ? o.blocks : []).filter((b) => b && typeof b === "object" && CONCEPT_KINDS[b.kind]).map((b) => ({
+      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], about: cut(b.about, 300).trim(), src: cut(b.src, 1500).trim() }))
+      .filter((b) => (b.kind === "own" ? ++own <= 5 : !seen.has(b.kind) && seen.add(b.kind))).slice(0, 17);
+    return blocks.length ? { blocks } : null;
+  }
+  if (mode === "concept_block") {
+    const body = lessonize(cut(o.body, 6000));
+    if (!body) return null;
+    return { title: cut(o.title, 80).trim(), body, questions: cnQuestions(o.questions) };
+  }
+  if (mode === "concept_style") {
+    const body = lessonize(cut(o.body != null ? o.body : o.content, 6000));
+    return body ? { body } : null;
   }
   if (mode === "lesson") {
     const content = cut(o.content, 12000).trim();
@@ -295,7 +412,7 @@ function openRouterText(data) {
   return "";
 }
 
-async function ask(key, prompt, pdfBase64) {
+async function ask(key, prompt, pdfBase64, maxTokens = 4000) {
   const headers = { Authorization: "Bearer " + key, "Content-Type": "application/json", "X-Title": "Service Academy lesson assist" };
   if (process.env.VERCEL_URL) headers["HTTP-Referer"] = "https://" + process.env.VERCEL_URL;
   const content = [{ type: "text", text: prompt }];
@@ -306,7 +423,7 @@ async function ask(key, prompt, pdfBase64) {
     try {
       r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST", headers,
-        body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.3, messages: [{ role: "user", content }] }),
+        body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0.3, messages: [{ role: "user", content }] }),
       });
       data = await r.json();
     } catch (e) { lastErr = model + ": сеть — " + (e && e.message ? e.message : "unknown"); continue; }
@@ -330,9 +447,10 @@ export default async function handler(req, res) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
-  const { token, mode, role, title, text, pdfBase64, idea, about, others, fixes, web } = req.body || {};
+  const { token, mode, role, title, text, pdfBase64, idea, about, others, fixes, web, kind, qn, where, src } = req.body || {};
   const isRef = REF_AI_MODES.includes(mode);   // v168: ассистент редактора справочника
-  if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", "concept"].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  const isCn = CN_MODES.includes(mode);        // v191: «О нас» — свой счёт обращений: документ — план и по обращению на блок
+  if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
@@ -341,7 +459,7 @@ export default async function handler(req, res) {
   if (!boss) return res.status(403).json({ ok: false, error: "Редактор контента — только для руководителей" });
   if (isRef && !emp.is_admin) return res.status(403).json({ ok: false, error: "Редактор справочника доступен только владельцу" });
   // v169: у режимов справочника свой счёт — раскладка документа на главы тратит по обращению на главу
-  if (!(isRef ? rateLimit("ref:" + token, 80, 3600_000) : rateLimit("lesson:" + token, 40, 3600_000))) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
+  if (!(isRef ? rateLimit("ref:" + token, 80, 3600_000) : isCn ? rateLimit("cn:" + token, 150, 3600_000) : rateLimit("lesson:" + token, 40, 3600_000))) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
 
   const material = cut(text, 30000).trim();
   const b64 = typeof pdfBase64 === "string" && pdfBase64 ? pdfBase64.replace(/^data:[^;]*;base64,/, "") : "";
@@ -373,16 +491,24 @@ export default async function handler(req, res) {
       return bad(500, "Сбой ассистента: " + (e && e.message ? e.message : "unknown"));
     }
   }
-  const withPdf = mode === "lesson" || mode === "concept";   // v139: «Из документа» в «О нас» — тоже текст или PDF
+  // v139: «Из документа» в «О нас» — тоже текст или PDF; v191: и план, и блок (блок — обычно по выдержке из плана)
+  const withPdf = mode === "lesson" || mode === "concept" || mode === "concept_plan" || mode === "concept_block";
   if (withPdf && !material && !b64) return res.status(400).json({ ok: false, error: "Вставь текст или прикрепи PDF" });
   if (!withPdf && material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
+  if ((mode === "concept_block" || mode === "concept_style") && !CONCEPT_KINDS[kind]) return res.status(400).json({ ok: false, error: "Неизвестный вид блока" });
+  const nq = Math.max(0, Math.min(4, Number.isInteger(qn) ? qn : parseInt(qn, 10) || 0));
+  const oth = (Array.isArray(others) ? others : []).filter((x) => typeof x === "string").map((x) => cut(x, 80).trim()).filter(Boolean).slice(0, 16);
 
-  const prompt = mode === "concept" ? PROMPT.concept(cut(title, 80).trim(), material) : mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
+  const prompt = mode === "concept_plan" ? PROMPT.concept_plan(cut(title, 80).trim(), material)
+    : mode === "concept_block" ? PROMPT.concept_block(cut(where, 80).trim(), kind, cut(title, 80).trim(), cut(about, 300).trim(), oth, nq, material, cut(src, 1500).trim())
+    : mode === "concept_style" ? PROMPT.concept_style(kind, cut(title, 80).trim(), material)
+    : mode === "concept" ? PROMPT.concept(cut(title, 80).trim(), material) : mode === "lesson" ? PROMPT.lesson(role, material) : mode === "improve" ? PROMPT.improve(role, material)
     : mode === "situations" ? PROMPT.situations(role, material, cut(title, 120))
     : mode === "dialogue" ? PROMPT.dialogue(role, material, cut(title, 120), cut(idea, 400).trim())
     : mode === "build" ? PROMPT.build(role, material) : mode === "review" ? PROMPT.review(role, material, cut(title, 120)) : PROMPT.questions(role, material, cut(title, 120));
   try {
-    const out = await ask(key, prompt, withPdf ? b64 : "");
+    const out = await ask(key, prompt, withPdf ? b64 : "", mode === "concept_plan" ? 8000 : 4000);   // v191: план с выдержками длиннее
+    if (out.ok && out.cut && isCn) return res.status(422).json({ ok: false, error: "Документ слишком большой для одного раза. Вставь его частями." });
     if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
     const result = sanitize(mode, parseObject(out.text));
     if (!result) return res.status(422).json({ ok: false, error: "Ассистент ответил не по формату — попробуй ещё раз" });

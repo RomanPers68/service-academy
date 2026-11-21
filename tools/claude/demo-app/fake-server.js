@@ -563,7 +563,8 @@ export function makeServer(opts) {
   // opts.concept: { net: [блок], venues: { заведение: [блок] } }; блок — { kind, title, body, photos?: [{ id, cap }], tracks?,
   // questions? }; opts.conceptPhotos: { id: { scope, thumb, full, w, h } } — фото для демо (data без префикса)
   if (!S.cn) {
-    S.cn = { blocks: [], seq: 0, photos: {}, pseq: 0, reads: {}, sent: {} };
+    // v191: opts.cnCredit — раздел «О нас» сразу «в зачёт», как до v191 (для проверок, где он — текущая тема трека)
+    S.cn = { blocks: [], seq: 0, photos: {}, pseq: 0, reads: {}, sent: {}, meta: opts.cnCredit ? { "": { title: "", sub: "", mode: "credit" } } : {} };
     const add = (scope, list) => (list || []).forEach((x, i) => { S.cn.seq++; S.cn.blocks.push({ id: S.cn.seq, scope, kind: x.kind, title: x.title, body: x.body || "",
       photos: x.photos || [], tracks: x.tracks || [], questions: x.questions || [], sort: i + 1, at: new Date(clock() - 3 * 864e5).toISOString(), by: x.by || "" }); });
     add("", opts.concept && opts.concept.net);
@@ -581,8 +582,23 @@ export function makeServer(opts) {
   };
   const cnList = (sc, kinds) => clone(S.cn.blocks.filter((x) => x.scope === sc && (!kinds || kinds.includes(x.kind))).sort((a, b2) => (a.sort - b2.sort) || (a.id - b2.id)));
   const cnStr = (v, n) => String(v == null ? "" : v).replace(/\r/g, "").trim().slice(0, n);
+  // v191 (Доп. 516, этап 57): название раздела, «для ознакомления» или «в зачёт» (как supabase-stage57-concept-title.sql);
+  // opts.noStage57 — этапа нет: concept_get без meta, concept_meta_set не найден
+  const cnMeta = (sc) => { const m = (S.cn.meta || {})[sc || ""]; return m ? { title: m.title, sub: m.sub, mode: m.mode } : { title: "", sub: "", mode: "" }; };
+  const cnSpace = (v, n) => String(v).replace(/\s+/g, " ").trim().slice(0, n);
   function concept(fn, p, b) {
     if (!p) return { ok: false, error: "auth" };
+    if (fn === "concept_meta_set") {
+      if (opts.noStage57) return { code: "PGRST202", message: "Could not find the function" };
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      if (b.p_mode != null && !["", "info", "credit"].includes(b.p_mode)) return { ok: false, error: "bad_mode" };
+      S.cn.meta = S.cn.meta || {};
+      const old = S.cn.meta[sc] || { title: "", sub: "", mode: "" };
+      const m = { title: b.p_title == null ? old.title : cnSpace(b.p_title, 40), sub: b.p_sub == null ? old.sub : cnSpace(b.p_sub, 60), mode: b.p_mode == null ? old.mode : b.p_mode };
+      if (!m.title && !m.sub && !m.mode) delete S.cn.meta[sc]; else S.cn.meta[sc] = m;
+      return { ok: true, meta: cnMeta(sc) };
+    }
     if (fn === "concept_get") {
       const mine = p.restaurant || null;
       let rest = String(b.p_restaurant || "").trim() || mine;
@@ -593,7 +609,8 @@ export function makeServer(opts) {
         venue: rest ? { name: rest, blocks: cnList(rest), ver: cnVer(rest) } : null,
         others: scopes.map((sc) => ({ name: sc, blocks: cnList(sc, CN_PUBLIC) })),
         read: { net: S.cn.reads[p.id + "|"] || null, venue: rest ? S.cn.reads[p.id + "|" + rest] || null : null },
-        can: { net: cnCan(p, ""), venue: !!rest && cnCan(p, rest) }, venues };
+        can: { net: cnCan(p, ""), venue: !!rest && cnCan(p, rest) }, venues,
+        ...(opts.noStage57 ? {} : { meta: { net: cnMeta(""), venue: rest ? cnMeta(rest) : null } }) };
     }
     if (fn === "concept_save") {
       const x = b.p_block;

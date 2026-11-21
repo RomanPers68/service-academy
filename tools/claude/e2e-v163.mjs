@@ -135,7 +135,8 @@ async function open({ who = "roman", light = false, width = 390, height = 844, h
   const page = await ctx.newPage();
   const errs = []; page.on("pageerror", (e) => errs.push(String(e.message).slice(0, 160)));
   await page.goto(URL0, { waitUntil: "load" });
-  await page.evaluate(([w, h, m, fl]) => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem("__demo_who", w);
+  // v191 (Доп. 516): раздел «О нас» «в зачёт», как до v191, — он текущая тема трека, обложку проверяем на нём
+  await page.evaluate(([w, h, m, fl]) => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem("__demo_who", w); localStorage.setItem("__demo_cn_credit", "1");
     const real = performance.timeOrigin + performance.now(); const d = new Date();
     localStorage.setItem("__demo_t", JSON.stringify({ off: new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime() - real, at: real }));
     for (const k of Object.keys(fl)) sessionStorage.setItem(k, fl[k]); }, [who, hour, minute, flags]);

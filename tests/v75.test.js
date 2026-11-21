@@ -27,6 +27,9 @@ describe("v75: эмодзи в коде остались только ключа
       "ui/screens-dialogue.jsx": 7, "ui/screens-learning.jsx": 13, "ui/sos.jsx": 38, "ui/table.jsx": 11, "ui/widgets.jsx": 1,
       "lib/custom-modules.js": 3, "lib/mastery.js": 14, "lib/pdf.js": 2, "lib/practice-mistake.js": 1, "lib/radio.js": 1,
       "lib/reference-context.js": 1, "lib/situation-icons.js": 82, "lib/table-pick.js": 1, "lib/tracks.js": 20, "data/roles.js": 6,
+      // v191 (Доп. 516): маркеры строк урока (✅ 🚫 📌 ☑ 🔹 точки) — приведение текста «О нас» к виду уроков и кнопки разметки;
+      // экран (ui/lesson-look.jsx, ui/concept.jsx) их не пишет, берёт вид строки отсюда
+      "lib/lesson-look.js": 44,
     };
     const per = Object.fromEntries(FILES.map((f) => [f, emojiIn(code(rd(f))).length]).filter(([, n]) => n));
     for (const [f, n] of Object.entries(per)) expect([f, n <= (ALLOWED[f] || 0)]).toEqual([f, true]);

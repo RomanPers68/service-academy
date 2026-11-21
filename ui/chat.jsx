@@ -38,6 +38,8 @@ import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и �
 import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, SwapSheet, TaskSheet, PollSheet, StopSheet, BriefSheet, ShareSheet, LateSheet, smartErr } from "./chat-cards";
 import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine, mentorContext } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
+// v189 (Доп. 514): «К столу» — стол выбирают на схеме зала (схема из «Рассадки» грузится, только когда нужна)
+const CallTables = React.lazy(() => import("./call-table").then((m) => ({ default: m.CallTables })));
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
 import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
@@ -567,7 +569,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
         : <List chats={chats} me={me} err={err} note={note} onBack={onBack} onOpen={(c) => { vibrate("light"); setNote(""); setCurId(c.id); }} onWrite={() => { vibrate("light"); setNote(""); setPicker(true); }}
             onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} onSearch={api.search ? () => { vibrate("light"); setNote(""); searchQ.current = ""; setSearch(true); } : null} />}
-      {callOpen && !cur && team ? <CallSheet me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
+      {callOpen && !cur && team ? <CallSheet a11y={a11y} me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
       {shareItem && !cur ? <ShareTo api={api} me={me} chats={chats} item={shareItem} onClose={() => setShareItem(null)}
         onSent={(chat) => { setShareItem(null); setInit(null); setCurId(chat.id); load(); }} /> : null}
     </div>
@@ -1577,7 +1579,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} data-chat-file="" tabIndex={-1} aria-hidden="true" />
       </div>
     </div>
-    {sheet === "call" ? <CallSheet me={me} api={api} chat={chat} onClose={() => setSheet(null)} onDone={(msg) => { setSheet(null); if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
+    {sheet === "call" ? <CallSheet a11y={a11y} me={me} api={api} chat={chat} onClose={() => setSheet(null)} onDone={(msg) => { setSheet(null); if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
     {sheet === "info" ? <GroupInfo chat={chat} me={me} api={api} members={members} onClose={() => setSheet(null)} onAdd={() => setSheet("add")} onGone={(why) => { setSheet(null); if (onGone) onGone(why); }}
       onChanged={() => { if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} /> : null}
     {sheet === "clear" ? <ClearSheet chat={chat} busy={clearBusy} err={clearErr} onClear={clearChat} onClose={() => { if (!clearBusy) setSheet(null); }} /> : null}
@@ -1610,7 +1612,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
 }
 
 // ── «Позвать» ──
-function CallSheet({ me, api, chat, onClose, onDone }) {
+function CallSheet({ a11y = false, me, api, chat, onClose, onDone }) {
   const [who, setWho] = React.useState("");
   const [person, setPerson] = React.useState(null);
   const [why, setWhy] = React.useState("");
@@ -1618,6 +1620,17 @@ function CallSheet({ me, api, chat, onClose, onDone }) {
   const [own, setOwn] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
+  // v189: схема зала и столы на сегодня (seat_board) — чтобы стол выбрать, а не вписывать; нет рассадки — поле, как раньше
+  const [board, setBoard] = React.useState(null);
+  const [tid, setTid] = React.useState(null);
+  const [manual, setManual] = React.useState(false);
+  const [viaTable, setViaTable] = React.useState(false);   // официанта стола выбрали со схемы — список людей не раскрываем
+  const pickRef = React.useRef(null);
+  React.useEffect(() => {
+    let on = true;
+    if (api && api.board) Promise.resolve(api.board()).then((r) => { if (on && r && r.ok && r.plan && Array.isArray(r.plan.tables) && r.plan.tables.length) setBoard(r); }).catch(() => {});
+    return () => { on = false; };
+  }, [api]);
   const call = { who, emp: person && person.id, toName: person && person.name, why, table, text: own };
   const problem = callProblem(call);
   const preview = !problem ? callLine({ name: (me && me.name) || "Ты", emp: me && me.id, call }, null).replace(/^\S+ зовёт /, "Позовёшь ") : "";
@@ -1639,16 +1652,27 @@ function CallSheet({ me, api, chat, onClose, onDone }) {
         <div className="ch-lbl">Кого</div>
         <div className="ch-chips" role="radiogroup" aria-label="Кого позвать">
           {CALL_WHO.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={who === id} className="ch-chip" data-chat-who={id} onClick={() => { vibrate("light"); setWho(id); setPerson(null); setErr(""); }}>{label}</button>)}
-          <button type="button" role="radio" aria-checked={who === "person"} className="ch-chip" data-chat-who="person" onClick={() => { vibrate("light"); setWho("person"); setErr(""); }}>{person ? person.name.split(" ")[0] : "Человека"}</button>
+          <button type="button" role="radio" aria-checked={who === "person"} className="ch-chip" data-chat-who="person" onClick={() => { vibrate("light"); setWho("person"); setViaTable(false); setErr(""); }}>{person ? person.name.split(" ")[0] : "Человека"}</button>
         </div>
-        {who === "person" ? <div style={{ marginTop: 8, maxHeight: 220, overflowY: "auto", borderRadius: 14, border: "1px solid var(--edge)" }} className="sa-dlgscroll">
+        {who === "person" && !viaTable ? <div style={{ marginTop: 8, maxHeight: 220, overflowY: "auto", borderRadius: 14, border: "1px solid var(--edge)" }} className="sa-dlgscroll">
           <People me={me} api={api} inline picked={person && person.id} onPick={(p) => { setPerson(p); setErr(""); }} />
         </div> : null}
         <div className="ch-lbl">Зачем</div>
         <div className="ch-chips" role="radiogroup" aria-label="Зачем">
-          {CALL_WHY.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={why === id} className="ch-chip" data-chat-why={id} onClick={() => { vibrate("light"); setWhy(id); setErr(""); }}>{label}</button>)}
+          {CALL_WHY.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={why === id} className="ch-chip" data-chat-why={id} onClick={() => {
+            vibrate("light"); setWhy(id); setErr("");
+            if (id === "table" && board && !manual) setTimeout(() => { try { pickRef.current && pickRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) { /* */ } }, 120);
+          }}>{label}</button>)}
         </div>
-        {why === "table" ? <input className="ch-field num sa-field" inputMode="numeric" value={table} maxLength={6} placeholder="Номер стола" aria-label="Номер стола" data-chat-table="" onChange={(e) => { setTable(e.target.value); setErr(""); }} /> : null}
+        {why === "table" && board && !manual ? <div ref={pickRef} style={{ marginTop: 8 }}>
+          <React.Suspense fallback={<div style={{ fontSize: 13, color: "var(--sub)", padding: "8px 2px" }}>Открываю схему зала…</div>}>
+            <CallTables a11y={a11y} board={board} tid={tid} who={who}
+              onPick={(t) => { setTid(t.id); setTable(String(t.n)); setErr(""); }}
+              onWaiter={(p) => { setWho("person"); setPerson({ id: p.id, name: p.name }); setViaTable(true); setErr(""); }}
+              onManual={() => { setManual(true); setTid(null); setTable(""); }} />
+          </React.Suspense>
+        </div> : null}
+        {why === "table" && !(board && !manual) ? <input className="ch-field num sa-field" inputMode="numeric" value={table} maxLength={6} placeholder="Номер стола" aria-label="Номер стола" data-chat-table="" onChange={(e) => { setTable(e.target.value); setErr(""); }} /> : null}
         {why === "own" ? <input className="ch-field sa-field" value={own} maxLength={CALL_OWN_MAX} placeholder="Например: принеси детский стульчик" aria-label="Зачем зовёшь" data-chat-own="" onChange={(e) => { setOwn(e.target.value); setErr(""); }} /> : null}
         {preview ? <div className="ch-preview" data-chat-preview="">{preview}</div> : null}
         {err ? <div className="ch-err" role="alert" style={{ marginTop: 10, padding: 0 }}>{err}</div> : null}

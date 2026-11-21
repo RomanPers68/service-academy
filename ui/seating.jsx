@@ -31,10 +31,11 @@ import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boar
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
   kindOf, copyTable, renumber, canRenumber, spanOf, rotateTable, sidesOf, sideStep, toggleSofa, resetSides, takeNumbers, crossDupes, dropDupes, isCrossDup,
   sitProgress, WAITER_COLORS, waiterColorIndex, waiterTids, SIT_NORM, SIT_WARN,
-  mainOf, joinedOf, groupOf, groupLabel, groupSeats, groupFill, isFreeT, freeNear, joinSuggest, mergeRows, seat2Error, guestsWord } from "../lib/seating";
+  mainOf, joinedOf, groupOf, groupLabel, groupSeats, groupFill, isFreeT, freeNear, joinSuggest, mergeRows, seat2Error, guestsWord,
+  offOf, viewBox, fineSpot, moveFine, nudgeTable, unFine, settleFine } from "../lib/seating";
 import { tableGeom, filledChairs, okSides } from "../lib/floor-art";   // v179; v183 — стулья по сторонам
 import { TableArt, labelBox } from "./table-art";
-import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides, TakeNumbers, DropDupes } from "./floor-tools";
+import { KindPalette, EditorActions, StartCard, PhotoCard, CopyBtn, RenumberBtn, CameraIcon, TurnBtn, ChairSides, TakeNumbers, DropDupes, FineNudge } from "./floor-tools";
 import { fitBg, layoutScan, scanFloor, scanErrorText, scanSummary, seatBoxes, seatMasks, scanSeatsFull, mergeSeats, takeHint, takeSummary, dropLabel, dropHint, dropSummary } from "../lib/floor-scan";
 import { bgGet, bgPut, bgDrop, loadPlanPhoto, cropRotate, aiImage, tableCrops } from "../lib/floor-photo";
 import { PickBanner, JoinChips, SheetMore, WaitList } from "./seat-more";   // v187: объединить, пересадить, лист ожидания
@@ -108,7 +109,7 @@ const DoorIcon = ({ s, color }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M5 21V4h9v17" /><path d="M14 4l5 2v15l-5-2" /><path d="M11 12.5h.01" /><path d="M3 21h18" /></svg>);
 
-export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop, wcolor = null }) {
+export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop, wcolor = null, fine = false }) {
   const [ref, w] = useWidth();
   const cell = w / GRID_W;
   const z = zone || zone1(plan);
@@ -127,8 +128,9 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
   const canDrag = edit && tool === "table" && !!onDrop;
   const down = (t) => (e) => {
     if (!canDrag || (e.button != null && e.button > 0)) return;
-    const [cx, cy] = cellAt(e);
-    drag.current = { t, dx: Math.max(0, Math.min(cx - t.x, t.shape === "long" ? 1 : 0)), dy: Math.max(0, Math.min(cy - t.y, t.shape === "tall" ? 1 : 0)), sx: e.clientX, sy: e.clientY, moved: false };
+    const [cx, cy] = cellAt(e), [vx, vy] = viewBox(t), r = ref.current.getBoundingClientRect();
+    drag.current = { t, dx: Math.max(0, Math.min(cx - t.x, t.shape === "long" ? 1 : 0)), dy: Math.max(0, Math.min(cy - t.y, t.shape === "tall" ? 1 : 0)), sx: e.clientX, sy: e.clientY, moved: false,
+      fdx: (e.clientX - r.left) / cell - vx, fdy: (e.clientY - r.top) / cell - vy };   // v188: где палец на столе — для сдвига в четверть клетки
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_e) { /* */ }
   };
   const move = (e) => {
@@ -136,6 +138,11 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
     if (!d) return;
     if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 8) return;
     d.moved = true;
+    if (fine) {   // v188: сетка мельче — тень встаёт с точностью до четверти клетки
+      const [fx, fy] = fineAt(e, d), k = fx + ":" + fy;
+      setGhost((g) => { if (g && g.k === k) return g; const nt = fineSpot(plan, d.t, fx, fy), v = nt ? viewBox(nt) : [fx, fy]; return { t: d.t, x: v[0], y: v[1], ok: !!nt, k }; });
+      return;
+    }
     const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy - d.dy;
     setGhost((g) => (g && g.x === x && g.y === y ? g : { t: d.t, x, y, ok: fits(plan, d.t, x, y) }));
   };
@@ -145,17 +152,19 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
     setGhost(null);
     if (!d || !d.moved) return;
     skipClick.current = true; setTimeout(() => { skipClick.current = false; }, 450);
+    if (fine) { const [fx, fy] = fineAt(e, d); onDrop(d.t, fx, fy); return; }
     const [cx, cy] = cellAt(e), x = cx - d.dx, y = cy - d.dy;
     if (x !== d.t.x || y !== d.t.y) onDrop(d.t, x, y);
   };
   const cancel = () => { drag.current = null; setGhost(null); };
+  const fineAt = (e, d) => { const r = ref.current.getBoundingClientRect(); return [Math.round(((e.clientX - r.left) / cell - d.fdx) * 4) / 4, Math.round(((e.clientY - r.top) / cell - d.fdy) * 4) / 4]; };
   const cellsOn = edit && (tool === "table" || tool === "bar" || tool === "door");
   // v187: компания за несколькими столами — перемычка от главного к приставленным (под столами; только на доске)
   // перемычка — между столешницами (поверх стульев, которые между ними), как у сдвинутых столов; по диагонали — от угла к углу
   const links = edit ? [] : ts.flatMap((t) => joinedOf(map[t.id]).map((j) => [t, ts.find((q) => q.id === j && mainOf(map[q.id]) === t.id)]).filter((x) => x[1]));
   const topBox = (t) => {
     const [a, b] = spanOf(t), pd = Math.max(1, cell * 0.03), gp = Math.max(1.5, cell * 0.07) * (t.shape === "rd" ? 0.6 : 1);
-    const g = tableGeom(t.shape, t.seats, a * cell - 2 * pd - 2 * gp, b * cell - 2 * pd - 2 * gp, t.sides), x0 = t.x * cell + pd + gp, y0 = t.y * cell + pd + gp, q = g.top;
+    const [vx, vy] = viewBox(t), g = tableGeom(t.shape, t.seats, a * cell - 2 * pd - 2 * gp, b * cell - 2 * pd - 2 * gp, t.sides), x0 = vx * cell + pd + gp, y0 = vy * cell + pd + gp, q = g.top;
     return q.kind === "circle" ? { x0: x0 + q.cx - q.r, y0: y0 + q.cy - q.r, x1: x0 + q.cx + q.r, y1: y0 + q.cy + q.r } : { x0: x0 + q.x, y0: y0 + q.y, x1: x0 + q.x + q.w, y1: y0 + q.y + q.h };
   };
   const bridge = (a, b) => {
@@ -233,7 +242,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
               : STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")
               + (sit ? ", сидят " + sinceLabel(sit.min) : "") + (isBusy(r) && r.waiter_name ? ", официант " + shortName(r.waiter_name) : "")
               + (grouped ? ", вместе со " + (joinedOf(r).length === 1 ? "столом " : "столами ") + joinedOf(r).map(byN).join(", ") : ""))}
-            style={{ position: "absolute", left: t.x * cell + pad, top: t.y * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
+            style={{ position: "absolute", left: (t.x + offOf(t)[0]) * cell + pad, top: (t.y + offOf(t)[1]) * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.2), color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, fontFamily: "Georgia, serif", lineHeight: 1.05,
               opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
             <TableArt g={g} W={aw} H={ah} at={gap} top={top} stroke={s.bd} chair={{ fill: c.chair, stroke: s.bd }} chairOn={s.bd} filled={grouped ? groupFill(plan, map, t.id)[t.id] || 0 : filledChairs(r.status, r.cnt, g.chairs.length)} dash={s.dash}
@@ -369,7 +378,7 @@ const TOOL_HINT = {
   bar: "Нажми на клетку, где бар начинается, потом на клетку, где он кончается.",
   door: "Нажми на клетку, где вход.",
 };
-function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel, sidesOn = false }) {
+function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = "", photo0 = null, guard = null, onSaved, onCancel, sidesOn = false, fineOn = false }) {
   const [plan, setPlan] = React.useState(() => plan0 || emptyPlan());
   const planRef = React.useRef(plan);
   planRef.current = plan;
@@ -379,6 +388,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
   const lastKey = React.useRef(null);
   const commit = (next, key) => {
     const cur = planRef.current;
+    if (next && fineOn && next !== cur) next = settleFine(next, sel);   // v188: сдвиги не дают столам налезать друг на друга
     if (!next || next === cur) return false;
     if (!key || key !== lastKey.current) setHist((h) => [...h.slice(-49), cur]);
     lastKey.current = key || null;
@@ -440,7 +450,16 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
     setPend(null);
     if (p !== plan) { vibrate("light"); commit(p); } else if ((plan.items || []).length >= MAX_ITEMS) setErr("Стен, баров и входов не больше " + MAX_ITEMS);
   };
-  const drop = (q, x, y) => { const p = moveTable(plan, q.id, x, y); if (p === plan) setErr("Сюда стол не встаёт"); else { vibrate("light"); setErr(""); commit(p); setSel(q.id); setSelItem(null); } };
+  const drop = (q, x, y) => {
+    // v188: сетка мельче — стол встаёт с точностью до четверти клетки (x, y дробные)
+    const p = fineOn ? moveFine(plan, q.id, x, y) : moveTable(plan, q.id, x, y);
+    if (p === plan) setErr("Сюда стол не встаёт"); else { vibrate("light"); setErr(""); commit(p); setSel(q.id); setSelItem(null); }
+  };
+  const nudge = (dx, dy) => {
+    const p = nudgeTable(planRef.current, t.id, dx, dy);
+    if (p === planRef.current) { setErr("Дальше не сдвинуть: мешает стол, бар, вход или край схемы."); return; }
+    vibrate("light"); setErr(""); commit(p, "f:" + t.id);
+  };
   const seats = (d) => commit(updateTable(planRef.current, t.id, { seats: t.seats + d }), "s:" + t.id);
   // v179: «Ещё такой» — копия рядом, она и выбрана: так быстро получается ряд одинаковых столов
   const copy = () => {
@@ -570,7 +589,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
           if (full) scan = mergeSeats(res, full.seats, full.sides).scan;
           else seatsNote = " Места посчитаны по общему плану: пересчитать у каждого стола не вышло.";
         }
-        const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });
+        const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn, fine: fineOn });
         if (out.notPlan) { setErr(scanErrorText("not_plan")); return; }
         if (out.empty || !out.added) { setErr(scanErrorText("empty")); return; }
         commit(out.plan);
@@ -617,6 +636,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
     if (!tall && (plan.tables || []).some((q) => q.shape === "tall")) { setErr("Вертикальные длинные столы сохранятся, когда на сервер добавят этап 54 (supabase-stage54-tall-tables.sql)."); return; }
     const body = floor2 ? withZones(plan) : planV1(plan);
     if (!body) { setErr("Залы, стены, бар и вход сохранятся, когда на сервер добавят этап 37 (supabase-stage37-halls-qday.sql)."); return; }
+    if (fineOn) body.fine = true;   // v188: сервер (этап 56) берёт сдвиги ox, oy как есть: стол без них — ровно в клетке
     // v183: приложение знает стулья по сторонам — сервер (этап 55) берёт их как есть: стол без sides — «как по местам»
     const sent = sidesOn ? { ...body, sides: true } : body;
     setBusy(true); setErr(""); setSureLeave(false);
@@ -663,7 +683,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
       {startCard ? null : <div data-editor-hint="" style={{ fontSize: 13, color: c.sub, lineHeight: 1.5, marginBottom: 10 }}>{hint}</div>}
       <div data-lens-card="" style={{ ...c.frost, padding: 10, marginBottom: 12 }}>
         <Floor c={c} a11y={a11y} plan={plan} zone={z} map={{}} now={Date.now()} sel={sel} selItem={selItem} edit tool={tool} pend={pend} bg={rec}
-          onCell={cell} onNode={node} onDrop={drop}
+          onCell={cell} onNode={node} onDrop={drop} fine={fineOn}
           onItem={(i) => { setErr(""); setSel(null); setMoving(false); setSelItem(selItem === i.id ? null : i.id); }}
           onTable={(q) => { vibrate("light"); setErr(""); setMoving(false); setSelItem(null); setSel(sel === q.id ? null : q.id); }} />
       </div>
@@ -696,6 +716,7 @@ function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant 
             <span data-seats="" style={{ minWidth: 28, textAlign: "center", fontSize: 20, color: c.text }}>{t.seats}</span>
             <button type="button" aria-label="Больше мест" data-seats-plus="" onClick={() => seats(1)} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 18 }}>+</button>
           </div>
+          {fineOn ? <FineNudge c={c} a11y={a11y} off={offOf(t)} onNudge={nudge} onReset={() => { vibrate("light"); setErr(""); commit(unFine(planRef.current, t.id)); }} /> : null}
           {sidesOn && t.shape !== "rd" ? <ChairSides c={c} a11y={a11y} t={t} sides={sidesOf(t)} own={!!okSides(t.shape, t.sides)}
             onStep={(i, d) => { vibrate("light"); setErr(""); commit(sideStep(planRef.current, t.id, i, d), "sd:" + t.id + ":" + i); }}
             onSofa={(i) => { vibrate("light"); setErr(""); commit(toggleSofa(planRef.current, t.id, i)); }}
@@ -920,7 +941,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         {st.status === "norest" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>В профиле не указано заведение.</div> : null}
         {st.status === "offline" || st.status === "error" ? <div data-lens-card="" style={{ ...c.frost, padding: "12px 14px", fontSize: 13.5, color: c.text }}>Зал не загрузился. Проверь связь.
           <button type="button" onClick={() => { setSt({ status: "loading" }); load(); }} data-lens-btn="soft" style={{ ...btn(c), display: "block", marginTop: 10, padding: "9px 14px" }}>Ещё раз</button></div> : null}
-        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} tall={!!st.tall} sidesOn={!!st.sides} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
+        {ok && edit ? <FloorEditor c={c} a11y={a11y} plan0={plan} floor2={st.floor === 2} restaurant={restaurant} photo0={photo0} guard={guard} tall={!!st.tall} sidesOn={!!st.sides} fineOn={!!st.fine} onCancel={() => setEdit(false)} onSaved={(p) => { setEdit(false); setSt((s) => ({ ...s, plan: p })); rememberSeatPlan(restaurant, { ok: true, plan: p }); setMsg("Схема сохранена: её видит вся смена."); }} /> : null}
         {ok && !edit ? <>
           {msg ? <div role="status" style={{ fontSize: 13.5, color: c.text, margin: "2px 2px 10px" }}>{msg}</div> : null}
           {st.offline ? <div style={{ fontSize: 12.5, color: c.red, margin: "0 2px 8px" }}>Нет связи: показано последнее, что пришло.</div> : null}

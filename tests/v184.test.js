@@ -120,7 +120,7 @@ describe("v184 · стулья по сторонам с фото на схему
     const s = rd("ui/seating.jsx");
     expect(s).toContain("const full = await tableCrops(r0, boxes, 224, seatMasks(res)).then((crops) => scanSeatsFull(crops, opts)).catch(() => null);");
     expect(s).toContain("if (full) scan = mergeSeats(res, full.seats, full.sides).scan;");   // v185: стороны — всегда, на схему — с этапом 55
-    expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn });");
+    expect(s).toContain("const out = layoutScan(scan, ai, planRef.current, zz, { mode, items: floor2, tall, sides: sidesOn, fine: fineOn });");
   });
 });
 

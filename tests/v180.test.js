@@ -223,7 +223,7 @@ describe("v180 · экран", () => {
   });
   it("редактор в коде: признак этапа 54, «Повернуть», «Длинный» вертикально, сохранение и ИИ", () => {
     const s = rd("ui/seating.jsx");
-    expect(s).toMatch(/tall=\{!!st\.tall\}( sidesOn=\{!!st\.sides\})? onCancel=\{\(\) => setEdit\(false\)\}/);   // v183: и признак этапа 55
+    expect(s).toMatch(/tall=\{!!st\.tall\}( sidesOn=\{!!st\.sides\})?( fineOn=\{!!st\.fine\})? onCancel=\{\(\) => setEdit\(false\)\}/);   // v183: и признак этапа 55; v188 — 56
     expect(s).toContain("function FloorEditor({ c, a11y, plan0, floor2 = false, tall = false, restaurant = \"\"");
     expect(s).toContain('{tall && (t.shape === "long" || t.shape === "tall") ? <TurnBtn c={c} onClick={turn} /> : null}');
     expect(s).toContain('if (p === planRef.current && tall) p = updateTable(planRef.current, t.id, { shape: "tall" });');

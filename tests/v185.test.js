@@ -185,7 +185,7 @@ const fn = await import("../supabase/functions/floor-scan/index.ts");
 
 describe("v185 · функция floor-scan версии 5", () => {
   it("подсказка: банкетка вдоль нескольких столов — тоже диван стола; стул соседа у края картинки — не считать", () => {
-    expect(fn.FLOOR_SCAN_V).toBe(5);
+    expect(fn.FLOOR_SCAN_V).toBeGreaterThanOrEqual(5);   // v188: 6
     expect(fn.SEATS_SYSTEM).toContain("Банкетка или диван может тянуться вдоль нескольких столов подряд, например у стены: для стола в центре это тоже его диван, если он идёт вдоль его стороны, хотя бы у края картинки");
     expect(fn.SEATS_SYSTEM).toContain("Стул у края картинки, который придвинут к соседнему столу, — стул соседа, его не считай");
   });

@@ -1,7 +1,7 @@
 // Service Academy — floor-scan: схема зала по фото плана (v179, Доп. 504).
 //
 // Владелец (20.11): «Может добавим добавление плана зала по фото или что-то вроде этого?»
-// POST { token, image } → { ok: true, v, plan, box, tables: [{ b, shape, seats, n }], bars, doors, note, model, remaining }
+// POST { token, image } → { ok: true, v, plan, box, tables: [{ b, shape, seats, n }], bars, doors, walls, note, model, remaining }
 //   или { ok: false, error }.
 // image — data:image/jpeg;base64,… Телефон присылает фото плана до 1568 точек по длинной стороне с сеткой поверх: линии
 // через каждые 10% ширины и высоты с подписями, по ним модель точнее называет места столов. Координаты в ответе —
@@ -40,6 +40,10 @@
 // v185 (Доп. 510), версия 5. На плане владельца у столов 4–6 длинная банкетка вдоль стены справа, одна на три стола:
 // модель её не засчитала (у 6 и 4 вышло по 1 месту вместо 2), а у стола 20 посчитала стул соседнего 21. В подсказке —
 // про банкетку вдоль нескольких столов и про стул соседа у края картинки.
+//
+// v188 (Доп. 513), версия 6. Владелец согласился на «стены и перегородки с фото»: первый проход отвечает ещё и walls —
+// отрезки [x1, y1, x2, y2] в процентах: стены зала (если зал не прямоугольник) и перегородки внутри. Приложение кладёт их
+// на линии сетки. Функция прежней версии walls не шлёт — стены, как раньше, рисуют вручную.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -52,7 +56,7 @@ const json = (data: unknown, status = 200) =>
 const isJwt = (k: string) => /^eyJ/.test(k || "");
 const keyHeaders = (k: string): Record<string, string> => (isJwt(k) ? { apikey: k, Authorization: "Bearer " + k } : { apikey: k });
 
-export const FLOOR_SCAN_V = 5;   // 2 — второй проход (v181); 3 — номер на столе не места (v182); 4 — стулья по сторонам (v184); 5 — банкетка вдоль столов (v185)
+export const FLOOR_SCAN_V = 6;   // 2 — второй проход (v181); 3 — номер на столе не места (v182); 4 — стулья по сторонам (v184); 5 — банкетка вдоль столов (v185); 6 — стены (v188)
 export const MAX_CROPS = 40, MAX_CROP = 400_000;   // второй проход: столов за раз и знаков на картинку
 export const LEAD_POS = ["manager", "senior", "owner", "head", "admin", "service_manager"];
 export const DAILY_SCANS = 20;
@@ -93,11 +97,12 @@ export const SCAN_SYSTEM = [
   "Если есть, ещё:",
   "- box — рамка самого зала по внешним стенам: [лево, верх, право, низ];",
   "- bars — барные стойки, рамки [лево, верх, право, низ];",
-  "- doors — входы в зал, точки [x, y].",
+  "- doors — входы в зал, точки [x, y];",
+  "- walls — стены и перегородки, отрезки [x1, y1, x2, y2] в процентах: перегородки и ширмы между частями зала, выступы и углы стен, если зал не прямоугольник; прямые отрезки по горизонтали или вертикали, длинную стену — одним отрезком; не больше 30. Внешнюю рамку прямоугольного зала не перечисляй: она уже в box.",
   "Не считай столами отдельные стулья, диваны без стола, барные стулья, кухонное и другое оборудование, колонны, подписи, легенду и штамп чертежа.",
   'Если на фото не план зала (фото самого зала, людей, меню, документа), ответь "plan": false и пустым списком столов.',
   "Ответ — только JSON, без пояснений и без разметки:",
-  '{"plan":true,"box":[0,0,100,100],"tables":[{"b":[10.5,20,18,27.5],"shape":"round","n":"15","seats":5},{"b":[30,20,44,26],"shape":"rect","n":"2","seats":6}],"bars":[],"doors":[],"note":""}',
+  '{"plan":true,"box":[0,0,100,100],"tables":[{"b":[10.5,20,18,27.5],"shape":"round","n":"15","seats":5},{"b":[30,20,44,26],"shape":"rect","n":"2","seats":6}],"bars":[],"doors":[],"walls":[[50,0,50,40]],"note":""}',
   "note — коротко, что мешало (размыто, обрезано, часть зала не видна), или пустая строка.",
 ].join("\n");
 export const SCAN_USER = "Распознай план зала на фото. Перечисли все столы, даже если их много.";
@@ -108,7 +113,7 @@ export function scanRequest(m: string, image: string) {
       { role: "system", content: SCAN_SYSTEM },
       { role: "user", content: [{ type: "text", text: SCAN_USER }, { type: "image_url", image_url: { url: image } }] },
     ],
-    ...genOpts(m, 3000, 0.2, "low"),
+    ...genOpts(m, 3600, 0.2, "low"),   // v188: и стены
   };
 }
 
@@ -191,7 +196,15 @@ export function cleanReply(o: Record<string, unknown>) {
     const x = num(d[0]), y = num(d[1]);
     return Number.isFinite(x) && Number.isFinite(y) ? [pct(x), pct(y)] : null;
   }).filter(Boolean).slice(0, 4);
-  return { plan: o.plan !== false, box: box4(o.box), tables, bars, doors, note: String(o.note || "").replace(/\s+/g, " ").trim().slice(0, 200) };
+  // v188: стены — отрезки; концы в пределах фото, короче половины процента — нет
+  const walls = (Array.isArray(o.walls) ? o.walls : []).map((w: any) => {
+    if (!Array.isArray(w) || w.length < 4) return null;
+    const v = w.slice(0, 4).map(num);
+    if (v.some((x: number) => !Number.isFinite(x))) return null;
+    const [x1, y1, x2, y2] = v.map(pct);
+    return Math.hypot(x2 - x1, y2 - y1) < 0.5 ? null : [x1, y1, x2, y2];
+  }).filter(Boolean).slice(0, 30);
+  return { plan: o.plan !== false, box: box4(o.box), tables, bars, doors, walls, note: String(o.note || "").replace(/\s+/g, " ").trim().slice(0, 200) };
 }
 const textOf = (content: unknown) => (typeof content === "string" ? content
   : Array.isArray(content) ? content.map((p: any) => (p && typeof p.text === "string" ? p.text : "")).join("") : "");

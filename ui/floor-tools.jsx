@@ -12,6 +12,8 @@
 // диван (сервер с этапом 55).
 // v185 (Доп. 510): TakeNumbers — «Взять номера с фото» под итогом распознавания, когда номера с фото были заняты;
 // DropDupes — «Убрать повторы из «Зал 1»» под ошибкой сохранения, когда те же номера есть в другом зале.
+// v188 (Доп. 513): FineNudge — «Точнее» в карточке стола: сдвинуть на четверть клетки стрелками, «Ровно» — назад в клетку
+// (сервер с этапом 56).
 // Схема и экран — ui/seating.jsx, расчёт — lib/seating.js и lib/floor-scan.js, фото на телефоне — lib/floor-photo.js.
 import React from "react";
 import { labelStyle } from "./tokens";
@@ -209,4 +211,22 @@ export function DropDupes({ c, a11y, label, hint, onDrop }) {
       <div data-drop-hint="" style={{ fontSize: 12.5, color: c.sub, lineHeight: 1.45, marginTop: 7 }}>{hint}</div>
     </div>
   );
+}
+
+/** v188: «Точнее» — сдвинуть стол на четверть клетки; «Ровно» — снова ровно в клетке */
+export function FineNudge({ c, a11y, off, onNudge, onReset }) {
+  const arrows = [["left", -1, 0, "←", "Влево"], ["up", 0, -1, "↑", "Вверх"], ["down", 0, 1, "↓", "Вниз"], ["right", 1, 0, "→", "Вправо"]];
+  return (
+    <div data-fine="" role="group" aria-label="Сдвинуть точнее" style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ ...labelStyle(13.5), color: c.gold, flex: 1, minWidth: 70 }}>Точнее</span>
+        {arrows.map(([k, dx, dy, a, l]) => (
+          <button key={k} type="button" data-fine-btn={k} aria-label={l + " на четверть клетки"} onClick={() => onNudge(dx, dy)} data-lens-btn="soft" data-lens-ink=""
+            style={{ ...chip(c, false, a11y), width: 40, padding: "6px 0", fontSize: 16 }}>{a}</button>))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+        <span style={{ flex: 1, fontSize: 11.5, color: c.sub, lineHeight: 1.45 }}>На четверть клетки за нажатие. Пальцем по схеме стол тоже встаёт точнее клетки.</span>
+        {off[0] || off[1] ? <button type="button" data-fine-reset="" onClick={onReset} style={link(c.gold)}>Ровно</button> : null}
+      </div>
+    </div>);
 }

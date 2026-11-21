@@ -402,7 +402,7 @@ describe("v162: экран «Сертификат» (ui/screens-exam.jsx)", () =
     const pv = e.slice(e.indexOf("const pvEl = pv ? ("), e.indexOf(") : null;", e.indexOf("const pvEl = pv ? (")));
     expect(pv).not.toContain("data-lens-btn");
     const app = rd("App.jsx");
-    expect(app).toContain('onExit={() => navigate("certificates")} shareUrl={APP_SHARE_URL} /></Suspense>}');
+    expect(app).toContain('onExit={() => backTo("certificates")} shareUrl={APP_SHARE_URL} /></Suspense>}');   // v190: к списку, минуя экзамен
     expect(app).not.toContain("Я сдал(а) экзамен на роль");
   });
 });

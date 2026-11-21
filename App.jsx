@@ -1430,7 +1430,7 @@ function ServiceAcademy() {
   }, [profile, storageLoaded, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = useCallback((to, opts) => {
     const cur = screenRef.current;
-    if (TAB_SCREENS.includes(to)) commitStack([]);                          // вкладка — новая ветка, назад некуда
+    if (TAB_SCREENS.includes(to)) { commitStack([]); chatBackRef.current = null; }   // вкладка — новая ветка, назад некуда
     else if (opts && opts.replace) { /* Доп. 158: замена экрана — текущий в историю не пишем (диалог → Книга) */ }
     else if (cur !== to) commitStack([...navRef.current, cur].slice(-24));  // push, без дублей при повторе
     screenRef.current = to; setScreen(to); setLessonDone(null);
@@ -1456,13 +1456,30 @@ function ServiceAcademy() {
     } catch (e) {}
   }, [screen, activeLesson?.id]);
 
+  // v190 (Доп. 515): экран открыли из чата (карточка в переписке) — «назад» с него снова открывает тот же чат. depth — длина
+  // истории сразу после перехода: вернулись ниже неё — значит, ушли с экрана, открытого из чата
+  const chatBackRef = useRef(null);
+  const reopenChatRef = useRef(null);
+  const chatReturn = (len) => {
+    const cb = chatBackRef.current;
+    if (cb && len < cb.depth) { chatBackRef.current = null; if (reopenChatRef.current) reopenChatRef.current(cb.id); }
+  };
   const goBack = useCallback((fallback = "roleSelect") => {
     const st = navRef.current.slice();
     let to = st.pop();
     while (to === screenRef.current && st.length) to = st.pop(); // защита от петель
     commitStack(st);
     const dest = to || fallback; screenRef.current = dest; setScreen(dest);
-  }, [commitStack]);
+    chatReturn(st.length);
+  }, [commitStack]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v190 (Доп. 515): назад — к экрану target, даже если после него открывали ещё: сертификат после экзамена → список
+  // сертификатов, а не снова экзамен. В истории его нет — просто туда, ничего в историю не записывая.
+  const backTo = useCallback((target) => {
+    const st = navRef.current.slice(), i = st.lastIndexOf(target);
+    if (i >= 0) commitStack(st.slice(0, i));
+    screenRef.current = target; setScreen(target);
+    chatReturn(navRef.current.length);
+  }, [commitStack]);   // eslint-disable-line react-hooks/exhaustive-deps
   const openRadio = useCallback(() => {
     vibrate("light"); loadTable();
     setRadioList(playlist({ modules: programModules, completed, quizDone, faded: [...fadedIds], seed: todayKey + ukP }));
@@ -1647,6 +1664,7 @@ function ServiceAcademy() {
   // без этапа 38 на сервере кнопки нет до перезапуска.
   const chatOpen = layerData(layers, "chat");   // true | { id } — сразу в этот чат
   const setChatOpen = useCallback((v) => dispatchLayers(v != null && v !== false ? { type: "open", kind: "chat", data: v } : { type: "close", kind: "chat" }), []);
+  reopenChatRef.current = (id) => setChatOpen(id != null ? { id } : true);   // v190: «назад» с экрана, открытого из чата
   const [chatOn, setChatOn] = useState(true);
   const [chatInfo, setChatInfo] = useState(null);   // { unread, calls }
   const [callGone, setCallGone] = useState({});      // вызовы, закрытые «Позже» или «Иду»
@@ -1715,6 +1733,7 @@ function ServiceAcademy() {
   // v93: лёгкий контекст для умного чата (уроки, меню, брифинг; открыть место в приложении) — сам список и поиск в части
   // чата (lib/chat-app.js); свежие прогресс, свои курсы и брифинг берутся через ref
   const chatOpenItemRef = useRef(null);
+  const chatLessonMark = useRef(null);   // v190: урок из чата открывается после загрузки трека — отметить «назад в чат» тогда
   const chatCtxRef = useRef({});
   chatCtxRef.current = { completed, quizDone, custom: customModules, brief: teamBrief };
   const chatAppCtx = useMemo(() => ({ restaurant: (profile && profile.restaurant) || "", leader: isLead,
@@ -1901,8 +1920,8 @@ function ServiceAcademy() {
     const isDoneL = (l) => (l.type === "quiz" ? !!quizDone[l.id] : !!completed[l.id]);
     const step = ((m && m.lessons) || []).find((l) => l && l.type !== "result" && !isDoneL(l));
     if (step && step.type === "lesson" && openLessonRef.current) { openLessonRef.current(step); return; }
-    setScreen("module");
-  }, [completed, quizDone]);
+    navigate("module");   // v190: с записью в историю — «назад» туда, откуда открыли тему
+  }, [completed, quizDone]);   // eslint-disable-line react-hooks/exhaustive-deps
   const openLesson = (l) => {
     setLessonDone(null); // Доп. 205: новый урок — кнопка снова «Урок пройден ✓»
     if (l.type === "quiz" && quizDone[l.id]) return;
@@ -2910,10 +2929,10 @@ function ServiceAcademy() {
   // Переходы из ответа Наставника (карточки блюд и коктейлей, уроки, разделы). Вынесено из
   // экрана «Наставник» без изменений, чтобы тем же путём ходил и чат поверх ситуации
   // «Разобрать с Наставником» (Доп. 302): там текущий экран просто уходит в историю.
-  const assistantNavigate = (dest, overlay = false) => {
+  const assistantNavigate = (dest) => {   // v190: из чата и из Наставника — одинаково, с записью в историю
     const jump = (to) => {
-      if (overlay) { navigate(to); return; }
-      setPrevScreen(prevScreen && prevScreen !== "assistant" ? prevScreen : "roleSelect"); setScreen(to);
+      // v190 (Доп. 515): из ответа Наставника — тоже с записью в историю: «назад» возвращает в разговор (он сохраняется)
+      navigate(to);
     };
     // Карточка блюда в ответе → Колода меню на этом блюде (Доп. 170)
     if (dest && typeof dest === "object" && dest.dish) {
@@ -2962,8 +2981,9 @@ function ServiceAcademy() {
           if (l) { foundMod = m; foundLesson = l; break; }
         }
         if (foundLesson) {
-          if (!overlay) setPrevScreen("roleSelect");
-          setActiveModule(foundMod); openLesson(foundLesson);
+          setActiveModule(foundMod); openLesson(foundLesson);   // v190: openLesson сам пишет в историю, откуда пришли
+          const lm = chatLessonMark.current; chatLessonMark.current = null;
+          if (lm && Date.now() - lm.at < 15000) lm.mark();   // урок из чата — «назад» в чат (отметка свежая: урок не закрыт)
         } else {
           jump("roleSelect");
         }
@@ -3013,18 +3033,21 @@ function ServiceAcademy() {
   chatOpenItemRef.current = (item) => {
     if (!item) return;
     setChatOpen(null);
+    // v190 (Доп. 515): открыли из переписки — «назад» с этого экрана снова откроет её (item.from — id чата)
+    const from = item.from != null ? item.from : null;
+    const mark = () => { if (from != null) chatBackRef.current = { id: from, depth: navRef.current.length }; };
     const k = item.kind, id = item.id;
-    if (k === "lesson" || k === "quiz") { assistantNavigate({ lesson: id }, true); return; }
-    if (k === "dish") { assistantNavigate({ dish: id }, true); return; }
-    if (k === "cocktail") { assistantNavigate({ cocktail: id }, true); return; }
-    if (k === "ref") { setRefStart(id); navigate("reference"); return; }
-    if (k === "wine" || k === "spirit") { setBarBack(null); setBarNote(""); setWineStart(id); setBarTab(k); setBarOpenN((n) => n + 1); navigate("wines"); return; }   // v130: из чата — карточка в «Барной карте»
-    if (k === "schedule") { navigate("schedule"); return; }   // v97: «График готов», «Пожелания» из чата
+    if (k === "lesson" || k === "quiz") { chatLessonMark.current = { mark, at: Date.now() }; assistantNavigate({ lesson: id }); return; }   // урок ищется не сразу
+    if (k === "dish") { assistantNavigate({ dish: id }); mark(); return; }
+    if (k === "cocktail") { assistantNavigate({ cocktail: id }); mark(); return; }
+    if (k === "ref") { setRefStart(id); navigate("reference"); mark(); return; }
+    if (k === "wine" || k === "spirit") { setBarBack(null); setBarNote(""); setWineStart(id); setBarTab(k); setBarOpenN((n) => n + 1); navigate("wines"); mark(); return; }   // v130: из чата — карточка в «Барной карте»
+    if (k === "schedule") { navigate("schedule"); mark(); return; }   // v97: «График готов», «Пожелания» из чата
     if (k === "brief") { if (teamBrief) openTeamBrief(); else { navigate("shift"); briefAskRef.current.open = true; loadTeamBrief(true); } return; }   // как «Открыть» из бота
     if (k === "module") {
       loadAllModules().catch(() => {}).then(() => {
         const m = [...Object.values(MODULES).flat(), ...(customModules || [])].find((x) => x && x.id === id);
-        if (m) { navigate("roleSelect"); openModule(m); } else navigate("roleSelect");
+        if (m) { navigate("roleSelect"); openModule(m); mark(); } else navigate("roleSelect");
       });
     }
   };
@@ -3230,7 +3253,7 @@ function ServiceAcademy() {
           <Suspense fallback={null}><LiveGuestScreen a11y={a11y} profile={profile} role={role} uk={ukP} color={TRACK_COLOR[role] || "#C8A96E"}
             track={programAllMods} modules={[...programAllMods, ...Object.values(MODULES).flat()]} mistakeBank={mistakeBank}
             onMistakes={addMistakes} onActivity={logActivity} onTouch={touchStreak}
-            onOpenLesson={(id) => { setGuestOpen(false); assistantNavigate({ lesson: id }, true); }}
+            onOpenLesson={(id) => { setGuestOpen(false); assistantNavigate({ lesson: id }); }}
             onClose={() => setGuestOpen(false)} /></Suspense>
         ) : null}
         {/* Доп. 305: чек недели */}
@@ -3254,7 +3277,7 @@ function ServiceAcademy() {
               // открывался бы под столом «Освежить»/«Раунда мастера», живым гостем или радио
               setMentorAsk(null); setWarmupOpen(false); setWeekOpen(null);
               setSpecial(null); setGuestOpen(false); setRadioList(null); setRecapKey(null); setPairOpen(false);
-              assistantNavigate(dest, true);
+              assistantNavigate(dest);
             }} /></Suspense>
         ) : null}
         {/* v160 (Доп. 485): фото сотрудника крупно — один слой на всё приложение (нажали на лицо в кружке); порталом в
@@ -3306,7 +3329,7 @@ function ServiceAcademy() {
         </Suspense>}
         {screen === "team" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><TeamScreen T={T} profile={profile} a11y={a11y} onCandidate={() => navigate("candidate")} /></Suspense>}
         {screen === "server" && profile?.is_admin && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ServerScreen T={T} a11y={a11y} profile={profile} onBack={() => goBack("teamHub")} /></Suspense></div>}
-        {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => navigate(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
+        {screen === "candidate" && (profile?.is_admin || ["manager","senior"].includes(profile?.position)) && <Suspense fallback={<ScreenLoader T={T} />}><CandidateScreen T={T} a11y={a11y} profile={profile} customLessons={customLessons} onBack={() => goBack(profile?.is_admin ? "team" : "roleSelect")} /></Suspense>}
         {/* v106 (Доп. 419): «Утро руководителя» — сводка дня; строки ведут в график, брифинг, меню, отзывы, отчёты, чек-листы и чат */}
         {/* v109 (Доп. 422): «Что дало обучение» — итог месяца: чему учились и что изменилось в зале; 1-го числа — в Telegram */}
         {screen === "gain" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><GainScreen T={T} a11y={a11y} profile={profile} month={gainMonth}
@@ -3338,17 +3361,17 @@ function ServiceAcademy() {
           onBack={() => goBack("teamHub")} onChat={() => setChatOpen({ intent: { kind: "team", at: Date.now() } })}
           onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
           onLegacy={() => navigate("onboarding")} /></Suspense></div>}
-        {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} initialTab={checklistTab} onBack={() => navigate("roleSelect")} /></Suspense></div>}
-        {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => navigate("roleSelect")} /></Suspense></div>}
+        {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} initialTab={checklistTab} onBack={() => goBack("roleSelect")} /></Suspense></div>}
+        {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => goBack("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={reportCms} startSelf={reportSelf}
           onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
-        {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => navigate("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
-        {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); navigate("roleSelect"); }} /></Suspense>}
+        {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => goBack("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
+        {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); goBack("roleSelect"); }} /></Suspense>}
         {/* v167 (Доп. 492): редактор справочника — только владелец (сервер проверяет то же: этап 53) */}
         {screen === "refEditor" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><RefEditorScreen T={T} a11y={a11y} profile={profile} startId={refEdit} onBack={() => goBack("reference")} /></Suspense>}
         {screen === "profile" && <Suspense fallback={<ScreenLoader T={T} />}><AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} /></Suspense>}
-        {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} titleOf={feedTitleOf} onBack={() => navigate("stats")} /></Suspense>}
-        {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={titledScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => navigate("roleSelect")}
+        {screen === "playerDetail" && selectedPlayer && <Suspense fallback={<ScreenLoader T={T} />}><PlayerDetailScreen player={selectedPlayer} T={T} titleOf={feedTitleOf} onBack={() => goBack("stats")} /></Suspense>}
+        {screen === "stats" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><StatsScreen T={T} a11y={a11y} profile={profile} onStart={() => { const nx = nextLessonOf(programModules, completed, quizDone); if (nx && nx.lesson) { setActiveModule(nx.mod); openLesson(nx.lesson); } else navigate("roleSelect"); }} scores={titledScores} completedRoles={completedRoles} completed={liveCompleted} quizDone={liveQuizDone} examResults={examResults} practiceStars={liveStars} allProfiles={allProfiles} onBack={() => goBack("roleSelect")}
           onDeleteEmployee={isAdmin ? async (name, surname) => {
             // Удаление сотрудника из «Управления данными»: находим его id в
             // списке доступа по имени, себя удалить нельзя. Серверная функция
@@ -3443,7 +3466,7 @@ function ServiceAcademy() {
           } : null}
           onViewPlayer={(p) => { setSelectedPlayer(p); navigate("playerDetail"); }}
         /></Suspense></div>}
-        {screen === "daily" && <Suspense fallback={<ScreenLoader T={T} />}><DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => navigate("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} /></Suspense>}
+        {screen === "daily" && <Suspense fallback={<ScreenLoader T={T} />}><DailyScreen a11y={a11y} mistakeTopics={mistakeBank.filter(mm => !mm.due || mm.due <= Date.now()).map(mm => mm.lessonTitle).filter(Boolean)} T={T} profile={profile} completed={completed} quizDone={quizDone} role={role} modules={programModules} onBack={() => goBack("roleSelect")} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onLesson={(lesson, mod) => { setActiveModule(mod); openLesson(lesson); }} /></Suspense>}
         {screen === "roleSelect" && <div className={vp.wide ? "sa-tabpad sa-tabpad-w" : "sa-tabpad"}><RoleSelect learnOnly wide={vp.wide} wideCols={homeCols} wideColW={homeCols ? colW : 0} short={vp.short} hintsReady={!welcome} customByRole={customByRole} dayMode={(() => { const md = modeOfDay(new Date(), role); return { ...md, count: dailyCount(profile ? `_${profile.name}_${profile.surname || ""}` : ""), streak: dailyStreak(profile ? `_${profile.name}_${profile.surname || ""}` : ""), go: () => { if (md.go === "menu") { setMenuMode(md.key); setMenuStart(null); navigate("menuTrainer"); } else if (md.go === "cocktails") { setCkStart(null); navigate("cocktails"); } else { setLabStart(null); navigate("barLab"); } } }; })()} onCocktails={() => { setRefStart(null); setCkStart(null); navigate("cocktails"); }} scores={scores} onSchedule={() => navigate("schedule")} onSelect={selectRole} T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} onLeaderboard={() => navigate("leaderboard")} onProfile={() => navigate("profile")} onStats={() => navigate("stats")} onDaily={() => navigate("daily")} onGlossary={() => navigate("glossary")} role={role} onChecklist={() => navigate("checklist")} onOnboarding={() => navigate("onboarding")} onAnalytics={() => navigate("analytics")} onReference={() => { setRefStart(null); navigate("reference"); }} onContentEditor={() => navigate("contentEditor")} onCertificates={CERTIFICATES_ENABLED ? () => navigate("certificates") : undefined} onMenuTrainer={() => navigate("menuTrainer")} onBarCard={() => { setBarBack(null); setBarNote(""); setWineStart(null); setBarTab(null); setBarSom(false); setBarOpenN((n) => n + 1); navigate("wines"); }} onMentor={() => navigate("mentor")} onSOS={() => navigate("sos")} onAssistant={() => navigate("assistant")} onCandidate={(profile?.is_admin || ["manager","senior"].includes(profile?.position)) ? () => navigate("candidate") : null} onGuestBook={() => { setBookFocus(null); navigate("guestbook"); }} completed={completed} quizDone={quizDone} examResults={examResults} mistakeBank={mistakeBank} onContinueLesson={(l, m) => { setActiveModule(m); openLesson(l); }} onMistakes={() => navigate("mistakes")}
           dayStrip={profile ? <DayChips a11y={a11y} streak={streakLive} steps={todaySteps} goal={goal} onGoal={setGoal} today={todayKey}
             firstDay={firstDay}
@@ -3471,8 +3494,8 @@ function ServiceAcademy() {
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}
-        {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => navigate("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
-        {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={titledScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => navigate("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
+        {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => goBack("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
+        {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={titledScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => goBack("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
         {screen === "seat" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SeatingScreen T={T} a11y={a11y} profile={profile}
           onMissing={() => setSeatOn(false)} onBack={() => goBack("shift")} /></Suspense></div>}
         {screen === "thanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ThanksScreen T={T} a11y={a11y} profile={profile} lead={isLead} startTab={thanksTab}
@@ -3636,7 +3659,7 @@ function ServiceAcademy() {
         {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} concept={concept} onAbout={() => { setAboutEdit(false); navigate("about"); }} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} onShareChat={chatShare} /></Suspense></div>}
         {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen startReverse={ckReverse} onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onShareChat={chatShare} /></Suspense></div>}
-        {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => navigate("profile")} /></Suspense>}
+        {screen === "trainingCard" && <Suspense fallback={<ScreenLoader T={T} />}><TrainingCardScreen T={T} a11y={a11y} profile={profile} completed={completed} quizDone={quizDone} examResults={examResults} onBack={() => goBack("profile")} /></Suspense>}
         {screen === "sos" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SOSScreen T={T} a11y={a11y} onBack={() => goBack()} /></Suspense></div>}
         {lessonLockMsg && (
           <div onClick={() => setLessonLockMsg(null)} style={{ position: "fixed", inset: 0, zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "rgba(0,0,0,0.45)" }}>
@@ -3652,9 +3675,9 @@ function ServiceAcademy() {
           </div>
         )}
         {screen === "assistant" && <Suspense fallback={<ScreenLoader T={T} />}><AssistantScreen T={T} a11y={a11y} profile={profile}
-          learner={assistantLearner()} onBack={() => goBack()} onNavigate={(dest) => assistantNavigate(dest, false)} /></Suspense>}
+          learner={assistantLearner()} onBack={() => goBack()} onNavigate={(dest) => assistantNavigate(dest)} /></Suspense>}
         {screen === "mentor" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MentorScreen T={T} a11y={a11y} profile={profile} role={role} roleObj={ROLES.find(r=>r.id===role)} onBack={() => goBack()} onInbox={setHallInbox} extraSkills={customSkills} /></Suspense></div>}
-        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div className="sa-tabpad"><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => navigate("home")} onLesson={openLesson} T={T} a11y={a11y} profile={profile}
+        {screen === "module" && !(inPages(activeModule) && MODULES[role]) && <div className="sa-tabpad"><NewPageBanner T={T} mod={activeModule} completed={completed} quizDone={quizDone} onOpen={() => { setBookFocus(activeModule?.id || null); navigate("guestbook"); }} /><ModuleScreen mod={activeModule} completed={completed} quizDone={quizDone} onBack={() => goBack("home")} onLesson={openLesson} T={T} a11y={a11y} profile={profile}
           next={moduleNextFor(activeModule)} onNext={moduleOnNext} finish={moduleFinishFor()} /></div>}
         {/* Урок-диалог: порталом в body — внутри анимируемой обёртки переходов
             WebKit ломает position:fixed у шторки (см. фикс пути из поппапа) */}
@@ -3690,9 +3713,9 @@ function ServiceAcademy() {
         {screen === "wineEditor" && <Suspense fallback={<ScreenLoader T={T} />}><WineEditor key={wineKind} kind={wineKind} T={T} a11y={a11y} profile={profile} startEditId={wineEdit} onBack={() => goBack("wines")}
           onDone={(id, msg) => { setWineStart(id); setBarTab(wineKind); setBarNote(msg || ""); goBack("wines"); }}
           onKind={(k, start) => { setWineKind(k === "spirit" ? "spirit" : "wine"); setWineEdit(start || null); }} /* v151 (Доп. 475): после «Дописать пустое» — «Проверить крепкое ›» */ /></Suspense>}
-        {screen === "certificates" && <Suspense fallback={<ScreenLoader T={T} />}><CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => navigate("roleSelect")} /></Suspense>}
-        {screen === "exam" && <Suspense fallback={<ScreenLoader T={T} />}><ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => navigate("certificates")} /></Suspense>}
-        {screen === "certificate" && <Suspense fallback={<ScreenLoader T={T} />}><CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => navigate("certificates")} shareUrl={APP_SHARE_URL} /></Suspense>}
+        {screen === "certificates" && <Suspense fallback={<ScreenLoader T={T} />}><CertificatesScreen T={T} a11y={a11y} profile={profile} completedRoles={completedRoles} examResults={examResults} completed={completed} quizDone={quizDone} onExam={openExam} onCertificate={openCertificate} onExit={() => goBack("roleSelect")} /></Suspense>}
+        {screen === "exam" && <Suspense fallback={<ScreenLoader T={T} />}><ExamScreen T={T} a11y={a11y} roleObj={ROLES.find(r=>r.id===examRole)} roleId={examRole} extraQuestions={examExtra} onFinish={(id, result) => { recordExam(id, result); if (result.passed) { cheer("Экзамен сдан"); openCertificate(id); } }} onExit={() => goBack("certificates")} /></Suspense>}
+        {screen === "certificate" && <Suspense fallback={<ScreenLoader T={T} />}><CertificateScreen T={T} a11y={a11y} profile={profile} roleObj={ROLES.find(r=>r.id===examRole)} result={examResults[examRole]} onExit={() => backTo("certificates")} shareUrl={APP_SHARE_URL} /></Suspense>}
         </div>
 
         {/* Онбординг: приветствие при первом входе */}

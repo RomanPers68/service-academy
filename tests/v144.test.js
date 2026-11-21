@@ -153,7 +153,7 @@ describe("v144 (Доп. 465): тема для ознакомления не сч
     // по-прежнему по programModules: задания дня, «Вопрос дня», разминка, радио, шаг дня, погреб
     for (const s of ["buildQdayQueue({ mistakeBank: mistakeBankRef.current, programModules,", "warmupPool(programModules, completed, quizDone)",
       "playlist({ modules: programModules,", "next: nextLessonOf(programModules, completed, quizDone)", "CellarScreen T={T} a11y={a11y} modules={programModules}",
-      "role={role} modules={programModules} onBack={() => navigate(\"roleSelect\")}"]) expect(app, s).toContain(s);
+      "role={role} modules={programModules} onBack={() => goBack(\"roleSelect\")}"]) expect(app, s).toContain(s);   // v190: «назад» — туда, откуда пришёл
     // все темы — листание трека, поиск, «Подсмотреть в уроке», урок
     for (const s of ["modules={programAllMods} shift={shiftText}", "situations={special.sits} modules={programAllMods}", "track={programAllMods} modules={[...programAllMods,",
       "modules={programAllMods} mentorName={mentorName}"]) expect(app, s).toContain(s);

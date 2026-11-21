@@ -1293,7 +1293,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     // ответ сервера: карточка как есть (и при «уже забрали» — тоже, чтобы кнопка пропала)
     const upd = (q, ctx = "") => { setCardBusy(m.id); return Promise.resolve(q).then((r) => { setCardBusy(null); if (r && r.msg) addMsgs([r.msg], { quiet: true }); if (r && r.ok) { heat(); return r; } flash(smartErr(r, ctx)); return null; })
       .catch(() => { setCardBusy(null); flash(smartErr({ error: "net" })); return null; }); };
-    if (a === "open") { if (app && app.open) app.open(extra); else flash("Откроется в приложении"); return; }
+    // v190 (Доп. 515): с id этой переписки — «назад» с открытого экрана вернёт сюда
+    if (a === "open") { if (app && app.open) app.open(extra && typeof extra === "object" ? { ...extra, from: chat.id } : extra); else flash("Откроется в приложении"); return; }
     if (a === "take") { upd(api.shiftTake(m.id)).then((r) => { if (r) flash("Смена твоя, график обновлён"); }); return; }
     if (a === "need") { upd(api.shiftTake(m.id)).then((r) => { if (r) flash("Ты выходишь в смену, график обновлён"); }); return; }   // v97: «Ищем в смену» — «Выйду»
     if (a === "swap") { setSheet({ swap: m }); return; }

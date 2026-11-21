@@ -229,8 +229,8 @@ describe("v93: экран и приложение", () => {
     const app = rd("App.jsx");
     expect(app).toContain("<ChatScreen a11y={a11y} me={chatMe} api={chatApiObj} stt={chatStt} appCtx={chatAppCtx}");
     expect(app).toContain('chatAiRef.current = (q, ctx) => import("./lib/chat-ai").then((m) => m.chatAi(q, profile, assistantLearner(), ctx));');   // v155: и прошлая пара Наставника
-    expect(app).toContain('if (k === "lesson" || k === "quiz") { assistantNavigate({ lesson: id }, true); return; }');
-    expect(app).toContain('if (k === "ref") { setRefStart(id); navigate("reference"); return; }');
+    expect(app).toContain('if (k === "lesson" || k === "quiz") { chatLessonMark.current = { mark, at: Date.now() }; assistantNavigate({ lesson: id }); return; }');   // v190: «назад» — в чат
+    expect(app).toContain('if (k === "ref") { setRefStart(id); navigate("reference"); mark(); return; }');   // v190: «назад» — в чат
     expect(rd("ui/chat.jsx")).toContain("const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);");
     expect(rd("lib/chat-ai.js")).toContain('fetch(SUPABASE_URL + "/functions/v1/ai-chat"');
     expect(rd("tools/claude/chat-demo/build.mjs")).toContain('b.onResolve({ filter: /\\/chat-app$/ }, () => ({ path: join(HERE, "chat-app-stub.js") }));');

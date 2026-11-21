@@ -139,7 +139,7 @@ describe("v130: «Поделиться в чат» — вина и крепко�
     expect(rd("ui/chat-kit.jsx")).toMatch(/ {2}wine: svg\(/);
     expect(rd("ui/chat-kit.jsx")).toMatch(/ {2}spirit: svg\(/);
     const A = rd("App.jsx");
-    expect(A).toContain('if (k === "wine" || k === "spirit") { setBarBack(null); setBarNote(""); setWineStart(id); setBarTab(k); setBarOpenN((n) => n + 1); navigate("wines"); return; }');
+    expect(A).toContain('if (k === "wine" || k === "spirit") { setBarBack(null); setBarNote(""); setWineStart(id); setBarTab(k); setBarOpenN((n) => n + 1); navigate("wines"); mark(); return; }');   // v190: «назад» — снова в чат
     expect(A).toContain('<BarCardScreen key={"bar" + barOpenN} onShareChat={chatShare}');
     expect(rd("ui/chat.jsx")).toContain("Вина и крепкое в чат пойдут после обновления сервера: этап 46 (supabase-stage46-bar-share.sql). Блюда и коктейли уже можно.");
     expect(rd("ui/wine-list.jsx")).toContain('<ShareChat id={K.kind + ":" + w.id} onClick={() => onShareChat(drinkShareItem(K, w))}');

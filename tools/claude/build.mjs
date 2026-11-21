@@ -26,7 +26,9 @@ await esbuild.build({
         let src = readFileSync(args.path, "utf8");
         const anchor = '  const goBack = useCallback((fallback = "roleSelect") => {';
         if (!src.includes(anchor)) throw new Error("preview-nav: якорь не найден");
-        src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saNav = navigate;\n' + anchor);
+        // v190: и где сейчас приложение, история «назад», шаг назад так же, как кнопка «Назад» Telegram
+        src = src.replace(anchor, '  if (typeof window !== "undefined") { window.__saNav = navigate; window.__saScreen = () => screenRef.current; window.__saStack = () => navRef.current.slice();'
+          + ' window.__saBack = () => { if (!clickScreenBack()) goBack(); }; }\n' + anchor);
         return { contents: src, loader: "jsx" };
       });
     },

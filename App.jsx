@@ -6,7 +6,8 @@ import React from "react";
 import { rpc, saToken, rpcSync, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
-import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread, conceptHas } from "./lib/concept";   // v139 (Доп. 454): «О нас»
+import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread, conceptHas, conceptAck } from "./lib/concept";   // v139 (Доп. 454): «О нас»
+import { ConceptCtx } from "./ui/concept-foot";   // v192 (Доп. 517): «Ознакомлен(а)» и рассказ гостю внизу раздела «О нас» в треке
 import { setCustomProgram } from "./data/modules";
 import { setCustomBook } from "./data/reviews";
 import { loopTrack, loopExit, loopOpen, loopPassed, loopUnseen, loopSeen, skipPayload, LoopholeCard, LoopholeBanner } from "./ui/loophole";
@@ -70,6 +71,7 @@ import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituati
 const retryImport = (loader, tries = 3, delay = 600) => loader().catch(err => { if (tries <= 1 || (typeof navigator !== "undefined" && navigator.onLine === false && tries <= 2)) throw err; return new Promise(r => setTimeout(r, delay)).then(() => retryImport(loader, tries - 1, delay * 2)); });
 const SearchScreen = lazy(() => retryImport(() => import("./ui/search")).then(m => ({ default: m.SearchScreen })));
 const AboutScreen = lazy(() => retryImport(() => import("./ui/concept")).then(m => ({ default: m.AboutScreen })));   // v139 (Доп. 454)
+const PitchScreen = lazy(() => retryImport(() => import("./ui/concept-pitch")).then(m => ({ default: m.PitchScreen })));   // v192 (Доп. 517): рассказ гостю за 30 секунд
 const MenuTrainerScreen = lazy(() => retryImport(() => import("./ui/menu-trainer")).then(m => ({ default: m.MenuTrainerScreen })));
 const CocktailsScreen = lazy(() => retryImport(() => import("./ui/cocktails")).then(m => ({ default: m.CocktailsScreen })));
 const GuestBookScreen = lazy(() => retryImport(() => import("./ui/guestbook")).then(m => ({ default: m.GuestBookScreen })));
@@ -560,6 +562,8 @@ function ServiceAcademy() {
   // в программе и экран «О нас» есть с первого кадра и без сети
   const [concept, setConcept] = useState(() => conceptFromStorage());
   const [aboutEdit, setAboutEdit] = useState(false);
+  const [pitchTrack, setPitchTrack] = useState("");   // v192: тренажёр «Рассказ гостю» — для какого трека
+  const [cnAckBusy, setCnAckBusy] = useState(false);   // v192: «Ознакомлен(а)» из раздела в треке
   const [customLoaded, setCustomLoaded] = useState(false);   // список своих уроков пришёл (правка 166)
   // Сброс прогресса дочищает следы (этап 20): аналитика, выходы, ключи лазейки,
   // прогресс по меню и ачивки привязаны к «Имя Фамилия» и сбросом не убирались.
@@ -1062,6 +1066,18 @@ function ServiceAcademy() {
   React.useEffect(() => { if (profile) loadConcept(); }, [profile, loadConcept]);
   const conceptNew = useMemo(() => conceptUnread(concept).any, [concept]);
   const aboutOn = !!(concept && (concept.net.blocks.length || (concept.venue && concept.venue.blocks.length) || concept.others.length));
+  // v192 (Доп. 517): «Ознакомлен(а)» внизу раздела в треке — обе части (сеть и своё заведение), потом свежий «О нас»
+  const ackConcept = useCallback(() => {
+    if (cnAckBusy || !concept) return;
+    const u = conceptUnread(concept);
+    if (!u.any) return;
+    vibrate("light"); setCnAckBusy(true);
+    const jobs = [];
+    if (u.net) jobs.push(rpc("concept_read", { p_token: saToken(), p_scope: "" }));
+    if (u.venue && concept.venue) jobs.push(rpc("concept_read", { p_token: saToken(), p_scope: concept.venue.name }));
+    Promise.all(jobs).then(() => rpc("concept_get", { p_token: saToken() })).then((r) => { if (r && r.ok === true) { onConceptRaw(r); vibrate("success"); } })
+      .catch(() => {}).finally(() => setCnAckBusy(false));
+  }, [cnAckBusy, concept, onConceptRaw]);
   // Свои разделы: иконка и цвет трека — lib/tracks.js (общие с редактором контента)
   // Свои разделы для текущей роли: все уроки раздела подряд, потом общая практика,
   // диалоги, сборки и один тест раздела — lib/custom-modules.js (правка 161)
@@ -3167,7 +3183,12 @@ function ServiceAcademy() {
     </div>
   );
 
+  // v192 (Доп. 517): раздел «О нас» в треке знает про отметку и тренажёр через ConceptCtx (ui/concept-foot.jsx)
+  const cnFemale = profile && profile.name ? isFemaleName(profile.name, profile.surname) : null;
+  const cnCtx = { concept, busy: cnAckBusy, onAck: ackConcept, word: cnFemale === true ? "Ознакомлена" : cnFemale === false ? "Ознакомлен" : "Ознакомлен(а)",
+    onAbout: () => { setAboutEdit(false); navigate("about"); }, onPitch: (t) => { setPitchTrack(t || role); navigate("pitch"); } };
   return (
+    <ConceptCtx.Provider value={cnCtx}>
     <div style={T.app}>
       {/* 🏆 Achievement popup */}
       {newAchievement && (
@@ -3353,11 +3374,12 @@ function ServiceAcademy() {
         {/* v107 (Доп. 420): новичок — «Первая неделя» (первая смена с памяткой, наставник, план и темы с собеседования) и
             «Новички» (руководитель: наставники, собеседования, памятка, «Представить команде»; наставник — свои новички) */}
         {screen === "newbie" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbieScreen T={T} a11y={a11y} profile={profile}
-          track={role} modules={programModules} completed={completed} quizDone={quizDone} onBack={() => goBack("shift")}
-          onOpenModule={(id) => { const m = (programModules || []).find((x) => x.id === id); if (m) { setActiveModule(m); navigate("module"); } }}
+          track={role} modules={programAllMods} completed={completed} quizDone={quizDone} cnAck={conceptAck(concept)} onBack={() => goBack("shift")}
+          onOpenModule={(id) => { const m = (programAllMods || []).find((x) => x.id === id); if (m) { setActiveModule(m); navigate("module"); } }}
           onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
           onChat={(msg) => setChatOpen({ intent: { kind: "team", msg: msg || null, at: Date.now() } })}
           onLegacy={() => navigate("onboarding")} /></Suspense></div>}
+        {/* v192 (Доп. 517): новичку — все темы, и «для ознакомления» тоже: «Знакомство с компанией» и дресс-код ведут в раздел «О нас» */}
         {screen === "newbies" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbiesScreen T={T} a11y={a11y} profile={profile}
           onBack={() => goBack("teamHub")} onChat={() => setChatOpen({ intent: { kind: "team", at: Date.now() } })}
           onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
@@ -3656,7 +3678,10 @@ function ServiceAcademy() {
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
         {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
-        {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null} /></Suspense></div>}
+        {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null}
+          onPitch={(t) => { setPitchTrack(t || role); navigate("pitch"); }} /></Suspense></div>}
+        {/* v192 (Доп. 517): тренажёр «Рассказ гостю за 30 секунд» — из «О нас» и из раздела в треке */}
+        {screen === "pitch" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><PitchScreen T={T} a11y={a11y} concept={concept} track={pitchTrack || role} onBack={() => goBack("about")} /></Suspense></div>}
         {screen === "search" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SearchScreen T={T} a11y={a11y} role={ROLES.find(r=>r.id===role)} profile={profile} concept={concept} onAbout={() => { setAboutEdit(false); navigate("about"); }} modules={[...(MODULES[role] || []), ...(customModules || [])]} onOpen={(m, l) => { setActiveModule(m); openLesson(l); }} onReferenceLesson={(id) => { setRefStart(id); navigate("reference"); }} onCocktail={(id) => { setRefStart(null); setWineStart(id); setBarTab("cocktail"); navigate("wines"); }} onDrink={(kind, id) => { setRefStart(null); setWineStart(id); setBarTab(kind); navigate("wines"); }} onBack={() => goBack("home")} /></Suspense></div>}
         {screen === "menuTrainer" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><MenuTrainerScreen accent={toolColor("menu", a11y)} role={role} startDishId={menuStart} startMode={menuMode} onOpenCocktail={(id) => { setRefStart(null); setCkStart(id); navigate("cocktails"); }} onWines={() => { setWineStart("@train"); setBarTab("wine"); navigate("wines"); }} T={T} a11y={a11y} profile={profile} onBack={() => goBack()} onShareChat={chatShare} /></Suspense></div>}
         {screen === "cocktails" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><CocktailsScreen startReverse={ckReverse} onLab={() => { setLabStart(null); navigate("barLab"); }} onEdit={(id) => { setCkEdit(id || null); navigate("ckEditor"); }} onPrint={() => navigate("barPrint")} profile={profile} onOpenDish={(id) => { setMenuStart(id); navigate("menuTrainer"); }} onBuild={(id) => { setLabStart(id); navigate("barLab"); }} T={T} a11y={a11y} startId={ckStart} onBack={() => { setRefStart(null); setCkStart(null); goBack(); }} onShareChat={chatShare} /></Suspense></div>}
@@ -3789,6 +3814,7 @@ function ServiceAcademy() {
         })()}
       </div>
     </div>
+    </ConceptCtx.Provider>
   );
 }
 

@@ -233,7 +233,9 @@ describe("v139: сервер демо — как этап 49", () => {
   const P = (id, name, restaurant, position, x = {}) => ({ id, name, surname: "", restaurant, position, is_admin: false, ...x });
   const people = [P("r", "Роман", "Океан", "owner", { is_admin: true }), P("m", "Мария", "Океан", "manager"), P("a", "Анна", "Океан", "waiter"), P("i", "Ирина", "Порт", "manager")];
   const pings = [];
-  const srv = makeServer({ today: "2026-11-05", rest: "Океан", people, tok: { tr: "r", tm: "m", ta: "a", ti: "i" }, sstaff: [], cfg: { shifts: [] }, plan: {}, menu: [], tgLinked: ["a"],
+  // v192 (Доп. 517): здесь — как этап 49, без этапа 58 (с ним в «Кто ознакомлен» есть и сам руководитель, бот просит
+  // «Ознакомлен(а)» — tests/v192.test.js)
+  const srv = makeServer({ today: "2026-11-05", rest: "Океан", people, tok: { tr: "r", tm: "m", ta: "a", ti: "i" }, sstaff: [], cfg: { shifts: [] }, plan: {}, menu: [], tgLinked: ["a"], noStage58: true,
     concept: { net: [{ kind: "idea", title: "Сеть", body: "x" }], venues: { "Порт": [{ kind: "dress", title: "Форма", body: "y" }] } }, ping: (to, text, acts, chat, msg, o) => pings.push({ to, text, o }) });
   it("права и чтение", () => {
     expect(srv.rpc("concept_save", { p_token: "ta", p_block: { scope: "Океан", kind: "idea", title: "x", body: "x" } }).error).toBe("forbidden");
@@ -286,7 +288,8 @@ describe("v139: связи в приложении", () => {
     expect(app).toContain('badge: conceptNew ? "новое" : null');
     expect(app).toContain('staff && { key:"cn", group:"Управление", icon:"about", label:"Концепция и стандарты"');
     // v191 (Доп. 516): и «Открыть как сотрудник» — раздел «О нас» в треке своей роли
-    expect(app).toContain('<AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null} />');
+    // v192 (Доп. 517): и тренажёр рассказа гостю (onPitch)
+    expect(app).toContain('<AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null}\n          onPitch={(t) => { setPitchTrack(t || role); navigate("pitch"); }} />');
     expect(rd("ui/home-hubs.jsx")).toContain("  about: (c) => <svg");
   });
   it("поиск, брифинг, урок с фото", () => {

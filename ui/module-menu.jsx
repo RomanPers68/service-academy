@@ -18,6 +18,7 @@ import { useLessonPhotos, useCover, CoverEditButton, CoverPhoto, PhotoWait } fro
 import { moduleCover, modCoverId } from "../lib/lesson-photo";
 import { sectionIntro, sectionPos, introLessonOfModule, introUk } from "../lib/intro-video";   // v175 (Доп. 500): кадр видео-знакомства — обложкой раздела
 import { IntroWarm } from "./intro-video";   // v177 (Доп. 502): ролик раздела — заранее, пока человек в разделе
+import { ConceptFoot } from "./concept-foot";   // v192 (Доп. 517): «Ознакомлен(а)» и рассказ гостю внизу раздела «О нас»
 
 const KIND = { lesson: "урок", quiz: "тест", practice: "практика", dialogue: "живой диалог", build: "сборка" };
 const DONE_WORD = { lesson: "пройден", quiz: "сдан", practice: "сыграно", dialogue: "пройден", build: "собрано" };
@@ -250,6 +251,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
             );
           })}
         </ol>
+        {mod.concept ? <ConceptFoot mod={mod} completed={completed} passive={passive} /> : null}
         <div className="tbm-foot">
           <Ic n={doneN >= real.length && real.length ? "checkC" : "book"} s={16} />
           <span>{doneN >= real.length && real.length ? "Раздел пройден целиком" : "Пройдено " + doneN + " из " + real.length + " · осталось ≈ " + fmt(left)}</span>

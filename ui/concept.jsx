@@ -21,6 +21,10 @@
 // (ui/concept-import.jsx); «Оформить как в уроках» — готовые блоки тем же видом. Правка блока: «Текст / Как в уроке»,
 // кнопки разметки уроков (шаги, ✅, 🚫, 📌, фраза гостю), «Оформить как урок», подсказка по виду. Текст блоков в «О нас»
 // и в уроках — разметкой штатных уроков (ui/lesson-look.jsx, lib/lesson-look.js).
+// v192 (Доп. 517): владелец про семь идей для «О нас»: «Ты правильно понял. Делаем все 7». Сверху обложка (название,
+// заведение, фото зала, оглавление), «Что изменилось» после твоей отметки (в блоке видно, что именно), внизу
+// «Ознакомлен(а)» вместо «Прочитал(а)» и раздел целиком в PDF; у блока «Рассказ гостю» — тренажёр. Руководителю: лист
+// ознакомления с датами и PDF для отдела кадров, история блока с «Вернуть», удалённые блоки (ui/concept-more.jsx, этап 58).
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate } from "../lib/utils";
@@ -28,7 +32,10 @@ import { GOLD, labelStyle } from "./tokens";
 import { TRACKS } from "../lib/tracks";
 import { RESTAURANTS } from "../data/roles";
 import { compressPhoto } from "../lib/chat-photo";
-import { CN_KINDS, CN_LIMITS, CN_META_LIMITS, CN_SECTION, CN_SUB, kindOf, blockFor, conceptUnread, blankBlock, blockPayload, blockProblem, conceptErr, cleanQuestion, normConcept, conceptPairs } from "../lib/concept";
+import { CN_KINDS, CN_LIMITS, CN_META_LIMITS, CN_SECTION, CN_SUB, kindOf, blockFor, conceptUnread, blankBlock, blockPayload, blockProblem, conceptErr, cleanQuestion, normConcept, conceptPairs,
+  conceptSection, conceptAck, conceptChanges, conceptHero, conceptToc } from "../lib/concept";
+import { isFemaleName } from "../lib/utils";
+import { ConceptCover, ChangesCard, DiffView, AckCard, AcksPanel, HistoryPanel, GonePanel, savePdf } from "./concept-more";   // v192 (Доп. 517)
 import { ConceptPhotos, conceptPhotoRemember } from "./concept-photo";
 import { LessonLook } from "./lesson-look";
 import { lessonize, lookInfo, markLines } from "../lib/lesson-look";
@@ -53,22 +60,32 @@ export function BlockText({ text, T }) {
   return <LessonLook text={lessonize(String(text || ""))} T={T} bare />;
 }
 
-function BlockCard({ b, T, a11y, c, lead, where }) {
+// v192: chg — { type: "edit" | "new", was } (что поменялось после отметки), diff — показать, что именно; onPitch — тренажёр
+function BlockCard({ b, T, a11y, c, lead, where, chg = null, diff = false, onDiff = null, onPitch = null }) {
   return (
-    <div data-lens-card="" data-cn-block={b.kind} data-cn-id={b.id} style={{ ...T.modCard, display: "block", padding: "12px 14px", marginBottom: 12, cursor: "default" }}>
+    <div data-lens-card="" data-cn-block={b.kind} data-cn-id={b.id} data-cn-chgd={chg ? chg.type : undefined}
+      style={{ ...T.modCard, display: "block", padding: "12px 14px", marginBottom: 12, cursor: "default", scrollMarginTop: 70, ...(chg ? { borderColor: GOLD + "aa" } : {}) }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <div style={{ flex: 1, fontFamily: TITLE, fontSize: 17.5, color: T.modTitle.color, lineHeight: 1.3 }}>{b.title}</div>
+        {chg ? <span data-cn-badge={chg.type} style={{ fontSize: 11.5, padding: "1px 8px", borderRadius: 999, border: "1px solid " + GOLD + "99", color: GOLD, whiteSpace: "nowrap" }}>{chg.type === "new" ? "новый" : "изменён"}</span> : null}
         {where ? <span style={{ fontSize: 11.5, color: c.soft, whiteSpace: "nowrap" }}>{where}</span> : null}
       </div>
       {lead && b.tracks.length ? <div style={{ fontSize: 11.5, color: c.soft, marginTop: 2 }}>Для кого: {forWhom(b)}</div> : null}
-      {b.body ? <div style={{ marginTop: 6 }}><BlockText text={b.body} T={T} /></div> : null}
+      {chg && chg.type === "edit" && onDiff ? <button type="button" data-lens-btn="soft" data-cn-difftoggle={diff ? "1" : "0"} onClick={() => { vibrate("light"); onDiff(); }}
+        style={{ marginTop: 8, padding: "5px 12px", borderRadius: 999, border: "1px solid " + c.line, background: c.chip, color: T.modTitle.color, fontFamily: SERIF, fontSize: 12.5, cursor: "pointer" }}>
+        {diff ? "Как сейчас" : "Что поменялось"}</button> : null}
+      {diff && chg && chg.was ? <div style={{ marginTop: 8 }}><DiffView T={T} c={c} was={chg.was} now={b} /></div>
+        : b.body ? <div style={{ marginTop: 6 }}><BlockText text={b.body} T={T} /></div> : null}
       <ConceptPhotos photos={b.photos} a11y={a11y} />
+      {onPitch && b.kind === "pitch" ? <button type="button" data-lens-btn="main" data-cn-pitch="" onClick={() => { vibrate("light"); onPitch(); }}
+        style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 999, border: 0, cursor: "pointer", fontFamily: SERIF, fontSize: 14, fontWeight: "bold", color: "#1A1008",
+          background: "linear-gradient(180deg,#E4C88C,#C8A96E)" }}>Потренироваться: рассказ за 30 секунд</button> : null}
     </div>);
 }
 
 // Помощник — /api/lesson-assist (lib/concept-ai.js, askAI), тот же, что у редактора уроков.
 
-export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, startEdit = false, onOpenSection = null }) {
+export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, startEdit = false, onOpenSection = null, onPitch = null }) {
   const c = P(a11y);
   const lead = !!(profile && (profile.is_admin || ["manager", "senior"].includes(profile.position)));
   const [mode, setMode] = React.useState(startEdit && lead ? "edit" : "view");
@@ -78,7 +95,10 @@ export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, st
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const [openOther, setOpenOther] = React.useState(null);
+  const [diffs, setDiffs] = React.useState({});     // v192: у каких блоков открыто «Что поменялось»
+  const [printing, setPrinting] = React.useState(false);
   const mine = (concept && concept.mine) || (profile && profile.restaurant) || "";
+  const female = profile && profile.name ? isFemaleName(profile.name, profile.surname) : null;
 
   const load = React.useCallback((r = rest) => {
     return rpc("concept_get", { p_token: saToken(), p_restaurant: r || null }).then((raw) => {
@@ -101,7 +121,18 @@ export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, st
     const jobs = [];
     if (unread.net) jobs.push(rpc("concept_read", { p_token: saToken(), p_scope: "" }));
     if (unread.venue && d.venue) jobs.push(rpc("concept_read", { p_token: saToken(), p_scope: d.venue.name }));
-    Promise.all(jobs).then(() => load("")).finally(() => setBusy(false));
+    Promise.all(jobs).then(() => load("")).then(() => vibrate("success")).finally(() => setBusy(false));
+  };
+  // v192: к блоку из оглавления или «Что изменилось»; diff — сразу показать, что поменялось
+  const jump = (id, diff = false) => {
+    if (diff) setDiffs((x) => ({ ...x, [id]: true }));
+    requestAnimationFrame(() => { try { const el = document.querySelector('[data-cn-id="' + id + '"]'); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { /* */ } });
+  };
+  const print = async () => {
+    if (printing || !d) return;
+    vibrate("light"); setPrinting(true); setMsg("");
+    const t = await savePdf("concept_pdf", d, { track: role, all: lead });
+    setPrinting(false); setMsg(t);
   };
 
   // назад: из блока — к списку блоков (back), из правки — к «О нас», из «О нас» — откуда пришли
@@ -124,6 +155,13 @@ export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, st
 
   const empty = d && !d.net.blocks.length && !(d.venue && d.venue.blocks.length);
   const show = (arr) => (arr || []).filter((b) => lead || blockFor(b, role));
+  // v192: обложка, «Что изменилось», «Ознакомлен(а)» — у своего заведения (сеть, открывшая чужое, правит, а не читает)
+  const own = d && (!rest || rest === mine);
+  const ack = own ? conceptAck(d) : { has: false, need: false, at: "", edition: "" };
+  const chg = own ? conceptChanges(d, role, lead) : { at: "", items: [] };
+  const chgOf = (b) => { const x = chg.items.find((y) => y.id === b.id && y.type !== "gone"); return x ? { type: x.type, was: x.was } : null; };
+  const card = (b) => <BlockCard key={b.id} b={b} T={T} a11y={a11y} c={c} lead={lead} chg={chgOf(b)} diff={!!diffs[b.id]}
+    onDiff={() => setDiffs((x) => ({ ...x, [b.id]: !x[b.id] }))} onPitch={onPitch && b.kind === "pitch" ? () => onPitch(role) : null} />;
   return (
     <div style={T.screen} className="sa-screen" data-about={phase} data-about-unread={unread.any ? "1" : "0"}>
       {head("О нас", lead && d && (d.can.net || d.can.venue) ? <button type="button" data-lens-btn="soft" data-cn-edit="" style={{ ...ghost, marginLeft: "auto" }} onClick={() => { vibrate("light"); setMode("edit"); }}>Править</button> : null)}
@@ -137,8 +175,11 @@ export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, st
             <div style={{ ...T.para, marginTop: 6 }}>{lead ? "Начни с концепции и рассказа гостю за 30 секунд. Можно вставить готовый документ: помощник разложит его по блокам." : "Их пишут руководители сети и заведения. Как появятся, придёт сообщение."}</div>
             {lead && (d.can.net || d.can.venue) ? <button type="button" data-lens-btn="main" style={{ ...main, marginTop: 12 }} onClick={() => setMode("edit")}>Начать</button> : null}
           </div>) : null}
-        {d && show(d.net.blocks).length ? <>{h("Вся сеть")}{show(d.net.blocks).map((b) => <BlockCard key={b.id} b={b} T={T} a11y={a11y} c={c} lead={lead} />)}</> : null}
-        {d && d.venue && show(d.venue.blocks).length ? <>{h(d.venue.name)}{show(d.venue.blocks).map((b) => <BlockCard key={b.id} b={b} T={T} a11y={a11y} c={c} lead={lead} />)}</> : null}
+        {d && !empty ? <ConceptCover T={T} a11y={a11y} c={c} sec={conceptSection(d)} where={d.venue ? d.venue.name : ""} hero={conceptHero(d, lead ? "" : role)}
+          ack={ack} chg={chg} toc={conceptToc(d, role, lead)} female={female} onJump={(id) => jump(id)} /> : null}
+        {d && !empty ? <ChangesCard T={T} c={c} chg={chg} onJump={jump} /> : null}
+        {d && show(d.net.blocks).length ? <>{h("Вся сеть")}{show(d.net.blocks).map(card)}</> : null}
+        {d && d.venue && show(d.venue.blocks).length ? <>{h(d.venue.name)}{show(d.venue.blocks).map(card)}</> : null}
         {d && d.others.length ? <>
           {h("Соседи по сети")}
           {d.others.map((o) => (
@@ -156,9 +197,7 @@ export function AboutScreen({ T, a11y, profile, role, concept, onRaw, onBack, st
                 </div>)) : null}
             </div>))}
         </> : null}
-        {d && unread.any ? (
-          <button type="button" data-lens-btn="main" data-cn-read="" style={{ ...main, marginTop: 6 }} disabled={busy} onClick={markRead}>{busy ? "Минуту…" : "Прочитал(а)"}</button>) : null}
-        {d && !empty && !unread.any && (d.net.ver || (d.venue && d.venue.ver)) ? <div data-cn-readok="" style={{ fontSize: 12.5, color: c.soft, textAlign: "center", marginTop: 6 }}>Всё прочитано. Обновят, придёт сообщение.</div> : null}
+        {d && !empty ? <AckCard T={T} c={c} ack={ack} busy={busy} onAck={markRead} female={female} main={main} onPrint={print} printing={printing} /> : null}
         {msg ? <div role="status" style={{ fontSize: 12.5, color: T.modTitle.color, marginTop: 8 }}>{msg}</div> : null}
       </div>
     </div>);
@@ -266,7 +305,6 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
   const [restyle, setRestyle] = React.useState(false);   // «Оформить как в уроках»
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
-  const [reads, setReads] = React.useState(null);
   const [delAsk, setDelAsk] = React.useState(null);
   const sc = scope === "net" ? "" : venueName;
   const blocks = (scope === "net" ? data.net.blocks : (data.venue ? data.venue.blocks : [])).slice().sort((a, b) => (a.sort - b.sort) || (a.id - b.id));
@@ -296,14 +334,10 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
         : "Сегодня всем уже писали или у них выключены напоминания. Команда увидит отметку «новое» в «Команде».");
     }).finally(() => setBusy(false));
   };
-  const loadReads = () => {
-    vibrate("light");
-    rpc("concept_reads", { p_token: saToken(), p_restaurant: venueName || null }).then((r) => setReads(r && r.ok ? r : { ok: false })).catch(() => setReads({ ok: false }));
-  };
   const openBlock = (b) => { vibrate("light"); setMsg(""); setEdit({ ...b }); };
 
   if (edit) return <BlockEditor T={T} a11y={a11y} c={c} block={edit} head={head} ghost={ghost} main={main} h={h} where={scope === "net" ? "Вся сеть" : venueName}
-    onClose={(saved) => { setEdit(null); if (saved) { say("Сохранено. Команда увидит после «Сообщить команде» или сама, с отметкой «новое»."); reload(); } }} />;
+    onClose={(saved, text) => { setEdit(null); if (saved) { say(text || "Сохранено. Команда увидит после «Сообщить команде» или сама, с отметкой «новое»."); reload(); } }} />;
 
   const field = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: "1px solid " + c.line, background: c.field, color: T.modTitle.color, fontFamily: SERIF, fontSize: 14, outline: "none" };
   // все заведения сети: своё первым, потом список приложения, потом что знает сервер
@@ -328,8 +362,8 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
           </div>) : null}
         <div role="tablist" aria-label="Что правим" data-cn-tabs="" data-lens-seg="" style={{ display: "flex", gap: 2, padding: 3, marginBottom: 12, borderRadius: 999,
           border: "1px solid " + c.line, background: c.chip }}>
-          {can.net ? <button type="button" role="tab" aria-selected={scope === "net"} data-cn-tab="net" data-lens-btn={scope === "net" ? "tab" : undefined} style={tab(scope === "net")} onClick={() => { setScope("net"); setReads(null); setMsg(""); setDoc(false); setRestyle(false); setPick(false); }}>Вся сеть{count(nNet)}</button> : null}
-          {can.venue ? <button type="button" role="tab" aria-selected={scope === "venue"} data-cn-tab="venue" data-lens-btn={scope === "venue" ? "tab" : undefined} style={tab(scope === "venue")} onClick={() => { setScope("venue"); setReads(null); setMsg(""); setDoc(false); setRestyle(false); setPick(false); }}>{venueName || "Заведение"}{count(nVen)}</button> : null}
+          {can.net ? <button type="button" role="tab" aria-selected={scope === "net"} data-cn-tab="net" data-lens-btn={scope === "net" ? "tab" : undefined} style={tab(scope === "net")} onClick={() => { setScope("net"); setMsg(""); setDoc(false); setRestyle(false); setPick(false); }}>Вся сеть{count(nNet)}</button> : null}
+          {can.venue ? <button type="button" role="tab" aria-selected={scope === "venue"} data-cn-tab="venue" data-lens-btn={scope === "venue" ? "tab" : undefined} style={tab(scope === "venue")} onClick={() => { setScope("venue"); setMsg(""); setDoc(false); setRestyle(false); setPick(false); }}>{venueName || "Заведение"}{count(nVen)}</button> : null}
         </div>
         <div style={{ fontSize: 12.5, color: c.soft, lineHeight: 1.5, marginBottom: 12 }}>{scope === "net" ? "Общее для всех заведений: видят все сотрудники сети." : "Только для «" + venueName + "»: сотрудники видят это под общей частью сети."} Каждый блок становится уроком раздела в начале каждого трека, а вопросы блоков собираются в его тест.</div>
 
@@ -408,17 +442,13 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
             <div style={{ fontSize: 12.5, color: c.soft, lineHeight: 1.5 }}>{scope === "net" ? "Сообщение всем сотрудникам сети" : "Сообщение сотрудникам «" + venueName + "»"} в Telegram и на телефон, не чаще раза в день. У кого не дошло, увидят отметку «новое».</div>
             <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
               <button type="button" data-lens-btn="soft" data-cn-notify="" style={ghost} disabled={busy} onClick={notify}>{busy ? "Минуту…" : "Сообщить команде"}</button>
-              {venueName ? <button type="button" data-lens-btn="soft" data-cn-reads="" style={ghost} onClick={loadReads}>Кто прочитал</button> : null}
             </div>
-            {reads && reads.ok ? (() => {
-              const all = reads.rows || [], ok = all.filter((x) => x.net && x.venue);
-              return (<div data-cn-readlist={ok.length + "/" + all.length} style={{ marginTop: 8 }}>
-                <div style={{ fontFamily: SERIF, fontSize: 14, color: T.modTitle.color }}>Прочитали {ok.length} из {all.length}</div>
-                {all.filter((x) => !(x.net && x.venue)).length ? <div style={{ fontSize: 12.5, color: c.soft, lineHeight: 1.5, marginTop: 4 }}>Ещё нет: {all.filter((x) => !(x.net && x.venue)).map((x) => x.name).join(", ")}</div> : null}
-              </div>);
-            })() : reads ? <div style={{ fontSize: 12.5, color: c.warn, marginTop: 8 }}>Не получилось узнать. Попробуй ещё раз.</div> : null}
+            {/* v192 (Доп. 517): лист ознакомления — у каждого дата отметки, PDF для отдела кадров; раздел целиком в PDF */}
+            {venueName ? <AcksPanel T={T} c={c} ghost={ghost} data={data} venueName={venueName} /> : null}
           </div>
         </> : null}
+        {/* v192: удалённые блоки этой части — можно вернуть */}
+        {canHere && !busyPanel ? <GonePanel key={scope + "|" + blocks.length} T={T} c={c} ghost={ghost} scope={sc} onRestored={(t) => { say(t); reload(); }} /> : null}
         {msg ? <div role="status" data-cn-msg="" style={{ fontSize: 13, color: T.modTitle.color, lineHeight: 1.5, marginTop: 10 }}>{msg}</div> : null}
       </div>
     </div>);
@@ -434,6 +464,7 @@ function BlockEditor({ T, a11y, c, block, head, ghost, main, h, where, onClose }
   const [up, setUp] = React.useState(0);   // сколько фото загружается
   const [view, setView] = React.useState("text");   // v191: "text" | "look"
   const [undo, setUndo] = React.useState(null);     // v191: текст до «Оформить как урок»
+  const [hist, setHist] = React.useState(false);    // v192: история блока
   const taRef = React.useRef(null);
   const k = kindOf(b.kind);
   const patch = (p) => setB((x) => ({ ...x, ...p }));
@@ -573,6 +604,10 @@ function BlockEditor({ T, a11y, c, block, head, ghost, main, h, where, onClose }
           <button type="button" data-lens-btn="soft" style={ghost} data-cn-qai="" disabled={!!ai} onClick={() => think("questions")}>{ai === "questions" ? "Придумываю…" : "Придумать вопросы"}</button>
         </div> : null}
 
+        {/* v192 (Доп. 517): прежние версии блока — посмотреть, что поменялось, и вернуть */}
+        {b.id ? (hist
+          ? <HistoryPanel T={T} c={c} ghost={ghost} block={block} onClose={() => setHist(false)} onReverted={(nb, text) => onClose(true, text)} />
+          : <button type="button" data-lens-btn="soft" data-cn-hist="" style={{ ...ghost, marginTop: 14 }} onClick={() => { vibrate("light"); setHist(true); }}>История блока</button>) : null}
         {err ? <div role="status" data-cn-err="" style={{ fontSize: 13, color: c.warn, lineHeight: 1.5, marginTop: 12 }}>{err}</div> : null}
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <button type="button" data-lens-btn="main" data-cn-save="" style={{ ...main, flex: 1 }} disabled={busy || !!up} onClick={save}>{busy ? "Сохраняю…" : up ? "Фото загружается…" : "Сохранить"}</button>

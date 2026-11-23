@@ -20,6 +20,10 @@
 //                из документа для блока, по ней пишется блок без повторной отправки PDF); concept_block: один блок по
 //                материалу → { title, body, questions } (qn вопросов теста, 0 — без них); concept_style: текст блока →
 //                { body } в виде уроков, факты те же. Текст ответа приводится к разметке уроков (lib/lesson-look.js)
+//   concept_pitch — v192 (Доп. 517): тренажёр «Рассказ гостю за 30 секунд» в «О нас» — для всех сотрудников, не только
+//                руководителей, свой счёт обращений (30 в час). title — заведение, src — образец (блок «Рассказ гостю»),
+//                facts — факты раздела, text — что сказал сотрудник, secs — за сколько секунд → { good, missed, tip,
+//                better, score } (lib/concept-pitch.js)
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //   ref_chapter, ref_improve, ref_shorten — v168 (Доп. 493): ассистент редактора справочника (lib/ref-ai.js): глава из
@@ -40,6 +44,7 @@
 // Защита как у импорта меню: живая сессия (whoami), только руководители
 // (как и сам редактор), не больше 40 обращений в час на человека.
 import { verifySession, rateLimit } from "./_auth.js";
+import { pitchPrompt, pitchClean, PITCH_LIMITS } from "../lib/concept-pitch.js";   // v192 (Доп. 517): тренажёр «Рассказ гостю за 30 секунд»
 import { lessonize } from "../lib/lesson-look.js";   // v191 (Доп. 516): текст блоков «О нас» — разметкой уроков
 import { webCall } from "./_web.js";   // v169: поиск в интернете для ассистента справочника
 // v168 (Доп. 493): ассистент редактора справочника — режимы ref_chapter, ref_improve, ref_shorten. Просьбы к модели и
@@ -133,7 +138,9 @@ export const PROMPT = {
     "Для каждого блока: kind; title — заголовок урока 2–6 слов, живой и конкретный, можно с названием компании («Кто мы: …», «Наш гость: кому что советовать»); about — что войдёт, одним предложением;",
     "src — выдержка из материала для этого блока: все факты, цифры, имена, правила и формулировки, которые в него войдут, близко к тексту материала, до 900 знаков.",
     "Порядок блоков — как в списке видов.",
-    'Ответ — строго JSON без пояснений и без ```: {"blocks": [{"kind": "idea", "title": "…", "about": "…", "src": "…"}]}',
+    // v192 (Доп. 517): картинки из Word — метки «[фото N]» на их месте в тексте
+    "Строки «[фото N]» в материале — картинки документа на своём месте. photos — номера картинок, которые относятся к блоку (по месту в тексте и смыслу: зал — к атмосфере, форма — к внешнему виду, стол — к сервировке); одна картинка — одному блоку; нет картинок — пустой список. В src метки оставляй.",
+    'Ответ — строго JSON без пояснений и без ```: {"blocks": [{"kind": "idea", "title": "…", "about": "…", "src": "…", "photos": [1]}]}',
     material ? "\nМАТЕРИАЛ:\n" + material : "\nМАТЕРИАЛ — во вложенном PDF.",
   ].join("\n"),
   // v191: один блок по материалу — в виде уроков и с вопросами теста
@@ -142,7 +149,7 @@ export const PROMPT = {
     about ? "Что в нём: " + about : "",
     src ? "Выдержка из материала для этого блока (остальной материал — ниже, бери из него только то, что относится к блоку):\n" + src : "",
     others && others.length ? "Другие блоки раздела — их содержание не повторяй: " + others.map((x) => "«" + x + "»").join(", ") + "." : "",
-    "Объём — 120–320 слов, строго по материалу ниже.",
+    "Объём — 120–320 слов, строго по материалу ниже. Строки «[фото N]» — картинки документа: в текст блока их не переноси.",
     LOOK,
     VOICE,
     qn > 0 ? `Ещё ${qn} вопрос${qn === 1 ? "" : "а"} для теста по этому блоку.\n` + QUIZ_RULES : "",
@@ -331,12 +338,13 @@ export function sanitize(mode, o) {
     const seen = new Set();
     let own = 0;
     const blocks = (Array.isArray(o.blocks) ? o.blocks : []).filter((b) => b && typeof b === "object" && CONCEPT_KINDS[b.kind]).map((b) => ({
-      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], about: cut(b.about, 300).trim(), src: cut(b.src, 1500).trim() }))
+      kind: b.kind, title: cut(b.title, 80).trim() || CONCEPT_KINDS[b.kind], about: cut(b.about, 300).trim(), src: cut(b.src, 1500).trim(),
+      photos: [...new Set((Array.isArray(b.photos) ? b.photos : []).map(Number).filter((n) => Number.isInteger(n) && n > 0 && n <= 60))].slice(0, 8) }))   // v192: картинки из Word
       .filter((b) => (b.kind === "own" ? ++own <= 5 : !seen.has(b.kind) && seen.add(b.kind))).slice(0, 17);
     return blocks.length ? { blocks } : null;
   }
   if (mode === "concept_block") {
-    const body = lessonize(cut(o.body, 6000));
+    const body = lessonize(cut(o.body, 6000).replace(/^[ \t]*\[фото \d+\][ \t]*$/gm, "").replace(/ ?\[фото \d+\]/g, ""));   // v192: метки картинок — не текст
     if (!body) return null;
     return { title: cut(o.title, 80).trim(), body, questions: cnQuestions(o.questions) };
   }
@@ -447,15 +455,32 @@ export default async function handler(req, res) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return res.status(500).json({ ok: false, error: "OPENROUTER_API_KEY не задан: Vercel → Settings → Environment Variables (тот же ключ, что у импорта меню), затем Redeploy." });
 
-  const { token, mode, role, title, text, pdfBase64, idea, about, others, fixes, web, kind, qn, where, src } = req.body || {};
+  const { token, mode, role, title, text, pdfBase64, idea, about, others, fixes, web, kind, qn, where, src, facts, secs } = req.body || {};
   const isRef = REF_AI_MODES.includes(mode);   // v168: ассистент редактора справочника
   const isCn = CN_MODES.includes(mode);        // v191: «О нас» — свой счёт обращений: документ — план и по обращению на блок
-  if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
+  const isPitch = mode === "concept_pitch";   // v192: тренажёр рассказа гостю — для всех сотрудников
+  if (!isRef && !isPitch && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await verifySession(token);
   if (!emp) return res.status(401).json({ ok: false, error: "Сессия не найдена — войди в приложение заново" });
   const boss = !!(emp.is_admin || ["manager", "senior"].includes(emp.position));
+  if (isPitch) {
+    // v192 (Доп. 517): «Рассказ гостю за 30 секунд» — свой счёт, проверки до обращения к модели
+    if (!rateLimit("pitch:" + token, 30, 3600_000)) return res.status(429).json({ ok: false, error: "Много попыток подряд. Отдохни и попробуй через час." });
+    const said = cut(text, PITCH_LIMITS.said).trim(), ref = cut(src, PITCH_LIMITS.ref).trim();
+    if (!ref) return res.status(400).json({ ok: false, error: "В «О нас» нет образца рассказа гостю" });
+    if (said.length < 15) return res.status(400).json({ ok: false, error: "Расскажи хотя бы пару предложений" });
+    try {
+      const out = await ask(key, pitchPrompt({ where: cut(title, 80), ref, facts: cut(facts, PITCH_LIMITS.facts), said, secs: Number(secs) || 0 }), "", 1500);
+      if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
+      const result = pitchClean(parseObject(out.text));
+      if (!result) return res.status(422).json({ ok: false, error: "Помощник ответил не по формату. Попробуй ещё раз." });
+      return res.status(200).json({ ok: true, ...result, model: out.model });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: "Сбой помощника: " + (e && e.message ? e.message : "unknown") });
+    }
+  }
   if (!boss) return res.status(403).json({ ok: false, error: "Редактор контента — только для руководителей" });
   if (isRef && !emp.is_admin) return res.status(403).json({ ok: false, error: "Редактор справочника доступен только владельцу" });
   // v169: у режимов справочника свой счёт — раскладка документа на главы тратит по обращению на главу

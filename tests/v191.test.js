@@ -199,7 +199,7 @@ describe("v191 · помощник: план, блок, оформление (ap
     const own = Array.from({ length: 7 }, (_, i) => ({ kind: "own", title: "Своё " + i }));
     const pl = sanitize("concept_plan", { blocks: [{ kind: "idea", title: "Кто мы", about: "а", src: "б" }, { kind: "idea" }, { kind: "spam" }, ...own] });
     expect(pl.blocks.map((b) => b.kind)).toEqual(["idea", "own", "own", "own", "own", "own"]);
-    expect(pl.blocks[0]).toEqual({ kind: "idea", title: "Кто мы", about: "а", src: "б" });
+    expect(pl.blocks[0]).toEqual({ kind: "idea", title: "Кто мы", about: "а", src: "б", photos: [] });   // v192: и номера картинок из Word
     expect(sanitize("concept_plan", { blocks: [] })).toBe(null);
     const b = sanitize("concept_block", { title: "Форма", body: "## Главное\n- верх\n- обувь", questions: [{ q: "Что?", options: ["", "а", "б"], correct: 2 }, { q: "", options: ["а", "б"], correct: 0 }] });
     expect(b).toEqual({ title: "Форма", body: "**Главное**\n• верх\n• обувь", questions: [{ q: "Что?", options: ["а", "б"], correct: 1, explanation: "" }] });
@@ -275,7 +275,7 @@ describe("v191 · раздел в треках: название, для озн�
 
 describe("v191 · «Из документа»: план, замена, сохранение (lib/concept-ai.js)", () => {
   it("planJobs — понятные виды и заголовки; replaceTarget — тот же вид, свой блок — по заголовку", () => {
-    expect(planJobs([{ kind: "idea", title: " ", about: "а" }, { kind: "bad" }, null])).toEqual([{ kind: "idea", title: "Концепция и история", about: "а", src: "" }]);
+    expect(planJobs([{ kind: "idea", title: " ", about: "а" }, { kind: "bad" }, null])).toEqual([{ kind: "idea", title: "Концепция и история", about: "а", src: "", photos: [] }]);   // v192: photos
     const ex = [BL(1, "", "idea"), BL(2, "", "own", { title: "Музыка в зале" })];
     expect(replaceTarget(ex, "idea", "Кто мы").id).toBe(1);
     expect(replaceTarget(ex, "own", "музыка  в зале!").id).toBe(2);

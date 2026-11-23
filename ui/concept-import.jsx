@@ -9,15 +9,21 @@
 //   • «Оформить как в уроках»: уже сохранённые блоки части — помощник переписывает в виде уроков, смысл и факты те же;
 //     «Было / Стало» перед сохранением; помощник не ответил — только разметка (lib/lesson-look.js).
 // Вид «Линза» (метки data-lens-*), как у остального редактора.
+// v192 (Доп. 517): владелец про семь идей для «О нас»: «Делаем все 7». Картинки из Word: на их месте в тексте — «[фото N]»
+// (lib/docx-text.js), помощник в плане говорит, к какому блоку какая (иначе — по меткам в выдержке блока); в просмотре у
+// блока — его фото (убрать или отдать другому блоку), фото без блока — отдельной строкой; при сохранении фото сжимаются,
+// как снятые телефоном, и встают в блок.
 import React from "react";
 import { rpc, saToken } from "../api/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { Sign } from "./signs";
 import { kindOf, blankBlock, blockPayload, conceptErr } from "../lib/concept";
-import { askAI, runPool, planJobs, replaceTarget, docBlockPayload } from "../lib/concept-ai";
+import { askAI, runPool, planJobs, replaceTarget, docBlockPayload, assignPhotos, stripPhotoMarks } from "../lib/concept-ai";
 import { lessonize } from "../lib/lesson-look";
-import { docxText, docErr } from "../lib/docx-text";
+import { docxDoc, docErr } from "../lib/docx-text";
+import { compressPhoto } from "../lib/chat-photo";
+import { conceptPhotoRemember } from "./concept-photo";
 import { LessonLook } from "./lesson-look";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -58,9 +64,18 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
   const [err, setErr] = React.useState("");
   const [jobs, setJobs] = React.useState([]);
   const [open, setOpen] = React.useState({});      // какие блоки раскрыты «как в уроке»
+  const [pics, setPics] = React.useState([]);      // v192: картинки из Word: { n, name, mime, bytes, cap, url }
+  const [spare, setSpare] = React.useState([]);    // v192: номера картинок без блока
+  const [saveNote, setSaveNote] = React.useState("");
   const jobsRef = React.useRef([]);
   const stopRef = React.useRef(false);
-  React.useEffect(() => () => { stopRef.current = true; }, []);
+  const picsRef = React.useRef([]);
+  picsRef.current = pics;
+  React.useEffect(() => () => { stopRef.current = true; picsRef.current.forEach((p) => { try { URL.revokeObjectURL(p.url); } catch (e) { /* */ } }); }, []);
+  const setPictures = (list) => {
+    picsRef.current.forEach((p) => { try { URL.revokeObjectURL(p.url); } catch (e) { /* */ } });
+    setPics(list.map((p) => ({ ...p, url: URL.createObjectURL(new Blob([p.bytes], { type: p.mime })) })));
+  };
   const where = target === "net" ? "Вся сеть" : venueName;
   const existing = target === "net" ? data.net.blocks : (data.venue ? data.venue.blocks : []);
   const upd = (i, p) => { jobsRef.current = jobsRef.current.map((j, k) => (k === i ? { ...j, ...p } : j)); setJobs(jobsRef.current); };
@@ -73,20 +88,21 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
       // хостинг принимает запрос до 4,5 МБ, а PDF в запросе на треть тяжелее файла (как в v169)
       if (file.size > 3 * 1024 * 1024) { setErr("PDF больше 3 МБ: сервер такой не примет. Сожми файл, сохрани в Word или вставь текст."); return; }
       const fr = new FileReader();
-      fr.onload = () => { setPdf({ name, b64: String(fr.result).split(",")[1] }); setNote("PDF «" + name + "» прикреплён: помощник прочитает его сам."); };
+      fr.onload = () => { setPdf({ name, b64: String(fr.result).split(",")[1] }); setPictures([]); setNote("PDF «" + name + "» прикреплён: помощник прочитает его сам."); };
       fr.readAsDataURL(file);
       return;
     }
     if (/\.docx$/i.test(name) || /wordprocessingml/.test(file.type || "")) {
       try {
-        const t = await docxText(await file.arrayBuffer());
-        if (!t.trim()) { setErr("В документе не нашлось текста."); return; }
-        setPdf(null); setText(t.slice(0, DOC_MAX + 2000));
-        setNote("Текст из «" + name + "» в поле выше: можно поправить, потом «Разобрать».");
+        const d = await docxDoc(await file.arrayBuffer());   // v192: и картинки
+        if (!d.text.trim()) { setErr("В документе не нашлось текста."); return; }
+        setPdf(null); setText(d.text.slice(0, DOC_MAX + 2000)); setPictures(d.images);
+        setNote("Текст из «" + name + "» в поле выше" + (d.images.length ? ", и фото: " + d.images.length
+          + ". Строки «[фото 1]» показывают, где они стояли. Помощник подскажет, к какому блоку какое." : ": можно поправить, потом «Разобрать»."));
       } catch (e) { setErr(docErr(e)); }
       return;
     }
-    if (/\.(txt|md)$/i.test(name) || /^text\//.test(file.type || "")) { setPdf(null); setText(String(await file.text()).slice(0, DOC_MAX + 2000)); setNote("Текст из «" + name + "» в поле выше."); return; }
+    if (/\.(txt|md)$/i.test(name) || /^text\//.test(file.type || "")) { setPdf(null); setPictures([]); setText(String(await file.text()).slice(0, DOC_MAX + 2000)); setNote("Текст из «" + name + "» в поле выше."); return; }
     if (/\.doc$/i.test(name)) { setErr("Старый формат Word (.doc) не открыть. Сохрани документ как .docx или PDF."); return; }
     setErr("Подойдёт PDF, Word (.docx) или текст (.txt).");
   };
@@ -101,7 +117,7 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
       text: pdf ? j.src : text.slice(0, DOC_MAX), src: pdf ? "" : j.src, pdfBase64: usePdf ? pdf.b64 : "" });
     if (stopRef.current) return;
     if (!r.ok) { upd(i, { status: "fail", err: r.error }); return; }
-    upd(i, { status: "ok", body: lessonize(r.body || ""), questions: Array.isArray(r.questions) ? r.questions : [], title: (r.title || "").trim() || j.title });
+    upd(i, { status: "ok", body: lessonize(stripPhotoMarks(r.body || "")), questions: Array.isArray(r.questions) ? r.questions : [], title: (r.title || "").trim() || j.title });
   };
   const run = async () => {
     if (step !== "src") return;
@@ -109,8 +125,13 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
     const r = await askAI("concept_plan", { title: where, text: text.slice(0, DOC_MAX), pdfBase64: pdf ? pdf.b64 : "" });
     if (stopRef.current) return;
     if (!r.ok) { setStep("src"); setErr(r.error); return; }
-    const js = planJobs(r.blocks);
-    if (!js.length) { setStep("src"); setErr("В документе не нашлось ничего для блоков. Попробуй другой текст."); return; }
+    const js0 = planJobs(r.blocks);
+    if (!js0.length) { setStep("src"); setErr("В документе не нашлось ничего для блоков. Попробуй другой текст."); return; }
+    // v192: картинки из Word — по блокам: что предложил помощник, иначе по меткам в выдержке
+    const live = pics.map((p) => p.n).filter((n) => text.includes("[фото " + n + "]"));
+    const ap = assignPhotos(js0, live);
+    const js = ap.jobs;
+    setSpare(ap.spare);
     jobsRef.current = js.map((j) => ({ ...j, status: "wait", body: "", questions: [], pick: true, mode: replaceTarget(existing, j.kind, j.title) ? "replace" : "add" }));
     setJobs(jobsRef.current); setStep("write");
     await runPool(jobsRef.current, 2, writeOne, () => stopRef.current);
@@ -123,14 +144,52 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
     if (!list.length || step === "save") return;
     vibrate("light"); setStep("save"); setErr("");
     const sc = target === "net" ? "" : venueName;
-    let added = 0, updated = 0, bad = "";
+    let added = 0, updated = 0, bad = "", phOk = 0, phBad = 0;
+    const total = list.reduce((a, { j }) => a + (j.photos || []).length, 0);
     for (const { j } of list) {
       const t = j.mode === "replace" ? replaceTarget(existing, j.kind, j.title) : null;
-      const r = await rpc("concept_save", { p_token: saToken(), p_block: blockPayload(docBlockPayload(j, t, sc, blankBlock)) }).catch(() => null);
+      // v192: фото из Word — сжать, как снятые телефоном, и положить в базу этого заведения (или сети)
+      const up = [];
+      for (const n of (j.photos || []).slice(0, Math.max(0, 8 - (t ? (t.photos || []).length : 0)))) {
+        const pic = pics.find((p) => p.n === n);
+        if (!pic) continue;
+        setSaveNote("Фото " + (phOk + phBad + 1) + " из " + total + "…");
+        try {
+          const ph = await compressPhoto(new Blob([pic.bytes], { type: pic.mime }));
+          const pr = await rpc("concept_photo_put", { p_token: saToken(), p_scope: sc, p_full: ph.full, p_thumb: ph.thumb, p_w: ph.w, p_h: ph.h });
+          if (pr && pr.ok && pr.id) { conceptPhotoRemember(pr.id, ph.thumbUrl, ph.fullUrl); up.push({ id: pr.id, cap: pic.cap || "" }); phOk++; } else phBad++;
+        } catch (e) { phBad++; }
+      }
+      setSaveNote("");
+      const r = await rpc("concept_save", { p_token: saToken(), p_block: blockPayload(docBlockPayload(j, t, sc, blankBlock, up)) }).catch(() => null);
       if (r && r.ok) { if (t) updated++; else added++; } else bad = conceptErr(r && r.error);
     }
     const done = [added ? "добавлено " + added : "", updated ? "обновлено " + updated : ""].filter(Boolean).join(", ");
-    onDone(target, done ? "Готово: " + done + " " + plural(added + updated, "блок", "блока", "блоков") + (bad ? ". Остальные: " + bad : ".") + " Раздел в треках уже обновился." : bad || "Ничего не сохранилось.");
+    const phLine = phOk ? " Фото из документа: " + phOk + "." : "";
+    const phMiss = phBad ? " Не получилось загрузить фото: " + phBad + "." : "";
+    onDone(target, done ? "Готово: " + done + " " + plural(added + updated, "блок", "блока", "блоков") + (bad ? ". Остальные: " + bad : ".") + phLine + phMiss + " Раздел в треках уже обновился." : bad || "Ничего не сохранилось.");
+  };
+  // v192: фото — к другому блоку или без блока
+  const movePic = (n, to) => {
+    vibrate("light");
+    jobsRef.current = jobsRef.current.map((j, k) => ({ ...j, photos: k === to ? [...(j.photos || []).filter((x) => x !== n), n].slice(0, 8) : (j.photos || []).filter((x) => x !== n) }));
+    setJobs(jobsRef.current);
+    setSpare((sp) => (to < 0 ? [...new Set([...sp, n])] : sp.filter((x) => x !== n)));
+  };
+  const picRow = (n, i) => {
+    const pic = pics.find((p) => p.n === n);
+    if (!pic) return null;
+    const okJobs = jobs.map((j, k) => ({ j, k })).filter(({ j }) => j.status === "ok");
+    return (
+      <div key={n} data-cn-docpic={n} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+        <img src={pic.url} alt={pic.cap || ""} style={{ width: 64, height: 46, objectFit: "cover", borderRadius: 8, border: "1px solid " + c.line, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: c.soft, lineHeight: 1.35 }}>{"Фото " + n}{pic.cap ? ": " + pic.cap : ""}</div>
+        <select data-lens-field="" data-cn-docpicto={n} aria-label={"Куда фото " + n} value={i < 0 ? "-1" : String(i)} onChange={(e) => movePic(n, Number(e.target.value))}
+          style={{ ...field, width: "auto", maxWidth: 150, padding: "5px 8px", fontSize: 12.5 }}>
+          <option value="-1">Не брать</option>
+          {okJobs.map(({ j, k }) => <option key={k} value={String(k)}>{j.title.slice(0, 40)}</option>)}
+        </select>
+      </div>);
   };
 
   const ok = jobs.filter((j) => j.status === "ok"), picked = ok.filter((j) => j.pick).length;
@@ -194,11 +253,17 @@ export function ConceptImport({ T, a11y, c, ghost, main, field, data, scope, ven
                 <button type="button" className="sa-hit" data-cn-docpeek={open[i] ? "1" : "0"} aria-expanded={!!open[i]} onClick={() => setOpen((o) => ({ ...o, [i]: !o[i] }))}
                   style={{ background: "transparent", border: 0, color: GOLD, fontFamily: SERIF, fontSize: 13, padding: "8px 0 2px", cursor: "pointer" }}>{open[i] ? "Свернуть" : "Как в уроке ›"}</button>
                 {open[i] ? <div style={{ marginTop: 6 }}><LessonLook text={j.body} T={T} title={j.title} cards compact /></div> : null}
+                {(j.photos || []).length ? <div data-cn-docphotos={j.photos.join(",")} style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: c.soft }}>Фото из документа: {j.photos.length}</div>
+                  {j.photos.map((n) => picRow(n, i))}</div> : null}
               </> : null}
             </div>);
         })}
+        {step !== "write" && ok.length && spare.length ? <div data-cn-docspare={spare.join(",")} style={{ borderTop: "1px solid " + c.line, padding: "10px 0 2px" }}>
+          <div style={{ fontSize: 12.5, color: T.modTitle.color }}>Фото без блока: выбери, куда поставить</div>
+          {spare.map((n) => picRow(n, -1))}</div> : null}
         {step !== "write" && ok.length ? <button type="button" data-lens-btn="main" data-cn-docadd="" style={{ ...main, marginTop: 10 }} disabled={step === "save" || !picked} onClick={save}>
-          {step === "save" ? "Сохраняю…" : "Сохранить " + picked + " " + plural(picked, "блок", "блока", "блоков")}</button> : null}
+          {step === "save" ? (saveNote || "Сохраняю…") : "Сохранить " + picked + " " + plural(picked, "блок", "блока", "блоков")}</button> : null}
       </> : null}
       {err ? <div role="status" data-cn-docerr="" style={{ fontSize: 12.5, color: c.warn, marginTop: 8, lineHeight: 1.5 }}>{err}</div> : null}
     </div>);

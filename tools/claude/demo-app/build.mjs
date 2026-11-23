@@ -23,7 +23,8 @@ const demoPlugin = {
       let src = readFileSync(args.path, "utf8");
       if (/[\\/]App\.jsx$/.test(args.path)) {
         const anchor = '  const goBack = useCallback((fallback = "roleSelect") => {';
-        if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saNav = navigate;\n' + anchor);
+        // v192: и где сейчас приложение, история «назад» (как в сборке сайта, tools/claude/build.mjs)
+        if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") { window.__saNav = navigate; window.__saScreen = () => screenRef.current; window.__saStack = () => navRef.current.slice(); }\n' + anchor);
         // v148: открыть любой урок по id (e2e-v148 — советы в уроках); все роли догружаются, если ещё не приехали
         if (src.includes(anchor)) src = src.replace(anchor, '  if (typeof window !== "undefined") window.__saLesson = async (id) => { try { await loadAllModules(); } catch (e) {} '
           + 'const m = Object.values(MODULES).flat().find((x) => (x.lessons || []).some((l) => l.id === id)); if (!m) return false; '

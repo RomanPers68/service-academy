@@ -105,7 +105,7 @@ export function nowSection(nb, plan) {
 // ── «Первая неделя» новичка ───────────────────────────────────────────────────────
 /** onOpenModule(id) — открыть тему трека; onDm({ id, name }) — личная переписка; onChat(msg) — «Вся команда» (у сообщения msg); onLegacy() — прежний
  *  экран (этапа 41 нет или сервер не считает новичком). */
-export function NewbieScreen({ T, a11y, profile, track = "", modules = [], completed = {}, quizDone = {}, onBack, onOpenModule = () => {}, onDm = null, onChat = null, onLegacy = null }) {
+export function NewbieScreen({ T, a11y, profile, track = "", modules = [], completed = {}, quizDone = {}, cnAck = null, onBack, onOpenModule = () => {}, onDm = null, onChat = null, onLegacy = null }) {
   const S = useStyles(T, a11y), { c, card, textCard, sub, text, ghost, h, line } = S;
   const [st, setSt] = React.useState({ phase: "load" });
   const [busy, setBusy] = React.useState("");
@@ -121,7 +121,7 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
   }, []);
   React.useEffect(() => { load(); }, [load]);
   const nb = st.nb;
-  const plan = nb ? planOf(nb, { track, modules, completed, quizDone }) : null;
+  const plan = nb ? planOf(nb, { track, modules, completed, quizDone, cnAck }) : null;   // v192: cnAck — «Знакомство с компанией»
   // тема пройдена в уроках — отмечаем на сервере (руководитель и наставник видят)
   const synced = React.useRef(new Set());
   React.useEffect(() => {

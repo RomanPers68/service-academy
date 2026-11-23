@@ -30,12 +30,14 @@ const EVE_BUDDY = "<b>Завтра первая смена у новичка</b>
 describe("v107: слова и план новичка", () => {
   it("план недели — прежние шаги и id; подтверждает наставник — «5 столов» и самостоятельная смена", () => {
     expect(NB_PLAN.map((p) => p.day)).toEqual(["ДЕНЬ 1", "ДНИ 2–3", "К КОНЦУ НЕДЕЛИ"]);
-    expect(NB_STEP_IDS).toEqual(["d1a", "d1b", "d1c", "d1d", "d2a", "d2b", "d2c", "d2d", "d3a", "d3b"]);
+    // v192 (Доп. 517): в первый день — «Знакомство с компанией» (d1e), остальные id прежние
+    expect(NB_STEP_IDS).toEqual(["d1a", "d1e", "d1b", "d1c", "d1d", "d2a", "d2b", "d2c", "d2d", "d3a", "d3b"]);
     expect(NB_BUDDY_STEPS).toEqual(["d2c", "d3b"]);
     expect(NB_SOLO).toBe("d3b");
     // тот же план, что был в «Первой неделе» (ui/screens-admin.jsx)
     const old = rd("ui/screens-admin.jsx");
-    for (const p of NB_PLAN) for (const s of p.steps) expect(old).toContain('{ id:"' + s.id + '", text:"' + s.text + '" }');
+    // v192 (Доп. 517): кроме нового шага «Знакомство с компанией» — его в прежнем экране (без этапа 41) нет
+    for (const p of NB_PLAN) for (const s of p.steps) if (s.id !== "d1e") expect(old).toContain('{ id:"' + s.id + '", text:"' + s.text + '" }');
   });
   it("памятка: пустое — пусто, приходить за 15 минут; к какому времени; смена словами; когда", () => {
     expect(memoOf(null)).toEqual({ addr: "", arrive: 15, dress: "", meet: "", extra: "" });
@@ -90,13 +92,13 @@ describe("v107: слова и план новичка", () => {
     const nb = newbieModel(NB), p = planOf(nb, { track: "seasonal", modules: [] });
     expect(p.sections.map((s) => s.key)).toEqual(["focus", "d1", "d2", "d3"]);
     expect(p.sections[0].title).toBe("С СОБЕСЕДОВАНИЯ");
-    expect(p.total).toBe(12);
+    expect(p.total).toBe(13);   // v192: и «Знакомство с компанией»
     expect(p.done).toBe(2);   // «Внешний вид» отмечен сам, «5 столов» подтвердила наставник
     const d2c = p.sections[2].steps.find((s) => s.id === "d2c");
     expect([d2c.buddy, d2c.done, d2c.conf.name]).toEqual([true, true, "Анна Смирнова"]);
     expect(planOf(newbieModel({ ...NB, checked: { d2c: "x", d3b: "x" }, confirm: {} })).done).toBe(0);   // сам себе наставник не подтвердит
     expect(planOf(newbieModel({ ...NB, focus: [] })).sections.map((s) => s.key)).toEqual(["d1", "d2", "d3"]);
-    expect([doneCount(nb), totalCount(nb)]).toEqual([2, 12]);
+    expect([doneCount(nb), totalCount(nb)]).toEqual([2, 13]);
   });
   it("первая смена словами; темы строкой для руководителя", () => {
     expect(firstLine(newbieModel(NB))).toBe("Первая смена: завтра, 12:00");

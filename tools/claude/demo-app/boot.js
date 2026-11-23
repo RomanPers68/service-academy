@@ -29,6 +29,7 @@ import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «�
 import { eveText, eveKb } from "../../../lib/newbie.js";
 import { normWine, TEMP_HINT } from "../../../lib/wine.js";
 import { lessonize } from "../../../lib/lesson-look.js";   // v191 (Доп. 516): демо-помощник «О нас» пишет в виде уроков
+import { pitchLocal, pitchIdeas, pitchClean } from "../../../lib/concept-pitch.js";   // v192 (Доп. 517): тренажёр «Рассказ гостю» в демо
 import { descAngles } from "../../../lib/dish-desc.js";   // v153: углы «Пяти вариантов описания»
 import { refAiCheck, refAiClean, refPlanClean, refCheckClean } from "../../../lib/ref-ai.js";   // v168 (Доп. 493): ассистент редактора справочника — проверка и разбор как на сервере; v169: документ на главы и проверка фактов
 import { unpackWeb } from "../../../lib/ai-web.js";   // v155: запросы поиска упакованы
@@ -564,6 +565,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   noStage53: lsGet("__demo_no53") === "1",     // v167 (Доп. 492): __demo_no53 = "1" — сервер без этапа 53 (редактор справочника)
   noStage57: lsGet("__demo_no57") === "1",     // v191 (Доп. 516): __demo_no57 = "1" — сервер без этапа 57 (название раздела «О нас»)
   cnCredit: lsGet("__demo_cn_credit") === "1", // v191: __demo_cn_credit = "1" — раздел «О нас» «в зачёт», как до v191
+  noStage58: lsGet("__demo_no58") === "1",     // v192 (Доп. 517): __demo_no58 = "1" — сервер без этапа 58 (лист ознакомления, история)
   // v159 (Доп. 484): __demo_pulse = "1" — тесты сданы на этой неделе (у строк появляется updated_at): у владельца на
   // главной виден «Пульс недели» с лидером, в «Команде» — лента сданных тестов. Без флажка — как раньше (дат нет)
   scores: [
@@ -659,6 +661,7 @@ function seed() {
   keep.add("__demo_no53");   // v167: «сервер без этапа 53» — тоже
   keep.add("__demo_no57");   // v191: «сервер без этапа 57» — тоже
   keep.add("__demo_cn_credit");   // v191: «О нас» в зачёт — тоже
+  keep.add("__demo_no58");   // v192: «сервер без этапа 58» — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}
@@ -881,6 +884,19 @@ const CN_T = { idea: "Концепция и история", values: "Ценно
   day: "Распорядок дня менеджера", numbers: "Цифры смены: на что смотрим", own: "Свой блок" };
 function demoLessonAssist(b) {
   const text = String(b.text || "").trim();
+  // v192 (Доп. 517): «Рассказ гостю за 30 секунд» — для всех сотрудников. Модели в демо нет: разбор по словам образца
+  // (lib/concept-pitch.js, как запасной на телефоне), «как могло звучать» — мысли образца. sessionStorage.__e2e_pitch:
+  // "fail" — помощник не ответил (на экране — разбор без него)
+  if (b.mode === "concept_pitch") {
+    let flag = ""; try { flag = sessionStorage.getItem("__e2e_pitch") || ""; } catch (e) {}
+    if (flag === "fail") return { ok: false, error: "Помощник не ответил. Попробуй ещё раз." };
+    if (!String(b.src || "").trim()) return { ok: false, error: "В «О нас» нет образца рассказа гостю" };
+    if (text.length < 15) return { ok: false, error: "Расскажи хотя бы пару предложений" };
+    const r = pitchLocal(String(b.src || ""), text, Number(b.secs) || 0);
+    const res = pitchClean({ good: r.good.length ? r.good : ["Рассказ своими словами, без бумажки."], missed: r.missed, tip: r.tip,
+      better: pitchIdeas(String(b.src || "")).slice(0, 4).join(" "), score: r.score });
+    return res ? { ok: true, ...res, model: "demo" } : { ok: false, error: "Помощник ответил не по формату. Попробуй ещё раз." };
+  }
   // v168 (Доп. 493): ассистент редактора справочника. Модели в демо нет: ответ собирается из присланного текста, а проверка
   // запроса и разбор ответа — те же, что на сервере (lib/ref-ai.js). sessionStorage.__e2e_ai: "fail" — ассистент не ответил,
   // "drop" — «модель» потеряла картинки и выдумала свою (сверка возвращает потерянные в конец и убирает выдуманную)
@@ -963,7 +979,8 @@ function demoLessonAssist(b) {
     for (const pa of paras) { const k = idea.test(pa) ? "idea" : (CN_WORDS.find(([, re]) => re.test(pa)) || ["own"])[0]; (by[k] = by[k] || []).push(pa); }
     const order = ["idea", "values", "structure", "guest", "kitchen", "mood", "pitch", "dress", "setting", "check", "day", "numbers", "own"];
     const blocks = Object.entries(by).sort((a, b2) => order.indexOf(a[0]) - order.indexOf(b2[0]))
-      .map(([k, ps]) => ({ kind: k, title: k === "own" ? "Разное" : CN_T[k], about: sentences(ps[0])[0] || "", src: ps.join("\n\n").slice(0, 900) }));
+      .map(([k, ps]) => ({ kind: k, title: k === "own" ? "Разное" : CN_T[k], about: sentences(ps[0])[0] || "", src: ps.join("\n\n").slice(0, 900),
+        photos: [...ps.join("\n").matchAll(/\[фото (\d+)\]/g)].map((m) => Number(m[1])) }));   // v192: картинки из Word — по меткам в выдержке
     return blocks.length ? { ok: true, blocks, model: "demo" } : { ok: false, error: "Вставь текст или прикрепи PDF" };
   }
   if (b.mode === "concept_block") {

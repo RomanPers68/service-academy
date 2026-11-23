@@ -566,7 +566,8 @@ export function makeServer(opts) {
     // v191: opts.cnCredit — раздел «О нас» сразу «в зачёт», как до v191 (для проверок, где он — текущая тема трека)
     S.cn = { blocks: [], seq: 0, photos: {}, pseq: 0, reads: {}, sent: {}, meta: opts.cnCredit ? { "": { title: "", sub: "", mode: "credit" } } : {} };
     const add = (scope, list) => (list || []).forEach((x, i) => { S.cn.seq++; S.cn.blocks.push({ id: S.cn.seq, scope, kind: x.kind, title: x.title, body: x.body || "",
-      photos: x.photos || [], tracks: x.tracks || [], questions: x.questions || [], sort: i + 1, at: new Date(clock() - 3 * 864e5).toISOString(), by: x.by || "" }); });
+      photos: x.photos || [], tracks: x.tracks || [], questions: x.questions || [], sort: i + 1, at: new Date(clock() - 3 * 864e5).toISOString(), by: x.by || "",
+      created: new Date(clock() - 3 * 864e5).toISOString() }); });
     add("", opts.concept && opts.concept.net);
     for (const [v, list] of Object.entries((opts.concept && opts.concept.venues) || {})) add(v, list);
     for (const [id, ph] of Object.entries(opts.conceptPhotos || {})) { S.cn.photos[id] = clone(ph); S.cn.pseq = Math.max(S.cn.pseq, Number(id)); }
@@ -586,6 +587,37 @@ export function makeServer(opts) {
   // opts.noStage57 — этапа нет: concept_get без meta, concept_meta_set не найден
   const cnMeta = (sc) => { const m = (S.cn.meta || {})[sc || ""]; return m ? { title: m.title, sub: m.sub, mode: m.mode } : { title: "", sub: "", mode: "" }; };
   const cnSpace = (v, n) => String(v).replace(/\s+/g, " ").trim().slice(0, n);
+  // v192 (Доп. 517, этап 58): история блоков, «Что изменилось», дата отметки, лист ознакомления, «Вернуть», билет на файл
+  // (как supabase-stage58-concept-acks.sql). opts.noStage58 — этапа нет: concept_get без дат и changes, новые функции не найдены
+  if (!S.cn.hist) { S.cn.hist = []; S.cn.hseq = 0; }
+  const NO58 = { code: "PGRST202", message: "Could not find the function" };
+  const readOf = (k) => { const r = S.cn.reads[k]; return typeof r === "string" ? { ver: r, at: null } : r || null; };
+  const cnHere = (id) => S.cn.blocks.some((x) => x.id === id);
+  const cnAt = (sc) => [...S.cn.blocks.filter((x) => x.scope === sc).map((x) => x.at),
+    ...S.cn.hist.filter((h) => h.scope === sc && h.op === "delete" && !cnHere(h.block_id)).map((h) => h.gone_at)].filter(Boolean).sort().slice(-1)[0] || null;
+  const sameBlock = (a, x) => a.kind === x.kind && a.title === x.title && a.body === x.body && JSON.stringify(a.photos) === JSON.stringify(x.photos)
+    && a.tracks.join(",") === x.tracks.join(",") && JSON.stringify(a.questions) === JSON.stringify(x.questions);
+  const histPush = (blk, op, by) => {
+    S.cn.hseq++;
+    S.cn.hist.push({ hid: S.cn.hseq, block_id: blk.id, scope: blk.scope, op, kind: blk.kind, title: blk.title, body: blk.body, photos: clone(blk.photos), tracks: [...blk.tracks],
+      questions: clone(blk.questions), sort: blk.sort, created: blk.created || blk.at, made_at: blk.at, made_name: blk.by || "", gone_at: now(), gone_name: by || "" });
+    const mine = S.cn.hist.filter((h) => h.block_id === blk.id && h.op === "edit").sort((a, b2) => (b2.gone_at > a.gone_at ? 1 : b2.gone_at < a.gone_at ? -1 : b2.hid - a.hid));
+    if (mine.length > 20) { const cut = new Set(mine.slice(20).map((h) => h.hid)); S.cn.hist = S.cn.hist.filter((h) => !cut.has(h.hid)); }
+  };
+  const hrow = (h) => ({ hid: h.hid, id: h.block_id, scope: h.scope, op: h.op, kind: h.kind, title: h.title, body: h.body, photos: clone(h.photos), tracks: [...h.tracks],
+    questions: clone(h.questions), made_at: h.made_at, made_name: h.made_name, gone_at: h.gone_at, gone_name: h.gone_name });
+  const cnChanges = (sc, at) => {
+    const was = [], fresh = [], gone = [];
+    for (const blk of S.cn.blocks.filter((x) => x.scope === sc).sort((a, b2) => (a.sort - b2.sort) || (a.id - b2.id))) {
+      if ((blk.created || blk.at) > at) { fresh.push(blk.id); continue; }
+      const h = S.cn.hist.filter((x) => x.block_id === blk.id && x.op === "edit" && x.gone_at > at).sort((a, b2) => (a.gone_at < b2.gone_at ? -1 : a.gone_at > b2.gone_at ? 1 : a.hid - b2.hid))[0];
+      if (h && !(h.kind === blk.kind && h.title === blk.title && h.body === blk.body && JSON.stringify(h.photos) === JSON.stringify(blk.photos) && h.tracks.join(",") === blk.tracks.join(",")))
+        was.push({ id: blk.id, kind: h.kind, title: h.title, body: h.body, photos: clone(h.photos), tracks: [...h.tracks] });
+    }
+    for (const h of S.cn.hist.filter((x) => x.scope === sc && x.op === "delete" && x.gone_at > at && (x.created || x.made_at) <= at && !cnHere(x.block_id)))
+      gone.push({ id: h.block_id, kind: h.kind, title: h.title, tracks: [...h.tracks], at: h.gone_at });
+    return { at, was, fresh, gone };
+  };
   function concept(fn, p, b) {
     if (!p) return { ok: false, error: "auth" };
     if (fn === "concept_meta_set") {
@@ -605,10 +637,14 @@ export function makeServer(opts) {
       if (rest !== mine && !cnNet(p)) rest = mine;
       const scopes = [...new Set(S.cn.blocks.filter((x) => x.scope !== "" && x.scope !== rest && CN_PUBLIC.includes(x.kind)).map((x) => x.scope))].sort();
       const venues = cnNet(p) ? [...new Set([...PEOPLE.filter((e) => (e.status || "active") === "active" && e.restaurant).map((e) => e.restaurant), ...S.cn.blocks.filter((x) => x.scope).map((x) => x.scope)])].sort() : null;
-      return { ok: true, mine, restaurant: rest, net: { blocks: cnList(""), ver: cnVer("") },
-        venue: rest ? { name: rest, blocks: cnList(rest), ver: cnVer(rest) } : null,
+      const rn = readOf(p.id + "|"), rv = rest ? readOf(p.id + "|" + rest) : null, vn = cnVer(""), vv = rest ? cnVer(rest) : "";
+      const s58 = opts.noStage58 ? {} : {
+        read_at: { net: rn ? rn.at : null, venue: rv ? rv.at : null },
+        changes: { net: rn && rn.at && vn && rn.ver !== vn ? cnChanges("", rn.at) : null, venue: rv && rv.at && vv && rv.ver !== vv ? cnChanges(rest, rv.at) : null } };
+      return { ok: true, mine, restaurant: rest, net: { blocks: cnList(""), ver: vn, ...(opts.noStage58 ? {} : { at: cnAt("") }) },
+        venue: rest ? { name: rest, blocks: cnList(rest), ver: vv, ...(opts.noStage58 ? {} : { at: cnAt(rest) }) } : null,
         others: scopes.map((sc) => ({ name: sc, blocks: cnList(sc, CN_PUBLIC) })),
-        read: { net: S.cn.reads[p.id + "|"] || null, venue: rest ? S.cn.reads[p.id + "|" + rest] || null : null },
+        read: { net: rn ? rn.ver : null, venue: rv ? rv.ver : null }, ...s58,
         can: { net: cnCan(p, ""), venue: !!rest && cnCan(p, rest) }, venues,
         ...(opts.noStage57 ? {} : { meta: { net: cnMeta(""), venue: rest ? cnMeta(rest) : null } }) };
     }
@@ -633,12 +669,13 @@ export function makeServer(opts) {
       if (x.id != null && /^\d{1,15}$/.test(String(x.id))) {
         blk = S.cn.blocks.find((y) => y.id === Number(x.id) && y.scope === sc);
         if (!blk) return { ok: false, error: "not_found" };
+        if (!opts.noStage58 && !sameBlock(blk, { kind: x.kind, title, body, photos, tracks, questions })) histPush(blk, "edit", full(p));   // v192: прежняя версия — в историю
         Object.assign(blk, { kind: x.kind, title, body, photos, tracks, questions, sort: sort == null ? blk.sort : sort, at: now(), by: full(p) });
       } else {
         if (S.cn.blocks.filter((y) => y.scope === sc).length >= 40) return { ok: false, error: "too_many" };
         S.cn.seq++;
         blk = { id: S.cn.seq, scope: sc, kind: x.kind, title, body, photos, tracks, questions,
-          sort: sort == null ? Math.max(0, ...S.cn.blocks.filter((y) => y.scope === sc).map((y) => y.sort)) + 1 : sort, at: now(), by: full(p) };
+          sort: sort == null ? Math.max(0, ...S.cn.blocks.filter((y) => y.scope === sc).map((y) => y.sort)) + 1 : sort, at: now(), by: full(p), created: now() };
         S.cn.blocks.push(blk);
       }
       return { ok: true, block: clone(blk), ver: cnVer(sc) };
@@ -648,7 +685,8 @@ export function makeServer(opts) {
       if (!blk) return { ok: false, error: "not_found" };
       if (!cnCan(p, blk.scope)) return { ok: false, error: "forbidden" };
       S.cn.blocks = S.cn.blocks.filter((y) => y !== blk);
-      for (const ph of blk.photos) if (!S.cn.blocks.some((y) => y.scope === blk.scope && y.photos.some((z) => z.id === ph.id))) delete S.cn.photos[ph.id];
+      if (opts.noStage58) { for (const ph of blk.photos) if (!S.cn.blocks.some((y) => y.scope === blk.scope && y.photos.some((z) => z.id === ph.id))) delete S.cn.photos[ph.id]; }
+      else histPush(blk, "delete", full(p));   // v192: блок можно вернуть, фото остаются
       return { ok: true, ver: cnVer(blk.scope) };
     }
     if (fn === "concept_order") {
@@ -675,25 +713,34 @@ export function makeServer(opts) {
       const sc = String(b.p_scope || "").trim();
       if (sc !== "" && sc !== p.restaurant) return { ok: false, error: "forbidden" };
       const v = cnVer(sc);
-      if (v) S.cn.reads[p.id + "|" + sc] = v;
-      return { ok: true, ver: v };
+      if (!v) return { ok: true, ver: "" };
+      const was = readOf(p.id + "|" + sc);
+      // v192: дата — первая отметка этой редакции
+      S.cn.reads[p.id + "|" + sc] = { ver: v, at: was && was.ver === v && was.at ? was.at : now() };
+      return { ok: true, ver: v, ...(opts.noStage58 ? {} : { at: S.cn.reads[p.id + "|" + sc].at }) };
     }
     if (fn === "concept_reads") {
       if (!isLead(p)) return { ok: false, error: "forbidden" };
       const rest = String(b.p_restaurant || "").trim() || p.restaurant;
       if (rest !== p.restaurant && !cnNet(p)) return { ok: false, error: "forbidden" };
       const vn = cnVer(""), vv = cnVer(rest);
-      const rows = PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active" && e.id !== p.id).map((e) => {   // себя — нет
-        const net = vn === "" || S.cn.reads[e.id + "|"] === vn, venue = vv === "" || S.cn.reads[e.id + "|" + rest] === vv;
-        return { id: e.id, name: full(e), pos: String(e.position || "").toLowerCase(), net, venue, at: null };
+      // v192 (этап 58): и сам руководитель (me), дата отметки нынешней редакции (at) и последняя отметка вообще (was)
+      const rows = PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active" && (!opts.noStage58 || e.id !== p.id)).map((e) => {
+        const rn = readOf(e.id + "|"), rv = readOf(e.id + "|" + rest);
+        const net = vn === "" || !!(rn && rn.ver === vn), venue = vv === "" || !!(rv && rv.ver === vv);
+        const ats = [vn && rn ? rn.at : null, vv && rv ? rv.at : null].filter(Boolean).sort();
+        const was = [rn && rn.at, rv && rv.at].filter(Boolean).sort().slice(-1)[0] || null;
+        return { id: e.id, name: full(e), pos: String(e.position || "").toLowerCase(), net, venue, at: net && venue ? ats.slice(-1)[0] || null : null,
+          ...(opts.noStage58 ? {} : { was, me: e.id === p.id }) };
       }).sort((x, y) => (x.net && x.venue) - (y.net && y.venue) || x.name.localeCompare(y.name));
-      return { ok: true, restaurant: rest, net_ver: vn, venue_ver: vv, rows };
+      return { ok: true, restaurant: rest, net_ver: vn, venue_ver: vv, rows, ...(opts.noStage58 ? {} : { net_at: cnAt(""), venue_at: cnAt(rest) }) };
     }
     if (fn === "concept_notify") {
       const sc = String(b.p_scope || "").trim();
       if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
       if (!cnVer(sc)) return { ok: false, error: "empty" };
-      const txt = "Обновили «О нас»: " + (sc === "" ? "концепция и стандарты сети." : "концепция и стандарты «" + sc + "».") + "\nОткрой и отметь «Прочитал(а)».";
+      const txt = "Обновили «О нас»: " + (sc === "" ? "концепция и стандарты сети." : "концепция и стандарты «" + sc + "».") +
+        (opts.noStage58 ? "\nОткрой и отметь «Прочитал(а)»." : "\nПосмотри, что изменилось, и отметь «Ознакомлен(а)».");   // v192: этап 58
       let n = 0, m = 0;
       for (const e of PEOPLE.filter((x) => (x.status || "active") === "active" && x.id !== p.id && (sc === "" || x.restaurant === sc))) {
         m++;
@@ -704,6 +751,52 @@ export function makeServer(opts) {
         ping(e.id, txt, null, null, null, { kind: "about", kb: [[{ text: "О нас", go: "about" }]] });
       }
       return { ok: true, sent: n, people: m, bot: true };
+    }
+    // v192 (Доп. 517, этап 58)
+    if (fn === "concept_history") {
+      if (opts.noStage58) return NO58;
+      if (b.p_id != null) {
+        const id = Number(b.p_id), blk = S.cn.blocks.find((x) => x.id === id);
+        const sc = blk ? blk.scope : ((S.cn.hist.filter((h) => h.block_id === id).slice(-1)[0] || {}).scope);
+        if (sc == null) return { ok: false, error: "not_found" };
+        if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+        const versions = S.cn.hist.filter((h) => h.block_id === id && h.op === "edit").sort((a, b2) => (a.gone_at < b2.gone_at ? 1 : a.gone_at > b2.gone_at ? -1 : b2.hid - a.hid)).slice(0, 20).map(hrow);
+        return { ok: true, id, scope: sc, versions };
+      }
+      const sc = String(b.p_scope || "").trim();
+      if (!cnCan(p, sc)) return { ok: false, error: "forbidden" };
+      const gone = S.cn.hist.filter((h) => h.scope === sc && h.op === "delete" && !cnHere(h.block_id)).sort((a, b2) => (a.gone_at < b2.gone_at ? 1 : -1)).slice(0, 30).map(hrow);
+      return { ok: true, scope: sc, gone };
+    }
+    if (fn === "concept_revert") {
+      if (opts.noStage58) return NO58;
+      const h = S.cn.hist.find((x) => x.hid === Number(b.p_hid));
+      if (!h) return { ok: false, error: "not_found" };
+      if (!cnCan(p, h.scope)) return { ok: false, error: "forbidden" };
+      const photos = h.photos.filter((ph) => S.cn.photos[ph.id] && S.cn.photos[ph.id].scope === h.scope);
+      if (!String(h.body || "").trim() && !photos.length) return { ok: false, error: "empty" };
+      let blk = S.cn.blocks.find((x) => x.id === h.block_id);
+      const content = { kind: h.kind, title: h.title, body: h.body, photos: clone(photos), tracks: [...h.tracks], questions: clone(h.questions) };
+      if (blk) {
+        if (blk.scope !== h.scope) return { ok: false, error: "not_found" };
+        if (!sameBlock(blk, content)) histPush(blk, "edit", full(p));
+        Object.assign(blk, content, { at: now(), by: full(p) });
+      } else {
+        if (S.cn.blocks.filter((y) => y.scope === h.scope).length >= 40) return { ok: false, error: "too_many" };
+        blk = { id: h.block_id, scope: h.scope, ...content, sort: h.sort, at: now(), by: full(p), created: h.created || now() };
+        S.cn.blocks.push(blk);
+        S.cn.hist = S.cn.hist.filter((x) => !(x.block_id === h.block_id && x.op === "delete"));
+      }
+      return { ok: true, block: clone(blk), ver: cnVer(blk.scope) };
+    }
+    if (fn === "concept_ticket") {
+      if (opts.noStage58) return NO58;
+      if (!["concept_pdf", "concept_acks_pdf"].includes(b.p_kind)) return { ok: false, error: "kind" };
+      if (b.p_kind === "concept_acks_pdf" && !isLead(p)) return { ok: false, error: "forbidden" };
+      if (!b.p_payload || typeof b.p_payload !== "object") return { ok: false, error: "bad" };
+      if (JSON.stringify(b.p_payload).length > 3500000) return { ok: false, error: "too_big" };
+      S.cn.ticket = (S.cn.ticket || 0) + 1;
+      return { ok: true, ticket: (String(S.cn.ticket).padStart(4, "0") + "c").repeat(13).slice(0, 64) };
     }
     return undefined;
   }

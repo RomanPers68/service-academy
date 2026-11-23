@@ -297,7 +297,8 @@ describe("v168 · 3: сервер (api/lesson-assist.js, режимы ref_*)", (
   it("прежние режимы не тронуты: список и PDF — те же строки, разбор урока тот же", () => {
     const api = rd("api/lesson-assist.js");
     // v191 (Доп. 516): режимы «О нас» — списком CN_MODES; PDF — ещё и у плана и блока «О нас»
-    expect(api).toContain('if (!isRef && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });');
+    // v192 (Доп. 517): и тренажёр «Рассказ гостю» (concept_pitch) — для всех сотрудников
+    expect(api).toContain('if (!isRef && !isPitch && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });');
     expect(api).toContain('const withPdf = mode === "lesson" || mode === "concept" || mode === "concept_plan" || mode === "concept_block";');
     expect(api).toContain('if (isRef && !emp.is_admin) return res.status(403).json({ ok: false, error: "Редактор справочника доступен только владельцу" });');
     expect(api.indexOf("if (isRef && !emp.is_admin)")).toBeLessThan(api.indexOf("await ask(key, refPrompt("));

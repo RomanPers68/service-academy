@@ -1,4 +1,5 @@
-// api/report.js — Доп. 309: файл отчёта (Excel или PDF) по билету — для Telegram.
+// api/report.js — Доп. 309: файл отчёта (Excel или PDF) по билету — для Telegram. v192 (Доп. 517): и «О нас» для печати,
+// и лист ознакомления (concept_pdf, concept_acks_pdf — билет выдаёт concept_ticket, этап 58).
 // GET /api/report?t=<билет> → .xlsx или .pdf.
 // В Telegram файл нельзя «скачать» из памяти приложения: нужна ссылка. Поэтому приложение
 // собирает отчёт у себя (права на данные проверены при чтении — этап 23), кладёт его под
@@ -9,6 +10,7 @@
 import { teamXlsx, personXlsx, teamFileName, personFileName } from "../lib/report-xlsx.js";
 import { personPdf, teamPdf } from "../lib/report-pdf.js";
 import { XLSX_MIME } from "../lib/xlsx.js";
+import { conceptPdf, acksPdf, conceptFileName, acksFileName } from "../lib/concept-pdf.js";   // v192 (Доп. 517): «О нас» для печати и лист ознакомления
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
@@ -19,7 +21,7 @@ const SUPABASE_KEY =
   process.env.VITE_SUPABASE_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2eGhnZHluanVhaXNzd3Bscm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjA1ODgsImV4cCI6MjA5NjQzNjU4OH0._4aLd4eb7cSfcqS9EvSwChJR-SixW2tsgn4ksCM5S3g";
 
-const asciiName = (name, ext) => "service-academy-report." + ext;
+const asciiName = (name, ext, kind) => (kind === "concept_pdf" ? "o-nas.pdf" : kind === "concept_acks_pdf" ? "list-oznakomleniya.pdf" : "service-academy-report." + ext);
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).send("Только GET");
@@ -52,12 +54,15 @@ export default async function handler(req, res) {
     else if (data.kind === "person_xlsx") { bytes = personXlsx(m); ext = "xlsx"; name = personFileName(m, ext); type = XLSX_MIME; }
     else if (data.kind === "team_pdf") { bytes = teamPdf(m); ext = "pdf"; name = teamFileName(m, ext); type = "application/pdf"; }
     else if (data.kind === "person_pdf") { bytes = personPdf(m); ext = "pdf"; name = personFileName(m, ext); type = "application/pdf"; }
+    // v192 (Доп. 517): «О нас» одним файлом и лист ознакомления (билет — concept_ticket, этап 58)
+    else if (data.kind === "concept_pdf") { bytes = conceptPdf(m); ext = "pdf"; name = conceptFileName(m); type = "application/pdf"; }
+    else if (data.kind === "concept_acks_pdf") { bytes = acksPdf(m); ext = "pdf"; name = acksFileName(m); type = "application/pdf"; }
     else return res.status(400).send("Неизвестный вид отчёта");
   } catch (e) {
     return res.status(422).send("Не удалось собрать файл: " + (e && e.message ? e.message : "ошибка"));
   }
   res.setHeader("Content-Type", type);
-  res.setHeader("Content-Disposition", `attachment; filename="${asciiName(name, ext)}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.setHeader("Content-Disposition", `attachment; filename="${asciiName(name, ext, data.kind)}"; filename*=UTF-8''${encodeURIComponent(name)}`);
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).send(Buffer.from(bytes));
 }

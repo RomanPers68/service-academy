@@ -34,7 +34,8 @@ const Flame = ({ color, size = 14 }) => (
 
 /** data: { item, streak } из qday_today; onAnswer(i) — ответ вариантом i; busy — ответ уходит; err — не ушёл;
  *  onHide — «Понятно» после ответа (v89: убрать карточку с главной). */
-export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMistakes, onHide }) {
+// v193 (Доп. 518): menu — вопрос о блюде (каждый второй «Вопрос дня» — из меню): после ошибки блюдо ещё и придёт в разминку.
+export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMistakes, onHide, menu = false }) {
   const c = P(a11y);
   const it = data && data.item;
   if (!it || !Array.isArray(it.o) || !it.o.length) return null;
@@ -73,7 +74,7 @@ export function QdayCard({ a11y, data, busy = false, err = "", onAnswer, onMista
           <div style={{ fontSize: 14.5, fontWeight: "bold", color: it.correct ? c.gold : c.bad }}>{qdayVerdict(it)}</div>
           {it.e ? <div style={{ fontSize: 13.5, lineHeight: 1.45, color: c.sub, marginTop: 3 }}>{it.e}</div> : null}
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 12.5, color: c.sub, marginTop: 6 }}>
-            <span style={{ flex: 1, minWidth: 0 }}>{it.correct ? "Следующий вопрос завтра." : <>Вопрос ждёт в {onMistakes ? <span role="button" tabIndex={0} data-qday-mistakes="" onClick={onMistakes} {...onActivate(onMistakes)} style={{ color: c.gold, textDecoration: "underline", cursor: "pointer" }}>«Работе над ошибками»</span> : "«Работе над ошибками»"}. Следующий вопрос завтра.</>}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>{it.correct ? "Следующий вопрос завтра." : <>Вопрос ждёт в {onMistakes ? <span role="button" tabIndex={0} data-qday-mistakes="" onClick={onMistakes} {...onActivate(onMistakes)} style={{ color: c.gold, textDecoration: "underline", cursor: "pointer" }}>«Работе над ошибками»</span> : "«Работе над ошибками»"}.{menu ? " Блюдо придёт в разминку." : ""} Следующий вопрос завтра.</>}</span>
             {onHide ? <span role="button" tabIndex={0} data-qday-hide="" onClick={hide} {...onActivate(hide)} style={{ color: c.gold, fontSize: 13.5, cursor: "pointer", whiteSpace: "nowrap", padding: "4px 0 4px 8px" }}>Понятно</span> : null}
           </div>
         </div>) : null}

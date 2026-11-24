@@ -12,7 +12,8 @@ import { suggestAllergens } from "../lib/menu-sections";
 import { dishShareItem } from "../lib/share-items";   // v97: «Поделиться в чат»
 import { CHAT_SHARE_IC } from "./share-chat";
 import { dishNutrition } from "../lib/nutrition";
-import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): «Наоборот», «Гость спрашивает», «Пищевая ценность» — след для советов
+import { traceUse } from "../lib/tip-avail";
+import { srMark, writeSr } from "../lib/menu-repeat";   // v193 (Доп. 518): «Знаю?» — с днём отметки, App узнаёт о ней (повтор, сервер)   // v149 (Доп. 473): «Наоборот», «Гость спрашивает», «Пищевая ценность» — след для советов
 
 // ── Дополнение 161: Колода меню — та же механика, что у Колоды бармена ────────
 // Свайп 1:1 с продолжением движения, тап — переворот, поиск и разделы за лупой,
@@ -20,7 +21,6 @@ import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): «Наоб
 // (1 → 3 → 7 → 30 дней), прогресс — на телефоне, по ресторану.
 // DishPhoto / DishBack / glass приходят из тренажёра меню пропсами — без циклов импорта.
 
-const SR_DAYS = [1, 3, 7, 30];
 const srKey = (restaurant) => "sa_menu_sr_" + (restaurant || "x");
 const loadSR = (restaurant) => { try { return JSON.parse(localStorage.getItem(srKey(restaurant)) || "{}"); } catch (e) { return {}; } };
 
@@ -114,10 +114,8 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
   // ── «Знаю?»: интервальное повторение
   const mark = (ok) => {
     if (!d) return;
-    const cur = sr[d.id] || { stage: 0 };
-    const stage = ok ? Math.min(cur.stage + 1, SR_DAYS.length) : 0;
-    const next = { ...sr, [d.id]: { stage, due: Date.now() + (ok ? SR_DAYS[stage - 1] * 86400000 : 0) } };
-    setSr(next); try { localStorage.setItem(srKey(restaurant), JSON.stringify(next)); } catch (e) {}
+    const next = srMark(sr, d.id, ok);
+    setSr(next); writeSr(restaurant, next);
     bumpDaily(uk); // Доп. 210: ежедневные пять
     vibrate(ok ? "success" : "error");
     setFlip(false);

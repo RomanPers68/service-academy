@@ -373,6 +373,13 @@ import { rememberGoToday, goToday } from "./lib/golist-day";   // v141 (Доп. 
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 import { readPushFlag, PUSH_EVENT, pushEnv, pushRefresh, pushUnsubscribe, setAppBadge, remindSub, pushRowSub } from "./lib/push";   // v137 (Доп. 450): уведомления на телефон
 import { lateWindow } from "./lib/late";   // v99: «Опаздываю» — за 3 часа до смены и 2 часа после начала
+// v193 (Доп. 518): меню в ежедневном повторе — блюда в разминке, одно в перерыв, «Спросили о блюде», «Вопрос дня» из меню,
+// свой ритм; меню заведения — отдельным куском (lib/menu-pack.js), «Знаю?» и ритм — на сервер (этап 59)
+import { MENU_SR_EVENT, readSr, markDish, missDish, readRhythm, saveRhythm, readWarmLog, saveWarmLog, noteWarm, isDishDay, readAsked, addAsked, askedToday,
+  readFocus, personalQueue, warmPlan, sentPlan, knowData, warmData, warmWhat, rememberQdayMenu, qdayMenuOf, applyQdayMenu } from "./lib/menu-repeat";
+import { pushMenuKnow, scheduleMenuKnow, fetchMenuFocus } from "./lib/menu-know-sync";
+import { BreakDish, AskedSheet } from "./ui/dish-moments";
+const loadMenuPack = () => import("./lib/menu-pack");
 import { newbieModel, firstLine as nbFirstLine, dayDiff as nbDayDiff, doneCount as nbDoneCount, totalCount as nbTotalCount } from "./lib/newbie";   // v107 (Доп. 420): новичок; v110: прогресс в «Смене»
 const lazyOf = (load, name) => lazy(() => retryImport(load).then(m => ({ default: m[name] })));
 const loadGamification = () => import("./ui/screens-gamification");
@@ -1211,6 +1218,8 @@ function ServiceAcademy() {
     setWarmDone(todayKey);
     touchStreak();
     logActivity("warmup");
+    // v193: была ли разминка с блюдами — для ритма «через смену» и «раз в неделю»
+    saveWarmLog(ukP, noteWarm(readWarmLog(ukP), todayKey, !!(res && res.dishN > 0)));
     // v30: верный ответ с первого раза освежает тему (срок повтора не растёт)
     if (res && Array.isArray(res.okMods) && res.okMods.length) {
       let m = readFresh(ukP);
@@ -1218,6 +1227,85 @@ function ServiceAcademy() {
       saveFresh(ukP, m); bumpMarks();
     }
   }, [ukP, todayKey, touchStreak, logActivity]);
+  // ── v193 (Доп. 518): меню в ежедневном повторе (lib/menu-repeat.js). Владелец: «меню вживить в ежедневный или же не
+  // ежедневный повтор… ненавязчиво». Меню заведения — отдельным куском после старта (lib/menu-pack.js); блюда в разминке
+  // (по ритму из «Напоминаний»: каждую смену, через смену, раз в неделю), одно блюдо в перерыв, «Спросили о блюде» после
+  // смены; «Знаю?» и ритм — на сервер (этап 59, lib/menu-know-sync.js), оттуда — просьбы руководителя и блюда, которые бот
+  // назвал в напоминании (тогда в разминке — они же).
+  const menuRest = (profile && profile.restaurant) || "";
+  const [menuPack, setMenuPack] = useState(null);
+  const [menuTick, setMenuTick] = useState(0);
+  const [menuLinkReady, setMenuLinkReady] = useState(false);   // ссылка «Разминка» из Telegram ждёт блюд (что назвал бот) до 6 секунд
+  useEffect(() => {
+    if (!storageLoaded || !profile || menuLinkReady) return undefined;
+    if (!profile.restaurant) { setMenuLinkReady(true); return undefined; }
+    const t = setTimeout(() => setMenuLinkReady(true), 6000);
+    return () => clearTimeout(t);
+  }, [storageLoaded, profile, menuLinkReady]);
+  useEffect(() => {
+    if (!profile || !storageLoaded || menuPack) return undefined;
+    let alive = true;
+    const t = setTimeout(() => { loadMenuPack().then((m) => { if (alive) setMenuPack(m); }).catch(() => { if (alive) setMenuLinkReady(true); }); }, warmLinkRef.current ? 0 : 1200);
+    return () => { alive = false; clearTimeout(t); };
+  }, [profile, storageLoaded, menuPack]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const on = () => setMenuTick((x) => x + 1);
+    window.addEventListener(MENU_SR_EVENT, on); window.addEventListener("sa-go-today", on);
+    return () => { window.removeEventListener(MENU_SR_EVENT, on); window.removeEventListener("sa-go-today", on); };
+  }, []);
+  const menuDishes = useMemo(() => (menuPack && menuRest ? menuPack.menuNow(menuRest) : []), [menuPack, menuRest, menuTick, screen]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuSr = useMemo(() => readSr(menuRest), [menuRest, menuTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuRhythm = useMemo(() => readRhythm(ukP), [ukP, menuTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuAsked = useMemo(() => readAsked(ukP, menuRest), [ukP, menuRest, menuTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuFocus = useMemo(() => readFocus(ukP, menuRest), [ukP, menuRest, menuTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuGo = useMemo(() => goToday(menuRest), [menuRest, menuTick, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuOn = !!menuPack && menuDishes.length > 0 && menuRhythm.r !== "off";
+  const planArgs = { dishes: menuDishes, sr: menuSr, asked: menuAsked, focus: menuFocus.focus, go: menuGo };
+  // блюда разминки: что назвал бот в напоминании сегодня, иначе — по порядку (спросили, просьба руководителя, гоу-лист, своя очередь)
+  const warmDishes = useMemo(() => {
+    if (!menuOn || !isDishDay(menuRhythm.r, readWarmLog(ukP), todayKey)) return [];
+    const plan = sentPlan(menuFocus.sent, menuDishes, todayKey) || warmPlan({ ...planArgs, n: menuRhythm.n, now: Date.now() });
+    return plan.slice(0, menuRhythm.n).map((x) => ({ id: x.id, name: x.name, why: x.why, say: x.say, brief: menuPack.dishBrief(x.dish) }));
+  }, [menuOn, menuPack, menuDishes, menuSr, menuAsked, menuFocus, menuGo, menuRhythm, ukP, todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const onWarmDish = useCallback((id, ok) => { if (menuRest) markDish(menuRest, id, ok); }, [menuRest]);
+  // «Знаю?», ритм и своя очередь — на сервер: при старте и через 15 секунд после изменения; без перемен — только просьбы
+  const menuBuild = useRef(null);
+  menuBuild.current = () => (profile && menuRest && menuPack ? (() => { const sr = readSr(menuRest), now = Date.now();
+    return { uk: ukP, restaurant: menuRest, day: todayKey, data: knowData(sr, menuDishes, now),
+      warm: warmData({ rhythm: readRhythm(ukP), log: readWarmLog(ukP), next: personalQueue({ dishes: menuDishes, sr, asked: readAsked(ukP, menuRest), now }) }) }; })() : null);
+  useEffect(() => {
+    if (!menuPack || !menuRest || !profile) return undefined;
+    let alive = true;
+    const t = setTimeout(() => {
+      pushMenuKnow(() => menuBuild.current()).then((r) => (r ? r : fetchMenuFocus(ukP, menuRest))).catch(() => null).then(() => { if (alive) setMenuLinkReady(true); });
+    }, warmLinkRef.current ? 0 : 7000);
+    return () => { alive = false; clearTimeout(t); };
+  }, [menuPack, menuRest, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuTickSeen = useRef(-1);
+  useEffect(() => {
+    if (!menuPack || !menuRest || !profile) return;
+    if (menuTickSeen.current < 0) { menuTickSeen.current = menuTick; return; }
+    if (menuTickSeen.current === menuTick) return;
+    menuTickSeen.current = menuTick;
+    scheduleMenuKnow(() => menuBuild.current(), 15000);
+  }, [menuTick, menuPack, menuRest]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // просьбы руководителя и напоминание бота — свежие, когда возвращаешься на главную (не чаще раза в 10 минут)
+  useEffect(() => {
+    if (screen !== "roleSelect" || !menuPack || !menuRest) return;
+    if (Date.now() - (readFocus(ukP, menuRest).at || 0) > 10 * 60e3) fetchMenuFocus(ukP, menuRest);
+  }, [screen, menuPack, menuRest, ukP]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const menuFemale = !!profile && isFemaleName(profile.name, profile.surname);
+  // идея 2: на смене — одно блюдо в перерыв, прямо под главной карточкой (что сегодня уже отмечал — пропускаем)
+  const [breakCur, setBreakCur] = useState(null);   // null — свёрнуто; { item } — открыто (item null — на сегодня всё)
+  useEffect(() => { if (screen !== "roleSelect") setBreakCur(null); }, [screen]);   // ушёл с главной — блюдо свернулось
+  const nextBreak = useCallback(() => {
+    const p = menuPack ? warmPlan({ ...planArgs, n: 1, now: Date.now(), skipToday: true })[0] : null;
+    setBreakCur({ item: p ? { id: p.id, name: p.name, why: p.why, brief: menuPack.dishBrief(p.dish) } : null });
+  }, [menuPack, menuDishes, menuSr, menuAsked, menuFocus, menuGo]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // идея 5: после смены — «Спросили о блюде, а ты не знал?»: завтра оно первым в разминке
+  const [askOpen, setAskOpen] = useState(false);
+  const askedTodayIds = useMemo(() => askedToday(menuAsked, Date.now()), [menuAsked]);
+  const pickAsked = useCallback((id) => { if (!menuRest) return; addAsked(ukP, menuRest, id); missDish(menuRest, id); }, [ukP, menuRest]);
   // ── v30 (Доп. 319–320): «Радио в дорогу» и «Итоги месяца» — слои поверх вкладки ──
   const radioList = layerData(layers, "radio"), setRadioList = layerSet.radio;
   const recapKey = layerData(layers, "recap"), setRecapKey = layerSet.recap;
@@ -1357,7 +1445,7 @@ function ServiceAcademy() {
   const nowCtx = useMemo(() => (profile && role ? nowMode({ now: new Date(), shift: shiftToday, started: !firstDay, warmReady: warmSits.length >= 2, warmDone: warmDone === todayKey,
     due: dueNow, away: daysAway(activity, todayKey), openAway, stepsToday: todaySteps, mood: shiftMood }) : null),
     [profile, role, shiftToday, firstDay, warmSits, warmDone, todayKey, dueNow, activity, openAway, todaySteps, shiftMood, nowTick]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const nowCard = nowCtx ? { ...nowCtx, ...nowCardText(nowCtx, { warmN: warmSits.length, warmWhat: warmSits.some((x) => x.genre !== "quiz") ? "ситуации" : "вопроса" }) } : null;
+  const nowCard = nowCtx ? { ...nowCtx, ...nowCardText(nowCtx, { warmN: warmSits.length, warmWhat: warmWhat(warmSits.some((x) => x.genre !== "quiz") ? "ситуации" : "вопроса", warmDishes.length) }) } : null;
   // обработчики — отдельно: ответ «как прошла смена» показывается и после того, как карточка «сейчас» уже ушла
   const nowOn = { warmup: openWarmup, mistakes: () => navigate("mistakes"), sos: () => navigate("sos"), mood: saveShiftMood, ask: (q) => askMentor(q) };   // askMentor и navigate объявлены ниже — зовём при нажатии
   // v137 (Доп. 450): касание уведомления на телефоне, когда приложение уже открыто (сервис-воркер: sa-go) — та же ссылка
@@ -1375,6 +1463,7 @@ function ServiceAcademy() {
     // v32: ждём и прогресс с телефона — без него пул разминки пуст, и ссылка уводила в трек
     // (гонка: модуль стола иногда подгружался раньше, чем читался сохранённый прогресс)
     if (!warmLinkRef.current || !profile || !tbMod || !storageLoaded) return;
+    if (!menuLinkReady) return;   // v193: блюда разминки (что назвал бот) — до 6 секунд
     if (warmSits.length < 2) {
       // Доп. 310: разминать пока нечего (уроки трека ещё не приехали — подождём; приехали, а
       // заданий нет) — ссылка из напоминания не молчит, а открывает трек.
@@ -1386,7 +1475,7 @@ function ServiceAcademy() {
     }
     warmLinkRef.current = false;
     setWarmupOpen(true);
-  }, [profile, tbMod, warmSits.length, role, storageLoaded, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, tbMod, warmSits.length, role, storageLoaded, modules.length, goTick, menuLinkReady]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
   const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"
@@ -2354,6 +2443,7 @@ function ServiceAcademy() {
         // ответ — в банк ошибок, как ответы из Telegram (один раз: тот же номер qday_inbox потом не учтёт)
         if (a && newQdayAnswers(ukP, [a]).length) {
           setMistakeBank((prev) => applyQdayToBank(prev, [a], SR_DAYS));
+          applyQdayMenu(ukP, [a]);   // v193: вопрос о блюде — и в «Знаю?» меню (ошибка — к повтору сейчас)
           markQdaySeen(ukP, [a.id]);
           if (r.ok) logActivity("fix", 1);
         }
@@ -2372,6 +2462,7 @@ function ServiceAcademy() {
         const fresh = r && r.ok ? newQdayAnswers(ukP, r.items) : [];
         if (fresh.length) {
           setMistakeBank((prev) => applyQdayToBank(prev, fresh, SR_DAYS));
+          applyQdayMenu(ukP, fresh);   // v193: ответы о блюдах — в «Знаю?» меню
           markQdaySeen(ukP, fresh.map((a) => a.id));
           const today = ymd(new Date());
           const n = fresh.filter((a) => a.at && ymd(new Date(a.at)) === today).length;
@@ -2382,7 +2473,20 @@ function ServiceAcademy() {
       try {
         const day = ymd(new Date());
         const label = (ROLES.find((x) => x.id === role) || {}).label || "";
-        const items = buildQdayQueue({ mistakeBank: mistakeBankRef.current, programModules, quizDone: quizDoneRef.current, roleLabel: label, day, uk: ukP });
+        // v193 (Доп. 518): каждый второй вопрос — о блюде: сначала о тех, что пора повторить (порядок разминки); «не нужно»
+        // в ритме блюд — без них
+        let menuQ = [];
+        try {
+          const rest = profile.restaurant;
+          if (rest && readRhythm(ukP).r !== "off") {
+            const pack = await loadMenuPack();
+            const dishes = pack.menuNow(rest);
+            const prefer = warmPlan({ dishes, sr: readSr(rest), asked: readAsked(ukP, rest), focus: readFocus(ukP, rest).focus, go: goToday(rest), n: 12 }).map((x) => x.id);
+            menuQ = pack.menuQday({ dishes, prefer, seed: day + ukP, max: 4 });
+            if (menuQ.length) rememberQdayMenu(ukP, rest, menuQ);
+          }
+        } catch (e) { menuQ = []; }
+        const items = buildQdayQueue({ mistakeBank: mistakeBankRef.current, programModules, quizDone: quizDoneRef.current, roleLabel: label, day, uk: ukP, menu: menuQ });
         if (items.length && qdayNeedsPush(ukP, day, items)) {
           const r2 = await rpc("qday_push", { p_token: saToken(), p_items: items });
           if (r2 && r2.ok) qdayMarkPushed(ukP, day, items);
@@ -3238,7 +3342,7 @@ function ServiceAcademy() {
             перемонтаж его уничтожил бы (тема переключается без пересборки) */}
         {/* Доп. 301: разминка до смены — слой «у стола» поверх вкладки */}
         {warmupOpen && tbMod && warmSits.length ? (
-          <tbMod.TableCheck mode="warmup" situations={warmSits} modules={programAllMods} shift={shiftText}
+          <tbMod.TableCheck mode="warmup" situations={warmSits} modules={programAllMods} shift={shiftText} dishes={warmDishes} onDish={onWarmDish}
             color={TRACK_COLOR[role] || "#C8A96E"} a11y={a11y} profile={profile} streak={streak} mistakeBank={mistakeBank}
             mentorName={mentorName} goal={{ steps: todaySteps, goal }} onFinish={finishWarmup} onActivity={logActivity}
             onMistakes={addMistakes} onResolveMistake={resolveMistake} onFailMistake={failMistake} onAskMentor={askMentor}
@@ -3288,8 +3392,12 @@ function ServiceAcademy() {
         {briefView && teamBrief ? <Suspense fallback={null}><BriefView a11y={a11y} brief={teamBrief} onClose={() => setBriefView(null)} /></Suspense> : null}
         {/* Доп. 304: напоминания в Telegram */}
         {remindOpen ? <RemindSheet a11y={a11y} uk={ukP} lead={isLead} admin={!!profile?.is_admin} shift={shiftText} step={mStep && !mStep.done ? stepLineText(mStep) : ""} onChange={setTgRemind} onClose={() => setRemindOpen(false)}
+          rhythm={menuPack && menuDishes.length ? menuRhythm : null} onRhythm={(v) => saveRhythm(ukP, v)} /* v193: блюда в разминке — свой ритм */
+          dishNames={menuFocus.at && menuRhythm.r !== "off" ? (menuFocus.sent && menuFocus.sent.day === todayKey ? menuFocus.sent.names : warmPlan({ ...planArgs, n: menuRhythm.n, now: Date.now() }).map((x) => x.name)) : []}
           focus={layerData(layers, "remind") === "push" ? "push" : null} /* v137: из «Я» → «Уведомления на телефон» */ /> : null}
         {calOpen ? <Suspense fallback={null}><CalSheet a11y={a11y} admin={!!profile?.is_admin} onClose={() => setCalOpen(false)} /></Suspense> : null}
+        {/* v193 (Доп. 518): после смены — «О каком блюде спросили?» */}
+        {askOpen ? <AskedSheet a11y={a11y} dishes={menuDishes} picked={askedTodayIds} female={menuFemale} onPick={pickAsked} onClose={() => setAskOpen(false)} /> : null}
         {/* Доп. 302: «Разобрать с Наставником» — чат поверх ситуации (выше слоёв «у стола») */}
         {mentorAsk != null ? (
           <Suspense fallback={null}><AssistantScreen T={T} a11y={a11y} profile={profile} learner={assistantLearner()}
@@ -3511,9 +3619,15 @@ function ServiceAcademy() {
                   и не получала цветов темы (тёмный воск). Из показанного выбрано «пламя» — как у серии на табличке выше */}
               <Flame lit s={18} a11y={a11y} />
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pairLine.text}</span><span aria-hidden="true">›</span></div>) : null}
+          nowRows={{ /* v193 (Доп. 518): на смене — блюдо в перерыв, после смены — «Спросили о блюде» */
+            during: menuOn && !breakCur ? [{ key: "dish", label: "В перерыв:", title: "одно блюдо за 20 секунд", onClick: nextBreak }] : [],
+            after: menuOn ? [askedTodayIds.length
+              ? { key: "asked", label: "Повторим завтра:", title: askedTodayIds.map((id) => "«" + ((menuDishes.find((d) => String(d.id) === id) || {}).name || "блюдо") + "»").join(", "), onClick: () => setAskOpen(true) }
+              : { key: "asked", label: "Спросили о блюде?", title: "Отметь", onClick: () => setAskOpen(true) }] : [] }}
+          nowFoot={breakCur ? <BreakDish item={breakCur.item} female={menuFemale} onMark={onWarmDish} onMore={nextBreak} onClose={() => setBreakCur(null)} /> : null}
           look={look} nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted} lateRow={lateOn ? { key: "late", label: "Опаздываю?", title: "предупредить", onClick: openLate } : null}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
-          qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} onHide={() => setQdayKeep(false)} /> : null}   /* v88; v89 — отвеченный только сразу после ответа */
-          warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса"}>
+          qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} onHide={() => setQdayKeep(false)} menu={!!qdayMenuOf(ukP, qdayData.item.q)} /> : null}   /* v88; v89 — отвеченный только сразу после ответа */
+          warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmWhat(warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса", warmDishes.length)}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
               style={{ margin: "6px 4px 0", fontSize: 12, color: a11y ? "#7A5D2A" : "#D9B87C", cursor: "pointer" }}>Напоминать в Telegram за час до смены ›</div> : null}
           </WarmupCard> : null} /></div>}

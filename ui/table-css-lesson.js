@@ -39,6 +39,7 @@ export const TABLE_LESSON_CSS = `
 .tb-beads i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--mk-bg);box-shadow:inset 0 0 0 1.5px var(--edge-gold);transition:background .3s,transform .3s,box-shadow .3s}
 .tb-beads i.on{background:var(--gold);box-shadow:none}
 .tb-beads i.bad{background:var(--bad);box-shadow:none}
+.tb-beads i.on.soft{background:var(--mk-bg);box-shadow:inset 0 0 0 2px var(--gold)}
 .tb-beads i.cur{transform:scale(1.45);box-shadow:inset 0 0 0 1.5px var(--gold)}
 .tb-tool{width:34px;height:34px;border-radius:10px;border:1px solid var(--edge);background:var(--glass);color:var(--sub);display:grid;place-items:center;flex:0 0 auto;padding:0}
 .tb-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.8px;color:var(--gold-ink);padding:3px 8px;border-radius:999px;border:1px solid var(--edge-gold);white-space:nowrap;flex:0 0 auto}

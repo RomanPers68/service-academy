@@ -127,7 +127,7 @@ describe("v56: главная", () => {
     const hero = rd("ui/now-hero.jsx");
     expect(home).toContain("<NowInvitation key={card.mode} ctx={card} a11y={a11y} rows={rows} foot={foot} on={ctx ? nowOn : { go }}");
     expect(home).toContain(": (nowCard && !firstDay ? nowCard : null);");
-    expect(home).toContain('? (next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : [])');
+    expect(home).toMatch(/\? (\[\.\.\.)?\(next \? \[\{ key: "next", label: "Дальше:", title: nextTitle, onClick: go \}\] : \[\]\)/);   // v193: и строки App (extraRows)
     expect(hero).toMatch(/export function NowInvitation\(\{ refEl, ctx, a11y, rows = \[\], foot = null, on, onMood, onReplyDone(, [^}]*)? \}\) \{/);   // v69: и fade
     expect(hero).toContain('data-now-next={r.key === "next" ? "" : undefined}');
     expect(hero).toContain("{MOOD_FACES.map((m) => (");

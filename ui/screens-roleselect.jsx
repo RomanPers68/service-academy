@@ -144,7 +144,7 @@ export function greetName(name) {
   return cut > 0 ? [s.slice(0, cut + 1), s.slice(cut + 1)] : ["", s];
 }
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onBarCard = null, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now" }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onBarCard = null, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now", nowRows = null, nowFoot = null }) {
   const isAdmin = !!profile?.is_admin;
   // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
   // ui/home-look.jsx; раскладка та же.
@@ -474,14 +474,17 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
             glyph: gold ? GUEST : (ROLE_SVG[role] ? (c, sz) => ROLE_SVG[role](c, sz) : "cloche"),
             lead: (roleObj ? roleObj.label + " · " : "") + (!next ? "пройдено 100%" : done ? "пройдено " + prog + "%" : "первый шаг"),
             title: next ? nextTitle : title, sub: String(sub || "").replace(/\s*·\s*пройдено \d+%/, "") };
+          // v193 (Доп. 518): nowRows — строки App к карточке «сейчас»: на смене «В перерыв: одно блюдо», после смены (и в ответе
+          // на «как прошла») — «Спросили о блюде?»; nowFoot — блюдо в перерыв прямо под карточкой
+          const extraRows = ctx && nowRows ? (nowRows[ctx.mode === "reply" ? "after" : ctx.mode] || []) : [];
           const rows0 = ctx
-            ? (next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : [])
+            ? [...(next ? [{ key: "next", label: "Дальше:", title: nextTitle, onClick: go }] : []), ...extraRows]
             : [warm && warm.props ? { key: "warm", label: "Разминка:", title: warmWhen(warm.props), onClick: warm.props.onStart } : null,
                stepData ? { key: "step", label: "Шаг дня:", title: String(stepData.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase()),
                  onClick: () => { if (step.props.onStep) step.props.onStep(stepData); } } : null].filter(Boolean);
           // v99 (Доп. 412): за 3 часа до смены и 2 часа после начала — «Опаздываю» первой строкой (App: lateRow)
           const rows = lateRow && !firstDay ? [lateRow, ...rows0].slice(0, 3) : rows0;
-          const foot = !ctx && warm && warm.props ? warm.props.children || null : null;
+          const foot = !ctx && warm && warm.props ? warm.props.children || null : ctx && ctx.mode === "during" && nowFoot ? nowFoot : null;
           return (
             <div style={{ padding:"0 14px " + F.cardPb + "px" }}>
               {/* Роль чипом. После перестройки она пряталась только в заголовке

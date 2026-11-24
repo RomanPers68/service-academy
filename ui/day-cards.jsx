@@ -16,6 +16,7 @@ import { labelStyle, LABEL_CSS } from "./tokens";   // v73 (Доп. 386): под
 import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 import { PushBlock, ChannelPick } from "./push-block";   // v137 (Доп. 450)
+import { RHYTHMS, COUNTS, dishWord, remindLine } from "../lib/menu-repeat";   // v193 (Доп. 518): блюда в разминке — свой ритм
 
 const C = (a11y) => (a11y
   ? { text: "#2A1F0E", sub: "#6B5B40", gold: "#7A5D2A", line: "rgba(150,112,40,0.30)", bg: "rgba(250,242,222,0.62)", card: "linear-gradient(180deg,rgba(236,214,166,0.5),rgba(250,242,222,0.72))", top: "rgba(175,135,50,0.58)" }
@@ -399,12 +400,14 @@ export function stepLine(t) {
 }
 // Так выглядит сообщение бота за час до смены. Текст — дословно как у бота: v74 (Доп. 387, этап 29) — без шапки
 // «✦ SERVICE ACADEMY» и звёздочек, кнопка «Разминка». step — текст «Шага дня» (v40): строка под текстом, перед кнопкой.
-export function RemindExample({ c = C(false), when = "час", shift = "", step = "" }) {
+// v193 (Доп. 518): dishes — блюда, которые бот назовёт (с этапом 59, если сегодня разминка с блюдами): строка разминки — с ними
+export function RemindExample({ c = C(false), when = "час", shift = "", step = "", dishes = [] }) {
   const st = stepLine(step);
   return (
     <div aria-label="Пример сообщения" style={{ padding: "10px 12px", borderRadius: "16px 16px 16px 4px", border: `1px solid ${c.line}`, background: c.bg }}>
       <div style={{ fontSize: 13.5, lineHeight: 1.45, color: c.text }}>{"Через " + when + " смена: " + (shift || "Вечер · 16:00–24:00")}</div>
-      <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!</div>
+      {dishes && dishes.length ? <div data-remind-dishes={dishes.length} style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>{remindLine(dishes)}</div>
+        : <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45, color: c.sub }}>Разминка до смены: 2 минуты, 3 задания из того, что уже прошёл. Хорошей смены!</div>}
       {st ? <div data-remind-step="" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.45, color: c.text }}>{"Шаг дня: " + st}</div> : null}
       <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, textAlign: "center", fontSize: 13, fontWeight: "bold", color: c.gold, border: `1px solid ${c.line}` }}>Разминка</div>
     </div>
@@ -414,9 +417,32 @@ export function RemindExample({ c = C(false), when = "час", shift = "", step 
 // v137 (Доп. 450): «Напоминания» — Telegram и уведомления на телефон (ui/push-block.jsx, этап 48). В Telegram первым
 // идёт Telegram, вне его — телефон; «Куда присылать» — когда есть и то, и другое; «Что ещё присылать» и тихие часы —
 // для обоих. focus="push" — окно открыто из «Я» → «Уведомления на телефон»: сразу к телефону.
-export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null }) {
+// v193 (Доп. 518): «Блюда в разминке» — свой ритм: каждую смену, через смену, раз в неделю или не нужно; 2 или 3 блюда.
+// Хранится на телефоне (lib/menu-repeat.js), уходит и на сервер: бот за час до смены называет блюда.
+function DishRhythm({ a11y, c, value, onPick }) {
+  const v = value || { r: "each", n: 2 };
+  const chip = (on) => ({ padding: "6px 11px", borderRadius: 999, border: `1px solid ${on ? c.gold : c.line}`, background: on ? (a11y ? "rgba(139,106,48,0.18)" : "rgba(200,169,110,0.22)") : "transparent",
+    color: on ? c.text : c.sub, fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" });
+  return (
+    <div data-dish-rhythm={v.r} data-dish-n={v.n} style={{ marginTop: 14 }}>
+      <div style={{ ...labelStyle(13.5), color: c.gold, margin: "0 0 2px" }}>Блюда в разминке</div>
+      <div style={{ fontSize: 12.5, lineHeight: 1.45, color: c.sub, margin: "0 0 8px" }}>После ситуаций вспомнить состав и аллергены пары блюд. Сначала те, о которых спрашивали гости, просит руководитель, из гоу-листа смены и новинки.</div>
+      <div role="group" aria-label="Как часто блюда в разминке" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {RHYTHMS.map(([k, t]) => <button key={k} type="button" aria-pressed={v.r === k} data-rhythm={k} onClick={() => onPick({ ...v, r: k })} style={chip(v.r === k)}>{t}</button>)}
+      </div>
+      {v.r !== "off" ? <div role="group" aria-label="Сколько блюд" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <span style={{ fontSize: 12.5, color: c.sub, marginRight: 2 }}>Сколько:</span>
+        {COUNTS.map((n) => <button key={n} type="button" aria-pressed={v.n === n} data-rhythm-n={n} onClick={() => onPick({ ...v, n })} style={chip(v.n === n)}>{n} {dishWord(n)}</button>)}
+      </div> : null}
+    </div>);
+}
+
+export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null, rhythm = null, onRhythm = null, dishNames = [] }) {
   ensureTableCss();
   const c = C(a11y);
+  const [rh, setRh] = React.useState(rhythm);   // v193: null — меню нет (блока нет)
+  React.useEffect(() => { if (rhythm && !rh) setRh(rhythm); }, [rhythm]);   // eslint-disable-line react-hooks/exhaustive-deps -- меню приехало, когда окно уже открыто
+  const pickRh = (v) => { vibrate("light"); const x = onRhythm ? onRhythm(v) : v; setRh(x || v); };
   const tg = typeof window !== "undefined" && window.Telegram ? window.Telegram.WebApp : null;
   const inTg = inTelegramApp();
   const [st, setSt] = React.useState({ phase: "load" });
@@ -508,7 +534,8 @@ export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift 
         </p>
         {/* так выглядит сообщение (v40: со строкой «Шаг дня», если App его передал) */}
         {/* v40: строку «Шаг дня» бот добавляет только с этапом 26 — его видно по виду «master» в настройках */}
-        <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} />
+        <RemindExample c={c} when={when} shift={shift} step={has26 ? step : ""} dishes={rh && rh.r !== "off" ? (dishNames || []).slice(0, rh.n) : []} />
+        {rh ? <DishRhythm a11y={a11y} c={c} value={rh} onPick={pickRh} /> : null}
         {inTg ? <>{tgPart}{pushPart}</> : <>{pushPart}{tgPart}</>}
         {linked && phones > 0 ? <ChannelPick a11y={a11y} c={c} ps={ps} onState={onPs} /> : null}
         {phones > 0 ? prefs : null}{/* с телефоном «Что ещё присылать» — одно на оба канала, под выбором */}

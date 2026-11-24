@@ -33,7 +33,8 @@ import { peekFor } from "../lib/peek";
 import { checkSaid } from "../lib/say-check";
 import { iconForSituation } from "../lib/situation-icons";
 import { sfx, sfxOn, setSfx } from "../lib/sfx";
-import { vibrate, shuffleSituationOptions, shuffleQuizOptions } from "../lib/utils";
+import { vibrate, shuffleSituationOptions, shuffleQuizOptions, isFemaleName } from "../lib/utils";
+import { DishCard } from "./dish-step";   // v193 (Доп. 518): блюда в разминке до смены
 import { pickForLesson, practicePool, tablePool } from "../lib/table-pick";
 import { practiceRound, sitKey } from "../lib/practice-round";
 import { dayOffFromSchedule, ymd } from "../lib/streak";
@@ -102,7 +103,7 @@ function Plates({ lives, justBroke }) {
 function Beads({ n, pos, marks, curDone }) {
   const items = [];
   for (let k = 0; k < n; k++) {
-    const cls = k < pos || (k === pos && curDone) ? (marks[k] === "bad" ? "bad" : "on") : k === pos ? "cur" : "";
+    const cls = k < pos || (k === pos && curDone) ? (marks[k] === "bad" ? "bad" : marks[k] === "soft" ? "on soft" : "on") : k === pos ? "cur" : "";
     items.push(<i key={k} className={cls} />);
   }
   const done = pos + (curDone ? 1 : 0);
@@ -690,8 +691,10 @@ const MODE = {
 const fmtSec = (x) => Math.floor(x / 60) + ":" + String(Math.round(x) % 60).padStart(2, "0");
 export function TableCheck({ mode = "check", lesson = null, mod = null, situations = null, modules = null, shift = "",
   color, a11y, profile, streak, next, mistakeBank, mentorName = "", replay = false, goal = null, timer = 0, guest = null, verdict = null,
-  intro = null, record = null, extra = null, onBegin = null,
+  intro = null, record = null, extra = null, onBegin = null, dishes = null, onDish = null,
   onComplete, onNext, onClose, onMistakes, onResolveMistake, onFailMistake, onFinish, onActivity, onAskMentor, onAgain, inline = false }) {
+  // v193 (Доп. 518): dishes — блюда разминки после ситуаций ([{ id, name, why, say, brief }], до трёх), onDish(id, знаю) —
+  // отметка «Знаю» / «Не уверен» (App пишет её в «Знаю?» меню)
   // v31: intro — правила перед стартом (зачёт, раунд мастера, проверка по треку); onBegin — с первого
   // ответа (попытка зачёта тратится только тогда); record — рекорды раунда мастера; extra(stat) —
   // свой блок в чеке (какие темы освежены, какие можно сдать на опыт)
@@ -707,6 +710,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
     const cap = warm || mode === "refresh" ? 3 : (situations || []).length;
     const base = listMode ? (situations || []).slice(0, bankItem ? Math.max(1, cap - 1) : cap) : checkSituations(lesson, mod);
     const out = base.map((s) => ({ kind: "sit", sit: shuffleSituationOptions(s) }));
+    if (warm && out.length && Array.isArray(dishes)) dishes.filter((d) => d && d.id != null && d.name).slice(0, 3).forEach((d) => out.push({ kind: "dish", item: d }));
     if (out.length && bankItem) out.push({ kind: "bank", orig: bankItem, q: shuffleQuizOptions(bankItem) });
     return out;
   }, [keyId]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -718,6 +722,8 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
   const [marks, setMarks] = React.useState({});
   const [stat, setStat] = React.useState({ firstOk: 0, hinted: 0, rescued: 0, wrong: [], bank: null, okMods: [] });
   const [result, setResult] = React.useState(false);
+  const [dflip, setDflip] = React.useState(false);   // v193: карточка блюда перевёрнута
+  const dishRes = React.useRef([]);                  // v193: { id, name, ok } по блюдам разминки
   const [sheet, setSheet] = React.useState(false);
   const [peek, setPeek] = React.useState(null);
   const [peekedPos, setPeekedPos] = React.useState(-1);
@@ -730,6 +736,10 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
   const [bodyRef, toEnd] = useScrollBody(result ? "r" : pos + ":" + c.tries);
   const stp = steps[pos] || null;
   const isBank = !!stp && stp.kind === "bank";
+  const isDish = !!stp && stp.kind === "dish";
+  const dishCount = steps.filter((x) => x.kind === "dish").length;
+  const dishNo = isDish ? steps.slice(0, pos + 1).filter((x) => x.kind === "dish").length : 0;
+  const unsure = profile && isFemaleName(profile.name, profile.surname) ? "Не уверена" : "Не уверен";
   const sit = stp && stp.kind === "sit" ? stp.sit : null;
   const g = sit ? genreOf(sit) : "bank";
   const atTable = !!CHOICE[g];
@@ -799,7 +809,9 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
       if (!listMode && lesson) bumpRun(lesson.id);
       const items = stat.wrong.map((s) => mistakeFromSituation(s, listMode ? { id: s._from || "", title: s._fromTitle || (M ? M.title : "Разминка до смены") } : lesson)).filter(Boolean);
       if (items.length && onMistakes) onMistakes(items);
-      if (listMode) { try { onFinish && onFinish({ firstOk: stat.firstOk, total: sitCount, wrongN: stat.wrong.length, secs: Math.max(1, Math.round((Date.now() - t0.current) / 1000)), okMods: stat.okMods, mood }); } catch (e) {} }
+      const dl = dishRes.current;
+      if (listMode) { try { onFinish && onFinish({ firstOk: stat.firstOk, total: sitCount, wrongN: stat.wrong.length, secs: Math.max(1, Math.round((Date.now() - t0.current) / 1000)), okMods: stat.okMods, mood,
+        dishN: dl.length, dishOk: dl.filter((x) => x.ok).length, dishes: dl.slice() }); } catch (e) {} }
       else { try { onComplete && onComplete(); } catch (e) {} }
     }
   };
@@ -808,6 +820,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
     setAutoOn(false);
     if (pos + 1 >= n) { finish(); return; }
     gen.current++;
+    setDflip(false);
     setPos(pos + 1);
     setC({ phase: "ask", pick: null, ok: null, tries: 0, removed: [], typing: false, react: null });
   };
@@ -821,6 +834,16 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
     return () => { if (autoRef.current) { clearTimeout(autoRef.current); autoRef.current = null; } };
   }, [c.phase, c.ok, pos, result, sheet, peek]);   // eslint-disable-line react-hooks/exhaustive-deps
   const cancelAuto = () => { if (autoRef.current) { clearTimeout(autoRef.current); autoRef.current = null; } if (autoOn) setAutoOn(false); };
+  // v193: блюдо — перевернуть, потом «Знаю» или «Не уверен»: отметка в «Знаю?» меню и дальше; в чеке — сколько знал
+  const flipDish = () => { if (!isDish || dflip) return; sfx("tap"); vibrate("light"); setDflip(true); };
+  const markDish = (ok) => {
+    if (!isDish || !dflip) return;
+    sfx(ok ? "ok" : "tap"); vibrate(ok ? "success" : "light");
+    dishRes.current = [...dishRes.current, { id: stp.item.id, name: stp.item.name, ok }];
+    try { if (onDish) onDish(stp.item.id, ok); } catch (e) {}
+    if (!ok) setMarks((m) => ({ ...m, [pos]: "soft" }));
+    go();
+  };
   const openPeek = () => {
     cancelAuto();
     if (!sit || strict) return;
@@ -944,6 +967,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                 <ul className="r-lines">
                   {!warm ? <Line label="Урок" value="прочитан" /> : null}
                   <Line label={warm ? "Ситуации с первого раза" : "У стола с первого раза"} value={stat.firstOk + " из " + sitCount} />
+                  {warm && dishRes.current.length ? <Line label="Блюда: знаю" value={dishRes.current.filter((x) => x.ok).length + " из " + dishRes.current.length} /> : null}
                   {stat.hinted ? <Line label="С подсказкой из урока" value={stat.hinted} /> : null}
                   {stat.rescued ? <Line label="Спасено ситуаций" value={stat.rescued} /> : null}
                   {bankLine ? <Line label="Повтор ошибки" value={bankLine} /> : null}
@@ -954,6 +978,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
                   <GoalLine goal={goal} />
                   {wrongN ? <Line icon={<Ic n="refresh" s={15} />} label="В «Работу над ошибками»" value={wrongN} /> : null}
                 </ul>
+                {warm && dishRes.current.some((x) => !x.ok) ? <p className="r-note" data-warm-unsure=""><Ic n="refresh" s={14} /><span>Повторим ещё: {dishRes.current.filter((x) => !x.ok).map((x) => "«" + x.name + "»").join(", ")}. Блюдо уже ждёт в «Знаю?» колоды меню.</span></p> : null}
                 {frozeYesterday ? <p className="r-note"><Ic n="snow" s={14} /><span>Вчера был выходной по графику, серия не сгорела.</span></p> : null}
                 {offTomorrow ? <p className="r-note"><Ic n="snow" s={14} /><span>Завтра выходной по графику: серия под защитой, можно отдыхать.</span></p> : null}
                 {warm ? (
@@ -983,9 +1008,9 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
       </>, vars, inline, "tb-table");
   }
 
-  const okTitle = isBank ? "Закреплено" : OKW[(hashOf(sitKey(sit)) + pos) % OKW.length];
+  const okTitle = isBank ? "Закреплено" : !sit ? "" : OKW[(hashOf(sitKey(sit)) + pos) % OKW.length];
   const noteTitle = c.pick === -1 ? "Время вышло" : c.ok ? (c.tries > 0 ? "Спасено" : (peekedPos === pos && !isBank ? "Верно, с подсказкой" : okTitle)) : "Не совсем";
-  const place = isBank ? "повтор ошибки" : (PLACE[g] || "");
+  const place = isBank ? "повтор ошибки" : isDish ? "меню" : (PLACE[g] || "");
   let bankBody = null;
   if (isBank) {
     const q = stp.q;
@@ -1053,7 +1078,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         </div>
         <div className="tb-row2">
           <div className="tb-prog" role="progressbar" aria-label="Шаги" aria-valuemin={0} aria-valuemax={n} aria-valuenow={pos + (c.phase === "done" ? 1 : 0)}>
-            <div className="tb-k"><b>{isBank ? "Напоследок" : (strict ? "Задание " : "Ситуация ") + (pos + 1) + " из " + sitCount}</b><span>{place}</span>
+            <div className="tb-k"><b>{isBank ? "Напоследок" : isDish ? "Блюдо " + dishNo + " из " + dishCount : (strict ? "Задание " : "Ситуация ") + (pos + 1) + " из " + sitCount}</b><span>{place}</span>
               {mode === "gold" ? <span className={"tb-spare" + (stat.wrong.length ? " out" : "")} role="img" aria-label={stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "Ошибок больше одной, на золото не хватит" : "Запасная ошибка потрачена") : "Можно одну ошибку"}><Candle s={14} lit={!stat.wrong.length} /><small>{stat.wrong.length ? (stat.wrong.length > GOLD_MAX_WRONG ? "без золота" : "запас потрачен") : "запас"}</small></span> : null}
             </div>
             <Beads n={n} pos={pos} marks={marks} curDone={c.phase === "done"} />
@@ -1064,7 +1089,7 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
         </div>
       </div></div>
       <div className="tb-body" ref={bodyRef} onPointerDown={cancelAuto} onWheel={cancelAuto}><div className="tb-col" key={"c" + pos}>
-        {isBank ? bankBody : (
+        {isBank ? bankBody : isDish ? <DishCard item={stp.item} flipped={dflip} onFlip={flipDish} /> : (
           <Situation sit={sit} asking={c.phase === "ask"} pick={c.pick} removed={c.removed} second={c.tries > 0} timer={tSecs && c.phase === "ask" ? tSecs : 0} timerKey={tRun} timerPaused={sheet || !!peek} onPick={settle}>
             {c.phase !== "ask" ? (
               <>
@@ -1090,7 +1115,16 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
           </Situation>
         )}
       </div></div>
-      <div className="tb-foot">{c.phase === "done" ? (
+      <div className="tb-foot">{isDish ? (
+        <div className="tb-col">
+          {!dflip ? <button type="button" className="tb-main" data-dish-flip="" onClick={flipDish}>Показать состав</button> : (
+            <>
+              <button type="button" className="tb-main" data-dish-know="" onClick={() => markDish(true)}>Знаю</button>
+              <button type="button" className="tb-ghost" data-dish-unsure="" onClick={() => markDish(false)}>{unsure}</button>
+            </>
+          )}
+        </div>
+      ) : c.phase === "done" ? (
         <div className="tb-col">
           {canRescue ? (
             <>

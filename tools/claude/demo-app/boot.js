@@ -546,7 +546,20 @@ for (let i = 0; i < 9; i++) SOM_SEED.push({ rest: R0, emp: i % 2 ? "e-petr" : "e
 for (let i = 0; i < 3; i++) SOM_SEED.push({ rest: R0, emp: "e-anna", ev: "taken", item: "wine:wn-demo-4", dishes: [dish("Кальмар в азиатском стиле")].filter(Boolean), ask: "", t: Date.now() - (i + 2) * 3 * 864e5 });
 for (let i = 0; i < 2; i++) SOM_SEED.push({ rest: R0, emp: "e-petr", ev: "taken", item: "wine:wn-demo-2", dishes: [dish("Закуска из морепродуктов")].filter(Boolean), ask: "", t: Date.now() - (i + 3) * 4 * 864e5 });
 SOM_SEED.push({ rest: R0, emp: "e-petr", ev: "declined", item: "wine:wn-demo-7", dishes: [], ask: "", t: Date.now() - 5 * 864e5 });
+// v193 (Доп. 518): «Знаю?» меню у команды (этап 59) — чтобы у Марии в «Как команда знает меню» были слабые блюда: Креветку
+// темпура и тыквенный суп путают, паштеты знают. День — номер дня с 1970 года, как на телефоне.
+const DN = Math.round(Date.UTC(Number(TODAY.slice(0, 4)), Number(TODAY.slice(5, 7)) - 1, Number(TODAY.slice(8, 10))) / 864e5);
+const MK = (rows) => Object.fromEntries(rows.map(([n, st, dd, td]) => [dish(n), [st, DN + dd, td === null ? 0 : DN + td]]).filter(([id]) => id));
+const MK_AT = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+const MENU_KNOW = {
+  "e-petr": { data: MK([["Креветка темпура", 0, -1, -1], ["Ассорти паштетов", 2, 4, -2], ["Крабовая котлета", 1, 1, 0], ["Тыквенный крем-суп", 0, -2, -2]]), at: MK_AT(20) },
+  "e-vera": { data: MK([["Креветка темпура", 0, 0, -3], ["Ассорти паштетов", 3, 6, -1], ["Салат с креветками", 1, 1, 0]]), at: MK_AT(30) },
+  "e-darya": { data: MK([["Креветка темпура", 1, 2, -1], ["Тыквенный крем-суп", 0, -1, -1], ["Ассорти паштетов", 1, 1, 0]]), at: MK_AT(6) },
+  "e-olga": { data: MK([["Ассорти паштетов", 1, 0, -1], ["Пончик с крабом", 0, -4, -4]]), at: MK_AT(50) },
+};
 const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved, som: SOM_SEED,
+  menuKnow: MENU_KNOW, noStage59: lsGet("__demo_no59") === "1",   // v193: __demo_no59 = "1" — сервер без этапа 59
+  qday: lsGet("__demo_qday") === "1",   // v193: __demo_qday = "1" — «Вопрос дня» на главной (очередь с телефона, каждый второй — о блюде)
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
   tgKnown: { [TG_ANNA]: "e-anna" },
@@ -662,6 +675,8 @@ function seed() {
   keep.add("__demo_no57");   // v191: «сервер без этапа 57» — тоже
   keep.add("__demo_cn_credit");   // v191: «О нас» в зачёт — тоже
   keep.add("__demo_no58");   // v192: «сервер без этапа 58» — тоже
+  keep.add("__demo_no59");   // v193: «сервер без этапа 59» — тоже
+  keep.add("__demo_qday");   // v193: «Вопрос дня» в демо — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}

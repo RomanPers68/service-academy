@@ -544,6 +544,74 @@ export function makeServer(opts) {
     r.at = now();
     return { ok: true };
   }
+  // ── v193 (Доп. 518, этап 59): «Знаю?» меню, просьбы руководителя, «Как команда знает меню» — как
+  // supabase-stage59-menu-repeat.sql. opts.noStage59 — этапа нет: функций нет. opts.menuKnow — «Знаю?» команды при старте
+  // ({ сотрудник: { data, warm, at } }). Напоминание за час до смены демо не шлёт: «что назвал бот» (sent) e2e кладёт сам.
+  S.mk = S.mk || { know: clone(opts.menuKnow || {}), focus: [] };
+  const mkDn = (iso) => { const [y, m, d] = String(iso).split("-").map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
+  const mkFocus = (rest) => S.mk.focus.filter((f) => f.rest === rest && f.until >= TODAY).sort((a, b2) => (a.kind === b2.kind ? (a.at < b2.at ? -1 : 1) : a.kind === "warm" ? -1 : 1))
+    .map((f) => ({ id: f.id, kind: f.kind, name: f.name, note: f.note, until: f.until, day: mkDn(f.from), by: f.by }));
+  const mkState = (p) => { const k = S.mk.know[p.id]; return { ok: true, restaurant: p.restaurant, today: TODAY, focus: mkFocus(p.restaurant), sent: k && k.sent && k.sent.day === TODAY ? clone(k.sent) : null }; };
+  const mkInt = (v, hi) => (typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(hi, Math.floor(v))) : null);
+  function menuKnow(fn, p, b) {
+    if (opts.noStage59) return { code: "PGRST202", message: "Could not find the function" };
+    if (!p) return { ok: false, error: "auth" };
+    if (fn === "menu_know_set") {
+      if (!p.restaurant) return { ok: false, error: "no_restaurant" };
+      const k = S.mk.know[p.id] || (S.mk.know[p.id] = { data: {}, warm: null, sent: null, at: null });
+      if (b.p_data && typeof b.p_data === "object" && !Array.isArray(b.p_data)) {
+        const out = {}; let n = 0;
+        for (const [id, v] of Object.entries(b.p_data)) {
+          if (n >= 400 || !id.trim() || id.length > 80 || !Array.isArray(v) || v.length < 3) continue;
+          const a = [mkInt(v[0], 4), mkInt(v[1], 100000), mkInt(v[2], 100000)];
+          if (a.some((x) => x === null)) continue;
+          out[id] = a; n++;
+        }
+        k.data = out;
+      }
+      if (b.p_warm && typeof b.p_warm === "object") {
+        const w = b.p_warm, iso = (x) => (/^\d{4}-\d{2}-\d{2}$/.test(String(x || "")) ? x : null);
+        k.warm = { r: ["each", "every2", "week", "off"].includes(w.r) ? w.r : "each", n: Math.max(1, Math.min(3, Math.floor(Number(w.n) || 2))), last: iso(w.last), prev: iso(w.prev), had: w.had === true,
+          next: (Array.isArray(w.next) ? w.next : []).filter((x) => x && String(x.id || "").trim() && String(x.name || "").trim()).slice(0, 6)
+            .map((x) => ({ id: String(x.id).trim().slice(0, 80), name: String(x.name).replace(/\s+/g, " ").trim().slice(0, 60), why: ["asked", "new", "due", "fresh"].includes(x.why) ? x.why : "due" })) };
+      }
+      k.at = now();
+      return mkState(p);
+    }
+    if (fn === "menu_focus_get") return p.restaurant ? mkState(p) : { ok: true, restaurant: null, focus: [], sent: null };
+    if (fn === "menu_focus_set") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      if (!["warm", "brief"].includes(b.p_kind)) return { ok: false, error: "kind" };
+      const id = String(b.p_id || "").trim().slice(0, 80), rest = p.restaurant;
+      if (!id) return { ok: false, error: "bad_request" };
+      S.mk.focus = S.mk.focus.filter((f) => !(f.rest === rest && f.kind === b.p_kind && f.id === id));
+      if (b.p_on !== false) {
+        if (S.mk.focus.filter((f) => f.rest === rest && f.kind === b.p_kind && f.until >= TODAY).length >= 5) return { ok: false, error: "too_many", max: 5 };
+        S.mk.focus.push({ rest, kind: b.p_kind, id, name: String(b.p_name || "").replace(/\s+/g, " ").trim().slice(0, 60), note: String(b.p_note || "").replace(/\s+/g, " ").trim().slice(0, 80),
+          from: TODAY, until: D(b.p_kind === "warm" ? 7 : 1), by: full(p), at: now() });
+      }
+      return mkState(p);
+    }
+    if (fn === "menu_know_team") {
+      if (!isLead(p)) return { ok: false, error: "forbidden", restaurant: p.restaurant };
+      const rest = String(b.p_restaurant || "").trim() || p.restaurant;
+      if (rest !== p.restaurant && !(p.is_admin || p.position === "senior")) return { ok: false, error: "forbidden", restaurant: p.restaurant };
+      const tn = mkDn(TODAY), cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0), dishes = {};
+      const staff = PEOPLE.filter((e) => e.restaurant === rest && !e.is_admin && (e.status || "active") === "active");
+      const people = staff.map((e) => {
+        const k = S.mk.know[e.id], marks = k ? Object.entries(k.data || {}) : [];
+        for (const [id, [st, dd, td]] of marks) {
+          const g = dishes[id] || (dishes[id] = { id, known: 0, weak: 0, seen: 0 });
+          if (st > 0 && dd >= tn) g.known++; if (st === 0 && td > 0 && td >= tn - 30) g.weak++; if (td > 0) g.seen++;
+        }
+        return { id: e.id, name: full(e), pos: String(e.position || "").toLowerCase(), at: k ? k.at : null,
+          known: marks.filter(([, a]) => a[0] > 0 && a[1] >= tn).length, weak: marks.filter(([, a]) => a[0] === 0 && a[2] > 0 && a[2] >= tn - 30).length, marked: marks.filter(([, a]) => a[2] > 0).length, _n: full(e) };
+      }).sort((x, y) => (x.at == null) - (y.at == null) || cmp(x._n, y._n) || cmp(x.id, y.id)).map(({ _n, ...x }) => x);
+      return { ok: true, restaurant: rest, n: people.filter((x) => x.marked > 0).length, staff: people.length, people, dishes: Object.values(dishes).sort((x, y) => cmp(x.id, y.id)),
+        focus: rest === p.restaurant ? mkFocus(rest) : [] };
+    }
+    return undefined;
+  }
   function wineTeam(p, b, key = "wine") {
     if (!p) return { ok: false, error: "auth" };
     if (!isLead(p)) return { ok: false, error: "forbidden", restaurant: p.restaurant };
@@ -973,7 +1041,36 @@ export function makeServer(opts) {
     }
     if (fn === "my_mentors") return { ok: true, rows: [] };
     if (fn === "qday_inbox") return { ok: true, items: [] };
+    // v193 (Доп. 518): «Вопрос дня» (этапы 31, 37) — очередь с телефона, вопрос на главной и ответ, как qday_push, qday_today
+    // и qday_answer: каждый второй вопрос — о блюде, в демо его видно на главной. Telegram демо не шлёт. Только с opts.qday
+    // (__demo_qday = "1"): без него — как было (функций нет, на главной карточки нет).
+    if (opts.qday && (fn === "qday_push" || fn === "qday_today" || fn === "qday_answer")) {
+      if (!p) return { ok: false, error: "auth" };
+      S.qd = S.qd || {};
+      const me = S.qd[p.id] || (S.qd[p.id] = { queue: [], sent: [], seq: 0 });
+      const js = (x) => ({ id: x.id, q: x.q, o: clone(x.o), t: x.t || "", r: x.r || "", day: x.day, via: "app", answer: x.answer == null ? null : x.answer, correct: x.correct == null ? null : x.correct,
+        at: x.at || null, ...(x.answer == null ? {} : { c: x.c, e: x.e || "" }) });
+      const streak = () => me.sent.filter((x) => x.answer != null).length;
+      if (fn === "qday_push") {
+        const items = (Array.isArray(b.p_items) ? b.p_items : []).filter((x) => x && x.k && String(x.q || "").trim() && Array.isArray(x.o) && x.o.length >= 2 && x.o.length <= 4
+          && Number.isInteger(x.c) && x.c >= 0 && x.c < x.o.length && !me.sent.some((y) => y.k === x.k)).slice(0, 7);
+        me.queue = items.map((x) => ({ k: x.k, q: String(x.q).trim(), o: x.o.map(String), c: x.c, e: String(x.e || ""), t: String(x.t || ""), r: String(x.r || "") }));
+        return { ok: true, queued: me.queue.length, hour: 12 };
+      }
+      if (fn === "qday_today") {
+        let x = me.sent.find((y) => y.day === TODAY);
+        if (!x && me.queue.length) { me.seq++; x = { ...me.queue.shift(), id: me.seq, day: TODAY, answer: null, correct: null }; me.sent.push(x); }
+        return { ok: true, day: TODAY, hour: 12, streak: streak(), queued: me.queue.length, item: x ? js(x) : null };
+      }
+      const x = me.sent.find((y) => y.id === Number(b.p_id));
+      if (!x) return { ok: false, error: "not_found" };
+      if (!Number.isInteger(b.p_answer) || b.p_answer < 0 || b.p_answer >= x.o.length) return { ok: false, error: "bad_request" };
+      if (x.answer != null) return { ok: false, error: "again", item: js(x), streak: streak() };
+      x.answer = b.p_answer; x.correct = b.p_answer === x.c; x.at = now();
+      return { ok: true, item: js(x), streak: streak() };
+    }
     if (fn === "menu_progress_team") return { ok: true, rows: [] };
+    if (/^menu_(know|focus)_/.test(fn)) { const r = menuKnow(fn, p, b); if (r !== undefined) return r; }   // v193: этап 59
     // v132 (Доп. 445): этап 47 — «Сомелье» учится на том, что берут (как supabase-stage47-sommelier.sql: pg-check-stage47);
     // opts.noStage47 — сервер без этапа: функции нет (404), приложение пишет в журнал телефона
     if (fn === "som_log_add") return opts.noStage47 ? { code: "PGRST202", message: "Could not find the function" } : somAdd(p, b);

@@ -38,7 +38,7 @@ describe("v89: «Вопрос дня» после ответа уходит с �
     // ответ засчитан (в том числе «уже отвечал в Telegram») — разбор держим, пока ты на главной
     expect(app).toMatch(/if \(r && r\.item && \(r\.ok \|\| r\.error === "again"\)\) \{\s*setQdayKeep\(true\);/);
     expect(app).toContain("qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard");
-    expect(app).toContain("onHide={() => setQdayKeep(false)} />");
+    expect(app).toMatch(/onHide=\{\(\) => setQdayKeep\(false\)\}( menu=\{!!qdayMenuOf\(ukP, qdayData\.item\.q\)\})? \/>/);   // v193: + вопрос о блюде
   });
   it("тексты: без эмодзи и «слово — слово»; справка — «Понятно» и до завтрашнего вопроса", async () => {
     const src = code(rd("ui/qday-card.jsx"));

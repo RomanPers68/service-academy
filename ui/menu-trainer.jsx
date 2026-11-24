@@ -17,6 +17,7 @@ import { MenuDeck, AllergenSprint } from "./menu-deck";
 import { wineRecords } from "../lib/wine";                     // v123: вход в тренировку винной карты
 import { trainable as trainableWines } from "../lib/wine-train";
 import { MenuPrint } from "./menu-print";
+import { TeamMenuKnow } from "./menu-team-know";   // v193 (Доп. 518): «Как команда знает меню»
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
@@ -236,6 +237,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   if (mode === "quiz") return <MenuQuiz T={T} gold={gold} green={green} red={red} dishes={dishes} Head={Head} restaurant={restaurant} />;
   if (mode === "60sec") return <Describe60 T={T} gold={gold} green={green} dishes={dishes} Head={Head} restaurant={restaurant} a11y={a11y} />;
   if (mode === "team") return <TeamProgress T={T} gold={gold} green={green} Head={Head} restaurant={restaurant} />;
+  if (mode === "know") return <TeamMenuKnow T={T} a11y={a11y} gold={gold} green={green} Head={Head} restaurant={restaurant} dishes={dishes} own={restaurant === profile?.restaurant} admin={!!profile?.is_admin} />;   // v193
   if (mode === "say") return <PronounceScreen T={T} a11y={a11y} gold={gold} dishes={dishes} Head={Head} glass={glass} />;   // v80
   if (mode === "voices") return <VoicesList T={T} a11y={a11y} gold={gold} dishes={dishes} Head={Head} glass={glass} />;      // v80
   if (mode === "edit") return (
@@ -283,7 +285,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v192</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v193</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -400,6 +402,18 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Кто выучил новинки</div>
               <div style={{ ...T.modSub, whiteSpace: "normal" }}>Статус каждого: открыл или выучил</div>
+            </div>
+            <div style={T.modArrow}>›</div>
+          </div>
+        )}
+        {/* v193 (Доп. 518): «Как команда знает меню» — слабые блюда, «В разминку команде», «В фокус смены» */}
+        {canEdit && dishes.length > 0 && (
+          <div className="sa-card" data-lens-card="" data-menu-know="" style={{ ...T.modCard, margin: "0 0 10px" }}
+            onClick={() => setMode("know")} {...onActivate(() => setMode("know"))}>
+            <div style={iconBox}>{GAME_SVG.cards(gold, 20)}</div>
+            <div style={{ flex: 1 }}>
+              <div style={T.modTitle}>Как команда знает меню</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Слабые блюда: в разминку команде или в фокус смены</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>

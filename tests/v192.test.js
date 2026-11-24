@@ -468,7 +468,7 @@ describe("v192 · экран (ui/concept-more.jsx, ui/concept-foot.jsx, ui/conce
     expect(html).toContain("Изменилось после твоей отметки: 4. Посмотри и отметь внизу.");
     expect((html.match(/data-cn-toc="/g) || []).length).toBe(5);
     expect((html.match(/aria-label="(новый|изменён)"/g) || []).length).toBe(3);
-    const okHtml = R(h(ConceptCover, { T, a11y: false, c, sec: { title: "Marin", sub: "" }, where: "", hero: null, ack: { has: true, need: false, at: "2026-11-23T02:00:00Z" }, chg: { items: [] }, toc: [], female: false, onJump: () => {} }));
+    const okHtml = R(h(ConceptCover, { T, a11y: false, c, sec: { title: "Marin", sub: "" }, where: "", hero: null, ack: { has: true, need: false, at: "2026-11-23T08:00:00Z" }, chg: { items: [] }, toc: [], female: false, onJump: () => {} }));
     expect(okHtml).toContain('data-cn-cover="text"');
     expect(okHtml).toMatch(/Ознакомлен 23 ноября 2026\./);
   });
@@ -493,7 +493,7 @@ describe("v192 · экран (ui/concept-more.jsx, ui/concept-foot.jsx, ui/conce
     expect(need).toContain("Прочитала раздел?");
     expect(need).toMatch(/data-lens-btn="main" data-cn-read=""[^>]*>Ознакомлена</);
     expect(need).toContain('data-cn-print=""');
-    const ok = R(h(AckCard, { T, c, ack: { has: true, need: false, at: "2026-11-23T02:00:00Z", edition: "2026-11-22T05:00:00Z" }, busy: false, onAck: () => {}, female: null, main: {} }));
+    const ok = R(h(AckCard, { T, c, ack: { has: true, need: false, at: "2026-11-23T08:00:00Z", edition: "2026-11-22T05:00:00Z" }, busy: false, onAck: () => {}, female: null, main: {} }));
     expect(ok).toContain("Ознакомлен(а) 23 ноября 2026");
     expect(ok).toContain("Редакция от 22 ноября 2026. Обновят, придёт сообщение.");
     expect(R(h(AckCard, { T, c, ack: { has: false } }))).toBe("");
@@ -510,7 +510,7 @@ describe("v192 · экран (ui/concept-more.jsx, ui/concept-foot.jsx, ui/conce
     expect(w).toContain("Или прочитай весь раздел одной страницей");
     const all = Object.fromEntries(mod.lessons.map((l) => [l.id, true]));
     expect(wrap(ctx(), all)).toContain('data-cn-footack="go"');
-    const ok = wrap(ctx({ concept: normConcept(RAW({ read: { net: "n2", venue: "v2" }, read_at: { net: "2026-11-23T01:00:00Z", venue: "2026-11-23T02:00:00Z" }, changes: null })) }));
+    const ok = wrap(ctx({ concept: normConcept(RAW({ read: { net: "n2", venue: "v2" }, read_at: { net: "2026-11-23T07:00:00Z", venue: "2026-11-23T08:00:00Z" }, changes: null })) }));
     expect(ok).toContain('data-cn-foot="ok"');
     expect(ok).toContain("23 ноября 2026");
     expect(R(h(ConceptFoot, { mod, completed: {} }))).toBe("");

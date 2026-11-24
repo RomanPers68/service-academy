@@ -47,7 +47,7 @@ describe("v58: трек по должности (неудобство 3)", () =>
   });
   it("главная: «по должности · сменить» под ролью; «сменить» ведёт к списку треков", () => {
     const rs = rd("ui/screens-roleselect.jsx");
-    expect(rs).toMatch(/nowCard = null, nowOn = null, firstDay = false, roleAuto = false(, tracksOpen = false)?(, lateRow = null)?(, look = "now")? \}\) \{/);   // v99: lateRow — «Опаздываю?»
+    expect(rs).toMatch(/nowCard = null, nowOn = null, firstDay = false, roleAuto = false(, tracksOpen = false)?(, lateRow = null)?(, look = "now")?(, nowRows = null, nowFoot = null)? \}\) \{/);   // v193: строки и блюдо в перерыв у карточки «сейчас»   // v99: lateRow — «Опаздываю?»
     expect(rs).toContain('по должности · <button type="button" data-role-change="" onClick={toTracks}');
     expect(rs).toMatch(/<(div|button type="button") ref=\{refTracks\} data-tracks-title=""/);
     expect(rs).toContain('<div ref={refTracks} data-home2-title="" data-tracks-title=""');
@@ -204,7 +204,7 @@ describe("v58: надписи «для разработчика» — по-че�
     expect(rd("ui/screens-admin.jsx")).toContain('import { serverMissing, serverError } from "../lib/server-text";');
     expect(rd("ui/report.jsx")).toContain("const problem = (st) => st === \"missing\" ? serverMissing({ what: \"отчёты\", many: true, admin: !!(profile && profile.is_admin), sql: \"supabase-stage23-reports.sql\" })");
     // v137 (Доп. 450): + focus (окно открыто из «Я» → «Уведомления на телефон») — последним
-    expect(rd("ui/day-cards.jsx")).toContain('export function RemindSheet({ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null }) {');
+    expect(rd("ui/day-cards.jsx")).toMatch(/export function RemindSheet\(\{ a11y, uk = "", lead = false, admin = false, shift = "", step = "", onClose, onChange, focus = null(, rhythm = null, onRhythm = null, dishNames = \[\])? \}\) \{/);   // v193: + ритм блюд
     expect(rd("App.jsx")).toContain("<RemindSheet a11y={a11y} uk={ukP} lead={isLead} admin={!!profile?.is_admin}");
   });
 });

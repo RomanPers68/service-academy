@@ -609,7 +609,7 @@ describe("v137: экраны", () => {
     expect(a).toContain('else if (g === "remind") setRemindOpen("push");');
     expect(a).toContain("if (readPushFlag(uk)) pushUnsubscribe({ uk, token: saToken() }).catch(() => {}); } catch (e) {}");
     expect(a).toContain('focus={layerData(layers, "remind") === "push" ? "push" : null}');
-    expect((a.match(/goTick\]\);/g) || []).length).toBe(3);
+    expect((a.match(/goTick(, menuLinkReady)?\]\);/g) || []).length).toBe(3);   // v193: ссылка «Разминка» ждёт блюд (menuLinkReady)
   });
   it("«Сервер»: этап 48, функция push-send, телефоны, доставка и ошибка", () => {
     // v139 (Доп. 454): после 48 — этап 49 («О нас»)

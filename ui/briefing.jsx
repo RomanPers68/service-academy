@@ -95,7 +95,15 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal, goSold = nul
         </div> : null}
       </div>))}</div>);
   if (k === "focus") return (
-    <div>{b.map((f, i) => (
+    <div>{b.map((f, i) => f.kind === "dish" ? (
+      /* v193 (Доп. 518): блюдо «В фокус смены» из «Как команда знает меню» */
+      <div key={i} data-brief-dish={f.id} style={{ marginBottom: big ? 18 : 10 }}>
+        <div style={row}>Блюдо «{f.q}»</div>
+        {f.right ? <div style={{ fontSize: small + 1, color: c.text, marginTop: 4 }}><span style={{ color: c.gold }}>Состав:</span> {f.right}</div> : null}
+        {f.why ? <div style={{ fontSize: small, color: c.sub, marginTop: 3, lineHeight: 1.45 }}>{f.why}</div> : null}
+        <div style={{ fontSize: small - 1, color: c.sub, marginTop: 3 }}>Меню{f.note ? " · " + f.note : ""}</div>
+      </div>
+    ) : (
       <div key={i} style={{ marginBottom: big ? 18 : 10 }}>
         <div style={row}>«{f.q}»</div>
         <div style={{ fontSize: small + 1, color: c.text, marginTop: 4 }}><span style={{ color: c.gold }}>Верно:</span> {f.right}</div>
@@ -198,6 +206,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
   const [go, setGo] = React.useState([]);
   const [goPrev, setGoPrev] = React.useState(null);
   const [goRes, setGoRes] = React.useState({});
+  const [dishFocus, setDishFocus] = React.useState([]);   // v193 (Доп. 518): блюда «В фокус смены» (этап 59)
   const todayYmd = React.useMemo(() => { const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }, []);
   const restaurant = (profile && profile.restaurant) || "";
   const resOf = (r) => ({ day: r.day, go: r.go, sold: r.sold || {}, saved: !!r.saved, at: r.at || null, by: r.by || null });
@@ -221,6 +230,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
     rpc("thanks_team", { p_token: tok }).then((r) => put("guests")(r && r.ok ? r : false)).catch(() => put("guests")(false));
     // v85: брони на сегодня с доски рассадки (этап 35)
     rpc("seat_board", { p_token: tok }).then((r) => put("seat")(r && r.ok ? r : false)).catch(() => put("seat")(false));
+    // v193: просьбы руководителя из «Как команда знает меню»; нет этапа 59 — блюд в фокусе нет
+    rpc("menu_focus_get", { p_token: tok }).then((r) => { if (alive && r && r.ok && Array.isArray(r.focus)) setDishFocus(r.focus.filter((f) => f && f.kind === "brief")); }).catch(() => {});
     // уже отправленный сегодня: «Своё» и выключатели — как в нём, чтобы правка начиналась с отправленного
     rpc("brief_today", { p_token: tok }).then((r) => {
       if (!alive || !r || !r.ok || !r.brief || !r.brief.data) return;
@@ -261,8 +272,8 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
   }, [focus, goRes, loading]);
   const author = profile ? (profile.name + (profile.surname ? " " + profile.surname : "")).trim() : "";
   const base = React.useMemo(() => buildBrief({ menu: src.menu || [], hard: src.hard || [], programs: withConceptPrograms(programAll(), conceptFromStorage()), sched: src.sched, league: src.league,
-    caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, seat: src.seat || null, restaurant, author, note, go }),
-    [src, restaurant, author, note, go, contentVer]);   // eslint-disable-line react-hooks/exhaustive-deps
+    caseTop: src.cases ? src.cases.top : null, guests: src.guests || null, seat: src.seat || null, restaurant, author, note, go, dishFocus }),
+    [src, restaurant, author, note, go, contentVer, dishFocus]);   // eslint-disable-line react-hooks/exhaustive-deps
   const brief = { ...base, on: { ...base.on, ...on, note: on.note !== undefined ? on.note : !!note.trim() } };
   const toggle = (k) => { vibrate("light"); setOn((o) => ({ ...o, [k]: !(o[k] !== undefined ? o[k] : brief.on[k]) })); };
   const count = BRIEF_ORDER.filter((k) => briefShown(brief, k)).length;

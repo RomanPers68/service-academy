@@ -93,23 +93,27 @@ const _sendRpc = (item) =>
 
 // Прогон очереди по одному с головы. Безопасно к параллельным записям во время await.
 // v64: повторный вызов во время прогона получает тот же promise (бутстрап ждёт именно его), а не пустой.
+// v194 (Доп. 519): метка «идёт прогон» снимается после того, как поставлена. Раньше при пустой очереди прогон
+// кончался сразу, метку снимал раньше, чем её ставили, и она оставалась навсегда: после первого же такого вызова
+// (при старте приложения очередь обычно пуста) очередь в этот запуск больше не уходила — ни по сети, ни раз в минуту,
+// ни после удачной записи, только при следующем запуске.
 let _flushing = null;
+const _flushRun = async () => {
+  while (true) {
+    const q = _loadQueue();
+    if (!q.length) break;
+    const item = q[0];
+    if (Date.now() - (item.ts || 0) > 7 * 24 * 3600 * 1000) { _saveQueue(q.slice(1)); continue; } // старше 7 дней
+    const res = await _sendRpc(item);
+    if (res === "retry") break;            // нет сети — оставляем всё на потом
+    _saveQueue(_loadQueue().slice(1));      // ok/drop — убираем обработанный (перечитываем на случай новых)
+  }
+};
 export const flushQueue = () => {
   if (_flushing) return _flushing;
-  _flushing = (async () => {
-    try {
-      while (true) {
-        const q = _loadQueue();
-        if (!q.length) break;
-        const item = q[0];
-        if (Date.now() - (item.ts || 0) > 7 * 24 * 3600 * 1000) { _saveQueue(q.slice(1)); continue; } // старше 7 дней
-        const res = await _sendRpc(item);
-        if (res === "retry") break;            // нет сети — оставляем всё на потом
-        _saveQueue(_loadQueue().slice(1));      // ok/drop — убираем обработанный (перечитываем на случай новых)
-      }
-    } finally { _flushing = null; }
-  })();
-  return _flushing;
+  const p = _flushRun().finally(() => { if (_flushing === p) _flushing = null; });   // finally — всегда позже присваивания
+  _flushing = p;
+  return p;
 };
 
 // Запись с гарантией доставки: пробуем сразу, при сбое — в очередь. v126: отвечает, чем кончилось: "ok", "retry" (нет
@@ -120,6 +124,28 @@ export const rpcSync = (fn, params) =>
     else if (res === "ok") { flushQueue(); }
     return res;
   });
+
+// v194 (Доп. 519): записи, где следующая дописывается к предыдущей, — строго по очереди. Следующая уходит, только
+// когда предыдущая записана; нет сети — эта и все следующие встают в офлайн-очередь в том же порядке (очередь шлёт
+// по одному); сервер отверг — следующие не шлём: им не к чему пристроиться. Раньше ответ в тесте (log_quiz_answer) и
+// «что выбрал» (log_quiz_pick) уходили разом, и «что выбрал» мог прийти первым и лечь в прошлую попытку: у ошибки
+// в «Аналитике → Люди» стоял верный ответ. calls — [[fn, params], …]; ответ — как у rpcSync, по последнему шагу.
+export const rpcSyncSeq = (calls) => {
+  const list = (calls || []).filter((c) => Array.isArray(c) && c[0]);
+  const step = (i) => {
+    if (i >= list.length) return Promise.resolve("ok");
+    return _sendRpc({ fn: list[i][0], params: list[i][1] }).then((res) => {
+      if (res === "retry") {
+        const q = _loadQueue(), ts = Date.now();
+        list.slice(i).forEach(([fn, params]) => q.push({ fn, params, ts }));
+        _saveQueue(q);
+        return "retry";
+      }
+      return res === "ok" ? step(i + 1) : res;
+    });
+  };
+  return step(0).then((res) => { if (res === "ok" && list.length) flushQueue(); return res; });
+};
 
 export const supabase = {
   from: (table) => ({

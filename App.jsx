@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
-import { rpc, saToken, rpcSync, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом
+import { rpc, saToken, rpcSync, rpcSyncSeq, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом; v194: rpcSyncSeq
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
 import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread, conceptHas, conceptAck } from "./lib/concept";   // v139 (Доп. 454): «О нас»
@@ -2334,11 +2334,14 @@ function ServiceAcademy() {
     const isCorrect = idx === q.correct;
     // v144 (Доп. 465): тест темы «для ознакомления» — самопроверка: ответы не уходят в аналитику и отчёт, ошибки — не в «Работу над ошибками»
     const selfCheck = infoIdsRef.current.has(activeLesson.id);
-    // Аналитика вопросов (stage 7): очередь тихо отбросит вызов, если RPC ещё не создан
-    if (!selfCheck) try { rpcSync("log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }); } catch(e) {}
-    // Этап 15: что выбрал и что было верно — для «Аналитика → Люди». Идёт следом в той же
-    // очереди и дописывается к записи выше; без этапа 15 тихо отклоняется, запись выше цела.
-    if (!selfCheck) try { rpcSync("log_quiz_pick", { p_token: saToken(), p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_answer: String((q.options || [])[idx] ?? "").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? "").slice(0, 300) }); } catch(e) {}
+    // Аналитика вопросов (stage 7): очередь тихо отбросит вызов, если RPC ещё не создан.
+    // Этап 15: что выбрал и что было верно — для «Аналитика → Люди»; дописывается к записи ответа, без этапа 15
+    // тихо отклоняется, запись ответа цела. v194 (Доп. 519): строго после неё (rpcSyncSeq). Раньше оба вызова уходили
+    // разом, «что выбрал» иногда приходил первым и ложился в прошлую попытку того же вопроса: у ошибки — верный ответ.
+    if (!selfCheck) try { rpcSyncSeq([
+      ["log_quiz_answer", { p_token: saToken(), p_role: role, p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_correct: isCorrect }],
+      ["log_quiz_pick", { p_token: saToken(), p_lesson: activeLesson.id, p_question: (q.q || "").slice(0, 300), p_answer: String((q.options || [])[idx] ?? "").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? "").slice(0, 300) }],
+    ]).catch(() => {}); } catch(e) {}
     const newMistakes = quizState.mistakes + (isCorrect ? 0 : 1);
     const answers = [...quizState.answers, { idx, isCorrect }];
     const done = quizState.step + 1 >= activeLesson.questions.length;

@@ -160,8 +160,9 @@ describe("v144 (Доп. 465): тема для ознакомления не сч
   });
   it("App: самопроверка — ответы не в аналитику, ошибки не в «Работу над ошибками», балл не в рейтинг; отметка «пройдено» остаётся", () => {
     expect(app).toContain("const selfCheck = infoIdsRef.current.has(activeLesson.id);");
-    expect(app).toContain('if (!selfCheck) try { rpcSync("log_quiz_answer",');
-    expect(app).toContain('if (!selfCheck) try { rpcSync("log_quiz_pick",');
+    // v194 (Доп. 519): ответ и «что выбрал» — одной цепочкой по очереди, тоже только не в самопроверке
+    expect(app).toContain('if (!selfCheck) try { rpcSyncSeq([\n      ["log_quiz_answer",');
+    expect(app).toContain('\n      ["log_quiz_pick",');
     expect(app).toContain('else if (selfCheck) vibrate("error");');
     expect(app).toContain("try { if (profile && !selfCheck) {");
     expect(app).toContain('if (activeLesson.type === "quiz" && profile && selfCheck && !quizDone[activeLesson.id]) {');

@@ -136,8 +136,11 @@ export function ExitTrack({ answered = 0, total = 0, a11y }) {
   );
 }
 
-// Стеклянная плашка ошибки: вопрос, что выбрал, что верно — как в ачивке
-export function MissPlate({ q, picked, right, times, a11y }) {
+// Стеклянная плашка ошибки: вопрос, что выбрал, что верно — как в ачивке.
+// v194 (Доп. 519): «Выбрал» совпадает с «Верно» — это текст другой, верной попытки (до v194 он мог лечь в запись ошибки,
+// этап 60 чинит базу): такое «Выбрал» не показываем, остаётся вопрос и верный ответ.
+export function MissPlate({ q, picked: picked0, right, times, a11y }) {
+  const picked = picked0 && String(picked0).trim() !== String(right || "").trim() ? picked0 : null;
   const T = tones(a11y);
   const text = a11y ? "#2A2113" : "#EFE4C8", muted = a11y ? "#5E4E30" : "#BFAE8A";
   const tag = (t, c) => <span style={{ ...labelStyle(13), color: c, marginRight: 6 }}>{t}</span>;   // v73 (Доп. 386): бирка курсивом, не моноширинным капсом

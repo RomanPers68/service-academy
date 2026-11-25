@@ -52,7 +52,7 @@ describe("v176 · версия и журнал", () => {
 describe("v176 · новые ролики", () => {
   it("длительности новых роликов — в данных", () => {
     expect(Object.fromEntries(IDS.map((id) => [INTRO_VIDEOS[id].role, INTRO_VIDEOS[id].dur])))
-      .toEqual({ spg: 55, seasonal: 48, core: 50, manager: 53, service_manager: 55, bar: 49 });
+      .toEqual({ spg: 55, seasonal: 48, core: 50, manager: 53, service_manager: 52, bar: 49 });   // v194: новый ролик сервис-менеджера — 52 с (был 55)
   });
   it("«Начнём!» — за 1–2,5 с до конца ролика: после него пауза, ролик не обрывается на слове", () => {
     for (const id of IDS) {
@@ -67,10 +67,10 @@ describe("v176 · новые ролики", () => {
     const old = {   // v175
       "spg-0-1": [1.05, 2.12, 4.82, 9.09, 11.99, 17.99, 20.64, 22.13, 24.06, 26.61, 30.8, 36.21, 38.6, 45.62, 46.93, 50.03],
       "bar0-1": [1.05, 1.94, 4.44, 6.25, 11.07, 18.01, 19.75, 23.53, 27.75, 31.72, 39, 42.94],
-      "sm0-1": [1.04, 1.97, 5.02, 6.9, 9.13, 12.82, 18.94, 22.86, 27.04, 30.9, 33.01, 36.6, 39.32, 41.73, 44.55],
+      // v194 (Доп. 519): ролик сервис-менеджера заменён целиком (темп быстрее) — его начала фраз сверяет v194.test.js
     };
     for (const [id, c] of Object.entries(old)) expect(INTRO_VIDEOS[id].cues.slice(0, c.length), id).toEqual(c);
-    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([48.33, 51.13, 53.23]);   // «Ты в отпуске…», «Значит…», «Начнём!»
+    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([45.62, 48.22, 50.54]);   // «Ты в отпуске…», «Значит…», «Начнём!» (v194)
   });
   it("реплика сервис-менеджера: «а всё работает как часы» — в титрах и сценарии", () => {
     const ch = rd("tools/video/chunks/service_manager_chunks.txt");
@@ -221,7 +221,7 @@ describe("v176 · обложка в уроке — как в v174", () => {
     expect(html).toMatch(/data-intro-play="" style="[^"]*"><svg[^>]*data-play-ic=""/);
     expect(html).toMatch(/text-transform:uppercase;color:#E8C983;opacity:0\.92">Видео-знакомство</);
     expect(html).toMatch(/font-weight:bold;line-height:1\.2;color:#F4E9CF;margin-top:2px;text-shadow:0 1px 6px rgba\(0,0,0,0\.55\)">С чего начинается роль</);
-    expect(html).toMatch(/data-intro-dur="" style="[^"]*align-self:flex-end[^"]*">0:55</);
+    expect(html).toMatch(/data-intro-dur="" style="[^"]*align-self:flex-end[^"]*">0:52</);   // v194: новый ролик — 52 с
     expect(html).toContain("height:52%");
   });
 });

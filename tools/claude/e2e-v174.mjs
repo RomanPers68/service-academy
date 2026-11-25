@@ -49,8 +49,8 @@ let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { if (cond) { pass++; console.log("✓ " + name); } else { fail++; console.log("✗ " + name + (extra ? " — " + String(typeof extra === "string" ? extra : JSON.stringify(extra)).slice(0, 600) : "")); } };
 const browser = await chromium.launch({ args: ["--autoplay-policy=user-gesture-required"] });
 
-// v176 (Доп. 501): ролики пересняты — длительности новые
-const FIRST = { spg: ["spg-0-1", "0:55"], seasonal: ["s0-1", "0:48"], core: ["c0-1", "0:50"], manager: ["m0-1", "0:53"], service_manager: ["sm0-1", "0:55"], bar: ["bar0-1", "0:49"] };
+// v176 (Доп. 501): ролики пересняты — длительности новые; v194 (Доп. 519): новый ролик сервис-менеджера — 0:52
+const FIRST = { spg: ["spg-0-1", "0:55"], seasonal: ["s0-1", "0:48"], core: ["c0-1", "0:50"], manager: ["m0-1", "0:53"], service_manager: ["sm0-1", "0:52"], bar: ["bar0-1", "0:49"] };
 
 const boot = async (page, errs, cards = true) => {
   await page.waitForFunction(() => !document.getElementById("sa-splash"), null, { timeout: 25000 }).catch(() => errs.push("заставка не ушла"));

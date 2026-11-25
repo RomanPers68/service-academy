@@ -430,7 +430,7 @@ await run(["SHOTS"], async () => {
   await lesson(page, "sm0-1", 300);
   await waitState(page, "playing");
   await clean();
-  await seek(page, 49.7); await page.waitForTimeout(500);
+  await seek(page, 46.85); await page.waitForTimeout(500);   // «а всё работает как часы»; v194: новый ролик — 52 с, реплика раньше (было 49.7)
   await page.screenshot({ path: OUT + "/owner-1-start.png" });
   await waitUi(page, "off", 5000); await page.waitForTimeout(500);
   await page.screenshot({ path: OUT + "/owner-2-hidden.png" });

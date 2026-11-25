@@ -14,7 +14,7 @@ import { hintsFor } from "../data/hints";
 import React from "react";
 import { CANDIDATE_QUESTIONS } from "../data/candidate-questions";
 import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
-import { shuffleArray, vibrate, onActivate } from "../lib/utils";
+import { shuffleArray, vibrate, onActivate, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
 import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
@@ -85,8 +85,9 @@ function customPool(customLessons, testRole) {
   const out = [];
   (customLessons || []).forEach(c => {
     if (!testRole.customRoles.includes(c.role)) return;
-    (Array.isArray(c.questions) ? c.questions : []).forEach(q => {
-      if (q && q.q && Array.isArray(q.options) && typeof q.correct === "number")
+    (Array.isArray(c.questions) ? c.questions : []).forEach(q0 => {
+      const q = q0 && !q0.kind ? cleanQuizQ(q0) : null;   // v195 (Доп. 520): разные варианты, номер верного — числом
+      if (q)
         out.push({ scene: null, text: q.q, options: q.options, correct: q.correct,
           topic: "Свой раздел: " + ((c.module || c.title || "Регламент ресторана").trim() || "Регламент ресторана") });
     });

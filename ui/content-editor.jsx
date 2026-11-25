@@ -36,7 +36,7 @@ import { answerTell } from "../lib/answer-tell";   // v37: верный угад
 import { LiveDialogue, dlgWalkText, dlgGram } from "./screens-dialogue";   // v40: проба диалога — тот же экран
 import { practiceRound } from "../lib/practice-round";
 import { tfLabel } from "../lib/practice-mistake";
-import { vibrate } from "../lib/utils";
+import { vibrate, hasDupOptions } from "../lib/utils";   // v195: hasDupOptions — проверка вариантов
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
 import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
@@ -132,6 +132,7 @@ export function sitProblem(x) {
   }
   if ((x.options || []).filter(o => t(o)).length < 2) return "нужно хотя бы два варианта.";
   if (!t((x.options || [])[x.correct])) return "отметь верный вариант.";
+  if (hasDupOptions(x.options)) return "варианты повторяются: оставь один, вместо второго напиши другой.";   // v195 (Доп. 520)
   return null;
 }
 // Свёрнутая карточка и списки: главное поле вида и верный ответ
@@ -267,6 +268,7 @@ export function dlgProblem(dl) {
       if (!(st.prompt || "").trim()) return `Живой диалог, шаг ${i + 1}: нужен вопрос.`;
       if (filled.length < 2) return `Живой диалог, шаг ${i + 1}: нужно хотя бы два ответа.`;
       if (!st.options.some(o => o.correct && (o.text || "").trim())) return `Живой диалог, шаг ${i + 1}: отметь верный ответ.`;
+      if (hasDupOptions(st.options.map(o => o.text))) return `Живой диалог, шаг ${i + 1}: ответы повторяются.`;   // v195 (Доп. 520)
     }
   }
   return null;
@@ -541,6 +543,7 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         if (!(st.q || "").trim()) return `Сборка, шаг ${i + 1}: нужен вопрос.`;
         if (st.options.filter(o => (o.t || "").trim()).length < 2) return `Сборка, шаг ${i + 1}: нужно хотя бы два варианта.`;
         if (!st.options.some(o => o.ok && (o.t || "").trim())) return `Сборка, шаг ${i + 1}: отметь верный вариант.`;
+        if (hasDupOptions(st.options.map(o => o.t))) return `Сборка, шаг ${i + 1}: варианты повторяются.`;   // v195 (Доп. 520)
       }
     }
     if (draft.dialogue) { const dp = dlgProblem(draft.dialogue); if (dp) return dp; }
@@ -549,6 +552,8 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
       if (!(q.q || "").trim()) return `Вопрос ${i + 1}: нужен текст вопроса.`;
       if (opts.length < 2) return `Вопрос ${i + 1}: нужно хотя бы два варианта ответа.`;
       if (!(q.options[q.correct] || "").trim()) return `Вопрос ${i + 1}: отметь верный ответ.`;
+      // v195 (Доп. 520): два одинаковых варианта — выбор «того же» текста засчитался бы ошибкой
+      if (hasDupOptions(q.options)) return `Вопрос ${i + 1}: варианты повторяются. Оставь один, а вместо второго напиши другой.`;
     }
     return null;
   };

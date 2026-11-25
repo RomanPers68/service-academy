@@ -8,7 +8,7 @@ import { groupByCat, dishMatches, normCat } from "../lib/menu-sections";
 import { dishFaq, cocktailLinks, bumpDaily, allergenLabel } from "../lib/deck-extras";
 import { emitActivity } from "../lib/activity";
 import { report as reportAch } from "../lib/achievements";
-import { suggestAllergens } from "../lib/menu-sections";
+import { safeAbsentAllergens } from "../lib/menu-sections";   // v195 (Доп. 520): вместо suggestAllergens — «нет» только где точно
 import { dishShareItem } from "../lib/share-items";   // v97: «Поделиться в чат»
 import { CHAT_SHARE_IC } from "./share-chat";
 import { dishNutrition } from "../lib/nutrition";
@@ -277,7 +277,9 @@ export function MenuDeck({ T, a11y, gold = GOLD, green, red, dishes, restaurant,
 const ALL_AL = ["Глютен", "Рыба", "Моллюски и ракообразные", "Яйца", "Молоко", "Орехи", "Соя", "Кунжут"];
 export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = "#E07878", dishes, restaurant, uk, Head, DishPhoto, glass, onExit }) {
   const text = T.modTitle.color, sub = T.modSub.color;
-  const pool = React.useMemo(() => (dishes || []).filter(d => d && d.name && (d.allergens || []).length >= 0), [dishes]);
+  // v195 (Доп. 520): только блюда, о которых можно спросить честно: отмечен аллерген («есть») или точно известно «нет».
+  // Раньше и пустые карточки: «Есть ли глютен в пицце?» без состава ждало «нет» — верное «есть» засчитывалось ошибкой.
+  const pool = React.useMemo(() => (dishes || []).filter(d => d && d.name && ((d.allergens || []).length || safeAbsentAllergens(d, ALL_AL).length)), [dishes]);
   const bestKey = "sa_al_sprint_best" + (uk || "") + "_" + (restaurant || "");
   const [best, setBest] = React.useState(() => { try { return Number(localStorage.getItem(bestKey) || 0); } catch (e) { return 0; } });
   const [phase, setPhase] = React.useState("intro"); // intro | play | done
@@ -295,11 +297,13 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
     const d = cands[Math.floor(Math.random() * cands.length)] || pool[Math.floor(Math.random() * pool.length)];
     if (!d) return;
     const als = d.allergens || [];
-    // Доп. 215: «нет» спрашиваем только там, где это железно: не отмечено И состав не подсказывает обратного
-    const hinted = new Set(suggestAllergens(d.ingredients || [], []).map(h => h.allergen));
-    const safeAbsent = ALL_AL.filter(a => !als.includes(a) && !hinted.has(a));
-    const askHas = als.length && (Math.random() < 0.5 || !safeAbsent.length);
-    const al = askHas ? als[Math.floor(Math.random() * als.length)] : (safeAbsent[Math.floor(Math.random() * safeAbsent.length)] || als[0] || ALL_AL[0]);
+    // Доп. 215: «нет» спрашиваем только там, где это железно: не отмечено И состав не подсказывает обратного.
+    // v195 (Доп. 520): и название с описанием не подсказывают, и карточка не пустая (safeAbsentAllergens); запасного
+    // «первый аллерген списка» больше нет — у такого блюда в пуле всегда есть что спросить
+    const safeAbsent = safeAbsentAllergens(d, ALL_AL);
+    const askHas = als.length > 0 && (Math.random() < 0.5 || !safeAbsent.length);
+    const al = askHas ? als[Math.floor(Math.random() * als.length)] : safeAbsent[Math.floor(Math.random() * safeAbsent.length)];
+    if (!al) return;
     setQ({ d, al, has: als.includes(al) }); setSeen(s => [...s, d.id]);
   }, [pool, seen]);
   React.useEffect(() => { if (phase !== "play") return; const t = setInterval(() => setLeft(l => { if (l <= 1) { clearInterval(t); setPhase("done"); return 0; } return l - 1; }), 1000); return () => clearInterval(t); }, [phase]);
@@ -332,7 +336,7 @@ export function AllergenSprint({ T, a11y, gold = GOLD, green = "#5DBB8A", red = 
             <div style={{ fontFamily: "Georgia, serif", fontSize: 21, color: text, margin: "8px 0" }}>Есть или нет?</div>
             <div style={{ fontSize: 14, color: sub, lineHeight: 1.55 }}>Фото, название и один аллерген. Свайп вправо: «есть», влево: «нет». Ошибка объясняется и вернётся через две карточки. Считаем верные.</div>
             {best > 0 && <div style={{ fontSize: 12.5, color: gold, marginTop: 8 }}>Твой рекорд: {best}</div>}
-            <button className="sa-btn sa-btn-pulse" data-lens-btn="main" onClick={start} disabled={pool.length < 3} style={{ ...T.doneBtn, background: gold, marginTop: 16, width: "100%" }}>{pool.length < 3 ? "Нужно хотя бы три блюда" : "Поехали ›"}</button>
+            <button className="sa-btn sa-btn-pulse" data-lens-btn="main" onClick={start} disabled={pool.length < 3} style={{ ...T.doneBtn, background: gold, marginTop: 16, width: "100%" }}>{pool.length < 3 ? "Нужно три блюда с составом или аллергенами" : "Поехали ›"}</button>
           </div>
         )}
         {phase === "play" && q && (

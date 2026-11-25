@@ -106,7 +106,8 @@ describe("v57: звуки, вибрация, настройки", () => {
   it("звуки: ответ в тесте и в «Работе над ошибками», печать раздела, значок и ачивка", () => {
     const L = rd("ui/screens-learning.jsx");
     expect(L).toContain("              vibrate(ok ? \"light\" : \"error\");\n              sfx(ok ? \"ok\" : \"bad\");");
-    expect(L).toContain("sfx(i === q.correct ? \"ok\" : \"bad\"); };");
+    // v195 (Доп. 520): «верно» считается один раз в момент ответа (ok) и запоминается вместе с ответом
+    expect(L).toContain("const ok = i === q.correct; setPickRec({ i, ok, at: showKey }); vibrate(ok ? \"light\" : \"error\"); sfx(ok ? \"ok\" : \"bad\"); };");
     expect(rd("ui/module-menu.jsx")).toContain("React.useEffect(() => { if (stampNow) { const t = setTimeout(() => { sfx(\"done\"); vibrate(\"success\"); }, 380);");
     expect(rd("ui/mastery-card.jsx")).toContain("vibrate(\"success\"); sfx(\"done\"); };");
     expect(rd("ui/screens-gamification.jsx")).toContain("    sfx(\"done\");   // v57 (Доп. 370): тихий колокольчик");

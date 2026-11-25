@@ -13,7 +13,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
 import { S, A, ACCENT_SERIF } from "./styles";
 import { referenceDailyTask } from "./reference-daily";
@@ -40,9 +40,8 @@ function collectRoleQuestions(roleId) {
     (m && Array.isArray(m.lessons) ? m.lessons : []).forEach(l => {
       if (l && l.type === "quiz" && Array.isArray(l.questions)) {
         l.questions.forEach(q => {
-          if (q && q.q && Array.isArray(q.options) && q.options.length > 1 && typeof q.correct === "number") {
-            out.push({ q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "" });
-          }
+          const c = cleanQuizQ(q);   // v195 (Доп. 520): варианты без повторов, номер верного — числом
+          if (c) out.push({ q: c.q, options: c.options, correct: c.correct, explanation: c.explanation || "" });
         });
       }
     });
@@ -53,13 +52,24 @@ function collectRoleQuestions(roleId) {
 export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQuestions = [] }) {
   const color = roleObj?.color || GOLD;
   // вопросы своих тестов роли — в том же наборе (правка 165); набор запоминается в App
-  const pool = useMemo(() => [...collectRoleQuestions(roleId), ...(extraQuestions || [])], [roleId, extraQuestions]);
-  const [attempt, setAttempt] = React.useState(0);
-  const questions = useMemo(() => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)).map(shuffleQuizOptions), [pool, attempt]);
+  // v195 (Доп. 520): свои вопросы — тоже только целые: вопрос, разные варианты, верный (как штатные)
+  const pool = useMemo(() => [...collectRoleQuestions(roleId), ...(extraQuestions || []).map(cleanQuizQ).filter(Boolean)
+    .map((q) => ({ q: q.q, options: q.options, correct: q.correct, explanation: q.explanation || "" }))], [roleId, extraQuestions]);
+  const draw = () => shuffleArray([...pool]).slice(0, Math.min(EXAM_COUNT, pool.length)).map(shuffleQuizOptions);
+  // v195 (Доп. 520): набор вопросов попытки не меняется, пока она идёт. Раньше свои тесты, догрузившиеся после открытия
+  // экзамена, пересобирали вопросы посреди попытки: на экране менялся вопрос под уже выбранным ответом, и верный ответ
+  // мог подсветиться ошибкой. Новый набор — только до первого ответа и на пересдаче.
+  const [questions, setQuestions] = React.useState(draw);
   const [step, setStep] = React.useState(0);
   const [picked, setPicked] = React.useState(null);
   const [correctCount, setCorrectCount] = React.useState(0);
   const [phase, setPhase] = React.useState("quiz");
+  const poolRef = React.useRef(pool);
+  React.useEffect(() => {
+    if (poolRef.current === pool) return;
+    poolRef.current = pool;
+    if (phase === "quiz" && step === 0 && picked === null) setQuestions(draw());
+  }, [pool]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!questions.length) {
     return (
@@ -118,7 +128,7 @@ export function ExamScreen({ T, a11y, roleObj, roleId, onFinish, onExit, extraQu
             {passed
               ? <button onClick={onExit} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>К сертификату</button>
               : <>
-                  <button onClick={() => { setAttempt(a => a + 1); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Пересдать</button>
+                  <button onClick={() => { setQuestions(draw()); setStep(0); setPicked(null); setCorrectCount(0); setPhase("quiz"); }} className="sa-btn" style={{ padding:"14px", borderRadius:14, border:"none", background:color, color:"#1A1008", fontWeight:"bold", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Пересдать</button>
                   <button onClick={onExit} style={{ padding:"12px", borderRadius:14, border:`1px solid ${color}55`, background:"transparent", color: T.para?.color || "#C8B898", fontFamily:"Georgia, serif", fontSize:14, cursor:"pointer" }}>Позже</button>
                 </>
             }

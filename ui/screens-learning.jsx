@@ -13,7 +13,7 @@ import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam } from "../lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleQuizOptions, encodeStartParam, decodeStartParam, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки ответов
 import { MM, Mm, ROLE_SVG, UI_SVG, POS_SVG, MOD_SVG, MARKER_RE, GAME_SVG, NAV_ICONS } from "./icons";
@@ -120,7 +120,9 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
   const mkRefQ = React.useRef(null);
   const mkRefStage = React.useRef(null);
   const [idx, setIdx] = React.useState(0);
-  const [pick, setPick] = React.useState(null);
+  // v195 (Доп. 520): ответ помнит, к какому показу вопроса он дан, и верен ли он — на момент нажатия ({ i, ok, at })
+  const [pickRec, setPickRec] = React.useState(null);
+  const [shown, setShown] = React.useState(0);   // номер показа: новый показ — новый порядок вариантов
   // Интервальное повторение: показываем только вопросы, у которых подошёл срок (due <= сейчас)
   const [nowTs] = React.useState(() => Date.now());
   const bank = React.useMemo(() => mistakeBank.filter(m => !m.due || m.due <= nowTs), [mistakeBank, nowTs]);
@@ -133,7 +135,14 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
 
   // Перемешиваем варианты при каждом показе — чтобы не запоминалась позиция ответа.
   // Хук стоит до условных return (правила хуков); на пустом банке вернёт undefined — ниже не используется.
-  const q = React.useMemo(() => shuffleQuizOptions(bank[Math.min(idx, bank.length - 1)]), [bank, idx]);
+  // v195 (Доп. 520): порядок — на показ вопроса, а не на каждый новый список банка. Раньше банк менялся сам (ответ из
+  // Telegram приходит через 8 с после входа по кнопке «Разобрать ошибку»), варианты перемешивались под уже выбранным
+  // ответом, и «Верно, убрать» сверялось с новым порядком: верный ответ мог уйти ошибкой. Варианты — чистые (cleanQuizQ).
+  const base0 = bank[Math.min(idx, bank.length - 1)];
+  const base = (base0 && cleanQuizQ(base0)) || base0;
+  const showKey = base ? JSON.stringify([base.q, base.options, base.correct, shown]) : "";
+  const q = React.useMemo(() => shuffleQuizOptions(base), [showKey]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const pick = pickRec && pickRec.at === showKey ? pickRec.i : null;   // ответ к другому показу — не этот
 
   const Head = (<div style={T.lessHead}><button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={onBack}>‹</button><div style={T.lessHeadTitle}>Работа над ошибками</div></div>);
 
@@ -172,13 +181,15 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     );
   }
 
-  const answer = (i) => { if (pick !== null) return; setPick(i); vibrate(i === q.correct ? "light" : "error"); sfx(i === q.correct ? "ok" : "bad"); };   // v57: и звук
+  const answer = (i) => { if (pick !== null) return; const ok = i === q.correct; setPickRec({ i, ok, at: showKey }); vibrate(ok ? "light" : "error"); sfx(ok ? "ok" : "bad"); };   // v57: и звук
   const next = () => {
-    const wasCorrect = pick === q.correct;
-    setPick(null);
+    if (pick === null) return;
+    const wasCorrect = pickRec.ok;   // v195: как засчитано в момент ответа, а не по нынешнему порядку вариантов
+    setPickRec(null); setShown((n) => n + 1);
     if (wasCorrect) onResolve(q.q);
     else { if (onFail) onFail(q.q); setIdx(i => (i + 1) % bank.length); }
   };
+  const pickOk = pick !== null && pickRec.ok;
 
   return (
     <div style={T.screen}>
@@ -215,7 +226,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
           return <div key={i} className="sa-opt" data-lens-opt={pick === null ? "" : i === q.correct ? "ok" : i === pick ? "bad" : ""} style={st} onClick={() => answer(i)} {...onActivate(() => answer(i))}>{opt}</div>;
         })}
         {pick !== null && q.explanation && <div style={{ ...T.note, fontStyle: "normal", borderLeft: `2px solid ${gold}`, paddingLeft: 10, marginTop: 12 }}>{q.explanation}</div>}
-        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pick === q.correct ? "Верно, убрать ✓" : "Дальше →"}</button>}
+        {pick !== null && <button className="sa-btn" style={{ ...T.doneBtn, background: gold, width: "100%", marginTop: 12 }} onClick={next}>{pickOk ? "Верно, убрать ✓" : "Дальше →"}</button>}
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ import { peekFor } from "../lib/peek";
 import { checkSaid } from "../lib/say-check";
 import { iconForSituation } from "../lib/situation-icons";
 import { sfx, sfxOn, setSfx } from "../lib/sfx";
-import { vibrate, shuffleSituationOptions, shuffleQuizOptions, isFemaleName } from "../lib/utils";
+import { vibrate, shuffleSituationOptions, shuffleQuizOptions, isFemaleName, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { DishCard } from "./dish-step";   // v193 (Доп. 518): блюда в разминке до смены
 import { pickForLesson, practicePool, tablePool } from "../lib/table-pick";
 import { practiceRound, sitKey } from "../lib/practice-round";
@@ -711,7 +711,8 @@ export function TableCheck({ mode = "check", lesson = null, mod = null, situatio
     const base = listMode ? (situations || []).slice(0, bankItem ? Math.max(1, cap - 1) : cap) : checkSituations(lesson, mod);
     const out = base.map((s) => ({ kind: "sit", sit: shuffleSituationOptions(s) }));
     if (warm && out.length && Array.isArray(dishes)) dishes.filter((d) => d && d.id != null && d.name).slice(0, 3).forEach((d) => out.push({ kind: "dish", item: d }));
-    if (out.length && bankItem) out.push({ kind: "bank", orig: bankItem, q: shuffleQuizOptions(bankItem) });
+    // v195 (Доп. 520): варианты повтора — чистые (без повторов, номер верного числом), как в «Работе над ошибками»
+    if (out.length && bankItem) out.push({ kind: "bank", orig: bankItem, q: shuffleQuizOptions(cleanQuizQ(bankItem) || bankItem) });
     return out;
   }, [keyId]);   // eslint-disable-line react-hooks/exhaustive-deps
   const n = steps.length;

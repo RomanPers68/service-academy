@@ -62,7 +62,7 @@ import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   
 import { loadDialogues } from "./data/dialogues-lazy";
 import { ROLES, RESTAURANTS } from "./data/roles";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
-import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName, isTelegram, clickScreenBack } from "./lib/utils";
+import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName, isTelegram, clickScreenBack, shuffleQuizOptions, cleanQuizQ } from "./lib/utils";   // v195: shuffleQuizOptions, cleanQuizQ
 
 // ── Ленивые экраны: код и данные подгружаются при первом открытии ──
 // (тренажёр меню, книга, SOS, наставничество, поиск, справочник,
@@ -2040,11 +2040,9 @@ function ServiceAcademy() {
     if (originalLesson.type === "quiz" && initQuestions.length > 0) {
       const SHOW = 12;
       const picked = pickRandom(initQuestions, Math.min(SHOW, initQuestions.length));
-      const withShuffled = picked.map(q => {
-        const opts = q.options.map((o, i) => ({ text: o, isCorrect: i === q.correct }));
-        const shuffledOpts = shuffleArray(opts);
-        return { ...q, options: shuffledOpts.map(o => o.text), correct: shuffledOpts.findIndex(o => o.isCorrect) };
-      });
+      // v195 (Доп. 520): чистые варианты (без повторов, номер верного числом) и общий shuffleQuizOptions — как в экзамене и
+      // повторе ошибок. Свой перебор здесь падал на вопросе без вариантов, а при номере строкой верного не находил вовсе.
+      const withShuffled = picked.map((q) => shuffleQuizOptions(cleanQuizQ(q) || q));
       initQuestions = withShuffled;
       lessonToOpen = { ...originalLesson, questions: withShuffled };
     }

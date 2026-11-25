@@ -34,7 +34,7 @@ import { RESTAURANTS } from "../data/roles";
 import { compressPhoto } from "../lib/chat-photo";
 import { CN_KINDS, CN_LIMITS, CN_META_LIMITS, CN_SECTION, CN_SUB, kindOf, blockFor, conceptUnread, blankBlock, blockPayload, blockProblem, conceptErr, cleanQuestion, normConcept, conceptPairs,
   conceptSection, conceptAck, conceptChanges, conceptHero, conceptToc } from "../lib/concept";
-import { isFemaleName } from "../lib/utils";
+import { isFemaleName, hasDupOptions } from "../lib/utils";   // v195: hasDupOptions — проверка вариантов
 import { ConceptCover, ChangesCard, DiffView, AckCard, AcksPanel, HistoryPanel, GonePanel, savePdf } from "./concept-more";   // v192 (Доп. 517)
 import { ConceptPhotos, conceptPhotoRemember } from "./concept-photo";
 import { LessonLook } from "./lesson-look";
@@ -514,6 +514,9 @@ function BlockEditor({ T, a11y, c, block, head, ghost, main, h, where, onClose }
     const nb = { ...b, body: lessonize(b.body || "") };   // v191: в базу — уже разметкой уроков
     const prob = blockProblem(nb);
     if (prob) { setErr(prob); return; }
+    // v195 (Доп. 520): два одинаковых варианта — выбор «того же» текста засчитался бы ошибкой
+    const dup = b.questions.findIndex((q) => hasDupOptions(q.options));
+    if (dup >= 0) { setErr(`Вопрос ${dup + 1}: варианты повторяются. Оставь один, а вместо второго напиши другой.`); return; }
     const bad = b.questions.filter((q) => !cleanQuestion(q)).length;
     if (bad) { setErr("Вопрос без текста, без вариантов или без верного ответа: допиши или удали его."); return; }
     if (busy || up) return;

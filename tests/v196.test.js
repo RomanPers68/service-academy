@@ -1,5 +1,6 @@
 // v196 (Доп. 521): ещё один новый ролик сервис-менеджера. Владелец (25.11): «И вот опять на замену видео😉».
-// Тот же текст, темп спокойнее: 54 с вместо 52. Новые rev, dur и начала фраз; обложка и лицо — как прежде.
+// Темп спокойнее: 54 с вместо 52. Новые rev, dur и начала фраз; обложка и лицо — как прежде. Текст ролика с v194 новый —
+// титры по нему в v197 (Доп. 522), отсюда rev и сотые в началах фраз.
 // Разметки JSX в файле нет (Доп. 482). В браузере: tools/claude/e2e-v174.mjs (обложка 0:54, ролик идёт), e2e-v176.mjs.
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -34,13 +35,13 @@ describe("v196 · ролик сервис-менеджера", () => {
   const buf = readFileSync("public" + v.src);
   it("новый файл: rev от него (не v176 и не v194), 54 с, сжат как остальные", () => {
     expect(v.rev).toBe(createHash("sha256").update(buf).digest("hex").slice(0, 8));
-    expect(["1ca5d8a5", "d92d2c7f"]).not.toContain(v.rev);
+    expect(["1ca5d8a5", "d92d2c7f", "9c528d71"]).not.toContain(v.rev);   // v197: титры по новому тексту
     expect(v.dur).toBe(54);
     expect(Math.abs(mp4Duration(buf) - v.dur)).toBeLessThan(0.6);
     expect(buf.length).toBeLessThan(3.6e6);
   });
   it("начала фраз — по его звуку: «Привет!» около секунды, «Начнём!» за 1–2,5 с до конца, 19 фраз", () => {
-    expect(v.cues).toEqual([1.05, 1.83, 5.0, 6.61, 8.6, 12.27, 18.89, 22.76, 26.89, 30.79, 33.18, 36.52, 39.01, 41.2, 43.8, 45.34, 47.75, 50.49, 52.88]);
+    expect(v.cues).toEqual([1.06, 1.84, 5.0, 6.61, 8.6, 12.27, 18.89, 22.76, 26.89, 30.79, 33.18, 36.53, 39.01, 41.2, 43.8, 45.34, 47.75, 50.49, 52.89]);   // v197: привязка по верному тексту
     const end = mp4Duration(buf) - v.cues[v.cues.length - 1];
     expect(end).toBeGreaterThan(1); expect(end).toBeLessThan(2.5);
     for (let i = 1; i < v.cues.length; i++) expect(v.cues[i] - v.cues[i - 1]).toBeGreaterThan(0.5);

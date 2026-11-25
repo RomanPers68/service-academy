@@ -70,14 +70,14 @@ describe("v176 · новые ролики", () => {
       // v194 (Доп. 519): ролик сервис-менеджера заменён целиком (темп быстрее) — его начала фраз сверяет v194.test.js
     };
     for (const [id, c] of Object.entries(old)) expect(INTRO_VIDEOS[id].cues.slice(0, c.length), id).toEqual(c);
-    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([47.75, 50.49, 52.88]);   // «Ты в отпуске…», «Значит…», «Начнём!» (v196)
+    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([47.75, 50.49, 52.89]);   // «Ты в отпуске…», «Значит…», «Начнём!» (v196, v197)
   });
   it("реплика сервис-менеджера: «а всё работает как часы» — в титрах и сценарии", () => {
     const ch = rd("tools/video/chunks/service_manager_chunks.txt");
-    expect(ch).toContain("Ты в отпуске,\nа всё работает как часы.\n!Значит, система работает.");
+    expect(ch).toContain("Ты в отпуске,\nа всё работает как часы.\n!Значит, система выстроена.");   // v197 (Доп. 522)
     expect(ch).not.toContain("рассыпалось");
     const sc = rd("tools/video/scripts.md");
-    expect(sc).toContain("Ты в отпуске, а всё работает как часы. Значит, система работает.");
+    expect(sc).toContain("Ты в отпуске, а всё работает как часы. Значит, система выстроена.");
     expect(sc).toContain("Хостес v5, Новичок v4, Ядро v6, Менеджер v4, Сервис-менеджер v6");
   });
   it("tools/video: compare.py — что поменялось после пересъёмки; как вставить пересъёмку — в README", () => {

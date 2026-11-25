@@ -89,12 +89,13 @@ describe("v194 · новый ролик сервис-менеджера", () => 
   it("rev — от нового файла (телефоны возьмут новый ролик), длительность 52 с", () => {
     expect(v.rev).toBe(createHash("sha256").update(buf).digest("hex").slice(0, 8));
     expect(v.rev).not.toBe("1ca5d8a5");   // прежний ролик
-    expect(v.dur).toBe(52);
+    expect(v.dur).toBe(54);   // v196 (Доп. 521): ролик заменён ещё раз — 54 с
     expect(Math.abs(mp4Duration(buf) - v.dur)).toBeLessThan(0.6);
     expect(buf.length).toBeLessThan(3.6e6);   // сжат, как остальные (шаг 4 tools/video/README.md)
   });
   it("начала фраз — по новому звуку: «Привет!», 19 фраз, «Начнём!» за 1–2,5 с до конца", () => {
-    expect(v.cues).toEqual([1.04, 2.0, 5.0, 6.53, 8.42, 11.91, 18.2, 21.88, 25.79, 29.5, 31.78, 34.95, 37.32, 39.39, 41.86, 43.32, 45.62, 48.22, 50.54]);
+    // v196 (Доп. 521): ролик заменён ещё раз — начала фраз по его звуку
+    expect(v.cues).toEqual([1.05, 1.83, 5.0, 6.61, 8.6, 12.27, 18.89, 22.76, 26.89, 30.79, 33.18, 36.52, 39.01, 41.2, 43.8, 45.34, 47.75, 50.49, 52.88]);
     const end = mp4Duration(buf) - v.cues[v.cues.length - 1];
     expect(end).toBeGreaterThan(1); expect(end).toBeLessThan(2.5);
   });

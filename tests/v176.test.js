@@ -52,7 +52,7 @@ describe("v176 · версия и журнал", () => {
 describe("v176 · новые ролики", () => {
   it("длительности новых роликов — в данных", () => {
     expect(Object.fromEntries(IDS.map((id) => [INTRO_VIDEOS[id].role, INTRO_VIDEOS[id].dur])))
-      .toEqual({ spg: 55, seasonal: 48, core: 50, manager: 53, service_manager: 52, bar: 49 });   // v194: новый ролик сервис-менеджера — 52 с (был 55)
+      .toEqual({ spg: 55, seasonal: 48, core: 50, manager: 53, service_manager: 54, bar: 49 });   // v194: новый ролик сервис-менеджера — 52 с (был 55); v196: ещё новее — 54 с
   });
   it("«Начнём!» — за 1–2,5 с до конца ролика: после него пауза, ролик не обрывается на слове", () => {
     for (const id of IDS) {
@@ -70,7 +70,7 @@ describe("v176 · новые ролики", () => {
       // v194 (Доп. 519): ролик сервис-менеджера заменён целиком (темп быстрее) — его начала фраз сверяет v194.test.js
     };
     for (const [id, c] of Object.entries(old)) expect(INTRO_VIDEOS[id].cues.slice(0, c.length), id).toEqual(c);
-    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([45.62, 48.22, 50.54]);   // «Ты в отпуске…», «Значит…», «Начнём!» (v194)
+    expect(INTRO_VIDEOS["sm0-1"].cues.slice(-3)).toEqual([47.75, 50.49, 52.88]);   // «Ты в отпуске…», «Значит…», «Начнём!» (v196)
   });
   it("реплика сервис-менеджера: «а всё работает как часы» — в титрах и сценарии", () => {
     const ch = rd("tools/video/chunks/service_manager_chunks.txt");
@@ -221,7 +221,7 @@ describe("v176 · обложка в уроке — как в v174", () => {
     expect(html).toMatch(/data-intro-play="" style="[^"]*"><svg[^>]*data-play-ic=""/);
     expect(html).toMatch(/text-transform:uppercase;color:#E8C983;opacity:0\.92">Видео-знакомство</);
     expect(html).toMatch(/font-weight:bold;line-height:1\.2;color:#F4E9CF;margin-top:2px;text-shadow:0 1px 6px rgba\(0,0,0,0\.55\)">С чего начинается роль</);
-    expect(html).toMatch(/data-intro-dur="" style="[^"]*align-self:flex-end[^"]*">0:52</);   // v194: новый ролик — 52 с
+    expect(html).toMatch(/data-intro-dur="" style="[^"]*align-self:flex-end[^"]*">0:54</);   // v194: новый ролик — 52 с; v196: ещё новее — 54 с
     expect(html).toContain("height:52%");
   });
 });

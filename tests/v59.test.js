@@ -181,7 +181,8 @@ describe("v59: личные ключи, обходы, словари", () => {
     expect(g).toContain("const roleNames = ROLE_LABEL, roleColors = ROLE_COLOR;");
     expect(g).not.toContain('"СПГ"');
     expect(rd("ui/screens-admin.jsx")).toContain("const POS = POS_LABELS;");
-    expect(rd("ui/screens-team.jsx")).toContain("const posLabel = positionLabel(profile?.position);");
+    // v198 (Доп. 523): в «Аккаунте» — своя должность из списка (этап 61), встроенная — из того же словаря
+    expect(rd("ui/screens-team.jsx")).toContain("const posLabel = profile ? titleOf(org, { ...profile, job_title: (org.me && org.me.title) || null }) : \"\";");
     expect(rd("ui/training-card.jsx")).toContain("const posLabel = positionLabel(profile?.position);");
   });
 });

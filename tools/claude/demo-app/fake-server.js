@@ -18,6 +18,7 @@ import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня 
 import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «Что дало обучение», как этап 43
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
+import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";   // v198: заведения и должности, как этап 61
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -1016,6 +1017,78 @@ export function makeServer(opts) {
     return undefined;
   }
 
+  // ── v198: этап 61 — заведения и должности ─────────────────────────────────────────────────────────────────────
+  function orgState() {
+    if (!S.org) { S.org = orgSeed([...new Set(PEOPLE.map((e) => e.restaurant))]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0; }
+    return S.org;
+  }
+  const restNow = (name) => { const o = orgState(); let n = name, k = 0; while (o.renamed[n] && k++ < 20) n = o.renamed[n]; return n; };
+  // все сотрудники с переводами, переименованиями и новыми (сотрудники демо — в коде, правки — в S)
+  function staffAll() {
+    const o = orgState();
+    return [...PEOPLE.map((e) => ({ ...e, ...(o.place[e.id] || {}) })), ...o.hired.map((e) => ({ ...e, ...(o.place[e.id] || {}) }))]
+      .map((e) => ({ ...e, restaurant: restNow(e.restaurant) }));
+  }
+  function orgLists(p) {
+    const o = orgState(), all = staffAll(), adm = !!p.is_admin, net = adm || p.position === "senior", lead = isLead(p);
+    const me = all.find((e) => e.id === p.id) || p;
+    return { ok: true, can_edit: adm,
+      venues: o.venues.map((v) => ({ name: v.name, hidden: v.hidden, sort: v.sort, ...(adm ? { staff: all.filter((e) => e.restaurant === v.name).length } : {}) }))
+        .sort((a, b) => (a.hidden - b.hidden) || (a.sort - b.sort) || a.name.localeCompare(b.name, "ru")),
+      positions: o.positions.map((x) => ({ id: x.id, label: x.label, base: x.base, builtin: x.builtin, hidden: x.hidden, sort: x.sort,
+        ...(adm ? { staff: all.filter((e) => (x.builtin ? e.position === x.id && !e.job_title : e.job_title === x.id)).length } : {}) })).sort((a, b) => a.sort - b.sort),
+      titles: lead ? Object.fromEntries(all.filter((e) => e.job_title && (net || e.restaurant === me.restaurant)).map((e) => [e.id, e.job_title])) : {},
+      me: { restaurant: me.restaurant, position: me.position, title: me.job_title || null } };
+  }
+  function org(fn, p, b) {
+    if (opts.noStage61 && fn !== "admin_create_employee") return { code: "PGRST202", message: "Could not find the function" };
+    if (!p) return { ok: false, error: "auth" };
+    const o = orgState();
+    if (fn === "org_lists") return orgLists(p);
+    if (fn === "admin_create_employee" || fn === "admin_create_employee_t") {
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      let pos = String(b.p_position || "waiter"), title = null;
+      if (fn === "admin_create_employee_t") {
+        const t = o.positions.find((x) => x.id === b.p_title && !x.hidden);
+        if (!t) return { ok: false, error: "no_position" };
+        if (!o.venues.some((v) => v.name === cleanName(b.p_restaurant))) return { ok: false, error: "no_venue" };
+        pos = t.base; title = t.builtin ? null : t.id;
+      }
+      o.seq += 1;
+      const e = { id: "h-" + o.seq, name: cleanName(b.p_name), surname: cleanName(b.p_surname), restaurant: cleanName(b.p_restaurant) || R0, position: pos, is_admin: false, job_title: title };
+      o.hired.push(e);
+      return { ok: true, code: "ДЕМО-" + String(1000 + o.seq), employee_id: e.id, job_title: title };
+    }
+    if (!p.is_admin) return { ok: false, error: "forbidden" };
+    if (fn === "org_venue_save") {
+      const r = venueOp(o, { name: b.p_name, newName: b.p_new, hidden: b.p_hidden });
+      if (!r.ok) return r;
+      if (r.from) o.renamed[r.from] = r.name;
+      return { ...orgLists(p), done: r.done, name: r.name };
+    }
+    if (fn === "org_position_save") {
+      const r = positionOp(o, { id: b.p_id, label: b.p_label, base: b.p_base, hidden: b.p_hidden });
+      if (!r.ok) return r;
+      if (r.done === "based") {   // новая «работает как» — у всех, у кого эта должность
+        const t = o.positions.find((x) => x.id === r.id);
+        for (const e of staffAll()) if (e.job_title === t.id) o.place[e.id] = { ...(o.place[e.id] || {}), position: t.base, job_title: t.id };
+      }
+      return { ...orgLists(p), done: r.done, id: r.id };
+    }
+    if (fn === "admin_employee_place") {
+      const e = staffAll().find((x) => x.id === b.p_employee_id);
+      if (!e) return { ok: false, error: "not_found" };
+      const rest = cleanName(b.p_restaurant);
+      if (!o.venues.some((v) => v.name === rest && !v.hidden)) return { ok: false, error: "no_venue" };
+      const t = o.positions.find((x) => x.id === b.p_title && !x.hidden);
+      if (!t) return { ok: false, error: "no_position" };
+      const pos = e.is_admin ? e.position : t.base, title = e.is_admin ? (e.job_title || null) : (t.builtin ? null : t.id);
+      o.place[e.id] = { restaurant: rest, position: pos, job_title: title };
+      return { ok: true, employee: { id: e.id, restaurant: rest, position: pos, job_title: title } };
+    }
+    return undefined;
+  }
+
   function rpc(fn, b) {
     b = b || {};
     const p = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
@@ -1035,9 +1108,14 @@ export function makeServer(opts) {
     if (fn === "admin_list_employees") {
       if (!p || !p.is_admin) return { ok: false, error: "forbidden" };
       const seen = { "e-anna": 0.1, "u-maria": 0.2, "e-olga": 1.2, "e-petr": 0.5, "e-vera": 3.4, "e-darya": 1.6, "e-ilya": 9.2, "u-roman": 0, "e-ksenia": 0.3 };
-      return PEOPLE.map((e) => ({ id: e.id, name: e.name, surname: e.surname, restaurant: e.restaurant, position: e.position, is_admin: !!e.is_admin, status: "active",
+      return staffAll().map((e) => ({ id: e.id, name: e.name, surname: e.surname, restaurant: e.restaurant, position: e.position, is_admin: !!e.is_admin, status: "active",
         last_seen_at: e.id in seen ? new Date(Date.now() - seen[e.id] * 86400e3).toISOString() : null,
         has_pending_code: !(e.id in seen), has_session: e.id in seen }));
+    }
+    // v198 (Доп. 523): этап 61 — заведения и должности (списки, добавить, вернуть, переименовать, скрыть), перевод и новый
+    // сотрудник с должностью из списка; правила — lib/org-model.js, как у сервера. opts.noStage61 — сервер без этапа 61.
+    if (/^org_/.test(fn) || fn === "admin_employee_place" || fn === "admin_create_employee_t" || fn === "admin_create_employee") {
+      const r = org(fn, p, b); if (r !== undefined) return r;
     }
     if (fn === "my_mentors") return { ok: true, rows: [] };
     if (fn === "qday_inbox") return { ok: true, items: [] };

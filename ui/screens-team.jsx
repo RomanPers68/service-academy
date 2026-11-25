@@ -30,7 +30,11 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 import { APP_SHARE_URL } from "./screens-gamification";
 import { POS_LABELS, positionLabel } from "../data/positions";
 import { FaceImg, useStaffPhotos } from "./staff-photo";   // v160 (Доп. 485): фото в карточке сотрудника и в «Аккаунте», по нажатию — крупно; v162: лица в строках списка
-import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
+import { tgInitData, tgLogin, tgBind, tgTryLogin, tgLoginNote } from "../lib/tg-login";
+// v198 (Доп. 523): заведения и должности — общие списки с сервера (этап 61): «+» в форме, перевод, экран у владельца
+import { useOrg, loadOrg, placeEmployee, createEmployee } from "../lib/org";
+import { venueNames, venuesWithMine, pickPositions, titleOf, titleIdOf, orgErr } from "../lib/org-model";
+import { OrgScreen, OrgSheet, ChipRow } from "./org";   // v99 (Доп. 412): вход через Telegram без кода
 
 // v150 (Доп. 474): кружок сотрудника — линза, как у «Я» в шапке: стекло с золотым ободком, инициалы (у владельца — корона)
 // золотом. Был золотой круг с белыми буквами; владелец (13.11): «Может иконку сотрудника тоже линзой сделаем?» — «Да, пожалуйста»
@@ -39,7 +43,7 @@ const avatarLens = (a11y, size) => ({ position:"relative", width:size, height:si
   background: a11y ? "rgba(139,106,48,0.10)" : "rgba(200,169,110,0.13)", border:`1px solid ${avatarInk(a11y)}55` });
 
 export function TeamScreen({ T, profile, a11y, onCandidate }) {
-  const [view, setView] = React.useState("list");        // list | add | card | code
+  const [view, setView] = React.useState("list");        // list | add | card | code | org
   // v162 (Доп. 487): в строках списка — лица (фото или буквы), когда на сервере есть фото сотрудников (этап 52);
   // этапа нет — строка как была: точка статуса, имя, должность
   const facesList = useStaffPhotos();
@@ -48,7 +52,19 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
   const [loadError, setLoadError] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [selected, setSelected] = React.useState(null);
-  const [form, setForm] = React.useState({ name:"", surname:"", restaurant:RESTAURANTS[0], position:"waiter" });
+  const [form, setForm] = React.useState({ name:"", surname:"", restaurant: profile?.restaurant || "", position:"waiter" });   // position — id должности из списка
+  // v198 (Доп. 523): списки заведений и должностей с сервера (этап 61; без него — прежние пять и шесть). Владелец добавляет
+  // новое прямо в форме («+ Заведение», «+ Должность») и на экране «Заведения и должности»; добавил — сразу выбрано.
+  const org = useOrg();
+  React.useEffect(() => { loadOrg(); }, []);
+  const isOwner = !!profile?.is_admin;
+  const canOrg = isOwner && org.stage && org.canEdit;
+  const [sheet, setSheet] = React.useState(null);          // окно «+»: { kind: venue | position, then(ответ) }
+  const [place, setPlace] = React.useState(null);          // перевод: { restaurant, title }
+  const formVenues = isOwner ? venueNames(org) : venuesWithMine(org, profile?.restaurant);
+  const formPositions = pickPositions(org);
+  const formRest = formVenues.includes(form.restaurant) ? form.restaurant : (formVenues[0] || "");
+  const formPos = formPositions.some((p) => p.id === form.position) ? form.position : ((formPositions[0] || {}).id || "waiter");
   const [busy, setBusy] = React.useState(false);
   const [actionError, setActionError] = React.useState(null);
   const [issued, setIssued] = React.useState(null);        // { code, emp }
@@ -113,27 +129,44 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
 
   const submitAdd = async () => {
     if (busy || form.name.trim().length < 2) return;
+    if (!formRest) { vibrate("error"); setActionError(isOwner ? "Сначала добавь заведение: «+ Заведение»." : "Заведений в списке нет. Их добавляет владелец."); return; }
+    const emp = { ...form, restaurant: formRest, position: formPos };
     if (isDemo) {
       vibrate("heavy");
-      setIssued({ code: "МАРС-" + String(Math.floor(Math.random()*10000)).padStart(4, "0"), emp: { ...form } });
-      setForm({ name:"", surname:"", restaurant:form.restaurant, position:"waiter" });
+      setIssued({ code: "МАРС-" + String(Math.floor(Math.random()*10000)).padStart(4, "0"), emp });
+      setForm({ name:"", surname:"", restaurant:formRest, position:"waiter" });
       setView("code");
       return;
     }
     setBusy(true); setActionError(null); vibrate("light");
     try {
-      const res = await rpc("admin_create_employee", {
-        p_token: token, p_name: form.name, p_surname: form.surname,
-        p_restaurant: form.restaurant, p_position: form.position });
+      const res = await createEmployee({ token, name: form.name, surname: form.surname, restaurant: formRest, title: formPos });
       if (res && res.ok) {
         vibrate("heavy");
-        setIssued({ code: res.code, emp: { ...form } });
-        setForm({ name:"", surname:"", restaurant:form.restaurant, position:"waiter" });
+        setIssued({ code: res.code, emp });
+        setForm({ name:"", surname:"", restaurant:formRest, position:"waiter" });
         setView("code");
         loadList();
-      } else { vibrate("error"); setActionError("Не получилось создать. Проверь связь и попробуй ещё раз."); }
+      } else if (res && ["no_venue", "no_position", "forbidden"].includes(res.error)) { vibrate("error"); setActionError(orgErr(res.error === "forbidden" ? "net" : res.error)); }
+      else { vibrate("error"); setActionError("Не получилось создать. Проверь связь и попробуй ещё раз."); }
     } catch(e) { vibrate("error"); setActionError("Нет связи. Попробуй ещё раз."); }
     setBusy(false);
+  };
+
+  // v198 (Доп. 523): перевод — заведение и должность (только владелец, этап 61)
+  const doPlace = async () => {
+    if (busy || !selected || !place) return;
+    setBusy(true); setActionError(null);
+    const r = await placeEmployee(selected.id, place.restaurant, place.title);
+    setBusy(false);
+    if (r && r.ok) {
+      vibrate("heavy");
+      const e = r.employee || {};
+      const upd = { ...selected, restaurant: e.restaurant || place.restaurant, position: e.position || selected.position, job_title: e.job_title || null };
+      setSelected(upd);
+      setList((l) => (Array.isArray(l) ? l.map((x) => (x.id === upd.id ? upd : x)) : l));
+      setConfirm(null); setPlace(null);
+    } else { vibrate("error"); setActionError(orgErr(r && r.error)); }
   };
 
   const doReset = async () => {
@@ -360,23 +393,16 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               onChange={e => setForm({ ...form, surname:e.target.value })} />
           </div>
 
-          <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"20px 0 10px" }}>Ресторан</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-            {RESTAURANTS.map(r => (
-              <div key={r} className={"sa-btn" + (form.restaurant === r ? " sa-chip-on" : "")}
-                style={chip(form.restaurant === r)}
-                onClick={() => { vibrate("light"); setForm({ ...form, restaurant:r }); }} {...onActivate(() => { vibrate("light"); setForm({ ...form, restaurant:r }); })}>{r}</div>
-            ))}
-          </div>
+          <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"20px 0 10px" }}>Заведение</div>
+          <ChipRow a11y={a11y} attr="data-team-venue" items={formVenues.map((r) => ({ id: r, label: r }))} value={formRest}
+            onPick={(r) => setForm({ ...form, restaurant: r })}
+            add={canOrg ? { kind: "venue", label: "Заведение", onClick: () => setSheet({ kind: "venue", then: (r) => setForm((f) => ({ ...f, restaurant: r.name })) }) } : null} />
+          {!formVenues.length ? <div style={{ color:T.modSub.color, fontSize:12.5, marginTop:8 }}>{canOrg ? "Список заведений пуст. Добавь первое." : "Заведений в списке нет. Их добавляет владелец."}</div> : null}
 
           <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"20px 0 10px" }}>Должность</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-            {Object.entries(POS_LABELS).map(([id, label]) => (
-              <div key={id} className={"sa-btn" + (form.position === id ? " sa-chip-on" : "")}
-                style={chip(form.position === id)}
-                onClick={() => { vibrate("light"); setForm({ ...form, position:id }); }} {...onActivate(() => { vibrate("light"); setForm({ ...form, position:id }); })}>{label}</div>
-            ))}
-          </div>
+          <ChipRow a11y={a11y} attr="data-team-pos" items={formPositions.map((p) => ({ id: p.id, label: p.label }))} value={formPos}
+            onPick={(id) => setForm({ ...form, position: id })}
+            add={canOrg ? { kind: "position", label: "Должность", onClick: () => setSheet({ kind: "position", then: (r) => setForm((f) => ({ ...f, position: r.id })) }) } : null} />
 
           {actionError && <div className="sa-fast" style={{ color:RED, fontSize:12.5, marginTop:16 }}>{actionError}</div>}
 
@@ -385,8 +411,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             {busy ? "Создаём..." : "Создать и получить код"}
           </button>
         </div>
+        {sheet ? <OrgSheet a11y={a11y} kind={sheet.kind} org={org} onClose={() => setSheet(null)} onDone={(r) => { sheet.then(r); setSheet(null); }} /> : null}
       </div>
     );
+  }
+
+  // ════════ ЭКРАН: ЗАВЕДЕНИЯ И ДОЛЖНОСТИ (владелец) ════════
+  if (view === "org") {
+    return <OrgScreen T={T} a11y={a11y} org={org} onBack={() => setView("list")} />;
   }
 
   // ════════ ЭКРАН: КАРТОЧКА СОТРУДНИКА ════════
@@ -405,14 +437,14 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <span style={{ color:avatarInk(a11y), fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
                 {selected.is_admin ? UI_SVG.crown(avatarInk(a11y), 22) : `${selected.name?.[0] || ""}${(selected.surname||"")[0]||""}`.toUpperCase()}
               </span>
-              <FaceImg who={{ id: selected.id }} zoom sub={positionLabel(selected.position)} />
+              <FaceImg who={{ id: selected.id }} zoom sub={titleOf(org, selected)} />
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>
                 {selected.name} {selected.surname}
                 {isSelf && <span style={{ ...labelStyle(13), marginLeft:8, color:GOLD, border:"1px solid rgba(200,169,110,0.45)", borderRadius:9, padding:"1px 7px", verticalAlign:"2px" }}>это ты</span>}
               </div>
-              <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {positionLabel(selected.position)}</div>
+              <div style={{ color:"#C8A96E", fontSize:12.5, marginTop:2 }}>{selected.restaurant} · {titleOf(org, selected)}</div>
             </div>
           </div>
 
@@ -490,6 +522,28 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                 </button>
               </div>
             </div>
+          ) : confirm === "place" && place ? (
+            <div className="sa-fast" data-team-place="">
+              <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
+                Куда перевести? История и прогресс остаются с сотрудником.
+              </div>
+              <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"4px 0 10px" }}>Заведение</div>
+              <ChipRow a11y={a11y} attr="data-place-venue" items={venueNames(org).map((r) => ({ id: r, label: r }))} value={place.restaurant}
+                onPick={(r) => setPlace({ ...place, restaurant: r })}
+                add={canOrg ? { kind: "venue", label: "Заведение", onClick: () => setSheet({ kind: "venue", then: (r) => setPlace((p) => ({ ...p, restaurant: r.name })) }) } : null} />
+              <div style={{ ...labelStyle(13.5), color:"#9A8C74", margin:"18px 0 10px" }}>Должность</div>
+              <ChipRow a11y={a11y} attr="data-place-pos" items={pickPositions(org).map((p) => ({ id: p.id, label: p.label }))} value={place.title}
+                onPick={(id) => setPlace({ ...place, title: id })}
+                add={canOrg ? { kind: "position", label: "Должность", onClick: () => setSheet({ kind: "position", then: (r) => setPlace((p) => ({ ...p, title: r.id })) }) } : null} />
+              {selected.is_admin ? <div style={{ color:T.modSub.color, fontSize:12, marginTop:10 }}>У владельца меняется только заведение: права остаются.</div> : null}
+              <div style={{ display:"flex", gap:10, marginTop:18 }}>
+                <button className="sa-btn" data-lens-btn="soft" style={{ ...ghostBtn, flex:1 }} onClick={() => { setConfirm(null); setPlace(null); }}>Отмена</button>
+                <button className="sa-btn" data-lens-btn="main" data-place-save="" disabled={busy || !place.restaurant} onClick={doPlace}
+                  style={{ flex:1, padding:"13px", borderRadius:14, border:"none", fontSize:14, fontFamily:"Georgia, serif", fontWeight:"bold", cursor:"pointer", background:GOLD, color:"#1A1008", opacity: place.restaurant ? 1 : 0.5 }}>
+                  {busy ? "..." : "Сохранить"}
+                </button>
+              </div>
+            </div>
           ) : confirm === "delete" ? (
             <div className="sa-fast">
               <div style={{ color:T.para.color, fontSize:12.5, lineHeight:1.7, textAlign:"center", marginBottom:12 }}>
@@ -511,6 +565,12 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
               <button className="sa-btn" data-lens-btn="soft" style={ghostBtn} onClick={() => { setEditNS({ name: selected.name || "", surname: selected.surname || "" }); setConfirm("edit"); }}>
                 Изменить имя и фамилию
               </button>
+              {canOrg ? (
+                <button className="sa-btn" data-lens-btn="soft" data-team-move="" style={ghostBtn}
+                  onClick={() => { setActionError(null); setPlace({ restaurant: venueNames(org).includes(selected.restaurant) ? selected.restaurant : (venueNames(org)[0] || ""), title: titleIdOf(org, selected) }); setConfirm("place"); }}>
+                  Заведение и должность
+                </button>
+              ) : null}
               <button className="sa-btn" data-lens-btn="danger" onClick={() => setConfirm("toggle")}
                 style={{ ...ghostBtn,
                   border: selected.status === "disabled" ? "1px solid rgba(93,187,138,0.5)" : "1px solid rgba(224,120,120,0.45)",
@@ -524,6 +584,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             </div>
           )}
         </div>
+        {sheet ? <OrgSheet a11y={a11y} kind={sheet.kind} org={org} onClose={() => setSheet(null)} onDone={(r) => { sheet.then(r); setSheet(null); }} /> : null}
       </div>
     );
   }
@@ -552,6 +613,18 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
             <span style={{ display:"flex", flexShrink:0 }}>{UI_SVG.dialog(GOLD, 17)}</span>
             <span style={{ flex:1 }}>Собеседование кандидата</span>
             <span style={{ color:"#9A8C74", fontWeight:"normal", fontSize:11 }}>тест до разговора</span>
+          </button>
+        )}
+
+        {isOwner && (
+          <button className="sa-btn" data-lens-card="" data-team-org="" onClick={() => { vibrate("light"); loadOrg(true); setView("org"); }}
+            style={{ width:"100%", marginBottom:12, padding:"13px 16px", borderRadius:14, cursor:"pointer",
+              border:"1px solid rgba(200,160,80,0.35)", background:"rgba(200,169,110,0.08)",
+              fontFamily:"Georgia, serif", fontSize:14, fontWeight:"bold", textAlign:"left", color:GOLD,
+              display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ display:"flex", flexShrink:0 }}>{UI_SVG.building(GOLD, 17)}</span>
+            <span style={{ flex:1 }}>Заведения и должности</span>
+            <span style={{ color:"#9A8C74", fontWeight:"normal", fontSize:11 }}>{isOwner && org.stage ? venueNames(org).length + " в списке" : isOwner ? "нужен этап 61" : ""}</span>
           </button>
         )}
 
@@ -622,7 +695,7 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
                         {e.is_admin && <span style={{ ...labelStyle(12.5), marginLeft:6, color:GOLD, border:"1px solid rgba(200,169,110,0.4)", borderRadius:6, padding:"0 5px", verticalAlign:"2px" }}>владелец</span>}
                       </div>
                       <div style={{ color:T.modSub.color, fontSize:11, marginTop:2 }}>
-                        {positionLabel(e.position)} · {ago(e.last_seen_at)}
+                        {titleOf(org, e)} · {ago(e.last_seen_at)}
                       </div>
                     </div>
                     <span style={{ ...labelStyle(13), color:st.color, flexShrink:0 }}>{st.label}</span>
@@ -848,7 +921,10 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
   const [acHint, acHintDone] = useHintOnce("profile");
   const acSteps = hintsFor("profile");
   const acRefCard = React.useRef(null);   // карточка с именем
-  const posLabel = positionLabel(profile?.position);   // v59: один словарь должностей
+  // v59: один словарь должностей; v198 (Доп. 523): своя должность из списка (этап 61) — «Бариста», а не «Бармен»
+  const org = useOrg();
+  React.useEffect(() => { loadOrg(); }, []);
+  const posLabel = profile ? titleOf(org, { ...profile, job_title: (org.me && org.me.title) || null }) : "";
   return (
     <div style={T.screen} className="sa-screen">
       <div style={T.lessHead}>
@@ -866,7 +942,7 @@ export function AccountScreen({ profile, T, onBack, onLogout, onTrainingCard, a1
             <span style={{ color:avatarInk(a11y), fontSize:18, fontWeight:"bold", fontFamily:"Georgia, serif", display:"inline-flex", alignItems:"center" }}>
               {profile?.is_admin ? UI_SVG.crown(avatarInk(a11y), 24) : `${profile?.name?.[0] || ""}${(profile?.surname||"")[0]||""}`.toUpperCase()}
             </span>
-            {profile ? <FaceImg who={{ id: profile.id }} zoom sub={positionLabel(profile.position)} /> : null}
+            {profile ? <FaceImg who={{ id: profile.id }} zoom sub={posLabel} /> : null}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ color:T.modTitle.color, fontSize:16, fontWeight:"bold", fontFamily:"Georgia, serif" }}>

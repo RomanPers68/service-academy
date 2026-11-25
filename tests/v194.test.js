@@ -77,7 +77,7 @@ describe("v194 · версия и журнал", () => {
     expect(tr).toContain("test60.sh");
     expect(STAGES.find((s) => s.n === "60")).toEqual({ n: "60", file: "supabase-stage60-quiz-pick.sql",
       what: "Тесты: «что выбрал» в своей попытке, у ошибки не бывает верного ответа", fn: "_sa_quiz_pick_row" });
-    expect(STAGES[STAGES.length - 1].n).toBe("60");
+    expect(STAGES.map((s) => s.n)).toContain("60");   // v198: последний теперь этап 61 (заведения и должности)
     expect(rd("supabase/README.md")).toContain("supabase-stage60-quiz-pick.sql");
     expect(rd("supabase/AI-SETUP.md")).toContain("## v194:");
   });

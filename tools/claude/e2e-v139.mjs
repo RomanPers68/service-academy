@@ -51,7 +51,8 @@ const srvOf = (x = {}) => {
   const pings = [];
   const s = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: plan(), menu: [], tgLinked: ["u-maria", "e-anna", "e-petr", "u-roman"],
     progress: { "e-anna": ["s0-1", "s0-2"] }, ping: (to, text, acts, chat, msg, o) => pings.push({ to, text, o }), push: () => {},
-    concept: x.empty ? null : CONCEPT_SEED, conceptPhotos: x.empty ? null : CONCEPT_PHOTOS, noStage49: !!x.noStage49 });
+    concept: x.empty ? null : CONCEPT_SEED, conceptPhotos: x.empty ? null : CONCEPT_PHOTOS, noStage49: !!x.noStage49,
+    noStage61: x.stage61 !== true });   // v198: без этапа 61 — заведения из приложения, как в v139 (список владельца — e2e-v198)
   s.calls = []; s.pings = pings;
   return s;
 };

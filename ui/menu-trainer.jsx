@@ -21,7 +21,8 @@ import { TeamMenuKnow } from "./menu-team-know";   // v193 (Доп. 518): «Ка
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
-import { RESTAURANTS } from "../data/roles";
+import { useOrg, loadOrg } from "../lib/org";   // v198 (Доп. 523): заведения — из общего списка (этап 61), а не из кода
+import { venuesWithMine } from "../lib/org-model";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
@@ -112,8 +113,15 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const textColor = a11y ? "#2e211a" : "#F5EFE2";
   const canEdit = ["manager", "senior"].includes(profile?.position) || profile?.is_admin;
 
-  const [restaurant, setRestaurant] = React.useState(() =>
-    RESTAURANTS.includes(profile?.restaurant) ? profile.restaurant : null);
+  // v198 (Доп. 523): вкладки — видимые заведения из списка владельца и своё (даже скрытое: меню своего ресторана нужно);
+  // добавили заведение — вкладка появляется сразу. Одно заведение — сразу его меню.
+  const org = useOrg();
+  React.useEffect(() => { loadOrg(); }, []);
+  const venues = venuesWithMine(org, profile?.restaurant);
+  const [restaurant, setRestaurant] = React.useState(() => {
+    const v = venuesWithMine(org, profile?.restaurant);
+    return v.includes(profile?.restaurant) ? profile.restaurant : v.length === 1 ? v[0] : null;
+  });
   const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit" | "team"
   // v52: широкий экран — список тренировок плитками в две колонки (колонка до 900 px); сами тренировки — прежней колонкой
   const wide = useWide();
@@ -207,7 +215,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
 
   const Head = (title) => (
     <div style={T.lessHead}>
-      <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (mode) { setMode(null); setFocusNew(false); setDeckStart(null); } else if (restaurant && !RESTAURANTS.includes(profile?.restaurant)) setRestaurant(null); else onBack(); }}>‹</button>
+      <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (mode) { setMode(null); setFocusNew(false); setDeckStart(null); } else if (restaurant && !profile?.restaurant && venues.length > 1) setRestaurant(null); else onBack(); }}>‹</button>
       <div style={T.lessHeadTitle}>{title}</div>
     </div>
   );
@@ -218,7 +226,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       {Head("Меню ресторана")}
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Выбери ресторан</div>
       <div style={{ padding: "0 14px" }}>
-        {RESTAURANTS.map(r => (
+        {venues.map(r => (
           <div key={r} className="sa-card" data-lens-card="" style={{ ...T.modCard, margin: "0 0 10px" }} onClick={() => setRestaurant(r)} {...onActivate(() => setRestaurant(r))}>
             <div style={{ ...T.modTitle, flex: 1 }}>{r}</div>
             <div style={T.modArrow}>›</div>
@@ -276,16 +284,18 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
           onNext={mStep >= mSteps.length - 1 ? null : () => setMStep(v => v + 1)}
           onClose={mHintDone} />
       ) : null}
-      {/* Быстрая смена ресторана — «линза» скользит по чипсам */}
+      {/* Быстрая смена ресторана — «линза» скользит по чипсам; v198: заведения из списка, одно — без вкладок */}
+      {venues.length > 1 || !venues.includes(restaurant) ? (
       <div style={{ padding: "10px 14px 0" }}>
         <LiquidSegment a11y={a11y} equal={false} scroll accent={gold} muted={T.modSub.color}
           itemStyle={{ fontSize: 12.5, padding: "7px 12px" }}
-          items={RESTAURANTS.map(r => ({ id: r, label: r }))}
+          items={(venues.includes(restaurant) ? venues : [restaurant, ...venues]).map(r => ({ id: r, label: r }))}
           activeId={restaurant}
           onSelect={(r) => { vibrate("light"); setRestaurant(r); setFocusNew(false); }} />
       </div>
+      ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v197</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v198</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

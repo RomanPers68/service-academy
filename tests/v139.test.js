@@ -315,9 +315,9 @@ describe("v139: «Линза» и все заведения сети (владе
     expect(src).toContain('data-cn-q={i} data-lens-edge=""');
     expect((src.match(/outline: "none"/g) || []).length).toBe(2);
   });
-  it("выбор заведения: своё, все заведения из приложения, что знает сервер", () => {
-    expect(src).toContain('import { RESTAURANTS } from "../data/roles";');
-    expect(src).toContain("const venueList = [...new Set([mine, ...RESTAURANTS, ...(data.venues || [])].filter(Boolean))];");
+  it("выбор заведения: своё, все заведения из списка владельца (v198, этап 61), что знает сервер — кроме скрытых", () => {
+    expect(src).toContain('import { useOrg, loadOrg } from "../lib/org";');
+    expect(src).toContain("const venueList = [...new Set([mine, ...venueNames(org), ...(data.venues || []).filter((v) => !hiddenSet.has(v))].filter(Boolean))];");
     expect(src).toContain("{can.net ? (");
   });
 });

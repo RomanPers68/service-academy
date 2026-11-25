@@ -171,8 +171,9 @@ describe("v113: «Команда»", () => {
     expect(LOOK).toContain("html.sa-lens [data-lens-btn]{border-radius:999px!important}");
   });
   it("должность в списке и карточке — общим словарём (владелец — «Владелец», а не owner)", async () => {
-    expect(T).toContain("{positionLabel(e.position)} · {ago(e.last_seen_at)}");
-    expect(T).toContain("{selected.restaurant} · {positionLabel(selected.position)}");
+    // v198 (Доп. 523): подпись должности — из списка (своя должность, переименованная встроенная), иначе тот же словарь
+    expect(T).toContain("{titleOf(org, e)} · {ago(e.last_seen_at)}");
+    expect(T).toContain("{selected.restaurant} · {titleOf(org, selected)}");
     expect(T).not.toContain("POS_LABELS[e.position] ||");
     const { positionLabel } = await import("../data/positions.js");
     expect(positionLabel("owner")).toBe("Владелец");

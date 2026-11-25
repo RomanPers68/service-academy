@@ -30,7 +30,8 @@ import { rpc, saToken, rpcMissing } from "../api/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { TRACKS } from "../lib/tracks";
-import { RESTAURANTS } from "../data/roles";
+import { useOrg, loadOrg } from "../lib/org";   // v198 (Доп. 523): заведения — из общего списка (этап 61), а не из кода
+import { venueNames, hiddenVenues } from "../lib/org-model";
 import { compressPhoto } from "../lib/chat-photo";
 import { CN_KINDS, CN_LIMITS, CN_META_LIMITS, CN_SECTION, CN_SUB, kindOf, blockFor, conceptUnread, blankBlock, blockPayload, blockProblem, conceptErr, cleanQuestion, normConcept, conceptPairs,
   conceptSection, conceptAck, conceptChanges, conceptHero, conceptToc } from "../lib/concept";
@@ -295,6 +296,8 @@ function SectionCard({ T, c, ghost, main, field, data, scope, venueName, canHere
 }
 
 function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onRest, reload, onOpenSection }) {
+  const org = useOrg();
+  React.useEffect(() => { loadOrg(); }, []);
   const can = data.can;
   const venueName = data.venue ? data.venue.name : rest || mine;
   const [scope, setScope0] = React.useState(() => { let sv = ""; try { sv = sessionStorage.getItem(TAB_KEY) || ""; } catch (e) { /* */ } return firstTab(data, sv); });   // "net" | "venue"
@@ -340,8 +343,9 @@ function ConceptEditor({ T, a11y, c, data, mine, rest, head, ghost, main, h, onR
     onClose={(saved, text) => { setEdit(null); if (saved) { say(text || "Сохранено. Команда увидит после «Сообщить команде» или сама, с отметкой «новое»."); reload(); } }} />;
 
   const field = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: "1px solid " + c.line, background: c.field, color: T.modTitle.color, fontFamily: SERIF, fontSize: 14, outline: "none" };
-  // все заведения сети: своё первым, потом список приложения, потом что знает сервер
-  const venueList = [...new Set([mine, ...RESTAURANTS, ...(data.venues || [])].filter(Boolean))];
+  // все заведения сети: своё первым, потом список владельца (этап 61), потом что знает сервер — кроме скрытых
+  const hiddenSet = new Set(hiddenVenues(org).map((v) => v.name));
+  const venueList = [...new Set([mine, ...venueNames(org), ...(data.venues || []).filter((v) => !hiddenSet.has(v))].filter(Boolean))];
   const tab = (on) => ({ flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 999, border: "none", cursor: "pointer", fontFamily: SERIF, fontSize: 13.5,
     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", background: on ? "linear-gradient(180deg,#E4C88C," + GOLD + ")" : "transparent",
     color: on ? "#1A1008" : c.soft, fontWeight: on ? "bold" : "normal" });

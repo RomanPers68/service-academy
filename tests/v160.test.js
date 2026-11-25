@@ -306,8 +306,9 @@ describe("v160: фото в кружках, где были буквы", () => {
   });
   it("карточка сотрудника у владельца, «Аккаунт» и «Моя статистика»: фото по номеру сотрудника, открывается крупно", () => {
     const t = rd("ui/screens-team.jsx");
-    expect(t).toContain("<FaceImg who={{ id: selected.id }} zoom sub={positionLabel(selected.position)} />");
-    expect(t).toContain("{profile ? <FaceImg who={{ id: profile.id }} zoom sub={positionLabel(profile.position)} /> : null}");
+    // v198 (Доп. 523): подпись должности — из списка (своя должность, переименованная встроенная), иначе тот же словарь
+    expect(t).toContain("<FaceImg who={{ id: selected.id }} zoom sub={titleOf(org, selected)} />");
+    expect(t).toContain("{profile ? <FaceImg who={{ id: profile.id }} zoom sub={posLabel} /> : null}");
     const g = rd("ui/screens-gamification.jsx");
     expect(g).toContain("{profile ? <FaceImg who={{ id: profile.id }} zoom /> : null}");
   });

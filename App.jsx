@@ -421,6 +421,7 @@ const ThanksScreen = lazyOf(() => import("./ui/thanks"), "ThanksScreen");   // v
 const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScreen");   // v108 (Доп. 421): спасибо от коллег
 const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");   // v85 (Доп. 398): рассадка для хостес
 const LiveCheckScreen = lazyOf(() => import("./ui/live-check"), "LiveCheckScreen");   // v200 (Доп. 525): живая проверка по урокам
+const LiveResultCard = lazyOf(() => import("./ui/live-check-summary"), "LiveResultCard");   // v201 (Доп. 526): итог проверки себе
 
 
 
@@ -452,8 +453,9 @@ const PRACTICE_RESUME_KEY = "sa_practice_resume";   // Доп. 293
 // отдельной функцией — ею же проверяется касание уведомления на телефоне (сервис-воркер присылает sa-go, когда приложение
 // открыто); qday — «Вопрос дня» (главная), remind — пробное уведомление («Напоминания»). warmup и mentor — свои ссылки ниже.
 // v139 (Доп. 454): about — «О нас» («Обновили «О нас»» от бота и на телефоне).
+// v201 (Доп. 526): lc — «Живая проверка» (напоминание о пересдаче), lc_me — «Мои проверки» (итог человеку)
 const goLinkOk = (v) => typeof v === "string" && (v === "about" || ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
-  || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "qday" || v === "remind");
+  || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "lc" || v === "lc_me" || v === "qday" || v === "remind");
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
@@ -1484,6 +1486,28 @@ function ServiceAcademy() {
   const [lcEmp, setLcEmp] = useState(null);   // v200 (Доп. 525): живая проверка — сразу карточка сотрудника из отчёта
   // и назад — снова его карточка в отчёте; ушли из отчёта и проверки — забыли
   useEffect(() => { if (screen !== "report" && screen !== "liveCheck") setLcEmp(null); }, [screen]);
+  // v201 (Доп. 526): «Живая проверка» из бота: руководителю — кого проверить, себе («Мои проверки») — свои итоги
+  const openLiveCheck = (mine) => {
+    const lead = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
+    setLcEmp(mine || !lead ? (profile && profile.id) || null : null); navigate("liveCheck");
+  };
+  // итог проверки, который человек ещё не видел: карточка на вкладке «Смена» (раз в 10 минут спрашиваем сервер)
+  const [lcMine, setLcMine] = useState(null);
+  const lcMineAt = useRef(0);
+  const lcSeenKey = profile ? "sa_lc_seen_" + profile.id : "";
+  useEffect(() => {
+    if (screen !== "shift" || !profile || !storageLoaded || Date.now() - lcMineAt.current < 10 * 60 * 1000) return undefined;
+    lcMineAt.current = Date.now();
+    let alive = true;
+    Promise.all([retryImport(() => import("./lib/live-check-api")), retryImport(() => import("./ui/live-check-summary"))])
+      .then(([api, ui]) => api.lcPerson("").then((r) => {
+        if (!alive || !r || !r.ok) return;
+        let seen = 0; try { seen = Number(localStorage.getItem(lcSeenKey) || 0); } catch (e) { /* */ }
+        setLcMine(ui.freshResult(r.checks, seen));
+      })).catch(() => {});
+    return () => { alive = false; };
+  }, [screen, profile, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const lcMineSeen = () => { try { if (lcMine) localStorage.setItem(lcSeenKey, String(lcMine.id)); } catch (e) { /* */ } setLcMine(null); };
   const [weekSeen, setWeekSeen] = useState("");
   React.useEffect(() => { try { setWeekSeen(localStorage.getItem("sa_week_seen" + ukP) || ""); } catch (e) { setWeekSeen(""); } }, [ukP]);
   const prevWeekEnd = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d; }, [todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -1901,6 +1925,7 @@ function ServiceAcademy() {
     else if (g === "qday") { navigate("roleSelect"); loadQday(true); }   // v137 (Доп. 450): уведомление «Вопрос дня» — карточка на главной
     else if (g === "remind") setRemindOpen("push");                    // v137: пробное уведомление — «Напоминания»
     else if (g === "about") { setAboutEdit(false); navigate("about"); }   // v139 (Доп. 454): «Обновили «О нас»» — бот и телефон
+    else if (g === "lc" || g === "lc_me") openLiveCheck(g === "lc_me");   // v201 (Доп. 526): «Живая проверка» и «Мои проверки» из бота
   }, [profile, storageLoaded, programModules.length, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v137: приложение открыто, а человек коснулся уведомления — сервис-воркер присылает sa-go с той же ссылкой
   // (в демо — событие страницы sa-go от уведомления сверху)
@@ -3679,6 +3704,10 @@ function ServiceAcademy() {
             {isLead && profile.restaurant && !(shiftToday && shiftToday.off) ? <Suspense fallback={null}><RoutineCard a11y={a11y} brief={teamBrief} briefKnown={briefKnown} onOpen={openRoutine} /></Suspense> : null}
             {/* v82 (Доп. 395): брифинг смены от руководителя */}
             {teamBrief ? <Suspense fallback={null}><BriefCard a11y={a11y} brief={teamBrief} seen={!!teamBrief.mine || briefSeen === briefKeyOf(teamBrief)} reads={isLead ? briefReads : null} onOpen={openTeamBrief} /></Suspense> : null}
+            {/* v201 (Доп. 526): тебя проверили вживую — процент, что повторить, «Открыть урок» */}
+            {lcMine ? <Suspense fallback={null}><LiveResultCard a11y={a11y} check={lcMine} onHide={lcMineSeen}
+              onLesson={(id) => { lcMineSeen(); if (chatOpenItemRef.current) chatOpenItemRef.current({ kind: "lesson", id }); }}
+              onOpen={() => { lcMineSeen(); openLiveCheck(true); }} /></Suspense> : null}
             {/* v30 (Доп. 314): квест смены и твоя часть */}
             <Suspense fallback={null}><QuestCard a11y={a11y} tasks={questTasks} todayRec={activity[todayKey] || {}} tick={questTick} lead={isLead} shift={shiftText} off={!!(shiftToday && shiftToday.off)}
               data={briefStatus === "ok" ? (brief && brief.quest) || { ok: false } : briefStatus === "pending" ? null : undefined} onReload={() => refreshDay(true)}

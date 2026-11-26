@@ -564,6 +564,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   // второе заведение «Порт» с двумя сданными тестами (стены между заведениями и выбор заведения у владельца)
   noStage62: lsGet("__demo_no62") === "1", net2: lsGet("__demo_net") === "1",
   noStage63: lsGet("__demo_no63") === "1",   // v200 (Доп. 525): __demo_no63 = "1" — сервер без этапа 63 (живой проверки нет)
+  noStage64: lsGet("__demo_no64") === "1",   // v201 (Доп. 526): __demo_no64 = "1" — сервер без этапа 64 (по пунктам — прежним вызовом, без сводки)
   qday: lsGet("__demo_qday") === "1",   // v193: __demo_qday = "1" — «Вопрос дня» на главной (очередь с телефона, каждый второй — о блюде)
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],

@@ -3,8 +3,8 @@
 //   CHECK  — Мария (менеджер): в «Команде» плитка «Живая проверка»; в списке те, кто ниже менеджера в её заведении
 //            (Анна, Ольга, Илья…), без владельца; Анна → курсы «Новичок» и «Ядро», модули с тем, что пройдено в
 //            приложении; модуль «Психология первого дня» → 4 вопроса, у каждого «Что должно прозвучать» и три отметки;
-//            «Сохранить» недоступна, пока не отмечены все; 2, 2, 1, 2 → «Сохранить · 88%» → «Зачтено», «Что повторить» —
-//            урок вопроса с «частично»; в списке модулей — «зачтено 88%»; «Убрать проверку» убирает;
+//            с v201 вопрос на экране и пункты (подробно — e2e-v201.mjs): всё, всё, один пункт, всё → «Сохранить · N%» →
+//            «Зачтено», «Что повторить» — урок вопроса, где назвали не всё; в модулях — «зачтено N%»; «Убрать проверку»;
 //   OWNER  — Роман (владелец): в списке есть Мария (менеджер); проверка Марии по модулю менеджера сохраняется;
 //            «Заведения и должности» — «Управляющий»: «как менеджер · старше менеджера», переключатель в правке;
 //   REPORT — Мария: отчёт по Анне (список и карточка подставлены в странице) — «Живая проверка», «Проверить вживую»
@@ -60,6 +60,19 @@ const body = (page) => page.evaluate(() => document.body.innerText.replace(/\s+/
 const click = async (page, sel, wait = 600) => { await page.locator(sel).first().click(); await sleep(wait); };
 const shot = (page, name) => page.screenshot({ path: OUT + "/" + name + ".png" });
 const run = async (key, fn) => { if (!want(key)) return; try { await fn(); } catch (e) { ok(key + ": сценарий дошёл до конца", false, String(e && e.message || e).split("\n")[0]); } };
+// v201 (Доп. 526): вопрос на экране, ответ по касанию, пункты. plan — "all" | "none" | число пунктов; итог — процент по пунктам
+async function answer(page, plan) {
+  let g = 0, o = 0;
+  for (let i = 0; i < plan.length; i++) {
+    await click(page, "[data-lc-reveal]", 200);
+    const n = await page.locator("[data-lc-pt]").count(), p = plan[i];
+    if (p === "all") await click(page, "[data-lc-all]", 120); else if (p === "none") await click(page, "[data-lc-none]", 120);
+    else for (let j = 0; j < p; j++) await click(page, `[data-lc-pt="${i}:${j}"]`, 100);
+    g += p === "all" ? n : p === "none" ? 0 : p; o += n;
+    await click(page, "[data-lc-next-q]", 250);
+  }
+  return Math.round((g * 100) / o);
+}
 const tile = (page) => page.evaluate(() => [...document.querySelectorAll("button, [role=button]")].some((x) => /Живая проверка/.test(x.textContent)));
 
 // ── CHECK: менеджер проверяет официанта ────────────────────────────────────────────────────────────────────────────
@@ -80,26 +93,24 @@ await run("CHECK", async () => {
   ok("CHECK: модуль «Психология первого дня» — что пройдено в приложении и «Проверить»", /в приложении (пройден|уроков|не начат)/.test(m0) && m0.includes("Проверить"), m0);
   await shot(page, "2-person");
   await click(page, '[data-lc-module="s0"]', 900);
-  ok("CHECK: модуль — 4 вопроса, у каждого «Что должно прозвучать» и три отметки",
-    (await page.locator("[data-lc-q]").count()) === 4 && (await page.locator("[data-lc-mark]").count()) === 12 && (await body(page)).includes("Что должно прозвучать"));
-  ok("CHECK: «Сохранить» приглушена, пока не отмечены все", (await page.locator("[data-lc-save]").evaluate((b) => getComputedStyle(b).opacity)) === "0.55");
-  for (const [i, v] of [[0, 2], [1, 2], [2, 1], [3, 2]]) await click(page, `[data-lc-mark="${i}:${v}"]`, 200);
-  ok("CHECK: отметки 2, 2, 1, 2 — на кнопке «Сохранить · 88%»", (await texts(page, "[data-lc-save]"))[0] === "Сохранить · 88%", await texts(page, "[data-lc-save]"));
+  ok("CHECK: модуль — вопрос на экране (v201), ответ скрыт до касания", (await page.locator("[data-lc-q]").count()) === 1 && (await page.locator("[data-lc-reveal]").count()) === 1);
+  const sc = await answer(page, ["all", "all", 1, "all"]);
+  ok("CHECK: итог по пунктам — на кнопке «Сохранить · " + sc + "%»", (await texts(page, "[data-lc-save]"))[0] === "Сохранить · " + sc + "%", await texts(page, "[data-lc-save]"));
   await page.locator("[data-lc-note]").fill("Хорошо помнит стоп-лист");
   await shot(page, "3-module");
   await click(page, "[data-lc-save]", 1500);
-  ok("CHECK: итог — «88%», «Зачтено»", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "pass" && (await body(page)).includes("88%"));
-  ok("CHECK: «Что повторить» — урок вопроса с «частично» («Shadow и первые шаги»)", (await texts(page, "[data-lc-repeat]"))[0] === "Shadow и первые шаги", await texts(page, "[data-lc-repeat]"));
+  ok("CHECK: итог — «" + sc + "%», «Зачтено»", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "pass" && (await body(page)).includes(sc + "%"));
+  ok("CHECK: «Что повторить» — урок вопроса, где назвали не всё", (await texts(page, "[data-lc-repeat] > div")).length === 1, await texts(page, "[data-lc-repeat]"));
   await shot(page, "4-result");
   await click(page, "[data-lc-tomods]", 1200);
-  ok("CHECK: в модулях — «зачтено 88%» у «Психологии первого дня»", !!(await until(async () => (await attrs(page, '[data-lc-module="s0"]', "data-lc-res"))[0] === "88"))
-    && (await texts(page, '[data-lc-module="s0"] [data-lc-chip]'))[0] === "зачтено 88%", await texts(page, '[data-lc-module="s0"]'));
+  ok("CHECK: в модулях — «зачтено " + sc + "%» у «Психологии первого дня»", !!(await until(async () => (await attrs(page, '[data-lc-module="s0"]', "data-lc-res"))[0] === String(sc)))
+    && (await texts(page, '[data-lc-module="s0"] [data-lc-chip]'))[0] === "зачтено " + sc + "%", await texts(page, '[data-lc-module="s0"]'));
   ok("CHECK: итог по курсу — «Зачтено модулей: 1 из 14»", (await attrs(page, "[data-lc-sum]", "data-lc-sum"))[0] === "1/14", await attrs(page, "[data-lc-sum]", "data-lc-sum"));
   // убрать ошибочную
   await click(page, '[data-lc-module="s1"]', 800);
-  for (const i of [0, 1, 2, 3]) await click(page, `[data-lc-mark="${i}:0"]`, 150);
+  await answer(page, ["none", "none", "none", "none"]);
   await click(page, "[data-lc-save]", 1400);
-  ok("CHECK: 0, 0, 0, 0 — «Не зачтено», 0%", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "fail" && (await body(page)).includes("0%"));
+  ok("CHECK: ничего не назвал — «Не зачтено», 0%", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "fail" && (await body(page)).includes("0%"));
   await click(page, "[data-lc-undo]", 1300);
   ok("CHECK: «Убрать проверку» — убрана, у модуля снова «Проверить»", !!(await until(async () => (await attrs(page, '[data-lc-module="s1"]', "data-lc-res"))[0] === ""))
     && (await texts(page, "[data-lc-msg=info]")).join("").startsWith("Проверка убрана"));
@@ -118,8 +129,7 @@ await run("OWNER", async () => {
   await click(page, '[data-lc-person="u-maria"]', 1500);
   ok("OWNER: у Марии курс «Менеджер»", (await attrs(page, '[data-lc-track][aria-pressed="true"]', "data-lc-track"))[0] === "manager");
   await click(page, '[data-lc-module="m0"]', 800);
-  const n = await page.locator("[data-lc-q]").count();
-  for (let i = 0; i < n; i++) await click(page, `[data-lc-mark="${i}:2"]`, 120);
+  await answer(page, ["all", "all", "all", "all"]);
   await click(page, "[data-lc-save]", 1400);
   ok("OWNER: проверка Марии сохранена — 100%, «Зачтено», повторять нечего", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "pass" && !(await page.locator("[data-lc-repeat]").count()));
   await nav(page, "team", 2000);
@@ -161,7 +171,7 @@ await run("REPORT", async () => {
   ok("REPORT: «Проверить вживую» — сразу Анна в живой проверке", !!(await until(async () => (await attrs(page, "[data-lc]", "data-lc"))[0] === "person"))
     && (await texts(page, '[data-lc-track][aria-pressed="true"]'))[0] === "Новичок");
   await click(page, '[data-lc-module="s0"]', 800);
-  for (const i of [0, 1, 2, 3]) await click(page, `[data-lc-mark="${i}:2"]`, 150);
+  await answer(page, ["all", "all", "all", "all"]);
   await click(page, "[data-lc-save]", 1400);
   ok("REPORT: модуль зачтён, 100%", (await attrs(page, "[data-lc-result]", "data-lc-result"))[0] === "pass" && (await body(page)).includes("100%"));
   await page.locator("[data-lens=back]").first().click(); await sleep(900);

@@ -18,7 +18,7 @@ import { LIVE_CHECK } from "../data/live-check.js";
 import { MODULES_INDEX } from "../data/modules-index.js";
 import { LC_PASS, LC_TRACKS, LC_MARKS, lcLevel, lcFamily, lcNet, lcCan, lcScore, tracksOf, lastByModule, moduleApp, trackSummary,
   lessonsToRepeat, lcDate, lcErr } from "../lib/live-check.js";
-import { lcPeople, lcPerson, lcSave, lcDelete, loadLevels, setPositionUp, _resetLevels } from "../lib/live-check-api.js";
+import { lcPeople, lcPerson, lcSaveMarks, lcDelete, loadLevels, setPositionUp, _resetLevels } from "../lib/live-check-api.js";
 import { _resetOrg } from "../lib/org.js";
 import { rpcMissing } from "../api/supabase";
 import { LiveCheckScreen } from "../ui/live-check.jsx";
@@ -78,11 +78,11 @@ describe("v200 · версия и журнал", () => {
 
 describe("v200 · вопросы (data/live-check.js)", () => {
   const mods = TRACKS.flatMap((t) => MODULES_INDEX[t].map((m) => ({ ...m, track: t })));
-  it("все 58 модулей шести курсов, лишних нет; по четыре вопроса, всего 232", () => {
+  it("все 58 модулей шести курсов, лишних нет; с v201 (Доп. 526) по восемь вопросов, всего 464", () => {
     expect(mods.length).toBe(58);
     expect(Object.keys(LIVE_CHECK).sort()).toEqual(mods.map((m) => m.id).sort());
-    for (const m of mods) expect(LIVE_CHECK[m.id].length, m.id).toBe(4);
-    expect(Object.values(LIVE_CHECK).flat().length).toBe(232);
+    for (const m of mods) expect(LIVE_CHECK[m.id].length, m.id).toBe(8);
+    expect(Object.values(LIVE_CHECK).flat().length).toBe(464);
   });
   it("каждый вопрос — по уроку своего модуля; вопрос и 2–4 пункта «что должно прозвучать»; без повторов", () => {
     for (const m of mods) {
@@ -98,16 +98,16 @@ describe("v200 · вопросы (data/live-check.js)", () => {
       }
     }
   });
-  it("есть и ситуации «что сделаешь»: 41 вопрос, в 38 модулях последним", () => {
+  it("есть и ситуации «что сделаешь»: 99 вопросов, в каждом модуле последний (v201)", () => {
     const all = Object.values(LIVE_CHECK);
-    expect(all.flat().filter((q) => /^Ситуация: /.test(q.q)).length).toBe(41);
-    expect(all.filter((qs) => /^Ситуация: /.test(qs[qs.length - 1].q)).length).toBe(38);
+    expect(all.flat().filter((q) => /^Ситуация: /.test(q.q)).length).toBe(99);
+    expect(all.filter((qs) => /^Ситуация: /.test(qs[qs.length - 1].q)).length).toBe(58);
   });
   it("примеры: «Психология первого дня» и «Психология менеджера»", () => {
-    expect(LIVE_CHECK.s0.map((q) => q.l)).toEqual(["s0-3", "s0-3", "s0-4", "s0-1"]);
+    expect(LIVE_CHECK.s0.slice(0, 4).map((q) => q.l)).toEqual(["s0-3", "s0-3", "s0-4", "s0-1"]);
     expect(LIVE_CHECK.s0[1].q).toBe("Что такое стоп-лист и откуда ты о нём узнаёшь?");
     expect(LIVE_CHECK.s0[1].a).toContain("Узнаю на брифинге перед сменой");
-    expect(LIVE_CHECK.m0.length).toBe(4);
+    expect(LIVE_CHECK.m0.length).toBe(8);
   });
   it("без смайликов и длинных тире в тексте вопросов", () => {
     const txt = JSON.stringify(LIVE_CHECK);
@@ -275,7 +275,7 @@ describe("v200 · запросы с телефона (lib/live-check-api.js)", (
     expect((await lcPeople(PORT)).people.map((x) => x.id)).toEqual(["u-lena", "e-igor"]);
     expect(calls[0]).toEqual({ fn: "live_check_people", b: { p_token: "tr", p_restaurant: PORT } });
     expect((await lcPeople()).restaurant).toBe(R0);
-    const r = await lcSave({ emp: "u-maria", track: "manager", module: "m0", marks: [2, 2, 2, 1] });
+    const r = await lcSaveMarks({ emp: "u-maria", track: "manager", module: "m0", marks: [2, 2, 2, 1] });   // v201: прежний вызов — lcSaveMarks
     expect(r).toMatchObject({ ok: true, score: 88, passed: true });
     expect(calls[2].b).toEqual({ p_token: "tr", p_emp: "u-maria", p_track: "manager", p_module: "m0", p_marks: [2, 2, 2, 1], p_note: null });
     expect((await lcPerson("u-maria")).checks.length).toBe(1);
@@ -305,7 +305,7 @@ describe("v200 · экраны", () => {
     const html = R(h(LiveCheckScreen, { T, a11y: false, profile: P["u-maria"], onBack: () => {} }));
     expect(html).toContain('data-lc="list"');
     expect(html).toContain("Живая проверка");
-    expect(html).toContain("Спроси по урокам вслух: по три-четыре вопроса на модуль.");
+    expect(html).toContain("Спроси по урокам вслух: по четыре вопроса на модуль.");   // v201
     expect(html).toContain("Загружаю, кого можно проверить…");
     const p = R(h(LiveCheckScreen, { T, a11y: true, profile: P["u-maria"], onBack: () => {}, startEmp: "e-anna" }));
     expect(p).toContain('data-lc="person"');
@@ -369,8 +369,8 @@ describe("v200 · где и как это встроено", () => {
     expect(org).toContain("Старше менеджера: в живой проверке проверяет и менеджеров");
     expect(org).toContain('const upOf = (p) => !!p && !p.builtin && p.base === "manager" && lv.ups.includes(p.id);');
   });
-  it("экран: отметки по каждому вопросу, «Сохранить · N%», что повторить, «Убрать проверку», курсы по должности", () => {
-    for (const s of ['data-lc-mark={i + ":" + mk.v}', '"Сохранить · " + preview.score + "%"', "Что должно прозвучать", "Что повторить", "Убрать проверку",
+  it("экран: отметки по каждому вопросу (с v201 по пунктам), «Сохранить · N%», что повторить, «Убрать проверку», курсы по должности", () => {
+    for (const s of ['data-lc-pt={i + ":" + j}', '"Сохранить · " + (preview ? preview.score : 0) + "%"', "Показать, что должно прозвучать", "Что повторить", "Убрать проверку",
       "Другие курсы", "Следующий модуль", "Проверять этого сотрудника может руководитель ступенью выше. Здесь только итоги."]) expect(scr, s).toContain(s);
   });
 });

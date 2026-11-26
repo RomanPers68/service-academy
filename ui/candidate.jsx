@@ -22,6 +22,8 @@ import { MOD_SVG, UI_SVG, ROLE_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо ⭐ и ☁
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
 import { aiCatOf, DECISIONS, hrStatus, REAL_N } from "../lib/hr-quality";   // v66 (Доп. 379): когда снимаем «бету»
+import { useLens, viewRpc } from "../lib/org";   // v199 (Доп. 524): сеть ведёт собеседования любого заведения
+import { VenueLens } from "./venue-lens";
 // v66: «Проверка AI HR» — отдельный кусок (эталоны ≈25 КБ), грузится, только когда её открыли
 const retryImport = (loader, tries = 3, delay = 600) => loader().catch(err => { if (tries <= 1) throw err; return new Promise(r => setTimeout(r, delay)).then(() => retryImport(loader, tries - 1, delay * 2)); });
 const HrEval = React.lazy(() => retryImport(() => import("./hr-eval")).then(m => ({ default: m.HrEval })));
@@ -66,17 +68,18 @@ const SELF_BANDS = [
   { id: 3, label: "Почти всё",       min: 86, max: 100 },
 ];
 
-function loadResults() {
-  try { const v = JSON.parse(localStorage.getItem(STORE_KEY)); return Array.isArray(v) ? v : []; }
+// v199 (Доп. 524): история на телефоне — своя у каждого заведения (у своего — прежний ключ, чужие — с названием)
+function loadResults(key = STORE_KEY) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return Array.isArray(v) ? v : []; }
   catch (e) { return []; }
 }
-function saveResults(list) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 50))); } catch (e) {}
+function saveResults(list, key = STORE_KEY) {
+  try { localStorage.setItem(key, JSON.stringify(list.slice(0, 50))); } catch (e) {}
 }
 // v66: итог последней «Проверки AI HR» на этом телефоне
 const HR_REF_KEY = "sa_hr_eval";
-function loadHrRef() {
-  try { const v = JSON.parse(localStorage.getItem(HR_REF_KEY)); return v && typeof v === "object" && v.n ? v : null; }
+function loadHrRef(key = HR_REF_KEY) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v && typeof v === "object" && v.n ? v : null; }
   catch (e) { return null; }
 }
 
@@ -337,9 +340,23 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const [ordSeq, setOrdSeq] = React.useState([]);   // выбор для вопроса-приоритета
   const [answers, setAnswers] = React.useState([]);
   const [selfBand, setSelfBand] = React.useState(null);
-  const [results, setResults] = React.useState(loadResults);
+  // v199 (Доп. 524): у сети — выбранное заведение: история, решения и «Проверка AI HR» того заведения, новое
+  // собеседование записывается туда же. Остальным — своё заведение, как раньше.
+  const lens = useLens(profile);
+  const lensRef = React.useRef(lens); lensRef.current = lens;
+  const restaurant = (lens.mine ? profile?.restaurant : lens.venue) || null;
+  const sKey = lens.mine ? STORE_KEY : STORE_KEY + "|" + lens.venue;
+  const hKey = lens.mine ? HR_REF_KEY : HR_REF_KEY + "|" + lens.venue;
+  const keyRef = React.useRef(sKey); keyRef.current = sKey;
+  const saveR = (list) => saveResults(list, keyRef.current);
+  const [results, setResults] = React.useState(() => loadResults(sKey));
   const [openedResult, setOpenedResult] = React.useState(null);
-  const restaurant = profile?.restaurant || null;
+  const firstKey = React.useRef(sKey);
+  React.useEffect(() => {   // другое заведение: его история и его проверка AI HR
+    if (firstKey.current === sKey) return;
+    firstKey.current = sKey;
+    setResults(loadResults(sKey)); setHrEvalRes(loadHrRef(hKey)); setOpenedResult(null);
+  }, [sKey]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Облако: история собеседований хранится на сервере в рамках ресторана ──
   // (переживает смену телефона; видна всем админам ресторана). При отсутствии
@@ -348,12 +365,14 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     const t = saToken();
     if (!t || !restaurant) return;
     const { decSync, srvId, ...clean } = rec;   // v66: служебные пометки телефона на сервер не шлём
-    rpc("candidate_save", { p_token: t, p_restaurant: restaurant, p_result: JSON.stringify(clean) })
+    const k = keyRef.current;
+    viewRpc("candidate_save", { p_restaurant: restaurant, p_result: JSON.stringify(clean) }, lensRef.current)
       .then(d => {
         if (!d || !d.ok) return;
+        if (keyRef.current !== k) { saveResults(loadResults(k).map(r => r.id === rec.id ? { ...r, srvId: d.id } : r), k); return; }   // v199: уже другое заведение
         setResults(prev => {
           const next = prev.map(r => r.id === rec.id ? { ...r, srvId: d.id } : r);
-          saveResults(next);
+          saveR(next);
           const r = next.find(x => x.id === rec.id);
           if (r && r.decSync === false) setTimeout(() => pushDecision(r), 0);   // v66: решение успели принять раньше
           return next;
@@ -367,10 +386,12 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const pushDecision = React.useCallback((rec) => {
     const t = saToken();
     if (!t || !restaurant || !rec?.srvId) return;
-    rpc("candidate_decide", { p_token: t, p_restaurant: restaurant, p_id: rec.srvId, p_decision: rec.decision || null })
+    const k = keyRef.current;
+    viewRpc("candidate_decide", { p_restaurant: restaurant, p_id: rec.srvId, p_decision: rec.decision || null }, lensRef.current)
       .then(d => {
         if (!d || !d.ok) return;
-        setResults(prev => { const next = prev.map(r => r.id === rec.id ? { ...r, decSync: true } : r); saveResults(next); return next; });
+        if (keyRef.current !== k) { saveResults(loadResults(k).map(r => r.id === rec.id ? { ...r, decSync: true } : r), k); return; }
+        setResults(prev => { const next = prev.map(r => r.id === rec.id ? { ...r, decSync: true } : r); saveR(next); return next; });
       })
       .catch(() => {});
   }, [restaurant]);
@@ -380,44 +401,46 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     if (!rec) return;
     const upd = { ...rec, decision: rec.decision === dec ? null : dec, decidedAt: new Date().toISOString(), decSync: false };
     const next = results.map(r => (r.id === id ? upd : r));
-    setResults(next); saveResults(next);
+    setResults(next); saveR(next);
     setLastRec(l => (l && l.id === id ? upd : l));
     pushDecision(upd);
   };
   // v66: итог «Проверки AI HR» — общий для руководителей ресторана (этап 28: hr_quality_*); нет этапа или сети —
   // живёт на телефоне и уходит на сервер при следующем заходе
-  const [hrEvalRes, setHrEvalRes] = React.useState(loadHrRef);
+  const [hrEvalRes, setHrEvalRes] = React.useState(() => loadHrRef(hKey));
   const saveHrRef = React.useCallback((res) => {
     setHrEvalRes(res);
-    try { localStorage.setItem(HR_REF_KEY, JSON.stringify(res)); } catch (e) {}
+    try { localStorage.setItem(hKey, JSON.stringify(res)); } catch (e) {}
     const t = saToken();
-    if (t && restaurant) rpc("hr_quality_save", { p_token: t, p_restaurant: restaurant, p_payload: JSON.stringify(res) }).catch(() => {});
-  }, [restaurant]);
+    if (t && restaurant) viewRpc("hr_quality_save", { p_restaurant: restaurant, p_payload: JSON.stringify(res) }, lensRef.current).catch(() => {});
+  }, [restaurant, hKey]);
   React.useEffect(() => {
     const t = saToken();
     if (!t || !restaurant) return;
-    rpc("hr_quality_get", { p_token: t, p_restaurant: restaurant })
+    const k = hKey;
+    viewRpc("hr_quality_get", { p_restaurant: restaurant }, lensRef.current)
       .then(d => {
-        if (!d || !d.ok) return;
+        if (!d || !d.ok || keyRef.current !== sKey) return;   // v199: пока ждали, выбрали другое заведение
         const srv = d.item && d.item.payload ? { ...d.item.payload, by: d.item.updated_by || "" } : null;
-        const loc = loadHrRef();
+        const loc = loadHrRef(k);
         if (srv && (!loc || new Date(srv.at || 0) >= new Date(loc.at || 0))) {
           setHrEvalRes(srv);
-          try { localStorage.setItem(HR_REF_KEY, JSON.stringify(srv)); } catch (e) {}
+          try { localStorage.setItem(k, JSON.stringify(srv)); } catch (e) {}
         } else if (loc) {
-          rpc("hr_quality_save", { p_token: t, p_restaurant: restaurant, p_payload: JSON.stringify(loc) }).catch(() => {});   // проверяли без сервера — дозаливаем
+          viewRpc("hr_quality_save", { p_restaurant: restaurant, p_payload: JSON.stringify(loc) }, lensRef.current).catch(() => {});   // проверяли без сервера — дозаливаем
         }
       })
       .catch(() => {});
-  }, [restaurant]);
+  }, [restaurant]);   // eslint-disable-line react-hooks/exhaustive-deps
   const hrSt = hrStatus(hrEvalRes, results);   // { refOk, real: { n, agree, need, pass }, beta }
 
   React.useEffect(() => {
     const t = saToken();
     if (!t || !restaurant) return;
-    rpc("candidate_list", { p_token: t, p_restaurant: restaurant })
+    const k = sKey;
+    viewRpc("candidate_list", { p_restaurant: restaurant }, lensRef.current)
       .then(d => {
-        if (!d || !d.ok || !Array.isArray(d.items)) return;
+        if (!d || !d.ok || !Array.isArray(d.items) || keyRef.current !== k) return;   // v199: ответ по прежнему заведению не смешиваем
         const cloud = d.items.map(row => ({
           ...(({ decSync, ...p }) => p)(row.payload || {}),   // v66: пометка телефона «решение не дошло» с сервера не берём
           srvId: row.id,
@@ -435,7 +458,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           const merged = [...cloud2, ...pending]
             .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
             .slice(0, 100);
-          saveResults(merged);
+          saveR(merged);
           pending.forEach(uploadResult);
           cloud2.filter(r => r.decSync === false && r.srvId).forEach(r => pushDecision(r));
           return merged;
@@ -707,7 +730,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
           aiTopics: hrInfo.topics && hrInfo.topics.length ? hrInfo.topics : Object.keys(d.scores), aiTranscript: transcriptOf(aiMsgs),
         };
         const next = [rec, ...results];
-        setResults(next); saveResults(next); setSaved(true);
+        setResults(next); saveR(next); setSaved(true);
         uploadResult(rec);
         setAnswers(synth);
         setAiVerdict({ verdict: d.verdict, strengths: d.strengths, growth: d.growth, risks: d.risks });
@@ -776,7 +799,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
         topics: topics.map(t => ({ topic: t.topic, ok: t.ok, n: t.n })),
       };
       const next = [rec, ...results];
-      setResults(next); saveResults(next); setSaved(true);
+      setResults(next); saveR(next); setSaved(true);
       uploadResult(rec); // в облако — с тихим повтором при следующем открытии, если нет сети
     }
     setPhase("result");
@@ -785,10 +808,10 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
   const removeResult = (id) => {
     const rec = results.find(r => r.id === id);
     if (rec?.srvId && restaurant) {
-      rpc("candidate_delete", { p_token: saToken(), p_restaurant: restaurant, p_id: rec.srvId }).catch(() => {});
+      viewRpc("candidate_delete", { p_restaurant: restaurant, p_id: rec.srvId }, lensRef.current).catch(() => {});
     }
     const next = results.filter(r => r.id !== id);
-    setResults(next); saveResults(next);
+    setResults(next); saveR(next);
     if (openedResult === id) setOpenedResult(null);
   };
 
@@ -850,6 +873,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                 результат открываешь ты, когда телефон вернётся.
               </div>
             </div>
+            <VenueLens a11y={a11y} lens={lens} style={{ margin: "0 0 12px" }} />
             <button className="sa-btn" data-lens-btn="main" style={goldBtn} onClick={startSetup}>Начать собеседование</button>
 
             {/* v66 (Доп. 379): AI HR — бета или проверен; два условия коротко, тап — «Проверка AI HR» */}

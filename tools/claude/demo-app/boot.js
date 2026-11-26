@@ -560,6 +560,9 @@ const MENU_KNOW = {
 const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaff: SSTAFF, cfg: CFG, plan: planOf(), menu: MENU, state: saved, som: SOM_SEED,
   menuKnow: MENU_KNOW, noStage59: lsGet("__demo_no59") === "1",   // v193: __demo_no59 = "1" — сервер без этапа 59
   noStage61: lsGet("__demo_no61") === "1",   // v198: __demo_no61 = "1" — сервер без этапа 61 (заведения и должности из кода)
+  // v199 (Доп. 524): __demo_no62 = "1" — сервер без этапа 62 (у всех вся сеть, взгляда сети нет); __demo_net = "1" — в сети
+  // второе заведение «Порт» с двумя сданными тестами (стены между заведениями и выбор заведения у владельца)
+  noStage62: lsGet("__demo_no62") === "1", net2: lsGet("__demo_net") === "1",
   qday: lsGet("__demo_qday") === "1",   // v193: __demo_qday = "1" — «Вопрос дня» на главной (очередь с телефона, каждый второй — о блюде)
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],

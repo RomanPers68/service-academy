@@ -269,11 +269,12 @@ if (want("LEAGUE")) {
   const v = await waitView(page);
   ok("LEAGUE: из строки лиги — крупно, должность из строки", v && v.id === "e-ilya" && v.name === "Илья Белов" && v.sub === "Бармен · " + REST && v.state === "full", v);
   await shot(page, "league-2-big"); await closeView(page);
-  // вся сеть: у чужих фамилия одной буквой и фото нет
-  await page.evaluate(() => { const b = document.querySelectorAll("[role=group][aria-label='Какой рейтинг показать'] button")[1]; if (b) b.click(); }); await page.waitForTimeout(900);
+  // v199 (Доп. 524): у сотрудника и менеджера лига только своего заведения: переключателя «во всей сети» нет, чужих в
+  // списке нет (раньше здесь проверяли «вся сеть — у чужих фамилия одной буквой и фото нет»)
+  const sw = await page.locator("[role=group][aria-label='Какой рейтинг показать']").count();
   rows = await read();
   const alien = rows.filter((r) => /Лев Г\.|Нина П\./.test(r.row));
-  ok("LEAGUE: вся сеть — коллеги из другого заведения в списке, без фото (фамилия одной буквой)", alien.length === 2 && alien.every((r) => r.face === null && r.w === 38), { alien, n: rows.length });
+  ok("LEAGUE: у менеджера — только своё заведение: переключателя «во всей сети» нет, коллег из другого заведения нет", sw === 0 && alien.length === 0, { sw, alien, n: rows.length });
   await page.evaluate(() => { const l = document.querySelector("[role=list][aria-label='Лига недели']"); if (l) l.scrollIntoView({ block: "start" }); }); await page.waitForTimeout(400);
   await shot(page, "league-3-net");
   ok("LEAGUE: вбок ничего не вылезает", (await overflowX(page)) <= 0);

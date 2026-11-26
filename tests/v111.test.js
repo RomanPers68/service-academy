@@ -138,7 +138,8 @@ describe("v111: «Новички» и «Первая неделя»", () => {
     expect(bar).not.toContain("data-lens");
     expect(src).toContain("<span style={chip}>{f.topic");
     expect(src).toContain('return <button key={x} type="button" aria-pressed={on} data-nb-arrive={x}');
-    expect(src).toContain('{lead ? <button type="button" data-nbl-off={n.emp} disabled={!!busy}');
+    // v199 (Доп. 524): кнопки руководителя — только в своём заведении (у сети чужое — только посмотреть)
+    expect(src).toContain('{act2 ? <button type="button" data-nbl-off={n.emp} disabled={!!busy}');
   });
 });
 

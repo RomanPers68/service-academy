@@ -18,6 +18,8 @@ import { serverMissing, serverStage } from "../lib/server-text";   // v58 (До�
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): надзаголовок .rp-ey — курсив с засечками, не моноширинный капс
+import { useLens } from "../lib/org";   // v199 (Доп. 524): сеть — вся сеть или одно заведение (тот же выбор, что в аналитике)
+import { inLens, LENS_ALL } from "../lib/org-model";
 
 const CSS = `
 .rp{min-height:100%;padding:0 0 28px;color:#EFE4C8;font-family:Georgia,serif}
@@ -194,6 +196,8 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   const [busy, setBusy] = React.useState("");
   const [msg, setMsg] = React.useState(null);
   const topRef = React.useRef(null);
+  const lens = useLens(profile, { all: true });
+  const vName = lens.network && !lens.all ? lens.venue : "";
 
   const loadList = React.useCallback(() => {
     setList((l) => ({ ...l, status: "loading" }));
@@ -234,9 +238,11 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
         if (what === "person_pdf") res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: m, name: fileName(m.full, "pdf"), mime: "application/pdf", make: async () => (await import("../lib/report-pdf.js")).personPdf(m) });
         else res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: m, name: fileName(m.full, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).personXlsx(m) });
       } else {
-        const r = await rpc("report_team", { p_token: saToken() });
-        if (rpcMissing(r)) throw new Error(serverStage({ admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" }));
-        if (!r || !r.ok) throw new Error(r && r.error === "forbidden" ? "Отчёт по команде видит только руководитель" : "Сервер не отдал данные команды");
+        const r0 = await rpc("report_team", { p_token: saToken() });
+        if (rpcMissing(r0)) throw new Error(serverStage({ admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" }));
+        if (!r0 || !r0.ok) throw new Error(r0 && r0.error === "forbidden" ? "Отчёт по команде видит только руководитель" : "Сервер не отдал данные команды");
+        // v199: выбрано заведение — в файле только его люди и его название
+        const r = vName ? { ...r0, scope: "restaurant", restaurant: vName, people: (r0.people || []).filter((p) => inLens(vName, p && p.person && p.person.restaurant)) } : r0;
         const team = teamModel(r, ctx);
         const label = team.scopeLabel || "команда";
         if (what === "team_xlsx") res = await deliver({ admin: !!(profile && profile.is_admin), kind: what, payload: team, name: fileName("команда " + label, "xlsx"), mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", make: async () => (await import("../lib/report-xlsx.js")).teamXlsx(team) });
@@ -250,13 +256,15 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   };
 
   const lead = list.scope && list.scope !== "self";
+  const inView = React.useMemo(() => list.rows.filter((r) => inLens(vName, r.restaurant)), [list.rows, vName]);   // v199: выбранное заведение
   const rows = React.useMemo(() => {
     const s = q.trim().toLowerCase();
-    return list.rows.filter((r) => (!s || r.full.toLowerCase().includes(s)) && (filter === "all" || (filter === "att" ? r.attention : r.restaurant === filter)))
+    return inView.filter((r) => (!s || r.full.toLowerCase().includes(s)) && (filter === "all" || (filter === "att" ? r.attention : r.restaurant === filter)))
       .sort((a, b) => (b.attention - a.attention) || a.full.localeCompare(b.full, "ru"));
-  }, [list.rows, q, filter]);
-  const rests = React.useMemo(() => [...new Set(list.rows.map((r) => r.restaurant).filter(Boolean))], [list.rows]);
-  const attN = list.rows.filter((r) => r.attention).length;
+  }, [inView, q, filter]);
+  // заведения: у сети — общий выбор (lib/org.js), у остальных их нет (видно одно своё)
+  const rests = lens.network && list.scope && list.scope !== "self" && list.scope !== "restaurant" ? lens.venues : [];
+  const attN = inView.filter((r) => r.attention).length;
 
   const problem = (st) => st === "missing" ? serverMissing({ what: "отчёты", many: true, admin: !!(profile && profile.is_admin), sql: "supabase-stage23-reports.sql" })
     : st === "auth" ? "Сессия не найдена. Войди заново." : st === "forbidden" ? "Эта карточка тебе не видна: руководитель видит своих сотрудников." : st === "offline" ? "Нет связи с сервером. Попробуй ещё раз." : "Сервер ответил ошибкой. Попробуй позже.";
@@ -299,8 +307,8 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
         <button type="button" className="rp-back" data-lens="back" onClick={onBack} aria-label="Назад">‹</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="rp-ey">Отчёты по сотрудникам</div>
-          <h2 className="rp-h">{list.scope === "restaurant" ? (list.restaurant || "Мой ресторан") : list.scope ? "Все рестораны" : "Команда"}</h2>
-          {list.status === "ok" ? <div className="rp-sub">{list.rows.length} {pl(list.rows.length, "сотрудник", "сотрудника", "сотрудников")}{attN ? " · требуют внимания: " + attN : ""}</div> : null}
+          <h2 className="rp-h">{list.scope === "restaurant" ? (list.restaurant || "Мой ресторан") : list.scope ? (vName || "Все рестораны") : "Команда"}</h2>
+          {list.status === "ok" ? <div className="rp-sub">{inView.length} {pl(inView.length, "сотрудник", "сотрудника", "сотрудников")}{attN ? " · требуют внимания: " + attN : ""}</div> : null}
         </div>
       </div>
       {lead && list.status === "ok" ? <ReportHint a11y={a11y} k="report_admin" /> : null}
@@ -313,21 +321,26 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
           {lead ? (
             <>
               <div className="rp-btns">
-                <button type="button" className="rp-btn main" disabled={!!busy || !list.rows.length} onClick={() => runExport("team_xlsx")}>{busy === "team_xlsx" ? "Собираю Excel…" : "Excel по команде"}</button>
-                <button type="button" className="rp-btn" disabled={!!busy || !list.rows.length} onClick={() => runExport("team_pdf")}>{busy === "team_pdf" ? "Собираю PDF…" : "PDF всех карточек"}</button>
+                <button type="button" className="rp-btn main" disabled={!!busy || !inView.length} onClick={() => runExport("team_xlsx")}>{busy === "team_xlsx" ? "Собираю Excel…" : "Excel по команде"}</button>
+                <button type="button" className="rp-btn" disabled={!!busy || !inView.length} onClick={() => runExport("team_pdf")}>{busy === "team_pdf" ? "Собираю PDF…" : "PDF всех карточек"}</button>
               </div>
               <p className="rp-note">В Excel сводка по каждому: где ошибается, с чем работать, что не пройдено, что ждёт повтора, навыки. В PDF карточки для разговора один на один.</p>
             </>
           ) : null}
           {msg ? <div className={"rp-msg" + (msg.bad ? " bad" : "")} role="status">{msg.text}</div> : null}
-          {list.rows.length > 4 ? (
+          {inView.length > 4 ? (
             <div className="rp-search"><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти по имени" aria-label="Найти сотрудника по имени" {...SEARCH_ATTRS} /></div>
           ) : null}
-          {attN || rests.length > 1 ? (
+          {rests.length > 1 ? (
+            <div className="rp-chips" role="group" aria-label="Заведение" data-rp-venues="">
+              <button type="button" className={"rp-chip" + (!vName ? " on" : "")} data-rp-venue="*" onClick={() => { vibrate("light"); setFilter("all"); lens.pick(LENS_ALL); }}>Вся сеть</button>
+              {rests.map((r) => <button key={r} type="button" className={"rp-chip" + (vName === r ? " on" : "")} data-rp-venue={r} onClick={() => { vibrate("light"); setFilter("all"); lens.pick(r); }}>{r}</button>)}
+            </div>
+          ) : null}
+          {attN ? (
             <div className="rp-chips" role="group" aria-label="Фильтр">
               <button type="button" className={"rp-chip" + (filter === "all" ? " on" : "")} onClick={() => setFilter("all")}>Все</button>
-              {attN ? <button type="button" className={"rp-chip" + (filter === "att" ? " on" : "")} onClick={() => setFilter("att")}>Требуют внимания · {attN}</button> : null}
-              {rests.length > 1 ? rests.map((r) => <button key={r} type="button" className={"rp-chip" + (filter === r ? " on" : "")} onClick={() => setFilter(r)}>{r}</button>) : null}
+              <button type="button" className={"rp-chip" + (filter === "att" ? " on" : "")} onClick={() => setFilter("att")}>Требуют внимания · {attN}</button>
             </div>
           ) : null}
           <div className="rp-list">
@@ -344,7 +357,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
                 </div>
               </button>
             ))}
-            {!rows.length ? <div className="rp-empty">{list.rows.length ? "Никого не нашлось." : "Пока некого показать."}</div> : null}
+            {!rows.length ? <div className="rp-empty">{inView.length ? "Никого не нашлось." : vName ? "В этом заведении пока никого." : "Пока некого показать."}</div> : null}
           </div>
           <p className="rp-foot">Менеджер видит сотрудников своего ресторана, старший видит всех ниже себя во всех ресторанах, владелец видит всех. Метка «внимание»: давно не занимался, много ошибок или повторов.</p>
         </>

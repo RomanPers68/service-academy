@@ -124,7 +124,8 @@ describe("v109: приложение", () => {
     expect(src.match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g)).toBe(null);
     for (const a of ["data-gain-month", "data-gain-period", 'data-gain-sec="learn"', 'data-gain-sec="hall"', 'data-gain-sec="topics"', 'data-gain-sec="grew"', 'data-gain-sec="idle"', 'data-gain-sec="tg"',
       "data-gain-stat", "data-gain-nudge", "data-gain-send", "data-gain-nolearn", "data-gain-missing"]) expect(src).toContain(a);
-    expect(src).toContain('rpc("gain_month", { p_token: saToken(), p_month: m || null })');
+    // v199 (Доп. 524): через взгляд сети — своё заведение напрямую, чужое у сети через org_view
+    expect(src).toContain('viewRpc("gain_month", { p_month: m || null }, lensRef.current)');
     expect(src).toContain('rpc("gain_send_now", { p_token: saToken(), p_month: st.m.month })');
     expect(src).toContain('rpc("morning_nudge", { p_token: saToken(), p_emp: id })');
   });

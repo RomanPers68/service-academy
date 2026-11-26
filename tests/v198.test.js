@@ -221,7 +221,8 @@ describe("v198 · где списки берутся", () => {
   });
   it("меню и концепция: заведения из списка владельца, своё — всегда", () => {
     const m = rd("ui/menu-trainer.jsx");
-    expect(m).toContain("const venues = venuesWithMine(org, profile?.restaurant);");
+    // v199 (Доп. 524): у сотрудника и менеджера — только своё заведение, все — у сети (lib/org-model.js, menuVenues)
+    expect(m).toContain("const venues = menuVenues(org, profile);");
     expect(m).not.toContain("RESTAURANTS");
     const c = rd("ui/concept.jsx");
     expect(c).not.toContain("RESTAURANTS");

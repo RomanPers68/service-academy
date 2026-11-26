@@ -13,6 +13,7 @@ import { ROLE_LABEL, ROLE_COLOR } from "../data/roles";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { KEYS, BADGES, teamRecords, badgesFor, loadLocal } from "../lib/achievements";
 import React from "react";
+import { isNetwork } from "../lib/org-model";   // v199 (Доп. 524): рейтинг сотрудника — своё заведение
 import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
 import { glass, Avatar, tones } from "./analytics-kit";
@@ -296,7 +297,12 @@ export function PlaceCard({ T, tabLabel, rest, restIdx, restN, netIdx, netN, net
   );
 }
 
-export function LeaderboardScreen({ T, leaderboard, scores, profile, practiceStars = {}, onBack, onLeague, masters = null }) {
+export function LeaderboardScreen({ T, leaderboard: lbAll, scores: scAll, profile, practiceStars = {}, onBack, onLeague, masters = null }) {
+  // v199 (Доп. 524): у сотрудника и менеджера рейтинг только своего заведения; вся сеть — у владельца и руководящего
+  // состава. С этапом 62 сервер и так присылает только своё, а до него экран не показывает чужие заведения сам
+  const ownOnly = !isNetwork(profile) && !!profile?.restaurant;
+  const leaderboard = React.useMemo(() => (ownOnly ? (lbAll || []).filter(p => (p.restaurant || "") === profile.restaurant) : (lbAll || [])), [lbAll, ownOnly, profile?.restaurant]);
+  const scores = React.useMemo(() => (ownOnly ? (scAll || []).filter(s => (s.restaurant || "") === profile.restaurant) : (scAll || [])), [scAll, ownOnly, profile?.restaurant]);
   const [lbHint, lbHintDone] = useHintOnce("leaderboard");
   const [lbStep, setLBStep] = React.useState(0);
   const lbSteps = hintsFor("leaderboard");

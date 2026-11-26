@@ -34,6 +34,8 @@ import { FaceImg, FaceChip } from "./staff-photo";   // v158: фото сотр�
 import { staffPhotoListNow, staffPhotoOf } from "../lib/staff-photo";
 import { plural, pluralGen } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе — «21 смена», «31 день»
 import { cheersDue, yearsWord } from "../lib/team-warm";   // v108 (Доп. 421): годовщины в «Сегодня»
+import { useLens } from "../lib/org";   // v199 (Доп. 524): сеть открывает график любого заведения
+import { VenueLens } from "./venue-lens";
 
 const mono = "ui-monospace, Menlo, monospace";   // v73: только цифрам — время, часы, счёт, коды, телефоны
 const serif = "Georgia, serif";
@@ -429,7 +431,13 @@ function Sec({ no, title, hint, open, onToggle, P, children }) {
  * Нет чата или на сервере ещё нет chat_shift_board — обмен как раньше (swap_*). */
 /* v113 (Доп. 426): в виде «Линза» карточки, кнопки, вкладки, лица в «Сегодня», номера разделов и поля — метками data-lens-*
  * (правила — ui/home-look.jsx, раздел v113); таблица, буквы смен, фильтры, полоски и кнопки с предупреждением — прежние. */
-export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null, startToday = false }) {
+export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCount = 0, onMistakes, onChecklist, chat = null, onCal = null, startToday = false }) {
+  // v199 (Доп. 524): сеть (владелец, руководящий состав) выбирает заведение лентой под месяцем, и экран работает с ним,
+  // как со своим: profile.restaurant — выбранное. Личное (моя смена на главной, копия графика на телефоне, смены из
+  // чата, опоздания) — только у своего заведения. Остальные видят только своё, как раньше
+  const lens = useLens(profile0);
+  const profile = React.useMemo(() => (profile0 && !lens.mine && lens.venue ? { ...profile0, restaurant: lens.venue } : profile0), [profile0, lens.mine, lens.venue]);
+  const mineRef = React.useRef(lens.mine); mineRef.current = lens.mine;
   // Редактор графика — не только владелец: менеджеры и руководители тоже
   // (та же формула, что у собеседования кандидатов — canHire в App).
   const isAdmin = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -455,6 +463,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   const [more, setMore] = React.useState(false);        // Доп. 150: редкие действия — за «Ещё»
   // Доп. 250: мастер первого входа — четыре вопроса вместо шести разделов
   const [wiz, setWiz] = React.useState(null);           // null | { step, preset, need, rows }
+  // v199: сеть выбрала другое заведение — мастер прежнего закрываем (иначе он настроил бы уже выбранное), у нового — свой
+  React.useEffect(() => { setWiz(null); wizTried.current = false; }, [profile?.restaurant]);
   const wizDone = () => { try { return localStorage.getItem("sa_sched_wizard_" + (profile?.restaurant || "")) === "1"; } catch (e) { return true; } };
   const markWizDone = () => { try { localStorage.setItem("sa_sched_wizard_" + (profile?.restaurant || ""), "1"); } catch (e) {} };
   const [todayOpen, setTodayOpen] = React.useState(!!startToday); // Доп. 150/262: «Сегодня» свёрнуто — пульс дня даёт полоска недели; v149: из совета «Звонок в один тап» — раскрыто
@@ -787,7 +797,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       undoRef.current = null; setUndoTick(t => t + 1);   // и отмена тоже
       setDirty(false); setState("ok"); setOfflineAt(null);
       let prevSnap = null;
-      try {
+      if (mineRef.current) try {   // v199: копия на телефоне и «моя смена» — только своего заведения
         try { prevSnap = JSON.parse(localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey) || "null"); } catch (e9) {}
         localStorage.setItem("sa_sched_cache_" + venueKey + "_" + mkey, JSON.stringify({
           cfg: v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG },
@@ -795,7 +805,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
           ts: Date.now() }));
       } catch (e2) {}
       // Сводка «моя смена сегодня» — для плитки на главной и наставника
-      try {
+      if (!mineRef.current) setPlanDiff([]);
+      else try {
         const t0 = new Date();
         if (t0.getFullYear() === Y && t0.getMonth() === M) {
           const cfgL = v ? { ...DEFAULT_CONFIG, ...v.config } : { ...DEFAULT_CONFIG };
@@ -878,9 +889,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
         } catch (e) {}
       })();
     } catch (e) {
-      // Сети нет — поднимаем офлайн-копию, если она есть
+      // Сети нет — поднимаем офлайн-копию, если она есть (v199: она только у своего заведения)
       try {
-        const raw = localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey);
+        const raw = mineRef.current ? localStorage.getItem("sa_sched_cache_" + venueKey + "_" + mkey) : null;
         if (raw) {
           const c = JSON.parse(raw);
           setCfg(mergeCfg(c.cfg));
@@ -892,7 +903,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       } catch (e3) {}
       setState("error"); setMsg("Нет связи с сервером"); setDbg(String(e && e.message || e));
     }
-  }, [mkey, profile?.restaurant]);
+  }, [mkey, profile?.restaurant, lens.mine]);
 
   React.useEffect(() => { flushRef.current(); load(); }, [load]);
   // v141 (Доп. 459): ТК РФ, ст. 103 — следующий месяц пустой? Только руководителю и только на текущем месяце; тихо, в фоне
@@ -913,7 +924,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // v97: смены в чате команды на этот месяц — после загрузки графика (нет чата или функции — null, обмен как раньше)
   const chatApi = chat && chat.api ? chat.api : null;
   const loadBoard = React.useCallback(() => {
-    if (!chatApi || !chatApi.shiftBoard || !profile?.restaurant) { setBoard(null); setBoardMore(null); return Promise.resolve(null); }
+    if (!chatApi || !chatApi.shiftBoard || !profile?.restaurant || !lens.mine) { setBoard(null); setBoardMore(null); return Promise.resolve(null); }   // v199: чат — своего заведения
     // открыт текущий месяц — и заявки на следующий: в конце месяца смены на первые дни следующего тоже видны
     const t0 = new Date(), yy = +mkey.slice(0, 4), mm = +mkey.slice(5, 7) - 1;
     const nk = t0.getFullYear() === yy && t0.getMonth() === mm ? (mm === 11 ? (yy + 1) + "-01" : yy + "-" + String(mm + 2).padStart(2, "0")) : null;
@@ -922,7 +933,7 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
       setBoardMore(nk && r2 && r2.ok && Array.isArray(r2.offers) ? { mk: nk, offers: r2.offers } : null);
       return r;
     }).catch(() => null);
-  }, [chatApi, mkey, profile?.restaurant]);
+  }, [chatApi, mkey, profile?.restaurant, lens.mine]);
   React.useEffect(() => { if (state === "ok") loadBoard(); }, [state, loadBoard]);
   // вернулись из чата (там могли забрать или отдать смену): график и предложения — тихо, без загрузки экрана;
   // у руководителя с несохранёнными правками график не трогаем — сведёт «Сохранить» (v93)
@@ -942,9 +953,9 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // графика. Нет этапа — пусто, как раньше
   const [lates, setLates] = React.useState([]);
   const loadLates = React.useCallback(() => {
-    if (!profile?.restaurant) { setLates([]); return; }
+    if (!profile?.restaurant || !lens.mine) { setLates([]); return; }   // v199: отметки — своего заведения (сервер знает только его)
     rpc("late_month", { p_token: saToken(), p_month: mkey }).then((r) => setLates(r && r.ok && Array.isArray(r.rows) ? r.rows : [])).catch(() => {});
-  }, [mkey, profile?.restaurant]);
+  }, [mkey, profile?.restaurant, lens.mine]);
   React.useEffect(() => { if (state === "ok") loadLates(); }, [state, loadLates]);
   React.useEffect(() => { if (chatBack && state === "ok") loadLates(); }, [chatBack]);   // eslint-disable-line react-hooks/exhaustive-deps
   const lateOf = (sid, d) => lates.find((x) => x && String(x.sid) === String(sid) && Number(x.day) === Number(d)) || null;
@@ -1228,13 +1239,14 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   };
 
   // Настройки заведения сохраняются отдельно от месяца: они общие для всех месяцев
-  const saveCfg = async (next) => {
+  // v199: заведение — то, чьи это настройки (сеть могла уже выбрать другое, пока правка ждала отправки)
+  const saveCfg = async (next, rest = profile?.restaurant || "") => {
     if (!isAdmin) return;
     setMsg("Сохраняю настройки…");
     try {
       const r = await rpc("schedule_save_venue", {
-        p_token: saToken(), p_restaurant: profile?.restaurant || "", p_venue_key: venueKey,
-        p_title: profile?.restaurant || "Заведение", p_config: JSON.stringify(next),
+        p_token: saToken(), p_restaurant: rest, p_venue_key: venueKey,
+        p_title: rest || "Заведение", p_config: JSON.stringify(next),
       });
       setMsg(r && r.ok === true ? "Настройки сохранены"
         : (r?.error === "forbidden" ? "Настройки меняет менеджер" : "Сохранить не удалось"));
@@ -1251,18 +1263,20 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
   // перед любой перезагрузкой месяца.
   const saveTimer = React.useRef(null);
   const pendingCfg = React.useRef(null);
+  const pendingRest = React.useRef("");
   const patch = (fn) => {
     const next = JSON.parse(JSON.stringify(cfg)); fn(next);
     setCfg(next);
-    pendingCfg.current = next;
+    const rest = profile?.restaurant || "";
+    pendingCfg.current = next; pendingRest.current = rest;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { pendingCfg.current = null; saveCfg(next); }, 900);
+    saveTimer.current = setTimeout(() => { pendingCfg.current = null; saveCfg(next, rest); }, 900);
   };
   flushRef.current = () => {
     if (!pendingCfg.current) return;
     const next = pendingCfg.current; pendingCfg.current = null;
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
-    saveCfg(next);
+    saveCfg(next, pendingRest.current);
   };
   React.useEffect(() => {
     const onHide = () => flushRef.current();
@@ -1630,6 +1644,8 @@ export function ScheduleScreen({ T = {}, a11y, profile, onBack, dueCount = 0, on
               border:`1px solid ${a11y ? "rgba(139,106,48,0.45)" : "rgba(200,169,110,0.45)"}` }}>{t}</button>
         )) : null}
       </div>
+      <div style={{ padding:"0 14px" }}><VenueLens a11y={a11y} lens={{ ...lens, pick: (v) => {   // несохранённый график не теряем
+        if (dirty) { setMsg("Сначала сохрани график или отмени правки"); setTimeout(() => setMsg(""), 3000); return; } lens.pick(v); } }} style={{ margin:"4px 0 8px" }} /></div>
       {offlineAt ? (
         <div style={{ margin:"0 14px 10px", padding:"8px 12px", borderRadius:12, fontSize:11,
           color:"#D2A85A", background:"rgba(210,168,90,0.09)", border:"1px solid rgba(210,168,90,0.3)" }}>

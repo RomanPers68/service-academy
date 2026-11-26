@@ -17,6 +17,8 @@ import {
 } from "../lib/newbie";
 import { dLong, upFirst, nm } from "../lib/morning";
 import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото новичка и наставника в кружках, по нажатию — крупно
+import { useLens, viewRpc } from "../lib/org";   // v199 (Доп. 524): сеть смотрит новичков любого заведения
+import { VenueLens, LensNote } from "./venue-lens";
 
 const SQL = "supabase-stage41-newbie.sql";
 const P = (a11y) => (a11y
@@ -326,15 +328,21 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
   const [sure, setSure] = React.useState("");          // emp — «Убрать из новичков?» второй раз
   const legacy = React.useRef(onLegacy);
   legacy.current = onLegacy;
+  // v199: чужое заведение у сети — только посмотреть (подтверждать, назначать и добавлять — руководителю того заведения)
+  const lens = useLens(profile);
+  const lensRef = React.useRef(lens); lensRef.current = lens;
+  const ro = !lens.mine;
   const load = React.useCallback(() => {
-    rpc("newbie_list", { p_token: saToken() }).then((r) => {
-      if (rpcMissing(r)) { if (legacy.current) legacy.current(); else setSt({ phase: "missing" }); return; }
+    const ln = lensRef.current;
+    viewRpc("newbie_list", {}, ln).then((r) => {
+      if (r && r.error === "stage62") { setSt({ phase: "lens", code: "stage62" }); return; }
+      if (rpcMissing(r)) { if (legacy.current && ln.mine) legacy.current(); else setSt({ phase: "missing" }); return; }
       if (!r || r.ok === false) { setSt({ phase: "error", text: errText(r) }); return; }
       setSt({ phase: "ready", lead: !!r.lead, day: r.day || "", memo: memoOf(r.memo), list: (Array.isArray(r.list) ? r.list : []).map(newbieModel),
         team: Array.isArray(r.team) ? r.team : [], cands: Array.isArray(r.cands) ? r.cands : [], led: Array.isArray(r.led) ? r.led : [] });
     }).catch(() => setSt({ phase: "error", text: "Нет связи. Попробуй ещё раз." }));
   }, []);
-  React.useEffect(() => { load(); }, [load]);
+  React.useEffect(() => { setOpen(null); setSheet(null); setNote({}); load(); }, [load, lens.venue]);
   const upd = (item) => setSt((x) => ({ ...x, list: x.list.map((n) => (n.emp === item.emp ? newbieModel(item) : n)) }));
   const act = (emp, fn, args, done) => {
     if (busy) return;
@@ -346,6 +354,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
     }).catch(() => { setBusy(""); setNote((x) => ({ ...x, [emp]: "Нет связи. Попробуй ещё раз." })); });
   };
   const lead = st.lead;
+  const act2 = lead && !ro;   // кнопки руководителя — только в своём заведении
   const list = st.list || [];
   const nbOf = (emp) => list.find((n) => n.emp === emp);
 
@@ -361,7 +370,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
             <div style={{ fontSize: 14, color: text, lineHeight: 1.4 }} data-nbl-memo-arrive="">{"Приходить " + (m.arrive ? "за " + m.arrive + " минут до смены" : "к началу смены")}</div>
             <div style={{ fontSize: 12.5, color: sub, lineHeight: 1.45, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} data-nbl-memo-rest="">{rest}</div>
           </div>
-          <button type="button" style={ghost} data-lens-btn="soft" data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button>
+          {act2 ? <button type="button" style={ghost} data-lens-btn="soft" data-nbl-memo-edit="" onClick={() => { vibrate("light"); setSheet("memo"); }}>Изменить</button> : null}
         </div>
       </div>
     </>);
@@ -373,7 +382,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
     const confBtn = (step, label) => {
       const cf = conf(step);
       return line("cf-" + step, "", <>{label}<div style={{ fontSize: 12, color: cf ? c.ok : sub, marginTop: 2 }}>{cf ? "Подтверждено: " + nm(cf.name) + ", " + dayMon(String(cf.at).slice(0, 10)) : "Ещё не подтверждено"}</div></>,
-        <button type="button" style={cf ? ghost : { ...ghost, border: "1px solid " + c.gold, color: text }} data-lens-btn="soft" data-lens-hi={cf ? undefined : ""} data-nbl-confirm={step} data-nbl-emp={n.emp} disabled={!!busy}
+        ro ? null : <button type="button" style={cf ? ghost : { ...ghost, border: "1px solid " + c.gold, color: text }} data-lens-btn="soft" data-lens-hi={cf ? undefined : ""} data-nbl-confirm={step} data-nbl-emp={n.emp} disabled={!!busy}
           onClick={() => act(n.emp, "newbie_confirm", { p_emp: n.emp, p_step: step, p_on: !cf })}>{cf ? "Снять" : "Подтвердить"}</button>);
     };
     // v110: темы с собеседования — плашками «конфликты и сложные ситуации 45 из 100» (было «…45, честность и деньги 62»)
@@ -412,19 +421,19 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
         {isOpen ? (
           <div style={{ padding: "0 14px 12px" }} data-nbl-open={n.emp}>
             {lead ? line("buddy", "Наставник:", n.buddy ? n.buddy.name : <span style={{ color: c.warn }}>не назначен</span>,
-              <button type="button" style={ghost} data-lens-btn="soft" data-nbl-buddy={n.emp} onClick={() => { vibrate("light"); setSheet({ buddy: n.emp }); }}>{n.buddy ? "Сменить" : "Назначить"}</button>) : null}
+              ro ? null : <button type="button" style={ghost} data-lens-btn="soft" data-nbl-buddy={n.emp} onClick={() => { vibrate("light"); setSheet({ buddy: n.emp }); }}>{n.buddy ? "Сменить" : "Назначить"}</button>) : null}
             {lead ? line("cand", "Собеседование:", n.cand ? (n.cand.name && n.cand.name !== n.name ? n.cand.name + ", " : "") + dayMon(n.cand.date) : n.noCand ? "нет" : "не найдено",
-              <button type="button" style={ghost} data-lens-btn="soft" data-nbl-cand={n.emp} onClick={() => { vibrate("light"); setSheet({ cand: n.emp }); }}>{n.cand || n.noCand ? "Сменить" : "Выбрать"}</button>) : null}
+              ro ? null : <button type="button" style={ghost} data-lens-btn="soft" data-nbl-cand={n.emp} onClick={() => { vibrate("light"); setSheet({ cand: n.emp }); }}>{n.cand || n.noCand ? "Сменить" : "Выбрать"}</button>) : null}
             {!lead && n.first && dayDiff(n.day, n.first.day) >= 0 ? line("arrive", "", "Встретить к " + arriveAt(n.first.from, n.memo.arrive) + ", " + whenWord(n.first.day, n.day)) : null}
             {n.focus.length && !lead ? line("focus", "Темы для занятий:", focusLine(n.focus, false)) : null}
             {confBtn("d2c", "5 столов под присмотром наставника")}
             {confBtn("d3b", "Первая самостоятельная смена")}
-            {lead && !n.hello ? <button type="button" style={main} data-lens-btn="main" data-nbl-hello={n.emp} disabled={!!busy}
+            {act2 && !n.hello ? <button type="button" style={main} data-lens-btn="main" data-nbl-hello={n.emp} disabled={!!busy}
               onClick={() => act(n.emp, "newbie_set", { p_emp: n.emp, p_hello: true }, () => setNote((x) => ({ ...x, [n.emp]: "Карточка «Знакомьтесь» в «Вся команда»" })))}>Представить команде</button> : null}
-            {lead && n.hello && onChat ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" data-nbl-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
+            {act2 && n.hello && onChat ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" data-nbl-chat="" onClick={() => { vibrate("light"); onChat(); }}>Открыть «Вся команда»</button> : null}
             {!lead && onDm ? <button type="button" style={{ ...ghost, marginTop: 10 }} data-lens-btn="soft" data-nbl-dm={n.emp} onClick={() => { vibrate("light"); onDm({ id: n.emp, name: n.name }); }}>{"Написать: " + firstName(n.name)}</button> : null}
             {note[n.emp] ? <div role="status" style={{ fontSize: 12.5, color: text, marginTop: 8 }} data-nbl-note="">{note[n.emp]}</div> : null}
-            {lead ? <button type="button" data-nbl-off={n.emp} disabled={!!busy}
+            {act2 ? <button type="button" data-nbl-off={n.emp} disabled={!!busy}
               onClick={() => { if (sure !== n.emp) { vibrate("light"); setSure(n.emp); return; } setSure(""); act(n.emp, "newbie_add", { p_emp: n.emp, p_on: false }, () => setSt((x) => ({ ...x, list: x.list.filter((y) => y.emp !== n.emp) }))); }}
               style={{ display: "block", width: "100%", marginTop: 10, padding: 10, borderRadius: 999, cursor: "pointer", background: "transparent", border: "1px solid " + (sure === n.emp ? c.bad : c.line), color: sure === n.emp ? c.bad : sub, fontSize: 13, fontFamily: "Georgia, serif" }}>
               {sure === n.emp ? "Убрать? Нажми ещё раз" : "Убрать из новичков"}</button> : null}
@@ -440,6 +449,8 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
         <div style={T.lessHeadTitle}>Новички</div>
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
+        <VenueLens a11y={a11y} lens={lens} style={{ margin: "0 0 10px" }} />
+        {st.phase === "lens" ? <LensNote a11y={a11y} code={st.code} admin={!!(profile && profile.is_admin)} /> : null}
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Загружаю…</div> : null}
         {st.phase === "missing" ? <div style={textCard} data-lens-card="" data-nbl-missing="">{serverMissing({ what: "«Новички»", many: true, admin: !!(profile && profile.is_admin), sql: SQL })}</div> : null}
         {st.phase === "error" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>{st.text}
@@ -449,8 +460,8 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
           {h(lead ? "Новички" : "Ты наставник", list.length || null, "list")}
           {list.length ? list.map(item) : (
             <div style={textCard} data-lens-card="" data-nbl-empty="">{lead ? "Сейчас новичков нет. Новый сотрудник появится здесь сам, когда владелец заведёт его в «Сотрудниках»." : "Сейчас ты никого не ведёшь. Наставника назначает руководитель в «Новичках»."}</div>)}
-          {lead ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-lens-btn="main" data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
-          {st.led.length ? (<>
+          {act2 ? <button type="button" style={{ ...ghost, display: "block", width: "100%", padding: "10px 12px", marginBottom: 16 }} data-lens-btn="main" data-nbl-add="" onClick={() => { vibrate("light"); setSheet("add"); }}>Добавить новичка из команды</button> : null}
+          {!ro && st.led.length ? (<>
             {h("Ты " + (isFemaleName(profile && profile.name, profile && profile.surname) ? "вывела" : "вывел") + " на самостоятельную смену", st.led.length, "led")}
             <div style={card} data-lens-card="" data-nbl-led="">{st.led.map((x, i) => line("led" + i, "", nm(x.name) + (x.solo ? ", " + dayMon(x.solo) : ""), null, i > 0))}</div>
           </>) : null}

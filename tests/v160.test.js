@@ -347,7 +347,8 @@ describe("v160: рейтинг и «Лига недели» — лицо с но
   it("вся сеть: у коллеги из чужого заведения фамилия одной буквой — и фото не показываем; владельцу видно всё", () => {
     globalThis.localStorage.setItem("sa_lb_scope", "net");
     const mine = board(ANNA);
-    expect(mine).toContain("Иван П.");
+    // v199 (Доп. 524): у сотрудника рейтинг только своего заведения, коллеги из чужого в нём больше нет
+    expect(mine).not.toContain("Иван");
     expect(mine).not.toContain("Петров");
     expect(count(mine, "data-rank-face=")).toBe(1);
     expect(mine).not.toContain('data-face="e-ivan"');

@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { isNetwork } from "../lib/org-model";   // v199 (Доп. 524): фокус смены — ошибки своего заведения и у сети
 import { programAll } from "../data/modules";
 import { withConceptPrograms, conceptFromStorage } from "../lib/concept";   // v139 (Доп. 454): вопрос команде и из «О нас»
 import { useAllModules } from "../lib/use-content";
@@ -219,7 +220,10 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
     const put = (k) => (v) => { if (alive) setSrc((s) => ({ ...s, [k]: v })); };
     const cached = cachedShared(restaurant);
     rpc("menu_get", { p_restaurant: restaurant }).then((r) => { const a = typeof r === "string" ? JSON.parse(r) : r; put("menu")(Array.isArray(a) ? a : cached); }).catch(() => put("menu")(cached));
-    rpc("quiz_hard_questions", { p_token: tok }).then((r) => put("hard")(Array.isArray(r) ? r : [])).catch(() => put("hard")([]));
+    // v199: у сети quiz_hard_questions — вся сеть; пятиминутка смены — про своё заведение (этап 62), без этапа — как было
+    const hardAll = () => rpc("quiz_hard_questions", { p_token: tok });
+    (isNetwork(profile) && restaurant ? rpc("quiz_hard_questions_at", { p_token: tok, p_restaurant: restaurant }).then((r) => (rpcMissing(r) ? hardAll() : r)) : hardAll())
+      .then((r) => put("hard")(Array.isArray(r) ? r : [])).catch(() => put("hard")([]));
     const d = new Date(), mkey = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
     // нет связи — false («не пришло»), а не null («ещё собираю»): иначе «Отправить команде» ждала бы вечно
     rpc("schedule_load", { p_token: tok, p_restaurant: restaurant, p_month: mkey }).then((r) => put("sched")(r || false)).catch(() => put("sched")(false));

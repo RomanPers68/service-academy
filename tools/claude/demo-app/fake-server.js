@@ -56,6 +56,13 @@ export function makeServer(opts) {
   const PEOPLE = opts.people, TOK = opts.tok || {}, SSTAFF = opts.sstaff, CFG = opts.cfg;
   const SH = (CFG && CFG.shifts) || SHIFTS;
   const clock = opts.clock || (() => Date.now());
+  // v199 (этап 62): объявлены до всего остального — rpc зовут уже при создании сервера. У сети на один запрос org_view — выбранное заведение (как sa.lens у _sa_caller)
+  let LENS = null;
+  // v199: opts.net2 (__demo_net) — в сети второе заведение «Порт» и два сданных там теста
+  const NET2_SCORES = [
+    { id: 11, name: "Игорь", surname: "Портов", restaurant: "Порт", role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 6, total: 12, updated_at: new Date(clock() - 3600e3).toISOString() },
+    { id: 12, name: "Лена", surname: "Морская", restaurant: "Порт", role: "seasonal", position: "waiter", quiz_id: "s0-q", score: 12, total: 12, updated_at: new Date(clock() - 7200e3).toISOString() },
+  ];
   const pingRaw = opts.ping || (() => {});   // v99: «бот пишет в Telegram»: (кому, текст, кнопки, чат, сообщение)
   const pushOut = opts.push || (() => {});   // v137: уведомление на телефон: (кому, { t, b, go, badge, c, a, k })
   // v137 (этап 48): сообщение бота — и на телефон; «только телефон» и «чат» без Telegram — Telegram молчит. Доп. 451: бот
@@ -1019,7 +1026,10 @@ export function makeServer(opts) {
 
   // ── v198: этап 61 — заведения и должности ─────────────────────────────────────────────────────────────────────
   function orgState() {
-    if (!S.org) { S.org = orgSeed([...new Set(PEOPLE.map((e) => e.restaurant))]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0; }
+    if (!S.org) {
+      S.org = orgSeed([...new Set(PEOPLE.map((e) => e.restaurant))]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0;
+      if (opts.net2) { const v = S.org.venues.find((x) => x.name === "Порт"); if (v) v.hidden = false; }   // v199: второе заведение в списке
+    }
     return S.org;
   }
   const restNow = (name) => { const o = orgState(); let n = name, k = 0; while (o.renamed[n] && k++ < 20) n = o.renamed[n]; return n; };
@@ -1091,16 +1101,44 @@ export function makeServer(opts) {
 
   function rpc(fn, b) {
     b = b || {};
-    const p = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
+    const p0 = PEOPLE.find((e) => e.id === TOK[b.p_token]) || null;
+    const p = p0 && LENS && (p0.is_admin || p0.position === "senior") ? { ...p0, restaurant: LENS } : p0;
     if (fn === "whoami") return p ? { ok: true, employee: clone(p) } : { ok: false, error: "auth" };
     if (fn === "my_state") return p ? stateOf(p) : { ok: false, error: "auth" };
     if (fn === "my_reset_at") return { ok: true, reset_at: null };
     if (fn === "cms_list_lessons") return [];
+    // ── v199 (этап 62): взгляд сети (org_view) и трудные вопросы одного заведения; opts.noStage62 — сервер без этапа 62 ──
+    if (fn === "org_view" || fn === "quiz_hard_questions_at") {
+      if (opts.noStage62) return { code: "PGRST202", message: "Could not find the function" };
+      const net = !!p && (!!p.is_admin || p.position === "senior");
+      if (fn === "quiz_hard_questions_at") return [];   // ответов в тестах с текстом вопроса в демо нет
+      if (!p) return { ok: false, error: "auth" };
+      if (!net) return { ok: false, error: "forbidden" };
+      const v = cleanName(b.p_restaurant);
+      if (!v) return { ok: false, error: "bad_request" };
+      if (!opts.noStage61 && !orgState().venues.some((x) => x.name === v)) return { ok: false, error: "no_venue" };
+      const VIEW = ["gain_month", "newbie_list", "mastery_list", "team_achievements", "candidate_list", "candidate_save", "candidate_decide", "candidate_delete", "hr_quality_get", "hr_quality_save"];
+      if (!VIEW.includes(b.p_fn)) return { ok: false, error: "bad_fn" };
+      const a = b.p_args && typeof b.p_args === "object" ? b.p_args : {};
+      LENS = v;
+      try {
+        const r = rpc(b.p_fn, { ...a, p_token: b.p_token, ...(/^(candidate|hr_quality)_/.test(b.p_fn) ? { p_restaurant: v } : {}) });
+        return r && r.code === "PGRST202" ? { ok: false, error: "no_stage" } : r;
+      } finally { LENS = null; }
+    }
     if (/^concept_/.test(fn)) { if (opts.noStage49) return { code: "PGRST202", message: "Could not find the function" }; const r = concept(fn, p, b); if (r !== undefined) return r; }   // v139: этап 49
     if (/^lesson_photo/.test(fn)) { if (opts.noStage51) return { code: "PGRST202", message: "Could not find the function" }; const r = lessonPhotos(fn, p, b); if (r !== undefined) return r; }   // v146: этап 51
     if (/^staff_photo/.test(fn)) { if (opts.noStage52) return { code: "PGRST202", message: "Could not find the function" }; const r = staffPhotos(fn, p, b); if (r !== undefined) return r; }   // v158: этап 52
     if (/^ref_book/.test(fn)) { if (opts.noStage53) return { code: "PGRST202", message: "Could not find the function" }; const r = refBook(fn, p, b); if (r !== undefined) return r; }   // v167: этап 53
-    if (fn === "team_scores") return p ? { ok: true, rows: clone(opts.scores || []) } : { ok: false, error: "auth" };   // v158: opts.scores — сданные тесты команды (рейтинг и «Лидеры ресторана»)
+    // v158: opts.scores — сданные тесты команды (рейтинг и «Лидеры ресторана»); v199 (этап 62): сеть — все заведения,
+    // остальные — своё и свои прежние; без этапа 62 (opts.noStage62) — вся сеть, как раньше
+    if (fn === "team_scores") {
+      if (!p) return { ok: false, error: "auth" };
+      const rows = clone([...(opts.scores || []), ...(opts.net2 ? NET2_SCORES : [])]);
+      if (opts.noStage62) return { ok: true, rows };
+      if (p.is_admin || p.position === "senior") return { ok: true, rows, scope: "all" };
+      return { ok: true, scope: "restaurant", rows: rows.filter((s) => (s.restaurant || "") === (p.restaurant || "") || (s.name === p.name && (s.surname || "") === (p.surname || ""))) };
+    }
     if (fn === "team_achievements") return { ok: true, rows: [] };   // v108: рекордов в демо пока нет (без ответа карточка писала «не загрузились»)
     if (fn === "team_profiles") return { ok: true, rows: [], scope: "all" };
     // v113: «Команда» у владельца — список сотрудников заведения (раньше в демо: «Не получилось загрузить список»).
@@ -1164,6 +1202,22 @@ export function makeServer(opts) {
       let ds = b.p_dishes; try { if (typeof ds === "string") ds = JSON.parse(ds); } catch (e) { ds = null; }
       if (!Array.isArray(ds)) return { ok: false, error: "bad_request" };
       S.menu = ds; return { ok: true };
+    }
+    // v199 (этап 62): график другого заведения — свой (у сети любое, остальным — только своё); в демо он пустой, пока
+    // его не заполнят. Своё заведение демо — как раньше
+    const otherRest = (fn === "schedule_load" || fn === "schedule_save_month" || fn === "schedule_save_venue") && cleanName(b.p_restaurant) && cleanName(b.p_restaurant) !== R0
+      ? cleanName(b.p_restaurant) : null;
+    if (otherRest) {
+      if (!p) return { ok: false, error: "auth" };
+      if (!opts.noStage62 && !(p.is_admin || p.position === "senior") && otherRest !== cleanName(p.restaurant)) return { ok: false, error: "forbidden" };
+      const o2 = (S.sched2 = S.sched2 || {})[otherRest] || (S.sched2[otherRest] = { cfg: null, months: {} });
+      if (fn === "schedule_load") return { ok: true, venues: o2.cfg ? [{ venue_key: "main", config: clone(o2.cfg) }] : [],
+        months: o2.months[b.p_month] ? [{ venue_key: "main", payload: clone(o2.months[b.p_month]) }] : [] };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      let v = null; try { v = JSON.parse(fn === "schedule_save_month" ? b.p_payload : b.p_config); } catch (e) {}
+      if (!v) return { ok: false, error: "bad_request" };
+      if (fn === "schedule_save_month") o2.months[b.p_month] = v; else o2.cfg = v;
+      return { ok: true };
     }
     if (fn === "schedule_load") { const mk = b.p_month || TODAY.slice(0, 7); return { ok: true, venues: [{ venue_key: "main", config: clone(CFG) }], months: [{ venue_key: "main", payload: clone(monOf(mk + "-01")) }] }; }
     if (fn === "schedule_save_month") {

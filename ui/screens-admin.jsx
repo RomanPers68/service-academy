@@ -8,7 +8,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { serverMissing, serverError } from "../lib/server-text";   // v58 (Доп. 371): сервер не ответил — по-человечески
 import { POS_LABELS } from "../data/positions";
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "../api/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
 import { tones, toneOfFail, toneOfScore, glass, Avatar, Chip, Ring, Bar, ExitTrack, MissPlate, SectionLabel, Icon, Spark } from "./analytics-kit";
@@ -34,6 +34,9 @@ import { BROWN, BROWN_GOLD, CREAM, GOLD, GOLD_SOFT, GREEN, GREEN_DARK, INK, MUTE
 export { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
 import { DEFAULT_CHECKLISTS, CL_KINDS } from "../lib/checklists";
 import { FaceImg } from "./staff-photo";   // v160 (Доп. 485): фото новичка в списке «Первой недели»
+import { useLens } from "../lib/org";   // v199 (Доп. 524): сеть смотрит всю сеть или одно заведение
+import { inLens, lensErr } from "../lib/org-model";
+import { VenueLens } from "./venue-lens";
 
 export const _clYmd = (d) => { const z = new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
 
@@ -393,19 +396,28 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
   const C = moodPalette(a11y);
   const serif = "Georgia, 'Times New Roman', serif";
   const [view, setView] = React.useState("people");   // «Люди» — первыми: кто, где и как ошибается
+  // v199 (Доп. 524): сеть (владелец, руководящий состав) выбирает «Вся сеть» или одно заведение — все вкладки и
+  // динамика считаются по нему; менеджер и остальные видят только своё заведение, как и раньше
+  const lens = useLens(profile, { all: true });
+  const vName = lens.network && !lens.all ? lens.venue : "";
+  const vRef = React.useRef(vName); vRef.current = vName;
+  const [hardNet, setHardNet] = React.useState(false);   // этапа 62 нет: вопросы одного заведения пока не отдать
   const [hardQRaw, setHardQ] = React.useState(null); // null=не грузили | "loading" | "off" | []
   const hardQ = React.useMemo(() => liveRowsOf(hardQRaw, cmsLoaded, cmsTitles), [hardQRaw, cmsLoaded, cmsTitles]);
+  React.useEffect(() => { setHardQ(null); setHardNet(false); }, [vName]);   // другое заведение: вопросы заново
   React.useEffect(() => {
     if (view !== "questions" || hardQ !== null) return;
     setHardQ("loading");
     // Раньше ответ-ошибку считали пустым списком — и поломка на сервере выглядела как
     // «трудных вопросов нет». Теперь ошибка — это ошибка, с её текстом (правка 151).
-    rpc("quiz_hard_questions", { p_token: saToken() })
-      .then(rows => { if (Array.isArray(rows)) setHardQ(rows); else { setSrvErr(rows); setHardQ("off"); } })
-      .catch(() => setHardQ("off")); // нет связи
-  }, [view, hardQ]);
+    const want = vName;
+    (want ? rpc("quiz_hard_questions_at", { p_token: saToken(), p_restaurant: want }) : rpc("quiz_hard_questions", { p_token: saToken() }))
+      .then(rows => { if (want && rpcMissing(rows)) { setHardNet(true); return rpc("quiz_hard_questions", { p_token: saToken() }); } return rows; })
+      .then(rows => { if (vRef.current !== want) return; if (Array.isArray(rows)) setHardQ(rows); else { setSrvErr(rows); setHardQ("off"); } })
+      .catch(() => { if (vRef.current === want) setHardQ("off"); }); // нет связи
+  }, [view, hardQ, vName]);
   const allScope = !!(profile && (profile.is_admin || profile.position === "senior"));
-  const scoped = React.useMemo(() => (scores||[]).filter(s => allScope || s.restaurant === profile?.restaurant), [scores, allScope, profile]);
+  const scoped = React.useMemo(() => (scores||[]).filter(s => allScope ? inLens(vName, s.restaurant) : s.restaurant === profile?.restaurant), [scores, allScope, profile, vName]);
   const contentVerA = useAllModules(); // Доп. 132; v79 — и просит догрузить все роли
   // Свои уроки из редактора контента: в аналитике — их названия, а не служебные
   // номера cms-q-12 (правка 157). Уроки — те же, что видят сотрудники заведения.
@@ -441,6 +453,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     // строки — отдельные выходы; сводим: человек → тест → сколько выходов и ПЕРВЫЙ из них
     const by = {};
     retries.forEach(r => {
+      if (!inLens(vName, r.restaurant)) return;   // v199: выбранное заведение
       const who = (r.employee || "").trim(); if (!who) return;
       if (!by[who]) by[who] = { who, restaurant: r.restaurant, tests: {}, last: 0 };
       const t = r.ts ? new Date(r.ts).getTime() : 0;
@@ -457,7 +470,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         .forEach(r => (Array.isArray(r.wrong) ? r.wrong : []).forEach(w => { if (w && !seen.has(w.q)) { seen.add(w.q); out.push(w); } })); return out; })() })) }))
       .map(p => ({ ...p, keys: p.tests.filter(t => t.done).length }))   // ключ = тест, сданный после выхода
       .sort((a, b) => (b.keys - a.keys) || (b.last - a.last));
-  }, [retries, scores, indexTitle, titleById]);
+  }, [retries, scores, indexTitle, titleById, vName]);
   // ── «Люди» (этап 15): кто, где и как ошибается. Кого видно — решает сервер по лестнице:
   // менеджер — линейный персонал своего ресторана, руководящий состав — ещё и менеджеров
   // всех ресторанов, админ — всех.
@@ -486,8 +499,8 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     }
   }, [view, people, retries]);
   const viewerRank = profile?.is_admin ? 3 : profile?.position === "senior" ? 2 : profile?.position === "manager" ? 1 : 0;
-  const peopleScope = viewerRank === 3 ? "все сотрудники всех ресторанов"
-    : viewerRank === 2 ? "линейный персонал и менеджеры всех ресторанов"
+  const peopleScope = viewerRank === 3 ? (vName ? "все сотрудники заведения «" + vName + "»" : "все сотрудники всех ресторанов")
+    : viewerRank === 2 ? (vName ? "линейный персонал и менеджеры заведения «" + vName + "»" : "линейный персонал и менеджеры всех ресторанов")
     : "официанты, хостес и бармены вашего ресторана";
   // Подписи должностей — те же, что POS_LABELS в screens-gamification.jsx (не импортирую,
   // чтобы не связывать файлы по кругу)
@@ -497,6 +510,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     if (!Array.isArray(people)) return [];
     const by = {};
     people.forEach(r => {
+      if (!inLens(vName, r.restaurant)) return;   // v199: выбранное заведение
       const who = (r.employee || "").trim(); if (!who) return;
       const p = by[who] || (by[who] = { who, restaurant: r.restaurant, pos: r.emp_position, fails: 0, tests: {} });
       const t = p.tests[r.lesson_id] || (p.tests[r.lesson_id] = { id: r.lesson_id, title: indexTitle[r.lesson_id] || titleById[r.lesson_id] || "Тест", fails: 0, qs: [] });
@@ -504,7 +518,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     });
     return Object.values(by).map(p => ({ ...p, tests: Object.values(p.tests).map(t => ({ ...t, qs: t.qs.sort((a, b) => (b.fails || 0) - (a.fails || 0)) }))
       .sort((a, b) => b.fails - a.fails) })).sort((a, b) => b.fails - a.fails);
-  }, [people, indexTitle, titleById]);
+  }, [people, indexTitle, titleById, vName]);
   const oshibok = (n) => { const d = n % 10, h = n % 100; return (d === 1 && h !== 11) ? "ошибка" : (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "ошибки" : "ошибок"; };
   const vTeste = (n) => (n % 10 === 1 && n % 100 !== 11) ? "тесте" : "тестах";
   const raz = (n) => { const d = n % 10, h = n % 100; return (d >= 2 && d <= 4 && (h < 12 || h > 14)) ? "раза" : "раз"; };
@@ -532,7 +546,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
     return { active, lessons:recent.length, avg, weak:weak[0], asleep };
   }, [scoped, weak]);
 
-  const scopeLabel = allScope ? "все рестораны" : (profile?.restaurant || "ваш ресторан");
+  const scopeLabel = allScope ? (vName || "вся сеть") : (profile?.restaurant || "ваш ресторан");
   const trackBg = a11y ? "rgba(140,105,40,0.16)" : "rgba(160,120,60,0.2)";
   const cardBase = { background:C.cardBg, border:`1px solid ${C.border}`, borderTop:`1px solid ${C.top}`, boxShadow:C.shadow, borderRadius:14 };
 
@@ -576,6 +590,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
           <div style={{ color:muted, fontSize:12 }}>Охват: {scopeLabel}</div>
         </div>
       </div>
+      <div style={{ padding:"0 14px" }}><VenueLens a11y={a11y} lens={lens} /></div>
 
       {/* Доп. 309: отчёт по сотруднику — Excel по команде и PDF-карточки */}
       {onReport ? (
@@ -607,18 +622,20 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         </div>
         <div style={{ marginTop:10 }}><Spark points={weeks} a11y={a11y} /></div>
       </div>
-      {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав) */}
-      {allScope && rests.length > 1 ? (
-        <div data-lens-edge="" style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
+      {/* Рестораны — тем, кто видит больше одного (админ, руководящий состав), в виде «Вся сеть»; v199: нажатие на
+          заведение открывает его статистику (то же, что выбрать его в ленте) */}
+      {allScope && !vName && rests.length > 1 ? (
+        <div data-an-rests="" data-lens-edge="" style={G({ margin:"0 14px 12px", padding:"12px 14px" })}>
           <div style={{ ...labelStyle(13), color:TN.gold, marginBottom:8 }}>Рестораны · средний результат</div>
-          {rests.map((r, i) => (
-            <div key={i} style={{ marginBottom: i < rests.length - 1 ? 9 : 0 }}>
+          {rests.map((r, i) => { const go = lens.venues.includes(r.name) ? () => { vibrate("light"); lens.pick(r.name); } : null; return (
+            <div key={i} data-an-rest={r.name} role={go ? "button" : undefined} tabIndex={go ? 0 : undefined} onClick={go || undefined} {...(go ? onActivate(go) : {})}
+              style={{ marginBottom: i < rests.length - 1 ? 9 : 0, cursor: go ? "pointer" : "default" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
                 <span style={{ color:C.text, fontFamily:serif, fontSize:13.5, fontWeight: i === 0 ? "bold" : "normal" }}>{i === 0 ? "★ " : ""}{r.name}</span>
                 <span style={{ color:TN[toneOfScore(r.avg)], fontFamily:serif, fontWeight:"bold", fontSize:14 }}>{r.avg}%</span>
               </div>
               <div style={{ marginTop:4 }}><Bar pct={r.avg} tone={toneOfScore(r.avg)} a11y={a11y} h={5} /></div>
-            </div>))}
+            </div>); })}
         </div>) : null}
 
       <div style={{ padding:"0 14px", marginBottom:4 }}>
@@ -740,6 +757,7 @@ export function AnalyticsScreen({ T, a11y, profile, scores = [], onBack, onRepor
         </>) : view === "questions" ? (<>
           <SectionLabel a11y={a11y} right="30 дней">Чаще всего мимо</SectionLabel>
           <div style={{ color:muted, fontSize:12, margin:"-2px 2px 8px" }}>Каждый вопрос — готовая тема для брифинга.</div>
+          {hardNet ? note(lensErr("stage62", !!profile?.is_admin) + " Пока здесь вопросы всей сети.") : null}
           {hardQ === "loading" && <SkelCards a11y={a11y} rows={3} h={56} style={{ padding:"6px 0" }} />}
           {hardQ === "off" && note(srvErr && (srvErr.code || srvErr.message) && srvErr.code !== "PGRST202"
             ? offText("вопросы")   // настоящая ошибка сервера — её текст

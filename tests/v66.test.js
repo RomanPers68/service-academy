@@ -148,7 +148,8 @@ describe("v66: экран собеседования", () => {
     expect(c).toContain('оценивал: {shortModel(rec.aiModel)}{rec.aiRuns > 1 ? ` · ${rec.aiRuns} прогона оценки` : ""}');
   });
   it("«Ваше решение»: на сервер (candidate_decide), без этапа — на телефоне и дозаливка; облако не затирает", () => {
-    expect(c).toContain('rpc("candidate_decide", { p_token: t, p_restaurant: restaurant, p_id: rec.srvId, p_decision: rec.decision || null })');
+    // v199 (Доп. 524): через взгляд сети (у сети — выбранное заведение)
+    expect(c).toContain('viewRpc("candidate_decide", { p_restaurant: restaurant, p_id: rec.srvId, p_decision: rec.decision || null }, lensRef.current)');
     expect(c).toContain("const upd = { ...rec, decision: rec.decision === dec ? null : dec, decidedAt: new Date().toISOString(), decSync: false };");
     expect(c).toContain("const localDec = new Map(prev.filter(r => r.decSync === false).map(r => [r.id, r]));");
     expect(c).toContain("const { decSync, srvId, ...clean } = rec;");
@@ -165,8 +166,9 @@ describe("v66: экран собеседования", () => {
     expect(c).toContain('{beta ? <span data-ai-beta=""');
     expect(c).toContain('data-hr-row={hrSt.beta ? "beta" : "ok"}');
     expect(c).toContain('const HrEval = React.lazy(() => retryImport(() => import("./hr-eval")).then(m => ({ default: m.HrEval })));');
-    expect(c).toContain('rpc("hr_quality_get", { p_token: t, p_restaurant: restaurant })');
-    expect(c).toContain('rpc("hr_quality_save", { p_token: t, p_restaurant: restaurant, p_payload: JSON.stringify(res) })');
+    // v199 (Доп. 524): через взгляд сети
+    expect(c).toContain('viewRpc("hr_quality_get", { p_restaurant: restaurant }, lensRef.current)');
+    expect(c).toContain('viewRpc("hr_quality_save", { p_restaurant: restaurant, p_payload: JSON.stringify(res) }, lensRef.current)');
     const e = rd("ui/hr-eval.jsx");
     expect(e).toContain("const CONC = 2;");
     expect(e).toContain('token: saToken(), mode: "assess", role: c.role, plan, voice: !!c.voice, evalId: c.id, messages,');

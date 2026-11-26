@@ -14,6 +14,8 @@ import { cmsTitleMap } from "../lib/custom-modules";
 import { plural } from "../lib/morning";
 import { gainModel, learnRows, hallRows, grewWhy, topicTitle, topicLine, compareLabel, monthNom, monthPrep, monthOf, deltaText, gainHeadline } from "../lib/gain";
 import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото сотрудника в строках «выросли» и «не занимались»
+import { useLens, viewRpc } from "../lib/org";   // v199 (Доп. 524): сеть смотрит итог любого заведения
+import { VenueLens, LensNote } from "./venue-lens";
 
 const REPO = "https://github.com/RomanPers68/service-academy/blob/main/supabase/";
 const P = (a11y) => (a11y
@@ -46,15 +48,19 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
   const [busy, setBusy] = React.useState(false);
   const [note, setNote] = React.useState("");
   const [nudged, setNudged] = React.useState({});      // кому уже напомнили: id → "sent" | "already" | "no_tg" | "fail"
+  // v199 (Доп. 524): сеть выбирает заведение; итог чужого — только посмотреть (напомнить и прислать в Telegram — по своему)
+  const lens = useLens(profile);
+  const lensRef = React.useRef(lens); lensRef.current = lens;
   const load = React.useCallback((m) => {
     setSt((x) => (x.phase === "ready" ? { ...x, again: true } : { phase: "load" }));
-    rpc("gain_month", { p_token: saToken(), p_month: m || null }).then((r) => {
+    viewRpc("gain_month", { p_month: m || null }, lensRef.current).then((r) => {
       if (rpcMissing(r)) { setSt({ phase: "missing" }); return; }
+      if (r && r.error === "stage62") { setSt({ phase: "lens", code: "stage62" }); return; }
       if (!r || r.ok === false) { setSt({ phase: "error", text: errText(r) }); return; }
       setSt({ phase: "ready", m: gainModel(r), tg: r.tg && typeof r.tg === "object" ? r.tg : null });
     }).catch(() => setSt({ phase: "error", text: "Нет связи. Попробуй ещё раз." }));
   }, []);
-  React.useEffect(() => { load(month); }, [load, month]);
+  React.useEffect(() => { setNudged({}); setNote(""); load(month); }, [load, month, lens.venue]);
   // свои уроки заведения: их названия, а не служебные номера
   React.useEffect(() => {
     let live = true;
@@ -126,6 +132,8 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
         <div style={T.lessHeadTitle}>Что дало обучение</div>
       </div>
       <div style={{ flex: 1, padding: "14px 16px 28px" }}>
+        <VenueLens a11y={a11y} lens={lens} style={{ margin: "0 0 10px" }} />
+        {st.phase === "lens" ? <LensNote a11y={a11y} code={st.code} admin={!!(profile && profile.is_admin)} /> : null}
         {st.phase === "load" ? <div style={{ ...T.para, textAlign: "center", padding: "30px 0" }}>Собираю итог месяца…</div> : null}
         {st.phase === "missing" ? (
           <div style={card} data-lens-card="" data-gain-missing="">
@@ -195,7 +203,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
             <div style={card} data-lens-card="" data-gain-sec="idle">
               {m.idle.map((x, i) => {
                 const s = nudged[x.id];
-                const act = s === "no_tg" ? <span style={{ flex: "0 0 auto", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
+                const act = !lens.mine ? null : s === "no_tg" ? <span style={{ flex: "0 0 auto", fontSize: 12, color: sub, fontStyle: "italic" }}>нет Telegram</span>
                   : <button type="button" style={{ ...ghost, opacity: s && s !== "fail" ? 0.6 : 1 }} data-lens-btn="soft" data-gain-nudge={x.id} disabled={!!s && s !== "fail"}
                       onClick={(e) => { e.stopPropagation(); nudge(x.id); }}>{s === "sent" ? "Напомнили" : s === "already" ? "Уже сегодня" : s === "busy" ? "Минуту…" : s === "fail" ? "Ещё раз" : "Напомнить"}</button>;
                 return row("i-" + x.id, x.n, { first: i === 0, act, face: x.id, ava: x.n, attrs: { "data-gain-idle": x.id } });
@@ -204,7 +212,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
             </div>
           </>) : null}
 
-          {h("1-го числа в Telegram", null, "tg")}
+          {lens.mine ? (<>{h("1-го числа в Telegram", null, "tg")}
           <div style={card} data-lens-card="" data-gain-sec="tg">
             {!st.tg ? row("tg", "Итог прошлого месяца бот присылает 1-го числа", { first: true })
               : !st.tg.bot ? row("nobot", "Бот на сервере не подключён", { first: true, sub: "Итог пока только здесь. Подключает владелец: «Команда» → «Сервер»." })
@@ -216,7 +224,7 @@ export function GainScreen({ T, a11y, profile, month: month0 = "", onBack, onGo 
                   {busy ? "Отправляю…" : "Прислать этот итог в Telegram"}</button>
               </>)}
             {note ? <div role="status" data-gain-note="" style={{ fontSize: 12.5, color: text, lineHeight: 1.5, marginTop: 8 }}>{note}</div> : null}
-          </div>
+          </div></>) : null}
         </>) : null}
       </div>
     </div>

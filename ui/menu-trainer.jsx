@@ -22,7 +22,7 @@ import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "..
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { useOrg, loadOrg } from "../lib/org";   // v198 (Доп. 523): заведения — из общего списка (этап 61), а не из кода
-import { venuesWithMine } from "../lib/org-model";
+import { menuVenues } from "../lib/org-model";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
@@ -117,9 +117,10 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   // добавили заведение — вкладка появляется сразу. Одно заведение — сразу его меню.
   const org = useOrg();
   React.useEffect(() => { loadOrg(); }, []);
-  const venues = venuesWithMine(org, profile?.restaurant);
+  // v199 (Доп. 524): у сотрудника и менеджера — только меню своего заведения; все заведения — у сети
+  const venues = menuVenues(org, profile);
   const [restaurant, setRestaurant] = React.useState(() => {
-    const v = venuesWithMine(org, profile?.restaurant);
+    const v = menuVenues(org, profile);
     return v.includes(profile?.restaurant) ? profile.restaurant : v.length === 1 ? v[0] : null;
   });
   const [mode, setMode] = React.useState(null); // null | "cards" | "quiz" | "60sec" | "edit" | "team"
@@ -295,7 +296,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v198</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v199</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

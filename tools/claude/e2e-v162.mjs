@@ -241,13 +241,15 @@ if (want("PODIUM")) {
   const v = await viewer(page);
   ok("PODIUM: касание по фото на подиуме — фото крупно, с именем и должностью", v && /^(Мария Ким|Вера Соколова)$/.test(v.name) && /менеджер|официант/i.test(v.sub), v);
   ok("PODIUM: «назад» закрывает фото, лига на месте", (await tgBack(page)) === "face" && !(await viewer(page)) && !!(await podium(page)));
-  // вся сеть: коллега другого заведения — буквами
+  // вся сеть: коллега другого заведения — буквами. v199 (Доп. 524): у сотрудника лига только своего заведения — коллеги
+  // из другого на подиуме больше нет, и переключателя «во всей сети» тоже
   await mock(page, "league_week", league([["e-vera", "Вера", "Соколова", "waiter", 140], ["x-1", "Лев", "Г.", "waiter", 131, "Два моря, Гавань"], ["u-maria", "Мария", "Ким", "manager", 125], ["e-anna", "Анна", "Смирнова", "waiter", 96], ...TAIL], ["Два моря, Гавань"]));
   await nav(page, "home", 900); await nav(page, "league", 2800);
   await page.evaluate(() => { const b = document.querySelectorAll("[role=group][aria-label='Какой рейтинг показать'] button")[1]; if (b) b.click(); }); await page.waitForTimeout(1000);
   await page.evaluate(() => { const p = document.querySelector("[role=group][aria-label='Подиум недели']"); if (p) p.scrollIntoView({ block: "center" }); }); await page.waitForTimeout(500);
   const n = await podium(page), lev = n && n.cols.find((c) => /Лев/.test(c.name));
-  ok("PODIUM: во всей сети коллега другого заведения на подиуме — буквами «ЛГ», без фото", lev && lev.face && !lev.img && lev.letters === "ЛГ" && n.cols.filter((c) => c.img).length === 2, n && n.cols.map((c) => [c.name, c.letters, !!c.img]));
+  ok("PODIUM: у Анны лига только своего заведения — коллеги из другого заведения на подиуме нет", !!n && !lev && n.cols.length === 3
+    && (await page.locator("[role=group][aria-label='Какой рейтинг показать']").count()) === 0, n && n.cols.map((c) => [c.name, c.letters, !!c.img]));
   await shot(page, "podium-net");
   // ни у кого из тройки фото нет — подиум как был
   await mock(page, "league_week", league([["e-anna", "Анна", "Смирнова", "waiter", 140], ["e-ksenia", "Ксения", "Миронова", "waiter", 125], ["e-timur", "Тимур", "Ахметов", "bartender", 96], ["e-vera", "Вера", "Соколова", "waiter", 80], ...TAIL]));

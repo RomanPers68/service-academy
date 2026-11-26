@@ -19,6 +19,7 @@ import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371): бе
 import { RankFace, FaceImg, useStaffPhotos } from "./staff-photo";   // v160: лицо с номером места в строках лиги; v162: лица на подиуме
 import { staffPhotoOf, initialsOfPerson } from "../lib/staff-photo";
 import { POSITION_LABEL } from "../data/positions";
+import { isNetwork } from "../lib/org-model";   // v199 (Доп. 524): лига сотрудника — своё заведение
 
 const MEDAL = ["#E8C56A", "#C9C9C9", "#C89A6E"];
 const MEDAL_LIGHT = ["#B8902E", "#7E8790", "#A0643A"];
@@ -101,9 +102,12 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   const medal = a11y ? MEDAL_LIGHT : MEDAL;
   const text = T.modTitle.color, sub = T.modSub.color;
   const myRest = (profile && profile.restaurant) || "";
-  const rows = st.status === "ok" ? st.rows || [] : [];
+  // v199 (Доп. 524): у сотрудника и менеджера — только своё заведение, без «во всей сети» и кубка (с этапом 62 так
+  // отвечает и сервер); у владельца и руководящего состава — как было
+  const ownOnly = !isNetwork(profile) && !!myRest;
+  const rows = st.status === "ok" ? (st.rows || []).filter((r) => !ownOnly || r.me || (r.restaurant || "") === myRest) : [];
   const restRows = rows.filter((r) => (r.restaurant || "") === myRest);
-  const restCount = st.status === "ok" ? (st.cup || []).length : 0;
+  const restCount = st.status === "ok" && !ownOnly ? (st.cup || []).length : 0;
   const twoScopes = !!myRest && restCount > 1;
   const view = twoScopes ? (scope === "net" ? rows : restRows) : rows;
   const meIdx = (list) => list.findIndex((r) => r.me);
@@ -124,7 +128,7 @@ export function LeagueScreen({ T, a11y, profile, activity = {}, onBack, masters 
   const myI = meIdx(sorted);
   const ahead = myI > 0 ? sorted[myI - 1] : null;
   const gap = ahead ? ptsOf(ahead) - myPts + 1 : 0;
-  const prevKey = scope === "net" || !twoScopes ? "prev_net" : "prev_rest";
+  const prevKey = ownOnly ? "prev_rest" : scope === "net" || !twoScopes ? "prev_net" : "prev_rest";
   const mePrev = st.status === "ok" ? st.me_prev : null;
   const wins = st.status === "ok" && st.wins ? st.wins : null;
   const cs = st.status === "ok" ? cupStreak(st.cup_hist || []) : null;

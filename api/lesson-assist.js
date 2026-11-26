@@ -24,6 +24,9 @@
 //                руководителей, свой счёт обращений (30 в час). title — заведение, src — образец (блок «Рассказ гостю»),
 //                facts — факты раздела, text — что сказал сотрудник, secs — за сколько секунд → { good, missed, tip,
 //                better, score } (lib/concept-pitch.js)
+//   live       — v202 (Доп. 527): вопросы живой проверки по текстам уроков модуля (редактор «Вопросы живой проверки»):
+//                руководитель спрашивает вслух, человек отвечает своими словами → { questions: [{ q, a: [пункты] }] };
+//                others — вопросы, которые в модуле уже есть (не повторять)
 //   dialogue   — «Живой диалог» по тексту урока (правка 159) →
 //                { dialogue: { guest: { name, avatar, context, mood }, steps: [action|guest|choice] } }
 //   ref_chapter, ref_improve, ref_shorten — v168 (Доп. 493): ассистент редактора справочника (lib/ref-ai.js): глава из
@@ -129,6 +132,17 @@ const QUIZ_RULES = [
 ].join("\n");
 
 export const PROMPT = {
+  // v202 (Доп. 527): вопросы живой проверки — руководитель спрашивает вслух, отмечает пункты, которые человек назвал сам
+  live: (role, text, title, others) => [
+    `Ты помогаешь руководителю ресторана проверить, читал ли сотрудник уроки модуля «${title || "модуль"}» (курс: ${role || "сервис"}).`,
+    "Составь 4 вопроса для живой проверки: руководитель задаёт их вслух, сотрудник отвечает своими словами.",
+    "К каждому вопросу — от 2 до 5 пунктов «что должно прозвучать»: коротко, по 3–12 слов, только то, что есть в тексте уроков, без общих слов.",
+    "Вопросы — о главном и о том, что пригодится в зале завтра. Один вопрос можно сделать ситуацией: начни его словами «Ситуация:» и опиши, что происходит, а в пунктах — что сделать.",
+    "Не повторяй вопросы, которые уже есть." + (others && others.length ? " Уже есть:\n" + others.map((x) => "• " + x).join("\n") : ""),
+    "Пиши по-русски, просто и конкретно, без длинных тире и без канцелярита.",
+    'Ответ — строго JSON без пояснений и без ```: {"questions": [{"q": "…", "a": ["…", "…"]}]}',
+    "\nТЕКСТ УРОКОВ:\n" + text,
+  ].join("\n"),
   // v191: план раздела по документу — какие блоки получаются и выдержка для каждого
   concept_plan: (where, material) => [
     `Прочитай материал о ${where || "сети ресторанов"} и составь план раздела «О нас» в приложении для сотрудников ресторанов: какие блоки-уроки из него получаются.`,
@@ -325,6 +339,14 @@ export function cnQuestions(arr) {
 
 // Только известные поля и разумные длины — что бы модель ни прислала
 export function sanitize(mode, o) {
+  if (mode === "live") {   // v202: вопрос 8–300 знаков, пунктов 2–5 по 200 знаков, вопросов до четырёх
+    const list = (Array.isArray(o && o.questions) ? o.questions : []).map((x) => {
+      const q = cut(x && x.q, 300).replace(/\s+/g, " ").trim();
+      const a = (Array.isArray(x && x.a) ? x.a : []).filter((p) => typeof p === "string").map((p) => cut(p, 200).replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 5);
+      return q.length >= 8 && a.length >= 2 ? { q, a } : null;
+    }).filter(Boolean).slice(0, 4);
+    return list.length ? { questions: list } : null;
+  }
   if (!o) return null;
   if (mode === "concept") {
     const seen = new Set();
@@ -450,6 +472,27 @@ async function ask(key, prompt, pdfBase64, maxTokens = 4000) {
   return { ok: false, status: 502, error: "Ассистент не ответил — " + lastErr };
 }
 
+// v202 (Доп. 527): «Ассистент предложит» в редакторе «Вопросы живой проверки». Проверки — до обращения к модели, как у
+// уроков: живая сессия, руководитель, тот же счёт обращений (40 в час), текст уроков модуля не короче пары предложений.
+async function liveAssist(res, key, { token, role, title, text, others }) {
+  const emp = await verifySession(token);
+  if (!emp) return res.status(401).json({ ok: false, error: "Сессия не найдена — войди в приложение заново" });
+  if (!(emp.is_admin || ["manager", "senior"].includes(emp.position))) return res.status(403).json({ ok: false, error: "Редактор контента — только для руководителей" });
+  if (!rateLimit("lesson:" + token, 40, 3600_000)) return res.status(429).json({ ok: false, error: "Слишком много запросов подряд — попробуй через час" });
+  const material = cut(text, 30000).trim();
+  if (material.length < 40) return res.status(400).json({ ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" });
+  const oth = (Array.isArray(others) ? others : []).filter((x) => typeof x === "string").map((x) => cut(x, 200).replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 16);
+  try {
+    const out = await ask(key, PROMPT.live(cut(role, 40), material, cut(title, 120), oth), "", 3000);
+    if (!out.ok) return res.status(out.status || 502).json({ ok: false, error: out.error });
+    const result = sanitize("live", parseObject(out.text));
+    if (!result) return res.status(422).json({ ok: false, error: "Ассистент ответил не по формату — попробуй ещё раз" });
+    return res.status(200).json({ ok: true, ...result, model: out.model });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "Сбой ассистента: " + (e && e.message ? e.message : "unknown") });
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Только POST" });
   const key = process.env.OPENROUTER_API_KEY;
@@ -459,6 +502,7 @@ export default async function handler(req, res) {
   const isRef = REF_AI_MODES.includes(mode);   // v168: ассистент редактора справочника
   const isCn = CN_MODES.includes(mode);        // v191: «О нас» — свой счёт обращений: документ — план и по обращению на блок
   const isPitch = mode === "concept_pitch";   // v192: тренажёр рассказа гостю — для всех сотрудников
+  if (mode === "live") return liveAssist(res, key, req.body || {});   // v202 (Доп. 527): вопросы живой проверки — свой путь
   if (!isRef && !isPitch && !["lesson", "improve", "questions", "situations", "dialogue", "build", "review", ...CN_MODES].includes(mode)) return res.status(400).json({ ok: false, error: "Неизвестный режим" });
 
   // Проверки — ДО обращения к модели: чужой запрос не тратит ни одного токена

@@ -8,6 +8,8 @@
 // v86 (Доп. 399): на карточке — главное из брифинга («Стоп-лист: … · брони: 3 · новинка: …»), внизу чтения —
 //   «Прочитал(а)» (этап 36), руководителю — «Прочитали 4 из 6 в графике» и кто ещё не отметил; голос шефа и сомелье
 //   к новинке — прямо в блоке «Новинки меню».
+// v202 (Доп. 527): «Проверка на брифинге» — двоим-троим со смены по вопросу живой проверки, пункты отмечаются в «Провести»
+//   (ui/brief-live-check.jsx). Команде не отправляется: в брифинг дня этот блок не входит.
 // v113 (Доп. 426): в виде «Линза» блоки — стекло с золотой кромкой и светом сверху, «Отправить команде», «Дальше»,
 //   «Прочитал(а)» — плашки с кольцом, «Провести», «Назад», «Показать ответ» — стекло, «Своё» — поле-стекло, «закрыть» показа —
 //   линза (метки data-lens-*, правила — ui/home-look.jsx); переключатели блоков и полоски показа — прежние.
@@ -28,6 +30,7 @@ import { ensureTableCss } from "./table-css";   // v87: рукописный Mar
 // v141 (Доп. 458): гоу-лист — выбор из меню, три строки, «Как вчера», итог смены (этап 50)
 import { GoEditor, GoBody, GoResult } from "./golist";
 import { goNormalize, goBlocked, rememberGoLast, goLast, goAgainLabel, dayBefore } from "../lib/golist";
+import { useBriefLc, BriefLcBlock, BriefLcPage } from "./brief-live-check";   // v202 (Доп. 527)
 
 const LETTERS = ["А", "Б", "В", "Г"];
 const HIDDEN = { ask: true, case: true };   // в показе и у сотрудника ответ открывается кнопкой «Показать ответ»
@@ -146,9 +149,11 @@ function BlockBody({ k, b, c, big = false, reveal = true, onReveal, goSold = nul
 }
 
 // ── Показ: по одному блоку крупно, секундомер на пять минут ──────────────────────
-export function BriefPresenter({ brief, a11y, onClose, author }) {
+// v202: extra — свои страницы после блоков брифинга ({ key, title, render(c) }): «Проверка на брифинге»
+export function BriefPresenter({ brief, a11y, onClose, author, extra = [] }) {
   const c = C(a11y);
-  const pages = BRIEF_ORDER.filter((k) => briefShown(brief, k));
+  const pages = [...BRIEF_ORDER.filter((k) => briefShown(brief, k)), ...(extra || []).map((x) => x.key)];
+  const exOf = (key) => (extra || []).find((x) => x.key === key) || null;
   const [i, setI] = React.useState(0);
   const [sec, setSec] = React.useState(0);
   const [shown, setShown] = React.useState({});   // ответ открыт: вопрос команде, случай из зала (v83) — каждый своей кнопкой
@@ -171,8 +176,8 @@ export function BriefPresenter({ brief, a11y, onClose, author }) {
       <div style={{ display: "flex", gap: 4, padding: "0 16px 12px" }}>{pages.map((p, n) => <span key={p} style={{ flex: 1, height: 3, borderRadius: 2, background: n <= i ? c.gold : c.line }} />)}</div>
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 22px 20px" }}>
         {k ? <>
-          <div data-brief-page={k} style={{ ...labelStyle(18), color: c.gold, marginBottom: 14 }}>{BRIEF_TITLE[k]}</div>
-          <BlockBody k={k} b={brief.blocks[k]} c={c} big reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />
+          <div data-brief-page={k} style={{ ...labelStyle(18), color: c.gold, marginBottom: 14 }}>{exOf(k) ? exOf(k).title : BRIEF_TITLE[k]}</div>
+          {exOf(k) ? exOf(k).render(c) : <BlockBody k={k} b={brief.blocks[k]} c={c} big reveal={!HIDDEN[k] || !!shown[k]} onReveal={() => setShown((s) => ({ ...s, [k]: true }))} />}
           {i === pages.length - 1 ? <LineArt kind="bell" color={c.gold} size={150} style={{ margin: "36px auto 0", opacity: 0.5 }} /> : null}
         </> : <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: c.sub }}>В брифинге пока пусто.</div>}
       </div>
@@ -208,6 +213,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
   const [goPrev, setGoPrev] = React.useState(null);
   const [goRes, setGoRes] = React.useState({});
   const [dishFocus, setDishFocus] = React.useState([]);   // v193 (Доп. 518): блюда «В фокус смены» (этап 59)
+  const lc = useBriefLc({ profile, sched: src.sched });   // v202 (Доп. 527): проверка на брифинге — только в «Провести»
   const todayYmd = React.useMemo(() => { const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }, []);
   const restaurant = (profile && profile.restaurant) || "";
   const resOf = (r) => ({ day: r.day, go: r.go, sold: r.sold || {}, saved: !!r.saved, at: r.at || null, by: r.by || null });
@@ -354,6 +360,7 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
               {has ? <BlockBody k={k} b={b} c={c} /> : <div style={{ fontSize: 12.5, color: c.sub }}>{src[{ roster: "sched", res: "seat", stop: "menu", fresh: "menu", focus: "hard", ask: "hard", case: "cases", thanks: "league", guests: "guests" }[k]] === null ? "Собираю…" : empty[k]}</div>}
             </div>);
         })}
+        <BriefLcBlock lc={lc} c={c} a11y={a11y} />
         {msg ? <div role="status" style={{ fontSize: 13, color: msg.ok ? c.text : c.red, lineHeight: 1.5, margin: "4px 2px 10px" }}>{msg.text}</div> : null}
         {/* v141 (Доп. 458): итог гоу-листа — за сегодня (брифинг с гоу-листом отправлен) и за вчера, пока его не записали */}
         {[todayYmd, dayBefore(todayYmd)].map((d) => {
@@ -368,12 +375,13 @@ export function BriefScreen({ T, a11y, profile, onBack, onSent, toChat = false, 
       {portal(<div className="sa-colbar" data-brief-bar="" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))",
         background: a11y ? "rgba(245,238,222,0.94)" : "rgba(21,17,11,0.94)", borderTop: `1px solid ${c.line}`, display: "flex", gap: 10, fontFamily: "Georgia, serif",
         transform: typing ? "translateY(120%)" : "none", transition: "transform .25s ease" }}>
-        <button type="button" data-brief-present="" data-lens-btn="soft" onClick={() => { vibrate("medium"); setShow(true); }} disabled={!count}
-          style={{ flex: 1, padding: 14, borderRadius: 16, border: `1px solid ${c.gold}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", fontSize: 15, cursor: "pointer", opacity: count ? 1 : 0.5 }}>Провести</button>
+        <button type="button" data-brief-present="" data-lens-btn="soft" onClick={() => { vibrate("medium"); setShow(true); }} disabled={!count && !lc.pages.length}
+          style={{ flex: 1, padding: 14, borderRadius: 16, border: `1px solid ${c.gold}`, background: "transparent", color: c.text, fontFamily: "Georgia, serif", fontSize: 15, cursor: "pointer", opacity: count || lc.pages.length ? 1 : 0.5 }}>Провести</button>
         <button type="button" data-brief-publish="" data-lens-btn="main" onClick={publish} disabled={busy || !count || loading}
           style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 0, background: c.gold, color: "#1A1008", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: "bold", cursor: "pointer", opacity: busy || !count || loading ? 0.55 : 1 }}>{busy ? "Отправляю…" : today ? "Отправить правку" : "Отправить команде"}</button>
       </div>)}
-      {show ? <BriefPresenter brief={brief} a11y={a11y} author={author} onClose={() => setShow(false)} /> : null}
+      {show ? <BriefPresenter brief={brief} a11y={a11y} author={author} onClose={() => setShow(false)}
+        extra={lc.pages.map((pg) => ({ key: pg.key, title: pg.title, render: (cc) => <BriefLcPage lc={lc} it={pg.it} c={cc} /> }))} /> : null}
     </div>
   );
 }

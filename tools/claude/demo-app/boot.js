@@ -565,6 +565,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   noStage62: lsGet("__demo_no62") === "1", net2: lsGet("__demo_net") === "1",
   noStage63: lsGet("__demo_no63") === "1",   // v200 (Доп. 525): __demo_no63 = "1" — сервер без этапа 63 (живой проверки нет)
   noStage64: lsGet("__demo_no64") === "1",   // v201 (Доп. 526): __demo_no64 = "1" — сервер без этапа 64 (по пунктам — прежним вызовом, без сводки)
+  noStage65: lsGet("__demo_no65") === "1",   // v202 (Доп. 527): __demo_no65 = "1" — сервер без этапа 65 (брифинг — блицем, без просьб, меню и правок вопросов)
   qday: lsGet("__demo_qday") === "1",   // v193: __demo_qday = "1" — «Вопрос дня» на главной (очередь с телефона, каждый второй — о блюде)
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],
@@ -683,6 +684,7 @@ function seed() {
   keep.add("__demo_no58");   // v192: «сервер без этапа 58» — тоже
   keep.add("__demo_no59");   // v193: «сервер без этапа 59» — тоже
   keep.add("__demo_qday");   // v193: «Вопрос дня» в демо — тоже
+  keep.add("__demo_no65");   // v202: «сервер без этапа 65» — тоже
   try { Object.keys(localStorage).forEach((k) => { if (!keep.has(k)) localStorage.removeItem(k); }); } catch (e) {}
   for (const k of Object.keys(pushSt)) delete pushSt[k];   // v137: другой человек — телефон без разрешения и подписки
   try { sessionStorage.removeItem("sa_tg_skip"); } catch (e) {}
@@ -905,6 +907,14 @@ const CN_T = { idea: "Концепция и история", values: "Ценно
   day: "Распорядок дня менеджера", numbers: "Цифры смены: на что смотрим", own: "Свой блок" };
 function demoLessonAssist(b) {
   const text = String(b.text || "").trim();
+  // v202 (Доп. 527): черновики вопросов живой проверки. Модели в демо нет: вопросы — по заголовкам уроков из присланного текста
+  if (b.mode === "live") {
+    if (text.length < 40) return { ok: false, error: "Сначала нужен текст урока — хотя бы пара предложений" };
+    const heads = [...text.matchAll(/^##\s+(.+)$/gm)].map((m) => m[1].trim()).filter(Boolean).slice(0, 4);
+    const qs = (heads.length ? heads : [String(b.title || "модуль")]).map((t) => ({ q: "Расскажи своими словами: «" + t + "». Что здесь главное для гостя?",
+      a: ["Главная мысль урока «" + t + "»", "Пример из зала", "Что сделать по шагам"] }));
+    return { ok: true, questions: qs, model: "demo" };
+  }
   // v192 (Доп. 517): «Рассказ гостю за 30 секунд» — для всех сотрудников. Модели в демо нет: разбор по словам образца
   // (lib/concept-pitch.js, как запасной на телефоне), «как могло звучать» — мысли образца. sessionStorage.__e2e_pitch:
   // "fail" — помощник не ответил (на экране — разбор без него)

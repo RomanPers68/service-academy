@@ -107,7 +107,8 @@ function writeCardPos(uk, id, v) {
 
 // v59 (Доп. 372): склонение по числу — «1 вопрос», «2 вопроса», «5 вопросов»
 const plural3 = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many; };
-export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack, noTests = false }) {
+// v202 (Доп. 527): live — «Повтори вслух»: вопросы живой проверки, где назвал не всё (ui/live-practice.jsx), над тестами
+export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack, noTests = false, live = null }) {
   const gold = a11y ? "#7A5D2A" : GOLD;
   const [mkHint, mkHintDone] = useHintOnce("mistakes");
   const [mkStep, setMkStep] = React.useState(0);
@@ -153,6 +154,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     if (noTests && waiting === 0) return (
       <div style={T.screen}>
         {Head}
+        {live}
         <div data-mistakes-empty="new" style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
             <div style={{ width: 64, height: 64, borderRadius: 32, display: "flex", alignItems: "center", justifyContent: "center",
@@ -168,6 +170,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
     return (
       <div style={T.screen}>
         {Head}
+        {live}
         <div style={{ textAlign: "center", padding: "60px 24px", color: T.modSub.color }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>{UI_SVG.checkCircle(GREEN, 44)}</div>
           <div style={{ ...T.bold, marginBottom: 6 }}>{waiting > 0 ? "Всё повторено по расписанию" : "Ошибок нет"}</div>
@@ -201,6 +204,7 @@ export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, o
             onNext={mkStep >= mkSteps.length - 1 ? null : () => setMkStep(v => v + 1)}
             onClose={mkHintDone} />
         ) : null}
+      {live}
       <div style={{ padding: "10px 18px 0" }}>
         <div style={{ ...T.secTitle, padding: "0 0 8px" }}>Слабые темы</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>

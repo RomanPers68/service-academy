@@ -299,7 +299,8 @@ export function serializeExtras(draft) {
 // v52 (Доп. 365): от этой ширины (без вырезов и полей) редактор урока — в две панели
 export const ED2_MIN = 1000;
 
-export function ContentEditorScreen({ T, a11y, onBack }) {
+// v202 (Доп. 527): onLiveQuestions — «Вопросы живой проверки» (ui/live-check-editor.jsx)
+export function ContentEditorScreen({ T, a11y, onBack, onLiveQuestions = null }) {
   // Подсказка экрана — один раз при первом входе (правка 171)
   const [ceHint, ceHintDone] = useHintOnce("contentEditor");
   const [ceStep, setCEStep] = React.useState(0);
@@ -662,6 +663,15 @@ export function ContentEditorScreen({ T, a11y, onBack }) {
         {header("Редактор контента", onBack)}
         <div style={{ ...T.lessBody, flex: 1, overflowY: "auto", padding: "12px 16px 44px" }}>
           <div style={{ color: muted, fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>Свои уроки под твой ресторан. Сотрудники увидят их в своём треке рядом со штатными.</div>
+          {onLiveQuestions ? (
+            <div data-ce-lc="" role="button" tabIndex={0} onClick={onLiveQuestions} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onLiveQuestions(); } }}
+              data-lens-edge="" style={{ ...G({ padding: "12px 14px", margin: "6px 0 12px" }), display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", color: txt, fontFamily: SERIF, fontSize: 15, fontWeight: "bold" }}>Вопросы живой проверки</span>
+                <span style={{ display: "block", color: muted, fontSize: 12, lineHeight: 1.4 }}>Формулировки и пункты, свои вопросы, отмеченные проверяющими</span>
+              </span>
+              <span aria-hidden="true" style={{ color: muted, fontSize: 18 }}>›</span>
+            </div>) : null}
           {loading ? <SkelCards a11y={!!T.a11y} rows={3} h={74} style={{ padding: "12px 0" }} />
           : loadErr ? <div style={{ textAlign: "center", padding: "40px 0", color: muted }}>Не удалось загрузить. <span onClick={load} style={{ color: gold, cursor: "pointer" }}>Повторить</span></div>
           : groups.length === 0 ? (

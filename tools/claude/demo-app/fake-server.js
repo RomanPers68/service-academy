@@ -19,7 +19,7 @@ import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
 import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";   // v198: заведения и должности, как этап 61
-import { lcLevel, lcCan, lcScore, LC_TRACKS, pointsScore, marksOf } from "../../../lib/live-check.js";   // v200: живая проверка, как этап 63; v201 — этап 64
+import { lcLevel, lcCan, lcScore, LC_TRACKS, pointsScore, marksOf } from "../../../lib/live-check.js";   // v200: живая проверка, как этап 63; v201 — этап 64; v202 — этап 65
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -1114,15 +1114,20 @@ export function makeServer(opts) {
     if (fn === "cms_list_lessons") return [];
     // ── v200 (этап 63): живая проверка; opts.noStage63 — сервер без этапа 63; v201 (этап 64): по пунктам, блиц, cid, итог
     //    человеку (lc.sent), лучшие тесты, сводка; opts.noStage64 — сервер без этапа 64 (новый вызов сохранения и сводки нет) ──
+    //    v202 (этап 65): брифинг (вид brief), вопросы о блюдах и свои (ключи «модуль#имя»), просьбы, отметки, правки вопросов,
+    //    план, средний у проверяющих; opts.noStage65 — сервер без этапа 65 ──
     if (/^live_check_/.test(fn) || fn === "org_position_level") {
       if (opts.noStage63) return { code: "PGRST202", message: "Could not find the function" };
       const new64 = fn === "live_check_summary" || (fn === "live_check_save" && ["p_items", "p_kind", "p_cid", "p_title", "p_repeat"].some((k) => k in b));
       if (opts.noStage64 && new64) return { code: "PGRST202", message: "Could not find the function" };
+      const new65 = ["live_check_requests", "live_check_request", "live_check_flag", "live_check_questions", "live_check_question_save", "live_check_flag_done", "live_check_plan_set"].includes(fn);
+      if ((opts.noStage64 || opts.noStage65) && new65) return { code: "PGRST202", message: "Could not find the function" };
       if (!p) return { ok: false, error: "auth" };
       orgState();
       const lc = S.lc || (S.lc = { checks: [], ups: ["pupravl00"], seq: 0 });
       if (!lc.sent) lc.sent = [];
-      const v64 = !opts.noStage64;
+      if (!lc.req) { lc.req = []; lc.flags = []; lc.q = []; lc.qseq = 0; lc.plan = 30; lc.rseq = 0; }
+      const v64 = !opts.noStage64, v65 = v64 && !opts.noStage65;
       const testsOf = (e) => { const best = {}; for (const r of opts.scores || []) {
         if (r.name !== e.name || (r.surname || "") !== (e.surname || "") || !r.total) continue;
         const pct = Math.round((100 * r.score) / r.total); if (!(r.quiz_id in best) || pct > best[r.quiz_id]) best[r.quiz_id] = pct; } return best; };
@@ -1172,12 +1177,15 @@ export function makeServer(opts) {
         const dup = cid && lc.checks.find((k) => k.byId === me.id && k.cid === cid);
         if (dup) return { ok: true, id: dup.id, score: dup.s, passed: dup.p, at: dup.at, dup: true };
         const kind = b.p_kind || "module", items = b.p_items == null ? null : b.p_items;
-        if (!LC_TRACKS.includes(b.p_track) || !/^[a-z0-9_-]{1,40}$/.test(String(b.p_module || "")) || !["module", "blitz"].includes(kind)
-          || (kind === "blitz") !== (b.p_module === "blitz") || String(b.p_note || "").length > 500) return { ok: false, error: "bad_request" };
+        const kinds = v65 ? ["module", "blitz", "brief"] : ["module", "blitz"];
+        if (!LC_TRACKS.includes(b.p_track) || !/^[a-z0-9_-]{1,40}$/.test(String(b.p_module || "")) || !kinds.includes(kind)
+          || (kind === "module" ? ["blitz", "brief"].includes(b.p_module) : b.p_module !== kind) || String(b.p_note || "").length > 500) return { ok: false, error: "bad_request" };
+        if (kind === "brief" && !items) return { ok: false, error: "bad_request" };
+        const keyRe = v65 ? /^[a-z0-9_-]{1,40}#[a-z0-9_-]{1,40}$/ : /^[a-z0-9_-]{1,40}#[0-9]{1,3}$/;
         let sc, marks;
         if (items) {
           const okIt = Array.isArray(items) && items.length >= 1 && items.length <= 8 && new Set(items.map((x) => x && x.k)).size === items.length
-            && items.every((x) => x && /^[a-z0-9_-]{1,40}#[0-9]{1,3}$/.test(String(x.k)) && Number.isInteger(x.g) && Number.isInteger(x.o) && x.o >= 1 && x.o <= 6 && x.g >= 0 && x.g <= x.o
+            && items.every((x) => x && keyRe.test(String(x.k)) && Number.isInteger(x.g) && Number.isInteger(x.o) && x.o >= 1 && x.o <= 6 && x.g >= 0 && x.g <= x.o
               && (kind !== "module" || String(x.k).split("#")[0] === b.p_module));
           sc = okIt ? pointsScore(items) : null; marks = okIt ? marksOf(items) : null;
         } else { sc = lcScore(b.p_marks); marks = Array.isArray(b.p_marks) ? b.p_marks.map(Number) : null; if (marks && marks.length > 8) sc = null; }
@@ -1188,10 +1196,16 @@ export function makeServer(opts) {
         const title = String(b.p_title || "").replace(/\s+/g, " ").trim().slice(0, 80) || null;
         lc.checks.push({ id: lc.seq, emp: t.id, t: b.p_track, m: b.p_module, marks, s: sc.score, p: sc.passed, note: String(b.p_note || "").trim() || null,
           by: full(me), byId: me.id, at, kind, items, cid, title, repeat: rep });
-        // итог человеку (как этап 64: бот и телефон) — в демо записываем, что ушло бы
-        if (v64) lc.sent.push({ emp: t.id, at, text: "Живая проверка" + (kind === "blitz" ? ", блиц" : " «" + (title || b.p_module) + "»") + ": " + sc.score + "%, " + (sc.passed ? "зачтено." : "не зачтено.")
-          + (rep && rep.length ? "\nПовторить: " + rep.map((x) => "«" + x.t + "»").join(", ") + "." : ""), go: rep && rep.length ? "lesson_" + rep[0].l : "lc_me" });
-        return { ok: true, id: lc.seq, score: sc.score, passed: sc.passed, at, ...(v64 ? { sent: true } : {}) };
+        // v202: проверка модуля закрывает просьбу человека
+        if (v65 && kind === "module") lc.req.forEach((r) => { if (r.emp === t.id && r.m === b.p_module && !r.closed) { r.closed = at; r.check = lc.seq; } });
+        // итог человеку (как этап 64: бот и телефон) — в демо записываем, что ушло бы; брифинг — только если назвал не всё
+        const g = items ? items.reduce((a, x) => a + x.g, 0) : 0, o = items ? items.reduce((a, x) => a + x.o, 0) : 0;
+        const head = kind === "brief" ? "Вопрос на брифинге: названо " + g + " из " + o + " пунктов."
+          : "Живая проверка" + (kind === "blitz" ? ", блиц" : " «" + (title || b.p_module) + "»") + ": " + sc.score + "%, " + (sc.passed ? "зачтено." : "не зачтено.");
+        if (v64 && !(kind === "brief" && g >= o)) lc.sent.push({ emp: t.id, at, text: head
+          + (rep && rep.length ? "\n" + (b.p_module === "menu" ? "Повторить блюда: " : "Повторить: ") + rep.map((x) => "«" + x.t + "»").join(", ") + "." : ""),
+          go: rep && rep.length && b.p_module !== "menu" ? "lesson_" + rep[0].l : "lc_me" });
+        return { ok: true, id: lc.seq, score: sc.score, passed: sc.passed, at, ...(v64 ? { sent: !(kind === "brief" && g >= o) } : {}) };
       }
       if (fn === "live_check_summary") {
         if (lvl(me) < 30) return { ok: false, error: "forbidden" };
@@ -1204,17 +1218,101 @@ export function makeServer(opts) {
         const avg = (a) => (a.length ? Math.round(a.reduce((x, k) => x + k.s, 0) / a.length) : 0);
         const venues = [...new Set(rows.map(restOf))].map((v) => {
           const r = rows.filter((k) => restOf(k) === v), m = r.filter((k) => (k.kind || "module") === "module");
-          const by = {}; r.forEach((k) => { by[k.by] = (by[k.by] || 0) + 1; });
-          return { name: v, checks: m.length, blitz: r.length - m.length, people: new Set(r.map((k) => k.emp)).size, passed: m.filter((k) => k.p).length, avg: avg(m),
-            checkers: Object.entries(by).map(([name, n]) => ({ name, n })).sort((a, c) => c.n - a.n || a.name.localeCompare(c.name, "ru")) };
+          const by = {}; r.forEach((k) => { (by[k.by] = by[k.by] || []).push(k); });
+          return { name: v, checks: m.length, blitz: r.filter((k) => k.kind === "blitz").length, ...(v65 ? { brief: r.filter((k) => k.kind === "brief").length } : {}),
+            people: new Set(r.map((k) => k.emp)).size, passed: m.filter((k) => k.p).length, avg: avg(m),
+            checkers: Object.entries(by).map(([name, a]) => { const mm = a.filter((k) => (k.kind || "module") === "module");
+              return { name, n: a.length, ...(v65 ? { m: mm.length, avg: mm.length ? avg(mm) : null } : {}) }; }).sort((a, c) => c.n - a.n || a.name.localeCompare(c.name, "ru")) };
         }).sort((a, c) => c.checks - a.checks || a.name.localeCompare(c.name, "ru"));
         const bm = {}; modRows.forEach((k) => { const key = k.t + "|" + k.m; (bm[key] = bm[key] || []).push(k); });
         const modules = Object.entries(bm).filter(([, a]) => a.length >= 2).map(([key, a]) => ({ t: key.split("|")[0], m: key.split("|")[1], n: a.length, avg: avg(a), failed: a.filter((k) => !k.p).length }))
           .sort((a, c) => a.avg - c.avg || c.n - a.n).slice(0, 8);
         const bq = {}; rows.forEach((k) => (k.items || []).forEach((x) => { const q = bq[x.k] || (bq[x.k] = { n: 0, g: 0, o: 0 }); q.n++; q.g += x.g; q.o += x.o; }));
         const questions = Object.entries(bq).filter(([, q]) => q.n >= 3).map(([k, q]) => ({ k, n: q.n, pct: Math.round((100 * q.g) / q.o) })).sort((a, c) => a.pct - c.pct || c.n - a.n).slice(0, 10);
-        return { ok: true, days, net, restaurant: rest, totals: { checks: modRows.length, blitz: rows.length - modRows.length, people: new Set(rows.map((k) => k.emp)).size,
-          passed: modRows.filter((k) => k.p).length, avg: avg(modRows) }, venues, modules, questions };
+        const totals = { checks: modRows.length, blitz: rows.filter((k) => k.kind === "blitz").length, people: new Set(rows.map((k) => k.emp)).size,
+          passed: modRows.filter((k) => k.p).length, avg: avg(modRows) };
+        if (!v65) return { ok: true, days, net, restaurant: rest, totals: { ...totals, blitz: rows.length - modRows.length }, venues, modules, questions };
+        // v202 (этап 65): план — кого проверить (до управляющего) и у кого за N дней была проверка модуля; средний по сети
+        const pfrom = clock() - lc.plan * 864e5;
+        const due = all.filter((e) => (e.status || "active") === "active" && e.restaurant && lvl(e) < 50 && (!rest || e.restaurant === rest));
+        const doneOf = (e) => lc.checks.some((k) => k.emp === e.id && (k.kind || "module") === "module" && Date.parse(k.at) >= pfrom);
+        const pv = [...new Set(due.map((e) => e.restaurant))].sort((a, c) => a.localeCompare(c, "ru")).map((v) => { const d = due.filter((e) => e.restaurant === v); return { name: v, due: d.length, done: d.filter(doneOf).length }; });
+        const netMods = lc.checks.filter((k) => (k.kind || "module") === "module" && Date.parse(k.at) >= from);
+        modules.forEach((m) => { const k = modRows.filter((x) => x.m === m.m && x.title).sort((a, c) => (a.at < c.at ? 1 : -1))[0]; if (k) m.ti = k.title; });
+        return { ok: true, days, net, restaurant: rest, totals: { ...totals, brief: rows.filter((k) => k.kind === "brief").length }, net_avg: netMods.length ? avg(netMods) : null,
+          venues, modules, questions, plan: { days: lc.plan, due: due.length, done: due.filter(doneOf).length, venues: pv, edit: lvl(me) >= 50 },
+          requests: lc.req.filter((r) => !r.closed && (!rest || r.rest === rest)).length, flags: lvl(me) >= 50 ? new Set(lc.flags.filter((f) => !f.done).map((f) => f.k)).size : 0 };
+      }
+      // ── v202 (этап 65): просьбы, отметки, правки вопросов, план ──
+      const TR = (x) => LC_TRACKS.includes(x), MOD = (x) => /^[a-z0-9_-]{1,40}$/.test(String(x || "")), KEY = (x) => /^[a-z0-9_-]{1,40}#[a-z0-9_-]{1,40}$/.test(String(x || ""));
+      if (fn === "live_check_request") {
+        if (!TR(b.p_track) || !MOD(b.p_module) || ["blitz", "brief"].includes(b.p_module) || String(b.p_title || "").length > 120) return { ok: false, error: "bad_request" };
+        const open = lc.req.find((r) => r.emp === me.id && r.m === b.p_module && !r.closed);
+        if (b.p_cancel) { if (open) open.closed = new Date(clock()).toISOString(); return { ok: true, cancelled: !!open }; }
+        if (lc.req.filter((r) => r.emp === me.id && !r.closed && r.m !== b.p_module).length >= 10) return { ok: false, error: "too_many" };
+        const lastM = lc.checks.filter((k) => k.emp === me.id && k.m === b.p_module && (k.kind || "module") === "module").sort((a, c) => (a.at < c.at ? 1 : -1))[0];
+        const kind = lastM && !lastM.p ? "retake" : "check";
+        if (open) { open.k = kind; if (b.p_title) open.ti = String(b.p_title).replace(/\s+/g, " ").trim().slice(0, 80); return { ok: true, id: open.id, kind, again: true }; }
+        lc.rseq += 1;
+        lc.req.push({ id: lc.rseq, emp: me.id, rest: me.restaurant || "", t: b.p_track, m: b.p_module, ti: String(b.p_title || "").replace(/\s+/g, " ").trim().slice(0, 80) || null, k: kind, at: new Date(clock()).toISOString(), closed: null });
+        return { ok: true, id: lc.rseq, kind, again: false };
+      }
+      if (fn === "live_check_requests") {
+        const row = (r) => ({ id: r.id, t: r.t, m: r.m, ti: r.ti, k: r.k, at: r.at });
+        const mine = lc.req.filter((r) => r.emp === me.id && !r.closed).map(row);
+        let people = [];
+        if (lvl(me) >= 20) {
+          const net = !!me.is_admin || me.position === "senior";
+          const rest = net && cleanName(b.p_restaurant) ? cleanName(b.p_restaurant) : me.restaurant;
+          people = lc.req.filter((r) => !r.closed).map((r) => ({ r, e: all.find((x) => x.id === r.emp) })).filter(({ e }) => e && (e.restaurant || "") === rest && can(e))
+            .map(({ r, e }) => ({ ...row(r), emp: e.id, name: e.name, surname: e.surname || "" }));
+        }
+        return { ok: true, plan_days: lc.plan, level: lvl(me), mine, people };
+      }
+      if (fn === "live_check_flag") {
+        if (lvl(me) < 20) return { ok: false, error: "forbidden" };
+        if (!TR(b.p_track) || !KEY(b.p_key) || String(b.p_key).split("#")[0] !== b.p_module) return { ok: false, error: "bad_request" };
+        const note = String(b.p_note || "").replace(/\s+/g, " ").trim().slice(0, 300) || null;
+        const f = lc.flags.find((x) => x.k === b.p_key && x.by === me.id && !x.done);
+        if (f) { f.note = note || f.note; f.at = new Date(clock()).toISOString(); } else lc.flags.push({ k: b.p_key, t: b.p_track, m: b.p_module, note, by: me.id, byName: full(me), at: new Date(clock()).toISOString(), done: null });
+        return { ok: true };
+      }
+      if (fn === "live_check_questions") {
+        const edit = lvl(me) >= 50;
+        const rows = lc.q.slice().sort((a, c) => (a.m + "#" + a.n).localeCompare(c.m + "#" + c.n)).map((x) => ({ t: x.t, m: x.m, n: x.n, q: x.q, a: x.a, l: x.l, h: x.h, at: x.at, by: x.by }));
+        const by = {}; lc.flags.filter((f) => !f.done).forEach((f) => { (by[f.k] = by[f.k] || []).push(f); });
+        const flags = edit ? Object.entries(by).map(([k, a]) => ({ k, t: a[0].t, m: a[0].m, n: a.length, at: a.map((f) => f.at).sort().pop(), notes: a.map((f) => ({ note: f.note, by: f.byName, at: f.at })) }))
+          .sort((a, c) => c.n - a.n || (a.at < c.at ? 1 : -1)) : [];
+        return { ok: true, can_edit: edit, rows, flags };
+      }
+      if (fn === "live_check_question_save") {
+        if (lvl(me) < 50) return { ok: false, error: "forbidden" };
+        let n = b.p_n == null || b.p_n === "" ? null : String(b.p_n);
+        const q = String(b.p_q || "").replace(/\s+/g, " ").trim() || null, hidden = !!b.p_hidden;
+        const a = Array.isArray(b.p_a) ? b.p_a.map((x) => String(x).replace(/\s+/g, " ").trim()) : null;
+        if (!TR(b.p_track) || !MOD(b.p_module) || ["blitz", "brief", "menu"].includes(b.p_module) || (n && !/^([0-9]{1,3}|c[0-9]{1,9})$/.test(n))
+          || (b.p_lesson && !/^[A-Za-z0-9_.:-]{1,60}$/.test(b.p_lesson)) || (a && (!a.length || a.length > 6 || a.some((x) => !x || x.length > 200)))
+          || (!hidden && (!q || q.length < 8 || q.length > 300 || !a)) || (q && q.length > 300) || (!n && hidden)) return { ok: false, error: "bad_request" };
+        if (!n) { lc.qseq += 1; n = "c" + lc.qseq; }
+        else if (/^c/.test(n) && !lc.q.some((x) => x.m === b.p_module && x.n === n)) return { ok: false, error: "not_found" };
+        const at = new Date(clock()).toISOString();
+        const old = lc.q.find((x) => x.m === b.p_module && x.n === n);
+        if (old) Object.assign(old, { t: b.p_track, q: q || old.q, a: a || old.a, l: b.p_lesson || old.l, h: hidden, at, by: full(me) });
+        else lc.q.push({ t: b.p_track, m: b.p_module, n, q, a, l: b.p_lesson || null, h: hidden, at, by: full(me) });
+        let resolved = 0; lc.flags.forEach((f) => { if (f.k === b.p_module + "#" + n && !f.done) { f.done = at; resolved++; } });
+        return { ok: true, n, at, resolved };
+      }
+      if (fn === "live_check_flag_done") {
+        if (lvl(me) < 50) return { ok: false, error: "forbidden" };
+        if (!KEY(b.p_key)) return { ok: false, error: "bad_request" };
+        let resolved = 0; lc.flags.forEach((f) => { if (f.k === b.p_key && !f.done) { f.done = new Date(clock()).toISOString(); resolved++; } });
+        return { ok: true, resolved };
+      }
+      if (fn === "live_check_plan_set") {
+        if (lvl(me) < 50) return { ok: false, error: "forbidden" };
+        if (![14, 30, 60, 90].includes(Number(b.p_days))) return { ok: false, error: "bad_request" };
+        lc.plan = Number(b.p_days);
+        return { ok: true, days: lc.plan };
       }
       if (fn === "live_check_delete") {
         const k = lc.checks.find((x) => x.id === Number(b.p_id));

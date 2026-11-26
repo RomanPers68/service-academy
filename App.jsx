@@ -422,6 +422,8 @@ const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScr
 const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");   // v85 (Доп. 398): рассадка для хостес
 const LiveCheckScreen = lazyOf(() => import("./ui/live-check"), "LiveCheckScreen");   // v200 (Доп. 525): живая проверка по урокам
 const LiveResultCard = lazyOf(() => import("./ui/live-check-summary"), "LiveResultCard");   // v201 (Доп. 526): итог проверки себе
+const LiveCheckEditor = lazyOf(() => import("./ui/live-check-editor"), "LiveCheckEditor");   // v202 (Доп. 527): вопросы живой проверки
+const LivePractice = lazyOf(() => import("./ui/live-practice"), "LivePractice");   // v202: «Повтори вслух» в «Работе над ошибками»
 
 
 
@@ -455,7 +457,7 @@ const PRACTICE_RESUME_KEY = "sa_practice_resume";   // Доп. 293
 // v139 (Доп. 454): about — «О нас» («Обновили «О нас»» от бота и на телефоне).
 // v201 (Доп. 526): lc — «Живая проверка» (напоминание о пересдаче), lc_me — «Мои проверки» (итог человеку)
 const goLinkOk = (v) => typeof v === "string" && (v === "about" || ["pair", "league", "cellar", "month", "shift", "quest", "radio", "guest", "probe", "mastery", "mistakes", "brief", "cases", "thanks", "seat", "chat", "schedule", "morning", "briefing", "newbie", "newbies"].includes(v)
-  || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "lc" || v === "lc_me" || v === "qday" || v === "remind");
+  || /^chat_\d{1,12}(_\d{1,15})?$/.test(v) || /^lesson_[A-Za-z0-9_.:-]{1,80}$/.test(v) || /^gain(_\d{4}-(0[1-9]|1[0-2]))?$/.test(v) || /^chat_\d{1,12}_\d{1,15}_r$/.test(v) || v === "lc_sum" || v === "lc" || v === "lc_me" || v === "qday" || v === "remind");
 
 function ServiceAcademy() {
   const [screen, setScreen] = useState("roleSelect");
@@ -1486,6 +1488,10 @@ function ServiceAcademy() {
   const [lcEmp, setLcEmp] = useState(null);   // v200 (Доп. 525): живая проверка — сразу карточка сотрудника из отчёта
   // и назад — снова его карточка в отчёте; ушли из отчёта и проверки — забыли
   useEffect(() => { if (screen !== "report" && screen !== "liveCheck") setLcEmp(null); }, [screen]);
+  // v202 (Доп. 527): «Сводка» из итога недели в Telegram; правят вопросы владелец и руководящий состав (этап 65)
+  const [lcTab, setLcTab] = useState("check");
+  useEffect(() => { if (screen !== "liveCheck") setLcTab("check"); }, [screen]);
+  const lcEditQ = !!profile?.is_admin || profile?.position === "senior";
   // v201 (Доп. 526): «Живая проверка» из бота: руководителю — кого проверить, себе («Мои проверки») — свои итоги
   const openLiveCheck = (mine) => {
     const lead = !!profile?.is_admin || ["manager", "senior", "senior_bartender"].includes(profile?.position);
@@ -1502,6 +1508,7 @@ function ServiceAcademy() {
     Promise.all([retryImport(() => import("./lib/live-check-api")), retryImport(() => import("./ui/live-check-summary"))])
       .then(([api, ui]) => api.lcPerson("").then((r) => {
         if (!alive || !r || !r.ok) return;
+        api.saveMine(ukP, r.checks);   // v202: «Путь мастера» и допуск к залу без сети
         let seen = 0; try { seen = Number(localStorage.getItem(lcSeenKey) || 0); } catch (e) { /* */ }
         setLcMine(ui.freshResult(r.checks, seen));
       })).catch(() => {});
@@ -1926,6 +1933,7 @@ function ServiceAcademy() {
     else if (g === "remind") setRemindOpen("push");                    // v137: пробное уведомление — «Напоминания»
     else if (g === "about") { setAboutEdit(false); navigate("about"); }   // v139 (Доп. 454): «Обновили «О нас»» — бот и телефон
     else if (g === "lc" || g === "lc_me") openLiveCheck(g === "lc_me");   // v201 (Доп. 526): «Живая проверка» и «Мои проверки» из бота
+    else if (g === "lc_sum") { setLcEmp(null); setLcTab("sum"); navigate("liveCheck"); }   // v202 (Доп. 527): итог недели → «Сводка»
   }, [profile, storageLoaded, programModules.length, modules.length, goTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v137: приложение открыто, а человек коснулся уведомления — сервис-воркер присылает sa-go с той же ссылкой
   // (в демо — событие страницы sa-go от уведомления сверху)
@@ -3516,6 +3524,7 @@ function ServiceAcademy() {
           onOpenModule={(id) => { const m = (programAllMods || []).find((x) => x.id === id); if (m) { setActiveModule(m); navigate("module"); } }}
           onDm={(x) => setChatOpen({ intent: { kind: "dm", emp: x.id, at: Date.now() } })}
           onChat={(msg) => setChatOpen({ intent: { kind: "team", msg: msg || null, at: Date.now() } })}
+          onLiveCheck={() => openLiveCheck(true)}
           onLegacy={() => navigate("onboarding")} /></Suspense></div>}
         {/* v192 (Доп. 517): новичку — все темы, и «для ознакомления» тоже: «Знакомство с компанией» и дресс-код ведут в раздел «О нас» */}
         {screen === "newbies" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><NewbiesScreen T={T} a11y={a11y} profile={profile}
@@ -3528,9 +3537,14 @@ function ServiceAcademy() {
           startEmp={reportSelf ? null : lcEmp} onBack={() => goBack(reportSelf ? "me" : "teamHub")} onLiveCheck={(id) => { setLcEmp(id); navigate("liveCheck"); }} /></Suspense></div>}
         {/* v200 (Доп. 525): живая проверка — вопросы по урокам вслух, кто кого проверяет по должности */}
         {screen === "liveCheck" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LiveCheckScreen T={T} a11y={a11y} profile={profile} startEmp={lcEmp}
+          startTab={lcTab} uk={ukP} onEditQuestions={lcEditQ ? () => navigate("lcEditor") : null} onPractice={() => navigate("mistakes")}
           onBack={() => goBack(lcEmp ? "report" : "teamHub")} /></Suspense></div>}
+        {/* v202 (Доп. 527): вопросы живой проверки — правки руководства, свои вопросы, отмеченные проверяющими */}
+        {screen === "lcEditor" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LiveCheckEditor T={T} a11y={a11y} profile={profile}
+          onBack={() => goBack("contentEditor")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => goBack("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
-        {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); goBack("roleSelect"); }} /></Suspense>}
+        {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); goBack("roleSelect"); }}
+          onLiveQuestions={profile ? () => navigate("lcEditor") : null} /></Suspense>}
         {/* v167 (Доп. 492): редактор справочника — только владелец (сервер проверяет то же: этап 53) */}
         {screen === "refEditor" && profile?.is_admin && <Suspense fallback={<ScreenLoader T={T} />}><RefEditorScreen T={T} a11y={a11y} profile={profile} startId={refEdit} onBack={() => goBack("reference")} /></Suspense>}
         {screen === "profile" && <Suspense fallback={<ScreenLoader T={T} />}><AccountScreen profile={profile} T={T} a11y={a11y} onA11y={setA11y} themeAuto={themeAuto} onThemeAuto={setAutoTheme} onBack={() => goBack()} onLogout={handleLogout} onTrainingCard={() => navigate("trainingCard")} /></Suspense>}
@@ -3830,7 +3844,8 @@ function ServiceAcademy() {
           focusId={activeModule ? activeModule.id : null} pagerOnly={screen === "module"} onPage={setActiveModule}
           onLesson={(l, m) => { if (m && m.id !== (activeModule && activeModule.id)) setActiveModule(m); openLesson(l); }}
           nextFor={moduleNextFor} onNext={moduleOnNext} finish={moduleFinishFor()} onBookPage={(m) => { setBookFocus((m && m.id) || null); navigate("guestbook"); }} /></div>}
-        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")} />}
+        {screen === "mistakes" && <MistakesScreen T={T} a11y={a11y} mistakeBank={mistakeBank} noTests={!myScores.length && !Object.keys(quizDone || {}).length} onResolve={resolveMistake} onFail={failMistake} onBack={() => goBack("home")}
+          live={profile ? <Suspense fallback={null}><LivePractice T={T} a11y={a11y} profile={profile} uk={ukP} onFixed={() => { touchStreak(); logActivity("fix"); }} /></Suspense> : null} />}
         {screen === "about" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AboutScreen T={T} a11y={a11y} profile={profile} role={role} concept={concept} onRaw={onConceptRaw} startEdit={aboutEdit} onBack={() => goBack("teamHub")} onOpenSection={conceptMods.length ? () => openModule(conceptMods[0]) : null}
           onPitch={(t) => { setPitchTrack(t || role); navigate("pitch"); }} /></Suspense></div>}
         {/* v192 (Доп. 517): тренажёр «Рассказ гостю за 30 секунд» — из «О нас» и из раздела в треке */}

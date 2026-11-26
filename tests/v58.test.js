@@ -68,7 +68,8 @@ describe("v58: тексты приветствия (неудобства 1–2)"
 describe("v58: пустые экраны и дата (неудобства 7–9)", () => {
   it("«Работа над ошибками» без единого теста — «Пока пусто», без конфетти; с тестами без ошибок — как было", () => {
     const L = rd("ui/screens-learning.jsx");
-    expect(L).toContain("export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack, noTests = false }) {");
+    // v202 (Доп. 527): ещё live — «Повтори вслух» с живой проверки над тестами
+    expect(L).toContain("export function MistakesScreen({ T, a11y, mistakeBank = [], onResolve, onFail, onBack, noTests = false, live = null }) {");
     expect(L).toContain("    if (noTests && waiting === 0) return (");
     expect(L).toContain('<div data-mistakes-empty="new"');
     expect(L).toContain("<div style={{ ...T.bold, marginBottom: 6 }}>Пока пусто</div>");

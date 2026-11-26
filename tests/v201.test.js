@@ -335,7 +335,8 @@ describe("v201 · где и как это встроено", () => {
   });
   it("«Сервер» знает этап 64 и расписание; README и памятка инструментов", () => {
     expect(STAGES.find((s) => s.n === "64")).toEqual({ n: "64", file: "supabase-stage64-live-check-plus.sql", what: "Живая проверка: по пунктам, блиц, итог сотруднику, пересдача, сводка", fn: "live_check_summary" });
-    expect(CRON_JOBS.find((j) => j.name === "sa-live-check")).toEqual({ name: "sa-live-check", what: "Живая проверка: напоминание о пересдаче", n: "64" });
+    // v202 (Доп. 527): то же расписание с этапа 65 шлёт ещё итог недели
+    expect(CRON_JOBS.find((j) => j.name === "sa-live-check")).toEqual({ name: "sa-live-check", what: "Живая проверка: пересдача и итог недели", n: "65" });
     expect(rd("supabase/README.md")).toContain("| 73 | `supabase-stage64-live-check-plus.sql` | **Живая проверка точнее и удобнее** (v201)");
     const tr = rd("tools/claude/README.md");
     expect(tr).toContain("bash sql/test64.sh");

@@ -93,7 +93,7 @@ describe("v117: разметка «Команды и Я»", () => {
     expect(count(C, 'data-lens-field="" style={input}') + count(C, 'data-lens-field="" style={{ ...input,')).toBe(40);
     expect(count(C, 'data-lens-btn="main" style={{ ...primary')).toBe(11);
     expect(count(C, 'data-lens-btn="soft" data-lens-ink="" style={{ ...ghost')).toBe(6);
-    expect(count(C, "data-lens-edge=\"\" style={")).toBe(22);
+    expect(count(C, "data-lens-edge=\"\" style={")).toBe(23);   // v202 (Доп. 527): +1 — карточка «Вопросы живой проверки»
     // вкладки разделов редактора (столбиком) — прежние
     expect(lineOf(C, 'flex: "1 1 0", minWidth: 0, padding: "5px 0", flexDirection: "column"')).not.toContain("data-lens-btn");
   });

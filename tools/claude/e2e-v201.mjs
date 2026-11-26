@@ -162,7 +162,8 @@ if (want("TODAY") || want("CHECK") || want("BLITZ") || want("OFFLINE") || want("
     await click(page, '[data-lc-tab="sum"]', 1800);
     const tot = await until(async () => (await texts(page, "[data-lc-sum-tot]"))[0] || null);
     ok("SUMMARY: итоги за 30 дней: проверок, зачтено, средний", !!tot && /Проверок: \d+, блицев 1/.test(tot) && /средний результат \d+%/.test(tot), tot);
-    ok("SUMMARY: по заведениям — «Два моря, Океан», проверяла Мария Ким", (await texts(page, '[data-lc-sum-venue="Два моря, Океан"] [data-lc-sum-checkers]'))[0] === "Проверяли: Мария Ким 3",
+    // v202 (Доп. 527): с этапом 65 рядом с проверяющим ещё его средний процент
+    ok("SUMMARY: по заведениям — «Два моря, Океан», проверяла Мария Ким", /^Проверяли: Мария Ким 3( \(средний \d+%\))?$/.test((await texts(page, '[data-lc-sum-venue="Два моря, Океан"] [data-lc-sum-checkers]'))[0] || ""),
       await texts(page, "[data-lc-sum-venue]"));
     await shot(page, "6-sum");
   });

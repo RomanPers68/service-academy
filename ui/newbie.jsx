@@ -2,6 +2,8 @@
 // как найти, форма, кто встретит), наставник, план по дням, первыми — темы с собеседования (урок открывается сразу).
 // NewbiesScreen — «Новички»: у руководителя все новички заведения (наставник, собеседование, «Представить команде»,
 // подтверждения, памятка), у наставника — свои. Сервер — этап 41 (newbie_me, newbie_list, …), слова — lib/newbie.js.
+// v202 (Доп. 527): допуск к залу у «Новичка»: новичку карточка в «Первой неделе», руководителю строка в «Новичках»
+// (тест и живая проверка по «Аллергиям» и «ЧП», ui/live-admit.jsx).
 // v111 (Доп. 424): в виде «Линза» карточки, кружки с инициалами, кнопки, поля и «закрыть» листа — линзой (метки
 // data-lens-*, правила — ui/home-look.jsx); галочки шагов, плашки тем, выбор минут и полоски — прежние.
 import React from "react";
@@ -19,6 +21,8 @@ import { dLong, upFirst, nm } from "../lib/morning";
 import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото новичка и наставника в кружках, по нажатию — крупно
 import { useLens, viewRpc } from "../lib/org";   // v199 (Доп. 524): сеть смотрит новичков любого заведения
 import { VenueLens, LensNote } from "./venue-lens";
+import { AdmitCard, admitLine } from "./live-admit";   // v202 (Доп. 527)
+import { lcPeople } from "../lib/live-check-api";
 
 const SQL = "supabase-stage41-newbie.sql";
 const P = (a11y) => (a11y
@@ -107,7 +111,7 @@ export function nowSection(nb, plan) {
 // ── «Первая неделя» новичка ───────────────────────────────────────────────────────
 /** onOpenModule(id) — открыть тему трека; onDm({ id, name }) — личная переписка; onChat(msg) — «Вся команда» (у сообщения msg); onLegacy() — прежний
  *  экран (этапа 41 нет или сервер не считает новичком). */
-export function NewbieScreen({ T, a11y, profile, track = "", modules = [], completed = {}, quizDone = {}, cnAck = null, onBack, onOpenModule = () => {}, onDm = null, onChat = null, onLegacy = null }) {
+export function NewbieScreen({ T, a11y, profile, track = "", modules = [], completed = {}, quizDone = {}, cnAck = null, onBack, onOpenModule = () => {}, onDm = null, onChat = null, onLegacy = null, onLiveCheck = null }) {
   const S = useStyles(T, a11y), { c, card, textCard, sub, text, ghost, h, line } = S;
   const [st, setSt] = React.useState({ phase: "load" });
   const [busy, setBusy] = React.useState("");
@@ -195,6 +199,8 @@ export function NewbieScreen({ T, a11y, profile, track = "", modules = [], compl
             ) : <div style={{ fontSize: 14, color: sub, lineHeight: 1.45 }} data-nb-nobuddy="">Наставника назначит руководитель. Пока с вопросами подходи к менеджеру смены.</div>}
             {!nb.first ? <div style={{ fontSize: 12.5, color: sub, marginTop: 8 }}>{firstLine(nb)}</div> : nb.first && dayDiff(nb.day, nb.first.day) < 0 ? <div style={{ fontSize: 12.5, color: sub, marginTop: 8 }}>{firstLine(nb)}</div> : null}
           </div>
+          {track === "seasonal" || (profile && profile.position === "waiter") ? (
+            <AdmitCard T={T} a11y={a11y} uk={profile ? "_" + profile.name + "_" + (profile.surname || "") : ""} quizDone={quizDone} onLiveCheck={onLiveCheck} card={card} />) : null}
 
           {nb.solo ? (
             <div style={{ ...card, border: "1px solid " + c.ok }} data-lens-card="ok" data-nb-solo="">
@@ -332,6 +338,13 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
   const lens = useLens(profile);
   const lensRef = React.useRef(lens); lensRef.current = lens;
   const ro = !lens.mine;
+  // v202: допуск к залу по данным живой проверки (кого руководитель проверяет); нет этапа или прав, строки нет
+  const [lcp, setLcp] = React.useState([]);
+  React.useEffect(() => {
+    let alive = true;
+    lcPeople(lens.network ? lens.venue : null).then((r) => { if (alive) setLcp(r && r.ok && Array.isArray(r.people) ? r.people : []); });
+    return () => { alive = false; };
+  }, [lens.network, lens.venue]);
   const load = React.useCallback(() => {
     const ln = lensRef.current;
     viewRpc("newbie_list", {}, ln).then((r) => {
@@ -414,6 +427,7 @@ export function NewbiesScreen({ T, a11y, profile, onBack, onChat = null, onDm = 
               <div style={{ flex: 1 }}><Bar done={done} total={total} c={c} /></div>
               <span style={{ fontSize: 12, color: sub }} data-nbl-done={done}>{done} из {total}</span>
             </div>
+            {(() => { const t = admitLine(lcp.find((p) => String(p.id) === String(n.emp))); return t ? <div style={{ fontSize: 12.5, color: /^Допущен/.test(t) ? c.ok : sub, marginTop: 6 }} data-nbl-admit="">{t}</div> : null; })()}
             {n.solo ? <div style={{ fontSize: 12.5, color: c.ok, marginTop: 6 }} data-nbl-solo="">{"Самостоятельная смена: " + dayMon(String(n.solo.at).slice(0, 10))}</div>
               : n.hello ? <div style={{ fontSize: 12.5, color: sub, marginTop: 6 }} data-nbl-hello-st="">{(isFemaleName(...n.name.split(" ")) ? "Представлена" : "Представлен") + " команде" + (n.hello.n ? " · поздоровались " + n.hello.n : "")}</div> : null}
           </div>

@@ -20,6 +20,8 @@ import { hintsFor } from "../data/hints";
 import { LABEL_CSS } from "./tokens";   // v73 (Доп. 386): надзаголовок .rp-ey — курсив с засечками, не моноширинный капс
 import { useLens } from "../lib/org";   // v199 (Доп. 524): сеть — вся сеть или одно заведение (тот же выбор, что в аналитике)
 import { inLens, LENS_ALL } from "../lib/org-model";
+import { LiveCheckSummary } from "./live-check-summary";   // v200 (Доп. 525): итоги живой проверки в карточке
+import { lcPerson } from "../lib/live-check-api";
 
 const CSS = `
 .rp{min-height:100%;padding:0 0 28px;color:#EFE4C8;font-family:Georgia,serif}
@@ -173,7 +175,7 @@ async function deliver({ kind, payload, make, name, mime, admin = false }) {
   return "file";
 }
 
-export function ReportScreen({ a11y, profile, customLessons = [], onBack, startSelf = false }) {
+export function ReportScreen({ a11y, profile, customLessons = [], onBack, startSelf = false, startEmp = null, onLiveCheck = null }) {
   ensureCss();
   const customByRole = React.useMemo(() => {
     const out = {};
@@ -189,7 +191,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   const ctx = React.useMemo(() => ({ steps, roles: ROLES, skillLabel }), [steps]);
 
   const [list, setList] = React.useState({ status: "loading", rows: [], scope: "", restaurant: "" });
-  const [sel, setSel] = React.useState(null);
+  const [sel, setSel] = React.useState(startEmp || null);   // v200: назад из живой проверки — снова этот человек
   const [person, setPerson] = React.useState({ status: "idle" });
   const [q, setQ] = React.useState("");
   const [filter, setFilter] = React.useState("all");
@@ -198,6 +200,15 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
   const topRef = React.useRef(null);
   const lens = useLens(profile, { all: true });
   const vName = lens.network && !lens.all ? lens.venue : "";
+  // v200: живая проверка этого человека (этап 63); нет этапа или нельзя — раздела нет
+  const [live, setLive] = React.useState(null);
+  React.useEffect(() => {
+    setLive(null);
+    if (!sel) return undefined;
+    let alive = true;
+    lcPerson(sel).then((r) => { if (alive && r && r.ok) setLive(r); });
+    return () => { alive = false; };
+  }, [sel]);
 
   const loadList = React.useCallback(() => {
     setList((l) => ({ ...l, status: "loading" }));
@@ -293,7 +304,7 @@ export function ReportScreen({ a11y, profile, customLessons = [], onBack, startS
               <button type="button" className="rp-btn" disabled={!!busy} onClick={() => runExport("person_xlsx")}>{busy === "person_xlsx" ? "Собираю…" : "Excel"}</button>
             </div>
             {msg ? <div className={"rp-msg" + (msg.bad ? " bad" : "")} role="status">{msg.text}</div> : null}
-            <PersonView m={m} />
+            <PersonView m={m} live={<LiveCheckSummary data={live} onCheck={onLiveCheck ? () => onLiveCheck(sel) : null} />} />
           </>
         ) : null}
       </div>
@@ -401,7 +412,7 @@ function Tile({ l, v, s, tone }) {
   return <div className="rp-tile"><div className="l">{l}</div><div className={"v" + (tone ? " " + tone : "")}>{v}</div>{s ? <div className="s">{s}</div> : null}</div>;
 }
 
-function PersonView({ m }) {
+function PersonView({ m, live = null }) {   // live — v200: раздел «Живая проверка», после навыков в зале
   const mt = m.main;
   const ex = m.exams.find((e) => mt && e.track === mt.id) || m.exams[0] || null;
   const warn = m.flags.filter((f) => f.level === "warn");
@@ -508,6 +519,7 @@ function PersonView({ m }) {
           <div className="rp-li" key={s.id || s.label}>{s.label}<small><span className={(STATUS[s.status] || ["", ""])[1]}>{(STATUS[s.status] || [s.status])[0]}</span>{s.by ? " · " + s.by : ""}{s.date ? " · " + (shortDate(s.date) || s.date) : ""}{s.note ? " · «" + s.note + "»" : ""}</small></div>
         ))}
       </section>
+      {live}
 
       <section className="rp-sec">
         <h3>Дни занятий<span>14 дней · ● разминка</span></h3>

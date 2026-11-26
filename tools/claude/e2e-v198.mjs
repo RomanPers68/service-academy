@@ -111,7 +111,9 @@ await run("FORM", async () => {
     JSON.stringify(await attrs(page, "[data-team-venue]", "data-team-venue")) === JSON.stringify(["Два моря, Океан", "Алёнка"]) && (await page.locator("[data-org-add=venue]").count()) === 1,
     await attrs(page, "[data-team-venue]", "data-team-venue"));
   const posT = await texts(page, "[data-team-pos]");
-  ok("FORM: должности — шесть прежних и «Бариста»; «+ Должность»", posT.length === 7 && posT[6] === "Бариста" && (await page.locator("[data-org-add=position]").count()) === 1, posT);
+  // v200: сервер демо с этапом 63 — ещё «Управляющий» (как менеджер, старше менеджера), его добавляет этап 63
+  ok("FORM: должности — шесть прежних, «Управляющий» и «Бариста»; «+ Должность»", posT.length === 8 && posT[6] === "Управляющий" && posT[7] === "Бариста"
+    && (await page.locator("[data-org-add=position]").count()) === 1, posT);
   await shot(page, "owner-4-form");
   await click(page, "[data-org-add=venue]", 500);
   await click(page, "[data-org-sheet=venue] [data-org-return=\"Порт\"]", 900);

@@ -420,6 +420,7 @@ const CasesScreen = lazyOf(() => import("./ui/cases"), "CasesScreen");   // v83 
 const ThanksScreen = lazyOf(() => import("./ui/thanks"), "ThanksScreen");   // v84 (Доп. 397): спасибо от гостей по QR
 const PeerThanksScreen = lazyOf(() => import("./ui/peer-thanks"), "PeerThanksScreen");   // v108 (Доп. 421): спасибо от коллег
 const SeatingScreen = lazyOf(() => import("./ui/seating"), "SeatingScreen");   // v85 (Доп. 398): рассадка для хостес
+const LiveCheckScreen = lazyOf(() => import("./ui/live-check"), "LiveCheckScreen");   // v200 (Доп. 525): живая проверка по урокам
 
 
 
@@ -1480,6 +1481,9 @@ function ServiceAcademy() {
   // ── Доп. 305: чек недели — что сделано за 7 дней, можно отправить команде ──
   const weekOpen = layerData(layers, "week"), setWeekOpen = layerSet.week;   // null | "last7" | "prev"
   const [reportSelf, setReportSelf] = useState(false);   // Доп. 309: «Мой отчёт» — сразу своя карточка
+  const [lcEmp, setLcEmp] = useState(null);   // v200 (Доп. 525): живая проверка — сразу карточка сотрудника из отчёта
+  // и назад — снова его карточка в отчёте; ушли из отчёта и проверки — забыли
+  useEffect(() => { if (screen !== "report" && screen !== "liveCheck") setLcEmp(null); }, [screen]);
   const [weekSeen, setWeekSeen] = useState("");
   React.useEffect(() => { try { setWeekSeen(localStorage.getItem("sa_week_seen" + ukP) || ""); } catch (e) { setWeekSeen(""); } }, [ukP]);
   const prevWeekEnd = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return d; }, [todayKey]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -3496,7 +3500,10 @@ function ServiceAcademy() {
         {screen === "checklist" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ChecklistScreen T={T} a11y={a11y} profile={profile} initialTab={checklistTab} onBack={() => goBack("roleSelect")} /></Suspense></div>}
         {screen === "onboarding" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><OnboardingScreen T={T} a11y={a11y} profile={profile} role={role} onBack={() => goBack("roleSelect")} /></Suspense></div>}
         {screen === "report" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ReportScreen a11y={a11y} profile={profile} customLessons={reportCms} startSelf={reportSelf}
-          onBack={() => goBack(reportSelf ? "me" : "teamHub")} /></Suspense></div>}
+          startEmp={reportSelf ? null : lcEmp} onBack={() => goBack(reportSelf ? "me" : "teamHub")} onLiveCheck={(id) => { setLcEmp(id); navigate("liveCheck"); }} /></Suspense></div>}
+        {/* v200 (Доп. 525): живая проверка — вопросы по урокам вслух, кто кого проверяет по должности */}
+        {screen === "liveCheck" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LiveCheckScreen T={T} a11y={a11y} profile={profile} startEmp={lcEmp}
+          onBack={() => goBack(lcEmp ? "report" : "teamHub")} /></Suspense></div>}
         {screen === "analytics" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><AnalyticsScreen T={T} a11y={a11y} profile={profile} scores={scores} onBack={() => goBack("roleSelect")} onReport={() => { setReportSelf(false); navigate("report"); }} /></Suspense></div>}
         {screen === "contentEditor" && <Suspense fallback={<ScreenLoader T={T} />}><ContentEditorScreen T={T} a11y={a11y} onBack={() => { loadCustomLessons(); goBack("roleSelect"); }} /></Suspense>}
         {/* v167 (Доп. 492): редактор справочника — только владелец (сервер проверяет то же: этап 53) */}
@@ -3713,6 +3720,8 @@ function ServiceAcademy() {
             profile?.is_admin && { key:"srv", group:"Управление", icon:"server", label:"Сервер", sub:"Этапы базы, бот Telegram, расписания", onClick:() => navigate("server") },   // v99 (Доп. 412)
             staff && { key:"hire", group:"Управление", icon:"hire", label:"Собеседование", sub:"Кандидаты и AI HR", onClick:() => navigate("candidate") },
             staff && { key:"rep", group:"Управление", icon:"report", label:"Отчёты по сотрудникам", sub:"Кто где ошибается и что не прошёл, в Excel и PDF", onClick:() => { setReportSelf(false); navigate("report"); } },
+            // v200 (Доп. 525): живая проверка по урокам; старший бармен проверяет бар, руководители — по ступеням должностей
+            (staff || profile?.position === "senior_bartender") && { key:"lc", group: staff ? "Управление" : "Команда", icon:"checklist", label:"Живая проверка", sub:"Вопросы по урокам вслух: читал человек или нет", onClick:() => { setLcEmp(null); navigate("liveCheck"); } },
             staff && { key:"ce", group:"Управление", icon:"edit", label:"Редактор контента", sub:"Уроки и материалы команды", onClick:() => navigate("contentEditor") },
             profile?.is_admin && { key:"re", group:"Управление", icon:"book", label:"Редактор справочника", sub:"Разделы, главы, текст и фото", onClick:() => { setRefEdit(null); navigate("refEditor"); } },   // v167 (Доп. 492)
             // v139 (Доп. 454): концепция и стандарты сети и заведения — правка (сотрудник видит «О нас» ниже, в «Команде»)

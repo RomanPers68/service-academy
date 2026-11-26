@@ -19,6 +19,7 @@ import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
 import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";   // v198: заведения и должности, как этап 61
+import { lcLevel, lcCan, lcScore, LC_TRACKS } from "../../../lib/live-check.js";   // v200: живая проверка, как этап 63
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const addD = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
@@ -1030,6 +1031,10 @@ export function makeServer(opts) {
       S.org = orgSeed([...new Set(PEOPLE.map((e) => e.restaurant))]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0;
       if (opts.net2) { const v = S.org.venues.find((x) => x.name === "Порт"); if (v) v.hidden = false; }   // v199: второе заведение в списке
     }
+    // v200 (этап 63): «Управляющий» — своя должность «работает как» менеджер, старше менеджера
+    if (!opts.noStage63 && !S.org.positions.some((x) => x.id === "pupravl00")) {
+      S.org.positions.push({ id: "pupravl00", label: "Управляющий", base: "manager", builtin: false, hidden: false, sort: S.org.positions.length, staff: 0 });
+    }
     return S.org;
   }
   const restNow = (name) => { const o = orgState(); let n = name, k = 0; while (o.renamed[n] && k++ < 20) n = o.renamed[n]; return n; };
@@ -1107,6 +1112,68 @@ export function makeServer(opts) {
     if (fn === "my_state") return p ? stateOf(p) : { ok: false, error: "auth" };
     if (fn === "my_reset_at") return { ok: true, reset_at: null };
     if (fn === "cms_list_lessons") return [];
+    // ── v200 (этап 63): живая проверка; opts.noStage63 — сервер без этапа 63 ──
+    if (/^live_check_/.test(fn) || fn === "org_position_level") {
+      if (opts.noStage63) return { code: "PGRST202", message: "Could not find the function" };
+      if (!p) return { ok: false, error: "auth" };
+      orgState();
+      const lc = S.lc || (S.lc = { checks: [], ups: ["pupravl00"], seq: 0 });
+      const all = staffAll().map((e) => ({ ...e, title: e.job_title || null }));
+      const me = all.find((e) => e.id === p.id) || { ...p, title: null };
+      const lvl = (e) => lcLevel(e, lc.ups);
+      const can = (t) => lcCan(me, t, lc.ups);
+      const last = (id) => { const by = {}; lc.checks.filter((k) => k.emp === id).forEach((k) => { if (!by[k.m] || k.at > by[k.m].at) by[k.m] = k; });
+        return Object.values(by).sort((a, b) => (a.at < b.at ? 1 : -1)).map((k) => ({ m: k.m, t: k.t, s: k.s, p: k.p, at: k.at, by: k.by })); };
+      if (fn === "live_check_levels") return { ok: true, level: lvl(me), ups: lc.ups.slice().sort() };
+      if (fn === "org_position_level") {
+        if (!p.is_admin) return { ok: false, error: "forbidden" };
+        const pos = S.org.positions.find((x) => x.id === b.p_id);
+        if (!pos) return { ok: false, error: "not_found" };
+        if (pos.builtin) return { ok: false, error: "builtin" };
+        if (pos.base !== "manager") return { ok: false, error: "bad_base" };
+        lc.ups = lc.ups.filter((x) => x !== pos.id).concat(b.p_up ? [pos.id] : []);
+        return { ok: true, id: pos.id, up: !!b.p_up };
+      }
+      if (fn === "live_check_people") {
+        if (lvl(me) < 20) return { ok: false, error: "forbidden" };
+        const net = !!me.is_admin || me.position === "senior";
+        const rest = net && cleanName(b.p_restaurant) ? cleanName(b.p_restaurant) : me.restaurant;
+        const people = all.filter((e) => (e.restaurant || "") === rest && can(e))
+          .sort((a, c) => lvl(c) - lvl(a) || a.name.localeCompare(c.name, "ru"))
+          .map((e) => ({ id: e.id, name: e.name, surname: e.surname || "", restaurant: e.restaurant, position: e.position, title: e.title, level: lvl(e), checks: last(e.id) }));
+        return { ok: true, restaurant: rest, me: { level: lvl(me), title: me.title }, people };
+      }
+      if (fn === "live_check_person") {
+        const t = all.find((e) => e.id === (String(b.p_emp || "").trim() || p.id));
+        if (!t) return { ok: false, error: "not_found" };
+        const ok = can(t);
+        if (!(t.id === p.id || ok || me.is_admin || me.position === "senior")) return { ok: false, error: "forbidden" };
+        return { ok: true, can: ok, person: { id: t.id, name: t.name, surname: t.surname || "", restaurant: t.restaurant, position: t.position, title: t.title, level: lvl(t) },
+          lessons: [...new Set(S.progress[t.id] || [])], quiz: [...new Set(S.quizzes[t.id] || [])],
+          checks: lc.checks.filter((k) => k.emp === t.id).sort((a, c) => (a.at < c.at ? 1 : -1))
+            .map((k) => ({ id: k.id, t: k.t, m: k.m, marks: k.marks.slice(), s: k.s, p: k.p, note: k.note, by: k.by, at: k.at, mine: k.byId === p.id })) };
+      }
+      if (fn === "live_check_save") {
+        const t = all.find((e) => e.id === String(b.p_emp || "").trim());
+        if (!t) return { ok: false, error: "not_found" };
+        if (!can(t)) return { ok: false, error: "forbidden" };
+        const sc = lcScore(b.p_marks);
+        if (!LC_TRACKS.includes(b.p_track) || !/^[a-z0-9_-]{1,40}$/.test(String(b.p_module || "")) || !sc || b.p_marks.length > 8 || String(b.p_note || "").length > 500) return { ok: false, error: "bad_request" };
+        lc.seq += 1;
+        const at = new Date(clock()).toISOString();
+        lc.checks.push({ id: lc.seq, emp: t.id, t: b.p_track, m: b.p_module, marks: b.p_marks.map(Number), s: sc.score, p: sc.passed, note: String(b.p_note || "").trim() || null,
+          by: full(me), byId: me.id, at });
+        return { ok: true, id: lc.seq, score: sc.score, passed: sc.passed, at };
+      }
+      if (fn === "live_check_delete") {
+        const k = lc.checks.find((x) => x.id === Number(b.p_id));
+        if (!k) return { ok: false, error: "not_found" };
+        if (!(p.is_admin || (k.byId === p.id && clock() - Date.parse(k.at) < 864e5))) return { ok: false, error: "forbidden" };
+        lc.checks = lc.checks.filter((x) => x !== k);
+        return { ok: true };
+      }
+      return { ok: false, error: "bad_request" };
+    }
     // ── v199 (этап 62): взгляд сети (org_view) и трудные вопросы одного заведения; opts.noStage62 — сервер без этапа 62 ──
     if (fn === "org_view" || fn === "quiz_hard_questions_at") {
       if (opts.noStage62) return { code: "PGRST202", message: "Could not find the function" };

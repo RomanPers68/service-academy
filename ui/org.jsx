@@ -6,6 +6,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { vibrate, onActivate } from "../lib/utils";
 import { saveVenue, savePosition } from "../lib/org";
+import { useLevels, loadLevels, setPositionUp } from "../lib/live-check-api";   // v200 (Доп. 525): «старше менеджера»
 import { plural } from "../lib/mastery.js";
 import { venueNames, hiddenVenues, pickPositions, hiddenPositions, baseLabel, BASES, BASE_HINT, orgErr, doneText, cleanName,
   VENUE_MAX, POSITION_MAX } from "../lib/org-model";
@@ -152,6 +153,18 @@ export function OrgScreen({ T, a11y, org, onBack }) {
   const after = (kind, r) => { setBusy(false); if (r && r.ok) { vibrate("heavy"); setEdit(null); say(true, doneText(kind, r)); } else { vibrate("error"); say(false, orgErr(r && r.error)); } };
   const hideVenue = async (v, hidden) => { if (busy) return; setBusy(true); after("venue", await saveVenue({ name: v.name, hidden })); };
   const hidePos = async (p, hidden) => { if (busy) return; setBusy(true); after("position", await savePosition({ id: p.id, hidden })); };
+  // v200 (Доп. 525): своя должность «работает как» менеджер может стоять на ступень выше: управляющий проверяет и менеджеров
+  const lv = useLevels();
+  React.useEffect(() => { if (org.stage) loadLevels(); }, [org.stage]);
+  const upOf = (p) => !!p && !p.builtin && p.base === "manager" && lv.ups.includes(p.id);
+  const toggleUp = async (p) => {
+    if (busy || !p) return;
+    setBusy(true);
+    const r = await setPositionUp(p.id, !upOf(p));
+    setBusy(false);
+    if (r && r.ok) { vibrate("heavy"); say(true, r.up ? "«" + p.label + "» теперь старше менеджера: проверяет и менеджеров." : "«" + p.label + "» теперь на одной ступени с менеджером."); }
+    else { vibrate("error"); say(false, r && r.error === "stage" ? "Ступени живой проверки появятся после этапа базы 63." : orgErr(r && r.error)); }
+  };
   const saveEdit = async () => {
     if (busy || !edit) return;
     const name = cleanName(edit.text);
@@ -182,6 +195,15 @@ export function OrgScreen({ T, a11y, org, onBack }) {
         onChange={(e) => setEdit({ ...edit, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); }} style={field(c)} />
       {kind === "venue" ? <div style={{ fontSize: 12.5, color: c.sub, marginTop: 8, lineHeight: 1.45 }}>Название поменяется везде: у сотрудников, в меню, в графике и в истории.</div> : null}
       {kind === "position" && !edit.builtin ? <BasePick a11y={a11y} org={org} base={edit.base} onPick={(b) => setEdit({ ...edit, base: b })} /> : null}
+      {kind === "position" && !edit.builtin && lv.stage && (org.positions.find((p) => p.id === edit.key) || {}).base === "manager" ? (() => {
+        const pos = org.positions.find((p) => p.id === edit.key), on = upOf(pos);
+        return (
+          <button type="button" data-org-up={edit.key} aria-pressed={on} disabled={busy} onClick={() => toggleUp(pos)}
+            style={{ ...orgChip(a11y, on), display: "flex", alignItems: "center", gap: 8, width: "100%", marginTop: 10, textAlign: "left", fontSize: 13 }}>
+            <span aria-hidden="true" style={{ width: 18, flexShrink: 0, textAlign: "center" }}>{on ? "✓" : "○"}</span>
+            <span>Старше менеджера: в живой проверке проверяет и менеджеров</span>
+          </button>);
+      })() : null}
       {kind === "position" && edit.builtin ? <div style={{ fontSize: 12.5, color: c.sub, marginTop: 8, lineHeight: 1.45 }}>Встроенная должность: меняется только название, права и курс прежние.</div> : null}
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <button type="button" data-lens-btn="soft" style={{ ...softBtn(c), flex: 1 }} onClick={() => setEdit(null)}>Отмена</button>
@@ -250,7 +272,7 @@ export function OrgScreen({ T, a11y, org, onBack }) {
         <div data-org-list="position" style={card}>
           {visP.map((p, i) => (
             <React.Fragment key={p.id}>
-              {row(p.id, p.label, [p.builtin ? "встроенная" : "как " + baseLabel(org, p.base).toLowerCase(), staffText(p.staff)].filter(Boolean).join(" · "), org.stage ? (
+              {row(p.id, p.label, [p.builtin ? "встроенная" : "как " + baseLabel(org, p.base).toLowerCase(), upOf(p) ? "старше менеджера" : "", staffText(p.staff)].filter(Boolean).join(" · "), org.stage ? (
                 <>
                   <button type="button" data-org-rename={p.id} style={rowBtn(true)} onClick={() => { setMsg(null); setEdit({ kind: "position", key: p.id, text: p.label, base: p.base, builtin: p.builtin }); }}>Изменить</button>
                   <button type="button" data-org-hide={p.id} style={rowBtn(false)} disabled={busy} onClick={() => hidePos(p, true)}>Скрыть</button>

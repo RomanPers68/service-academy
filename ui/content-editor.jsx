@@ -41,6 +41,7 @@ import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): с�
 import { useViewport, useColumn } from "./viewport";   // v52 (Доп. 365): редактор в две панели на компьютере
 import { plural } from "../lib/ru-num";   // v165 (Доп. 490): слово при числе
 import { topInsetPx } from "../lib/tg-screen";   // v69 (Доп. 382): верх экрана в полноэкранном Telegram — под его кнопками
+import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
 
 const DRAFT_KEY = "sa_cms_draft";
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -506,7 +507,7 @@ export function ContentEditorScreen({ T, a11y, onBack, onLiveQuestions = null })
   const callAI = async (mode, payload) => {
     setAi(a => ({ ...a, mode, busy: true, err: null, result: null }));
     try {
-      const r = await fetch("/api/lesson-assist", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await apiFetch("/api/lesson-assist", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, mode, role: draft.role, title: draft.title, ...payload }) });
       const d = await r.json().catch(() => null);
       // всё предложенное — сразу отмечено (и вопросы, и ситуации)

@@ -50,10 +50,10 @@ async function open({ who = "anna", width = 390, height = 844 } = {}) {
     const deny = () => new Promise((ok) => setTimeout(() => ok(new Response("<html><head><title>403: FORBIDDEN</title></head><body>Forbidden</body></html>",
       { status: 403, headers: { "Content-Type": "text/html", "x-vercel-mitigated": "deny" } })), 300));
     window.fetch = (u, init) => {
-      const url = String(u), raw = /\/api\//.test(url) && init && init.body ? JSON.parse(init.body) : {};
-      if (/\/api\/web-answer/.test(url)) { window.__calls.push("web-answer"); window.__keys = Object.keys(raw).sort().join(","); window.__plainText = /question|check|context|history/.test(String(init.body)); return deny(); }
+      const url = String(u), raw = /\/(app-)?api\//.test(url) && init && init.body ? JSON.parse(init.body) : {};   // v207: и Supabase app-api
+      if (/\/(app-)?api\/web-answer/.test(url)) { window.__calls.push("web-answer"); window.__keys = Object.keys(raw).sort().join(","); window.__plainText = /question|check|context|history/.test(String(init.body)); return deny(); }
       // v155: запрос упакован ({ token, z, via }) — что внутри, читаем через window.__demoUnpack (демо)
-      if (/\/api\/wine-import/.test(url) && raw.via === "web-answer") return window.__demoUnpack(raw).then((b) => {
+      if (/\/(app-)?api\/wine-import/.test(url) && raw.via === "web-answer") return window.__demoUnpack(raw).then((b) => {
         window.__calls.push("wine-import:" + (b.mode || (b.chat ? "chat" : b.check ? "check" : "ask")) + (raw.z || raw.p ? "" : ":plain"));
         (window.__bodies = window.__bodies || []).push(b);   // FOOD: что ушло (история)
         return window.__both ? deny() : f(u, init);
@@ -210,7 +210,7 @@ if (want("EDIT")) {
   await page.evaluate(() => {
     const f = window.fetch; window.__fill = "nothing"; window.__gapsWeb = [];
     window.fetch = (u, init) => {
-      const url = String(u), b = /\/api\/wine-import/.test(url) && init && init.body ? JSON.parse(init.body) : {};
+      const url = String(u), b = /\/(app-)?api\/wine-import/.test(url) && init && init.body ? JSON.parse(init.body) : {};
       if (b.mode === "fill" && window.__fill === "nothing") return Promise.resolve(new Response(JSON.stringify({ wines: [], nothing: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
       if (b.mode === "fill" && window.__fill === "unknown") return Promise.resolve(new Response(JSON.stringify({ error: "Модель не узнала этот напиток: заполни руками" }), { status: 422, headers: { "Content-Type": "application/json" } }));
       if (b.mode === "gaps" && b.web) window.__gapsWeb.push({ kind: b.kind, n: (b.items || []).length, missing: ((b.items || [])[0] || {}).missing || [] });

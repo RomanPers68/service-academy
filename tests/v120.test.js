@@ -195,7 +195,7 @@ describe("v120: экраны", () => {
   it("демо: восемь вин в меню «Двух морей», одно ждёт проверки; AI-импорт в демо — без нейросети", () => {
     const B = rd("tools/claude/demo-app/boot.js");
     expect(count(B.slice(B.indexOf("const DEMO_WINES"), B.indexOf("DEMO_WINES.forEach")), '{ name: "')).toBe(8);
-    expect(B).toContain('if (/\\/api\\/wine-import/.test(url))');
+    expect(B).toContain('if (/\\/(app-)?api\\/wine-import/.test(url))');   // v207: и по адресу Supabase app-api
   });
 });
 

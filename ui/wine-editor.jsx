@@ -53,6 +53,7 @@ import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, 
 import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply, webAsk, webPlan, webApply } from "../lib/drinks";   // v127: вина и крепкое; v151: «Дописать пустое»; v152: интернет
 import { siteOf, oneSite } from "../lib/ai-web";   // v152: ссылки «Нашлось в интернете»
 import { SPIRIT_CATS, SERVE_MODES, SPIRIT_GLASSES, PORTIONS, TEMP_HINT_SP } from "../lib/spirit";
+import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const BATCH = 15;   // названий за один запрос AI
@@ -127,7 +128,7 @@ export const aiWhy = (status) => (status === 504 || status === 408 ? "AI не у
   : status === 404 ? "Функция AI не найдена на сервере (код 404): /api/wine-import не развёрнута"
   : status >= 500 ? "Сервер AI сейчас не отвечает (код " + status + "). Нажми ещё раз через минуту"
   : status ? "AI не ответил (код " + status + "). Нажми ещё раз" : "AI ответил пусто. Нажми ещё раз");
-const askAiFull = (body) => fetch("/api/wine-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, token: saToken() }) })
+const askAiFull = (body) => apiFetch("/api/wine-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, token: saToken() }) })
   .catch(() => { throw new Error("Сеть недоступна или функция /api/wine-import не развёрнута."); })
   .then((r) => r.json().catch(() => null).then((j) => {
     if (r.ok && j && Array.isArray(j.wines)) return j;

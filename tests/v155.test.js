@@ -34,6 +34,7 @@ describe("v155: запрос с запасным путём (lib/ai-web.js: webP
   beforeEach(() => {
     calls = []; plan = {};
     globalThis.fetch = async (url, init = {}) => {
+      url = String(url).replace(/^https?:\/\/[^/]+\/functions\/v1\/app-api\//, "/api/");   // v207: Supabase app-api — тот же /api/<имя>
       calls.push({ url, body: JSON.parse(init.body) });
       const p = plan[url] || { json: { ok: true, reply: "Ответ" } };
       if (p.throws) throw new Error("offline");
@@ -239,6 +240,7 @@ describe("v155: Наставник в переписке — с прошлой �
     globalThis.localStorage = memStore();
     localStorage.setItem("sa_session_token", "tok");
     globalThis.fetch = async (url, init = {}) => {
+      url = String(url).replace(/^https?:\/\/[^/]+\/functions\/v1\/app-api\//, "/api/");   // v207: Supabase app-api — тот же /api/<имя>
       const body = JSON.parse(init.body || "{}"); calls.push({ url: String(url), body });
       const resp = (j) => ({ status: 200, headers: new Map(), json: async () => j, text: async () => JSON.stringify(j) });
       if (/\/api\/web-answer/.test(url)) return resp({ ok: true, reply: "Чавыча — королевский лосось.", sources: [{ url: "https://w.example/chinook" }], searched: 1 });

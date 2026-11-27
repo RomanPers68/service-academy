@@ -13,6 +13,16 @@ build (полная сборка esbuild от main.jsx) · check (синтакс
 jsxlint · flexhint · dupimport · refcheck · scope (tsc, необъявленные имена).
 Норма — «Всё чисто.», ложных срабатываний нет.
 
+## Функция Supabase app-api — собрать после правки обработчиков (v207)
+
+    node tools/claude/edge-build.mjs            # → supabase/functions/app-api/index.ts
+    node tools/claude/edge-build.mjs --check    # свежий ли собранный файл
+
+app-api — это api/wine-import.js, api/lesson-assist.js и api/web-answer.js (и всё, что они подключают) в Supabase,
+через переходник supabase/functions/app-api/entry.js. Правили обработчик или его lib/… — пересобрать, закоммитить
+index.ts и развернуть app-api заново (из чата или `supabase functions deploy app-api`). tests/v207.test.js сверяет
+отпечаток источников в шапке собранного файла: без пересборки проверка не пройдёт.
+
 ## Юнит-тесты без vitest (v157)
 
     node tools/claude/run-tests.mjs .                 # все tests/*.test.js

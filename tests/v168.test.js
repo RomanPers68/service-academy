@@ -315,7 +315,8 @@ describe("v168 · 4: обращение из редактора (ui/ref-assist.j
     for (const k of Object.keys(store0)) delete store0[k];
     phone.setItem("sa_session_token", "owner"); sent = []; status = 200; down = false;
     reply = { ok: true, title: " Раф ", content: "Текст.", lost: 0, model: "m" };
-    globalThis.fetch = async (url, init = {}) => { if (down) throw new Error("нет сети"); sent.push([String(url), JSON.parse(init.body)]); return { ok: status === 200, status, json: async () => { if (reply === "мусор") throw new Error("не JSON"); return reply; } }; };
+    // v207: адрес Supabase app-api считаем тем же /api/<имя>
+    globalThis.fetch = async (url, init = {}) => { if (down) throw new Error("нет сети"); url = String(url).replace(/^https?:\/\/[^/]+\/functions\/v1\/app-api\//, "/api/"); sent.push([String(url), JSON.parse(init.body)]); return { ok: status === 200, status, json: async () => { if (reply === "мусор") throw new Error("не JSON"); return reply; } }; };
   });
   it("запрос: тот же адрес, что у редактора контента; тема — в title, текст — в text, вход — токеном", async () => {
     const r = await refAiCall("ref_chapter", { topic: "Раф", text: "Заметки", pdfBase64: "QUJD" });

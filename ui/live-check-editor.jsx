@@ -16,6 +16,7 @@ import { useAllModules } from "../lib/use-content";
 import { saToken } from "../lib/supabase";
 import { mergeBank, lcErr65, LC_TRACKS } from "../lib/live-check";
 import { useLcQuestions, loadQuestions, lcQuestionSave, lcFlagDone } from "../lib/live-check-api";
+import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
 
 const trackLabel = (id) => (ROLES.find((r) => r.id === id) || {}).label || id;
 const modsOf = (t) => (MODULES_INDEX[t] || []).filter((m) => m && m.id);
@@ -86,7 +87,7 @@ export function LiveCheckEditor({ T, a11y, profile, onBack }) {
     const m = ((programAll()[trackOfMod(mod) || track] || []).find((x) => x.id === mod)) || null;
     const material = ((m && m.lessons) || []).filter((l) => l && l.type === "lesson").map((l) => "## " + l.title + "\n" + String(l.content || "")).join("\n\n").slice(0, 28000);
     try {
-      const r = await fetch("/api/lesson-assist", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await apiFetch("/api/lesson-assist", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: saToken(), mode: "live", role: trackOfMod(mod) || track, title: modTitle(mod), text: material, others: listOf(mod).map((x) => x.q).slice(0, 16) }) });
       const d = await r.json().catch(() => null);
       if (d && d.ok && Array.isArray(d.questions)) setAi({ phase: "ready", list: d.questions, err: "" });

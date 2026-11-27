@@ -32,6 +32,7 @@ import { CocktailArt } from "./cocktail-art";
 import { WineThumb } from "./wine-list";
 import { Chevron, ShareChat } from "./bar-kit";
 import { TasteBars } from "./taste";
+import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const H = () => ({ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY });
@@ -256,7 +257,7 @@ export function BarSommelier({ T, a11y, restaurant, cocktails, wines, spirits, s
         const list = noTaste.filter(([k]) => k === K).map(([, w]) => w);
         for (let i = 0; i < list.length; i += 20) {
           const part = list.slice(i, i + 20);
-          const r = await fetch("/api/wine-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), kind: K.kind, mode: "taste",
+          const r = await apiFetch("/api/wine-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: saToken(), kind: K.kind, mode: "taste",
             items: part.map((w) => ({ name: w.name, producer: w.producer, country: w.country, region: w.region, grapes: w.grapes, color: w.color, sweet: w.sweet, cat: w.cat, style: w.style, age: w.age, abv: w.abv })) }) }).then((x) => x.json());
           for (const t of (r && r.tastes) || []) {
             const w = part[Number(t.i)], tt = w && normTaste({ ...t, ai: 1 }, K.kind);

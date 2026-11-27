@@ -1099,11 +1099,13 @@ window.fetch = function (input, init) {
   // v137: функция push-send на месте (ключи уведомлений созданы)
   if (/\/functions\/v1\/push-send\?init=1/.test(url)) return wait(300).then(() => json({ ok: true, key: srv.rpc("push_status", { p_token: tokOf(me.id) }).key || "" }));
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
-  if (/\/api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" || b.mode === "concept_plan" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139; v191 — план «О нас»
-  if (/\/api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+  if (/\/(app-)?api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" || b.mode === "concept_plan" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139; v191 — план «О нас»
+  if (/\/(app-)?api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
-  if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+  if (/\/(app-)?api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return unpackWeb(b).then((x) => wait(1500).then(() => json(x.mode === "desc" ? demoDesc(x) : demoWebAnswer(x)))); }   // v152; v153: описания блюд; v155: упакованный запрос
+  // v207 (Доп. 533): винная карта, помощник уроков и поиск — в функцию Supabase app-api (/functions/v1/app-api/<имя>), демо
+  // отвечает и там, и по старым адресам /api/<имя> (выше)
   // v206 (Доп. 532): импорт идёт в функцию Supabase menu-import (её нет — в /api/menu-import); в демо — один ответ на оба
   if (/\/functions\/v1\/menu-import|\/api\/menu-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return wait(b.mode === "details" ? 700 : 500).then(() => demoMenuImport(b)); }   // v204: импорт меню из PDF по частям

@@ -26,6 +26,7 @@ import { vibrate } from "../lib/utils";
 import { saToken } from "../lib/supabase";
 import { REF_AI_LIMITS, REF_NEW_MODES, refAiCheck, keepRefMarks, refFragment, refTake, refPlanClean, refCheckClean, refFixesText, refSources } from "../lib/ref-ai";
 import { siteOf, oneSite, openOut } from "../lib/ai-web";
+import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 export const REF_AI_URL = "/api/lesson-assist";
@@ -54,7 +55,7 @@ export async function refAiCall(mode, p = {}, src = "") {
   if (q.fixes) body.fixes = q.fixes;
   let r, d;
   try {
-    r = await fetch(REF_AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    r = await apiFetch(REF_AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     d = await r.json().catch(() => null);
   } catch (e) { return { ok: false, error: "Нет связи с ассистентом." }; }
   if (!d || !d.ok) {

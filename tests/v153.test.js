@@ -145,6 +145,7 @@ describe("v153: Наставник в переписке ищет в интер�
     localStorage.setItem("sa_session_token", "tok");
     localStorage.setItem("sa_menu_shared", JSON.stringify({ "Два моря": [{ id: "sp-1", kind: "spirit", name: "Lagavulin 16", producer: "Lagavulin", cat: "whisky" }] }));
     globalThis.fetch = async (url, init = {}) => {
+      url = String(url).replace(/^https?:\/\/[^/]+\/functions\/v1\/app-api\//, "/api/");   // v207: Supabase app-api — тот же /api/<имя>
       const body = JSON.parse(init.body || "{}"); calls.push({ url: String(url), body });
       // v155: webPost читает ответ текстом (не JSON — запасной путь), поэтому у ответа есть text()
       const resp = (j) => ({ status: 200, headers: new Map(), json: async () => j, text: async () => JSON.stringify(j) });

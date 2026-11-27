@@ -18,7 +18,7 @@ const SRC = process.env.E2E_SRC || process.cwd();
 const HOST = process.env.PGHOST || "/tmp/pgsock", PORT = process.env.PGPORT || "5433", BASE = process.env.PG_BASE || "satest25", DB = "sa_check40";
 const { makeServer } = await import(SRC + "/tools/claude/demo-app/fake-server.js");
 const { morningText, morningKb, morningModel } = await import(SRC + "/lib/morning.js");
-const { RESTAURANT_MENUS } = await import(SRC + "/data/menu.js");
+const { DEMO_MENUS: RESTAURANT_MENUS } = await import(SRC + "/tools/claude/demo-app/menu-seed.js");   // v210
 
 const psql = (args, input) => execFileSync("psql", ["-h", HOST, "-p", PORT, "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-q", ...args], { input, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
 const q1 = (sql) => psql(["-d", DB, "-At", "-c", sql]).trim();

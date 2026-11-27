@@ -60,7 +60,7 @@ import { countable, isInfo, infoLessonIds } from "./lib/info-topics";   // v144 
 import { LiquidTabBar, NavRail } from "./ui/tabbar";
 import { useViewport, colWidthOf, homeTwoCols, RAIL_W } from "./ui/viewport";   // v50 (Доп. 363): горизонталь и компьютер
 import { loadDialogues } from "./data/dialogues-lazy";
-import { ROLES, RESTAURANTS } from "./data/roles";
+import { ROLES } from "./data/roles";
 import { LOGO_SRC, LOGO_SRC_DARK } from "./assets/logo";
 import { normSurname, shuffleArray, dedupeBestScores, pickRandom, shuffleSituationOptions, vibrate, onActivate, shuffleLessonQuestions, isFemaleName, isTelegram, clickScreenBack, shuffleQuizOptions, cleanQuizQ } from "./lib/utils";   // v195: shuffleQuizOptions, cleanQuizQ
 

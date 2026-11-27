@@ -13,7 +13,7 @@
 //   lib/ref-ai.js
 //   supabase/functions/app-api/entry.js
 //   supabase/functions/app-api/shim.js
-// sources-sha256: 1c61607330210e53bd7e599ebbc8e1b076d78ae8419137629d3228cbbc905e13
+// sources-sha256: 3fc1c67fd1846ed08ee04e63ad5873cea91292a10a2db3a388f6c0905e60e0af
 // supabase/functions/app-api/shim.js
 import { Buffer as Buffer2 } from "node:buffer";
 var g = globalThis;
@@ -1296,7 +1296,8 @@ var ROLE_RU = {
 };
 var WHOLE = "Каждая фраза договорена до конца: не обрывай мысль на предлоге, союзе, «во время», «вместо» или «было где / чем» — «чтобы малышу было где устроиться», а не «чтобы малышу было где».";
 var STYLE = [
-  "Стиль уроков приложения Service Academy (ресторан «Два моря»):",
+  "Стиль уроков приложения Service Academy:",
+  // v210: без названия заведения
   "— на «ты», живо и по делу, без канцелярита и воды; короткие абзацы;",
   "— подзаголовок — отдельной строкой целиком в **двойных звёздочках**;",
   "— список — каждая строка начинается с «• »;",

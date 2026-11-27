@@ -27,7 +27,7 @@ import { menuQday, allergenQuestion, dishBrief, seeded } from "../lib/menu-pack.
 import { buildMenuQuiz } from "../lib/menu-quiz.js";
 import { buildBrief, briefDishFocus, briefText, briefLines, briefShown } from "../lib/briefing.js";
 import { STAGES } from "../lib/server-check.js";
-import { RESTAURANT_MENUS } from "../data/menu.js";
+import { DEMO_MENUS as RESTAURANT_MENUS } from "../tools/claude/demo-app/menu-seed.js";   // v210: блюда для проверок
 import { makeServer } from "../tools/claude/demo-app/fake-server.js";
 import { DishCard } from "../ui/dish-step.jsx";
 import { BreakDish } from "../ui/dish-moments.jsx";

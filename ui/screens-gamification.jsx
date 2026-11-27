@@ -21,7 +21,7 @@ import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "../lib/supabase";
 import { MODULES, programOf, programAll } from "../data/modules";
 import { MODULES_INDEX } from "../data/modules-index";
 import { useAllModules } from "../lib/use-content";   // v79 (Доп. 392): счёт по всем ролям — экран сам догружает их программу
-import { ROLES, RESTAURANTS } from "../data/roles";
+import { ROLES } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";
 import { SkelCards, SkelLines } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { sfx } from "../lib/sfx";   // v57 (Доп. 370): звуки

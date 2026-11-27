@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { MODULES_INDEX } from "../data/modules-index";
 import { TIP_FEATURES, LESSON_TIPS } from "../data/lesson-tips";
-import { RESTAURANT_MENUS } from "../data/menu";
+import { DEMO_MENUS as RESTAURANT_MENUS } from "../tools/claude/demo-app/menu-seed.js";   // v210: блюда для проверок
 import { pickLessonTip, readTipState, featureUsed, LAYER_TIPS } from "../lib/lesson-tips";
 import { AVAIL_KEY, SEAT_KEY, STAGE_KEY, readAvail, saveAvail, readSeatPlan, rememberSeatPlan, readStages, rememberStage, availCan, traceUse } from "../lib/tip-avail";
 import { availOf, refreshAvail, rememberSharedMenu, AVAIL_VOICES } from "../lib/reference-context";
@@ -175,7 +175,7 @@ describe("v149: тихая подгрузка раз в день (lib/tip-sync.j
     expect(await syncTipData(f.rpc, "tok", prof, new Date(2026, 10, 13, 10), st, isMissing)).toBe(true);
     expect(readStages(st)).toMatchObject({ thanks: "0", cases: "0" });
     expect(readSeatPlan("Два моря, Океан", st)).toBe("");
-    expect(readAvail("Два моря, Океан", st)).toMatchObject({ menu: true, kbju: expect.any(String) });   // образцы меню, пока своего нет
+    expect(readAvail("Два моря, Океан", st)).toMatchObject({ menu: false, kbju: "" });   // v210: встроенных образцов меню нет
     const st2 = memStore(); globalThis.localStorage = st2;
     const off = { rpc: async () => { throw new Error("offline"); } };
     expect(await syncTipData(off.rpc, "tok", prof, new Date(2026, 10, 13, 10), st2, isMissing)).toBe(true);

@@ -16,7 +16,7 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { readFileSync, readdirSync } from "node:fs";
 import { isNetwork, lensOf, lensErr, inLens, menuVenues, LENS_ALL, normOrg, orgFallback } from "../lib/org-model.js";
-import { lensFor, viewRpc, setLens, _resetOrg, LENS_KEY } from "../lib/org.js";
+import { lensFor, viewRpc, setLens, _resetOrg, LENS_KEY, ORG_KEY } from "../lib/org.js";
 import { rpcMissing } from "../lib/supabase";
 import { VenueLens, LensNote } from "../ui/venue-lens.jsx";
 import { LeaderboardScreen } from "../ui/screens-gamification.jsx";
@@ -211,6 +211,8 @@ describe("v199 · лента заведений и экраны", () => {
     expect(R(h(LensNote, { a11y: false, code: "" }))).toBe("");
   });
   it("«Что дало обучение» и «Новички»: у владельца — лента заведений, у менеджера — нет", () => {
+    // v210: запасной список без заведений — сеть из двух берём из кэша, как после ответа сервера
+    globalThis.localStorage.setItem(ORG_KEY, JSON.stringify(ORG2)); _resetOrg();
     const g = (p) => R(h(GainScreen, { T, a11y: false, profile: p, onBack: () => {} }));
     expect(g(ROMAN)).toContain("data-venue-lens=");
     expect(g(LENA)).toContain('data-venue-lens="Два моря, Океан"');   // по умолчанию — своё

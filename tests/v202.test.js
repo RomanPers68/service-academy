@@ -13,7 +13,7 @@ import { renderToString } from "react-dom/server";
 import { readFileSync, readdirSync } from "node:fs";
 import { LIVE_CHECK } from "../data/live-check.js";
 import { MODULES_INDEX } from "../data/modules-index.js";
-import { RESTAURANT_MENUS } from "../data/menu.js";
+import { DEMO_MENUS as RESTAURANT_MENUS } from "../tools/claude/demo-app/menu-seed.js";   // v210: блюда для проверок
 import { isModuleCheck, mergeBank, dishKey, menuQuestions, briefQuestion, briefPick, admission, askState, failedItems, livePassed, calib, lcErr65,
   ADMIT, LC_MENU, PLAN_DAYS, qKey, lastByModule } from "../lib/live-check.js";
 import { lcSave, lcFlush, LC_QUEUE_KEY, lcRequests, lcRequest, lcFlag, lcFlagDone, lcPlanSet, lcQuestionSave, loadQuestions, _resetQuestions, LCQ_KEY,

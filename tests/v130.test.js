@@ -177,7 +177,7 @@ describe("v130: Наставник знает «Барную карту»", () =
     globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
     try { return await fn(await import("../lib/reference-context.js")); } finally { globalThis.localStorage = was; }
   };
-  const menu = async () => JSON.parse(JSON.stringify((await import("../data/menu.js")).RESTAURANT_MENUS[R0]));
+  const menu = async () => JSON.parse(JSON.stringify((await import("../tools/claude/demo-app/menu-seed.js")).DEMO_MENUS[R0]));
   it("«Что за шабли у нас?» — вино из карты: откуда, цена, бокалом, ноты, гостю, к блюдам; стоп, «не проверено», архив", async () => {
     const M = await menu(), tem = M.find((d) => d.name && d.name.startsWith("Креветка темпура"));
     const PRO = W.normWine({ name: "Просекко DOC", country: "Италия", region: "Венето", grapes: ["глера"], color: "sparkling", sweet: "брют", byGlass: true, priceGlass: 650, priceBottle: 3600, pair: [tem.id] }, { id: "w-pro" });

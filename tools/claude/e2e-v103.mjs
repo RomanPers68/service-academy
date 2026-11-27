@@ -18,7 +18,7 @@ const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(
 mkdirSync(OUT, { recursive: true });
 const SRC = process.env.E2E_SRC || "/home/claude/src/app/sa-v97";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
-const { RESTAURANT_MENUS } = await import(SRC + "/data/menu.js");
+const { DEMO_MENUS: RESTAURANT_MENUS } = await import(SRC + "/tools/claude/demo-app/menu-seed.js");   // v210
 const { makeServer, SHIFTS } = await import(SRC + "/tools/claude/demo-app/fake-server.js");
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".webp": "image/webp" };
 const server = http.createServer((req, res) => {

@@ -411,7 +411,7 @@ const Ava = ({ c, big }) => (c && c.kind === "group"
   ? <span className={"ch-ava team" + (big ? " big" : "")} aria-hidden="true">{c.kind === "leads" ? IC.star : c.kind === "net" ? IC.net : IC.team}</span>
   : <span className={"ch-ava" + (big ? " big" : "")} aria-hidden="true">{chatInitials(c && c.peer ? c.peer.name : "")}{c && c.peer ? <FaceImg who={{ id: c.peer.id }} /> : null}</span>);
 const whoName = (m, me) => (m && me && String(m.emp) === String(me.id) ? "Ты" : bubbleName(m && m.name));
-// в «Руководителях сети» к имени — заведение: «Мария К. · Океан»
+// в «Руководителях сети» к имени — заведение: «Мария К. · Набережная»
 const withRest = (name, rest, net) => (net && rest ? name + " · " + restShort(rest) : name);
 
 // виден ли экран (поллинг только видимого)

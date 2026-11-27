@@ -13,6 +13,8 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT + "/dist", { recursive: true });
 for (const d of ["menu", "reference", "icons", "assets", "video"]) { try { cpSync(join(SRC, "public", d), join(OUT, d), { recursive: true }); } catch (e) {} }   // v174: и видео-знакомства
 try { cpSync(SRC + "/assets/fonts", OUT + "/assets/fonts", { recursive: true }); } catch (e) {}
+// v210 (Доп. 536): фото блюд демо — не в public/ приложения, а рядом с демо (меню демо — menu-seed.js)
+try { cpSync(join(SRC, "tools/claude/demo-app/menu"), join(OUT, "menu"), { recursive: true }); } catch (e) {}
 // пути от корня сайта → от страницы: демо открывается не из корня
 const rel = (s) => s.replace(/(["'`(])\/(menu|reference|icons|assets|video)\//g, "$1$2/");
 const demoPlugin = {

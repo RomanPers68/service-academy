@@ -14,7 +14,7 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
 const TR: Record<string, string> = { а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"c",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya" };
-// Ключ объекта в Storage — только латиница, цифры и дефис: «Океан» → okean
+// Ключ объекта в Storage — только латиница, цифры и дефис: «Набережная» → naberezhnaya
 // Доп. 191: у Supabase два формата ключей. Старые — JWT (eyJ…): apikey + Authorization Bearer.
 // Новые (sb_secret_… / sb_publishable_…) — только apikey; в Bearer их класть нельзя
 // («Invalid Compact JWS» — журнал функции 06.09).

@@ -23,7 +23,7 @@ const SRC = process.env.E2E_SRC || "/home/claude/src/app/sa-v127";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
 const { makeServer, SHIFTS } = await import(SRC + "/tools/claude/demo-app/fake-server.js");
 const { CONCEPT_SEED, CONCEPT_PHOTOS } = await import(SRC + "/tools/claude/demo-app/concept-seed.js");
-const { RESTAURANTS } = await import(SRC + "/data/roles.js");
+const { DEMO_NET: RESTAURANTS } = await import(SRC + "/tools/claude/demo-app/net-seed.js");   // v210: список сети — только в проверках
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".webp": "image/webp" };
 const server = http.createServer((req, res) => {
   const p = decodeURIComponent(req.url.split("?")[0]);

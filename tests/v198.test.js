@@ -51,10 +51,10 @@ describe("v198 · версия и журнал", () => {
 });
 
 describe("v198 · списки: запасной, с сервера, выбор", () => {
-  it("пока этапа 61 нет — как до v198: пять заведений и шесть должностей из data/", () => {
+  it("пока этапа 61 нет: заведений нет (v210 — встроенного списка больше нет), шесть должностей из data/", () => {
     const o = orgFallback();
     expect(o.stage).toBe(false);
-    expect(venueNames(o)).toEqual(FIVE);
+    expect(venueNames(o)).toEqual([]);
     expect(pickPositions(o).map((p) => p.id)).toEqual(["waiter", "hostess", "bartender", "senior_bartender", "manager", "senior"]);
     expect(o.canEdit).toBe(false);
   });
@@ -100,7 +100,7 @@ describe("v198 · списки: запасной, с сервера, выбор"
 
 describe("v198 · правила этапа 61 (для демо и проверок)", () => {
   it("заведение: добавить (пробелы чистятся), то же название у скрытого — вернуть, у видимого — «уже есть»", () => {
-    const st = orgSeed();
+    const st = orgSeed(FIVE);   // v210: названия передаёт проверка
     expect(venueNames(st)).toEqual(["Два моря, Океан"]);
     expect(venueOp(st, { newName: "  Алёнка  " })).toEqual({ ok: true, done: "added", name: "Алёнка" });
     expect(venueNames(st)).toEqual(["Два моря, Океан", "Алёнка"]);
@@ -109,7 +109,7 @@ describe("v198 · правила этапа 61 (для демо и провер�
     expect(st.venues.filter((v) => v.name.toLowerCase() === "алёнка").length).toBe(1);
   });
   it("заведение: переименовать (в занятое — нельзя), скрыть, вернуть; ошибки как у сервера", () => {
-    const st = orgSeed();
+    const st = orgSeed(FIVE);
     venueOp(st, { newName: "Алёнка" });
     expect(venueOp(st, { name: "Порт", newName: "Порт  Камчатка" })).toEqual({ ok: true, done: "renamed", name: "Порт Камчатка", from: "Порт" });
     expect(venueOp(st, { name: "Порт Камчатка", newName: "алёнка" })).toEqual({ ok: false, error: "exists", name: "Алёнка" });
@@ -120,7 +120,7 @@ describe("v198 · правила этапа 61 (для демо и провер�
     expect(venueOp(st, { name: "Нет такого", newName: "Новое" }).error).toBe("not_found");
   });
   it("должность: добавить с «работает как», такая же — «уже есть», скрытая — вернуть; у встроенной права не меняются", () => {
-    const st = orgSeed();
+    const st = orgSeed(FIVE);
     const r = positionOp(st, { label: "Бариста", base: "bartender" }, "pab12cd34");
     expect(r).toEqual({ ok: true, done: "added", id: "pab12cd34" });
     expect(positionOp(st, { label: "бариста", base: "waiter" })).toEqual({ ok: false, error: "exists", id: "pab12cd34" });
@@ -134,7 +134,7 @@ describe("v198 · правила этапа 61 (для демо и провер�
     expect(positionOp(st, { label: "Бариста", base: "bartender" })).toEqual({ ok: true, done: "returned", id: "pab12cd34" });
   });
   it("первый запуск: «Два моря, Океан» видно, прежние и названия сотрудников — скрыты", () => {
-    const st = orgSeed(["Два моря, Океан", "Кафе у моря"]);
+    const st = orgSeed([...FIVE, "Два моря, Океан", "Кафе у моря"]);
     expect(venueNames(st)).toEqual(["Два моря, Океан"]);
     expect(hiddenVenues(st).map((v) => v.name)).toEqual(["Марико", "Мясник", "Порт", "Камчадал", "Кафе у моря"]);
   });
@@ -155,10 +155,10 @@ describe("v198 · вход «Демо»: списки в памяти по те�
     expect(orgNow().stage).toBe(false);
     const o = await loadOrg();
     expect(o.stage).toBe(true);
-    expect(venueNames(o)).toEqual(["Два моря, Океан"]);
+    expect(venueNames(o)).toEqual(["Демо-ресторан"]);   // v210: в демо — выдуманные заведения
     const r = await saveVenue({ newName: "Алёнка" });
     expect(r.done).toBe("added");
-    expect(venueNames(orgNow())).toEqual(["Два моря, Океан", "Алёнка"]);
+    expect(venueNames(orgNow())).toEqual(["Демо-ресторан", "Алёнка"]);
     const p = await savePosition({ label: "Бариста", base: "bartender" });
     expect(p.done).toBe("added");
     expect(pickPositions(orgNow()).map((x) => x.label)).toContain("Бариста");
@@ -192,7 +192,8 @@ describe("v198 · экран «Заведения и должности» и р�
     expect(html).toContain("Чтобы их менять, нужен этап базы 61: файл supabase-stage61-places.sql один раз запустить в Supabase.");
     expect(html).not.toContain("data-org-open");
     expect(html).not.toContain("data-org-hide");
-    for (const n of FIVE) expect(html).toContain(n);
+    for (const n of FIVE) expect(html).not.toContain(n);   // v210: встроенного списка заведений нет
+    expect(html).toContain("Официант");
   });
   it("ряд выбора: выбранное отмечено, пунктирный «+» — только если передан", () => {
     const items = [{ id: "Два моря, Океан", label: "Два моря, Океан" }, { id: "Алёнка", label: "Алёнка" }];

@@ -23,7 +23,7 @@ const SITE = process.env.E2E_SITE || "/home/claude/preview/site", PORT = Number(
 mkdirSync(OUT, { recursive: true });
 const SRC = process.env.E2E_SRC || "/home/claude/src/app/sa-v121";
 const { HINTS, HINTS_VERSION } = await import(SRC + "/data/hints.js");
-const { RESTAURANT_MENUS } = await import(SRC + "/data/menu.js");
+const { DEMO_MENUS: RESTAURANT_MENUS } = await import(SRC + "/tools/claude/demo-app/menu-seed.js");   // v210
 const { makeServer, SHIFTS } = await import(SRC + "/tools/claude/demo-app/fake-server.js");
 const { dLong, upFirst } = await import(SRC + "/lib/morning.js");
 const G = await import(SRC + "/lib/gain.js");

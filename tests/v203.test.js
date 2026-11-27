@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { readFileSync, readdirSync } from "node:fs";
-import { RESTAURANT_MENUS } from "../data/menu.js";
+import { DEMO_MENUS as RESTAURANT_MENUS } from "../tools/claude/demo-app/menu-seed.js";   // v210: блюда для проверок
 import { MODULES_INDEX } from "../data/modules-index.js";
 import { LIVE_CHECK } from "../data/live-check.js";
 import { menuQuestions, menuPick, briefQuestion, briefPick, LC_MENU } from "../lib/live-check.js";

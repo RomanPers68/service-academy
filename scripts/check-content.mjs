@@ -204,7 +204,6 @@ function cutCheck() {
 console.log("6. Кросс-ссылки и «Сборка»");
 try {
   const { BUILDS } = await import(join(ROOT, "data/builds.js"));
-  const { RESTAURANTS } = await import(join(ROOT, "data/roles.js"));
   const { RESTAURANT_MENUS } = await import(join(ROOT, "data/menu.js"));
   const { REFERENCE_PHOTOS } = await import(join(ROOT, "data/reference-photos.js"));
   const { existsSync } = await import("node:fs");
@@ -269,11 +268,7 @@ try {
       seen.add(t);
     }
   }
-  // 6.6 Меню ↔ рестораны (в обе стороны) и картинки блюд на диске
-  for (const r of Object.keys(RESTAURANT_MENUS || {}))
-    if (!RESTAURANTS.includes(r)) errors.push(`[меню] ресторан «${r}» отсутствует в RESTAURANTS`);
-  for (const r of RESTAURANTS || [])
-    if (!RESTAURANT_MENUS[r]) warns.push(`[меню] у ресторана «${r}» нет меню`);
+  // 6.6 Встроенные примеры меню: v210 (Доп. 536) — их нет, заведения заводят меню сами; если появятся — картинки на диске
   {
     const walk = (o, cb) => { if (!o) return; if (Array.isArray(o)) return o.forEach(x => walk(x, cb));
       if (typeof o === "object") for (const [k, v] of Object.entries(o)) { if (k === "img" && typeof v === "string" && v.startsWith("/")) cb(v); else walk(v, cb); } };

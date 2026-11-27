@@ -21,7 +21,7 @@ import { makeServer, SHIFTS, full } from "./fake-server.js";
 import { CONCEPT_SEED, CONCEPT_PHOTOS } from "./concept-seed.js";   // v139 (Доп. 454): «О нас» — пример концепции и стандартов
 import { STAFF_PHOTOS } from "./staff-photo-seed.js";   // v158 (Доп. 483): фото сотрудников — нарисованные портреты (не снимки)
 import { LESSON_PHOTOS } from "./lesson-photo-seed.js";   // v146 (Доп. 467): фото уроков — пример, руководитель меняет на свои
-import { RESTAURANT_MENUS } from "../../../data/menu.js";
+import { DEMO_MENUS as RESTAURANT_MENUS } from "./menu-seed.js";   // v210: меню демо — здесь, в приложении встроенных нет
 import { HINTS, HINTS_VERSION } from "../../../data/hints.js";
 import { calPage } from "../../../lib/ical.js";
 import { LOOKS, LOOK_NAMES, LOOK_KEY, homeLook, setHomeLook } from "../../../lib/home-look.js";

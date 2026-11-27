@@ -115,14 +115,14 @@ describe("v76: заготовки меню — Наставнику и гост�
     store.sa_menu_shared = JSON.stringify({ "Марико": [{ id: "srv1", name: "Филадельфия", cat: "Роллы", ingredients: ["лосось"], allergens: ["Рыба"] }] });
     expect(await ids("Марико")).toEqual(["srv1"]);
     delete store.sa_menu_shared;
-    expect(await ids("Марико")).toEqual(["mr1", "mr2", "mr3", "mr4", "mr5"]);
+    expect(await ids("Марико")).toEqual([]);   // v210: встроенных заготовок нет — без меню команды пусто
   });
   it("включены вручную — видны и рядом с меню команды; скрытые поштучно и свои правки не дублируются", async () => {
     store.sa_menu_shared = JSON.stringify({ "Марико": [{ id: "srv1", name: "Филадельфия" }] });
     store.sa_menu_hide_samples = JSON.stringify({ "Марико": false });
     store.sa_menu_hidden_samples = JSON.stringify({ "Марико": ["mr2"] });
     store.sa_menu_custom = JSON.stringify({ "Марико": [{ id: "mr3", name: "Мисо-суп по-нашему" }] });
-    expect(await ids("Марико")).toEqual(["mr3", "srv1", "mr1", "mr4", "mr5"]);
+    expect(await ids("Марико")).toEqual(["mr3", "srv1"]);   // v210: заготовок нет, остаются своё и меню команды
     store.sa_menu_hide_samples = JSON.stringify({ "Марико": true });
     delete store.sa_menu_shared;
     expect(await ids("Марико")).toEqual(["mr3"]);

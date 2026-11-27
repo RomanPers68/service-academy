@@ -18,7 +18,8 @@ import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня 
 import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «Что дало обучение», как этап 43
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
-import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";   // v198: заведения и должности, как этап 61
+import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";
+import { DEMO_NET } from "./net-seed.js";   // v210: сеть демо — здесь, в приложении встроенного списка нет   // v198: заведения и должности, как этап 61
 import { lcLevel, lcCan, lcScore, LC_TRACKS, pointsScore, marksOf } from "../../../lib/live-check.js";   // v200: живая проверка, как этап 63; v201 — этап 64; v202 — этап 65
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -1028,7 +1029,7 @@ export function makeServer(opts) {
   // ── v198: этап 61 — заведения и должности ─────────────────────────────────────────────────────────────────────
   function orgState() {
     if (!S.org) {
-      S.org = orgSeed([...new Set(PEOPLE.map((e) => e.restaurant))]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0;
+      S.org = orgSeed([...DEMO_NET, ...new Set(PEOPLE.map((e) => e.restaurant))], DEMO_NET[0]); S.org.place = {}; S.org.hired = []; S.org.renamed = {}; S.org.seq = 0;
       if (opts.net2) { const v = S.org.venues.find((x) => x.name === "Порт"); if (v) v.hidden = false; }   // v199: второе заведение в списке
     }
     // v200 (этап 63): «Управляющий» — своя должность «работает как» менеджер, старше менеджера

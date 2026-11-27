@@ -476,7 +476,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
   // Доп. 164: маркер может прийти и с подписью — [[dish:id|Посмотреть карточку]] — принимаем оба вида; неизвестный id
   // тоже вычищаем из текста. v94: выбор — lib/ai-cards.js, общий с чатом: сначала то, о чём спросили (question —
   // вопрос перед ответом), потом метки, потом названия в тексте, но не строки состава и не то, что входит в выбранное
-  // блюдо (спросили салат «Два моря», а карточкой приходил «Краб стригун» из его состава)
+  // блюдо (спросили салат «Три моря», а карточкой приходил «Краб стригун» из его состава)
   const parseCards = (text, question = "") => {
     const pc = pickCards({ text: text || "", question, dishes: myDishes, cocktails: COCKTAILS, drinks: myDrinks, max: 2 });
     return { clean: pc.text.replace(/\n{3,}/g, "\n\n").trim(), cards: pc.picks.map((p) => (p.kind === "cocktail" ? { kind: "cocktail", c: p.item } : p.kind === "wine" || p.kind === "spirit" ? { kind: p.kind, w: p.item } : { kind: "dish", d: p.item })) };

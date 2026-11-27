@@ -9,7 +9,8 @@ import { createPortal } from "react-dom";
 import { serverStage } from "../lib/server-text";   // v58 (Доп. 371)
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../lib/supabase";
 import { MODULES } from "../data/modules";
-import { ROLES, RESTAURANTS } from "../data/roles";
+import { ROLES } from "../data/roles";
+import { DEMO_VENUES } from "../lib/org-model.js";   // v210: в демо — выдуманные заведения
 import { GLOSSARY } from "../data/glossary";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
@@ -79,12 +80,12 @@ export function TeamScreen({ T, profile, a11y, onCandidate }) {
     if (isDemo) {
       const d = (days) => new Date(Date.now() - days*86400000).toISOString();
       setList([
-        { id:"demo",  name:"Роман",  surname:"(демо)",   restaurant:RESTAURANTS[0], position:"senior", is_admin:true,  status:"active",   last_seen_at:d(0),  has_pending_code:false, has_session:true },
-        { id:"d2",    name:"Иван",   surname:"Петров",   restaurant:RESTAURANTS[0], position:"waiter", is_admin:false, status:"active",   last_seen_at:d(0.3),has_pending_code:false, has_session:true },
-        { id:"d3",    name:"Мария",  surname:"Соколова", restaurant:RESTAURANTS[0], position:"manager",is_admin:false, status:"active",   last_seen_at:d(1.5),has_pending_code:false, has_session:true },
-        { id:"d4",    name:"Алексей",surname:"Новиков",  restaurant:RESTAURANTS[1], position:"waiter", is_admin:false, status:"active",   last_seen_at:null,  has_pending_code:true,  has_session:false },
-        { id:"d5",    name:"Дарья",  surname:"Ким",      restaurant:RESTAURANTS[1], position:"waiter", is_admin:false, status:"active",   last_seen_at:d(12), has_pending_code:false, has_session:true },
-        { id:"d6",    name:"Сергей", surname:"Волков",   restaurant:RESTAURANTS[3], position:"waiter", is_admin:false, status:"disabled", last_seen_at:d(30), has_pending_code:false, has_session:false },
+        { id:"demo",  name:"Роман",  surname:"(демо)",   restaurant:DEMO_VENUES[0], position:"senior", is_admin:true,  status:"active",   last_seen_at:d(0),  has_pending_code:false, has_session:true },
+        { id:"d2",    name:"Иван",   surname:"Петров",   restaurant:DEMO_VENUES[0], position:"waiter", is_admin:false, status:"active",   last_seen_at:d(0.3),has_pending_code:false, has_session:true },
+        { id:"d3",    name:"Мария",  surname:"Соколова", restaurant:DEMO_VENUES[0], position:"manager",is_admin:false, status:"active",   last_seen_at:d(1.5),has_pending_code:false, has_session:true },
+        { id:"d4",    name:"Алексей",surname:"Новиков",  restaurant:DEMO_VENUES[1], position:"waiter", is_admin:false, status:"active",   last_seen_at:null,  has_pending_code:true,  has_session:false },
+        { id:"d5",    name:"Дарья",  surname:"Ким",      restaurant:DEMO_VENUES[1], position:"waiter", is_admin:false, status:"active",   last_seen_at:d(12), has_pending_code:false, has_session:true },
+        { id:"d6",    name:"Сергей", surname:"Волков",   restaurant:DEMO_VENUES[2], position:"waiter", is_admin:false, status:"disabled", last_seen_at:d(30), has_pending_code:false, has_session:false },
       ]);
       return;
     }
@@ -757,7 +758,7 @@ export function CodeLoginScreen({ T, onSuccess }) {
     // Демо-режим для предпросмотра: не работает на боевом домене
     if (code === "ДЕМО-0000" && !/vercel\.app$/i.test(window.location.hostname)) {
       vibrate("heavy");
-      onSuccess(null, { id:"demo", name:"Роман", surname:"(демо)", restaurant:RESTAURANTS[0], position:"senior", is_admin:true });
+      onSuccess(null, { id:"demo", name:"Роман", surname:"(демо)", restaurant:DEMO_VENUES[0], position:"senior", is_admin:true });
       return;
     }
     setBusy(true); setError(null); vibrate("light");

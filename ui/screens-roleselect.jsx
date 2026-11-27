@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../lib/supabase";
 import { MODULES } from "../data/modules";
 import { countable } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления» не считаются в прогрессе
-import { ROLES, RESTAURANTS } from "../data/roles";
+import { ROLES } from "../data/roles";
 import { DIALOGUES_DATA, MOOD_EMOJI_D, MOOD_COLORS_D, loadDialogues } from "../data/dialogues-lazy";
 import { LOGO_SRC, LOGO_SRC_DARK } from "../assets/logo";
 import { SkeletonCard } from "./home-hubs";

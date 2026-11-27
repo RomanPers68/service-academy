@@ -298,7 +298,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v209</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v210</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -403,7 +403,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
             <div style={{ ...iconBox, marginLeft: 2 }}>{UI_SVG.pencil(gold, 19)}</div>
             <div style={{ flex: 1 }}>
               <div style={T.modTitle}>Редактор меню</div>
-              <div style={{ ...T.modSub, whiteSpace: "normal" }}>Добавь реальные блюда ресторана и скрой примеры</div>
+              <div style={{ ...T.modSub, whiteSpace: "normal" }}>{(RESTAURANT_MENUS[restaurant] || []).length ? "Добавь реальные блюда ресторана и скрой примеры" : "Добавь блюда сам или загрузи меню из PDF или Word"}</div>
             </div>
             <div style={T.modArrow}>›</div>
           </div>
@@ -927,6 +927,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const hidSet = new Set(hiddenIds[restaurant] || []);
   const hs = hideSamples[restaurant];
   const samplesShown = hs === false ? true : hs === true ? false : (shared || []).length === 0;
+  const hasSamples = (RESTAURANT_MENUS[restaurant] || []).length > 0;   // v210: встроенных примеров нет — и переключателя нет
   const sampleList = samplesShown ? (RESTAURANT_MENUS[restaurant] || []).filter(d => !(custom[restaurant] || []).some(x => x.id === d.id) && !hidSet.has(d.id)) : [];
   // Доп. 154: править чужое = забрать копию в свои (та же id — своя версия побеждает); удалить серверное = пометить до публикации; удалить пример = скрыть id
   const srvById = new Map((shared || []).filter(x => x && x.id).map(x => [x.id, x]));
@@ -1516,12 +1517,14 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
             </button>
           </div>
         )}
+        {hasSamples && (
         <div onClick={() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown })} {...onActivate(() => setHideSamples({ ...hideSamples, [restaurant]: samplesShown }))}
           className="sa-card" data-lens-card=""
           style={{ ...glass(T), margin: "12px 0 4px", padding: "11px 13px", fontSize: 14, color: T.para?.color, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <span>Примеры-заготовки в тренажёре{hs === undefined && (shared || []).length ? <span style={{ color: T.modSub.color, fontSize: 12.5 }}> · скрыты сами: есть меню команды</span> : null}</span>
           <b style={{ color: samplesShown ? "#5DBB8A" : red, flexShrink: 0 }}>{samplesShown ? "видны" : "скрыты"}</b>
         </div>
+        )}
       </div>
       <div style={{ ...T.secTitle, ...labelStyle(T.a11y ? 15 : 13) }}>Свои блюда ({vis(list).length}{eq || ecat ? ` из ${list.length}` : ""})</div>
       <div style={{ padding: "0 14px 14px" }}>

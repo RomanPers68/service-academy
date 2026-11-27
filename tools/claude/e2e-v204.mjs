@@ -60,7 +60,7 @@ const openEditor = async () => {
   await page.evaluate(() => window.__saNav("menuTrainer")); await sleep(1800);
   await page.locator("text=Редактор меню").first().click(); await sleep(1300);
 };
-const pick = (file) => page.setInputFiles('input[accept="application/pdf"] >> nth=0', file);
+const pick = (file) => page.setInputFiles('input[accept*="application/pdf"] >> nth=0', file);   // v208: принимает и Word
 const reset = (flags) => page.evaluate((f) => { window.__demoMenuCalls = []; localStorage.removeItem("__demo_menu_504"); localStorage.removeItem("__demo_menu_short");
   for (const [k, v] of Object.entries(f || {})) localStorage.setItem(k, v); }, flags);
 
@@ -110,7 +110,7 @@ await run("SHORT", async () => {
 await run("SLOW", async () => {
   await reset({ __demo_menu_504: "1" });
   await pick({ name: "zima.pdf", mimeType: "application/pdf", buffer: PDF });
-  const msg = "AI не успел прочитать меню: сервер перестал ждать (код 504). Нажми «Из PDF» ещё раз";
+  const msg = "AI не успел прочитать меню: сервер перестал ждать (код 504). Нажми «Из файла» ещё раз";   // v208: кнопка «Из файла»
   const got = await until(async () => (await body()).includes(msg), 12000);
   ok("SLOW: страница хостинга вместо ответа — «AI не успел прочитать меню… (код 504)…»", got === true);
   ok("SLOW: не «Сеть недоступна…»", !/Сеть недоступна/.test(await body()));
@@ -122,7 +122,7 @@ await run("SLOW", async () => {
 await run("BIG", async () => {
   await reset();
   await pick({ name: "big.pdf", mimeType: "application/pdf", buffer: Buffer.concat([PDF, Buffer.alloc(3 * 1024 * 1024 + 100, 32)]) });
-  const got = await until(async () => (await body()).includes("PDF больше 3 МБ: сервер такой не примет. Сожми файл или раздели меню на части."), 6000);
+  const got = await until(async () => (await body()).includes("PDF больше 3 МБ: сервер такой не примет. Сожми файл, сохрани меню в Word или раздели на части."), 6000);
   ok("BIG: PDF больше 3 МБ — сразу понятные слова", got === true);
   ok("BIG: запросов к серверу нет", (await calls()).length === 0, await calls());
 });

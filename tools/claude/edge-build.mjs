@@ -54,9 +54,11 @@ const code = head + r.outputFiles[0].text;
 const si = process.argv.indexOf("--stub");
 if (si > 0) {
   const sha = String(process.argv[si + 1] || "");
-  if (!/^[0-9a-f]{40}$/.test(sha)) { console.error("нужен полный хеш коммита: --stub <40 знаков>"); process.exit(1); }
-  console.log("// app-api — развёрнуто из GitHub: собранный файл коммита " + sha.slice(0, 7) + " (tools/claude/edge-build.mjs --stub).\n"
-    + "import \"https://raw.githubusercontent.com/RomanPers68/service-academy/" + sha + "/supabase/functions/app-api/index.ts\";");
+  // v208: и для menu-import (её index.ts — исходник одним файлом): --stub <коммит> menu-import
+  const fnName = /^[a-z-]+$/.test(String(process.argv[si + 2] || "")) ? process.argv[si + 2] : "app-api";
+  if (!/^[0-9a-f]{40}$/.test(sha)) { console.error("нужен полный хеш коммита: --stub <40 знаков> [функция]"); process.exit(1); }
+  console.log("// " + fnName + " — развёрнуто из GitHub: index.ts коммита " + sha.slice(0, 7) + " (tools/claude/edge-build.mjs --stub).\n"
+    + "import \"https://raw.githubusercontent.com/RomanPers68/service-academy/" + sha + "/supabase/functions/" + fnName + "/index.ts\";");
   process.exit(0);
 }
 

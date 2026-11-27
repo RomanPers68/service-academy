@@ -70,11 +70,11 @@ describe("v204 · общие части", () => {
     expect(pickRequested(null, ["А"])).toEqual({ dishes: [], missing: ["А"] });
   });
   it("menuImportWhy: код в тексте, без связи — отдельные слова", () => {
-    expect(menuImportWhy(504)).toBe("AI не успел прочитать меню: сервер перестал ждать (код 504). Нажми «Из PDF» ещё раз");
+    expect(menuImportWhy(504)).toBe("AI не успел прочитать меню: сервер перестал ждать (код 504). Нажми «Из файла» ещё раз");
     expect(menuImportWhy(413)).toMatch(/код 413/);
     expect(menuImportWhy(404)).toMatch(/menu-import не развёрнута/);   // v206: функция Supabase menu-import, запасной — /api
     expect(menuImportWhy(502)).toMatch(/код 502/);
-    expect(menuImportWhy(0)).toBe("Нет связи с сервером приложения: проверь интернет и нажми «Из PDF» ещё раз");
+    expect(menuImportWhy(0)).toBe("Нет связи с сервером приложения: проверь интернет и нажми «Из файла» ещё раз");
     expect(menuImportErr({ ok: false, status: 401, j: { error: "Сессия не найдена" } })).toBe("Сессия не найдена");
     expect(menuImportErr({ ok: false, status: 504, j: null })).toMatch(/код 504/);
     expect(menuImportErr(null)).toMatch(/Нет связи/);

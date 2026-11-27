@@ -12,12 +12,15 @@
 // ai-chat), поэтому подсказки и разбор здесь — копия api/menu-import.js и lib/menu-import.js; совпадение копий проверяет
 // tests/v206.test.js.
 //
+// v208 (Доп. 534): меню из Word (.docx) или текста — приложение присылает text вместо pdfBase64 (Word читается на
+// телефоне), модель получает текст вместо файла; всё остальное — как у PDF.
+//
 // Секреты: OPENROUTER_API_KEY — тот же, что у ai-chat (уже задан). По желанию: OPENROUTER_MENU_MODEL — своя модель
 // первой; MENU_AI_EACH_MS / MENU_AI_TOTAL_MS — сколько ждать модель (по умолчанию 40 и 50 с).
 // Развернуть: supabase functions deploy menu-import (или в панели: Edge Functions → Deploy a new function → Via Editor →
 // имя menu-import → вставить этот файл → Deploy).
 
-export const MENU_IMPORT_V = 1;
+export const MENU_IMPORT_V = 2;   // 2 — меню из Word или текста (v208, Доп. 534)
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +59,15 @@ export const NAMES_PROMPT = `Ты — методист ресторанной а
 export const detailsPrompt = (names: string[]) => PROMPT + "\nВерни записи ТОЛЬКО для этих позиций меню, в этом порядке: "
   + names.map((n) => "«" + n + "»").join(", ") + ". Название бери из PDF. Остальные позиции не включай.";
 
-export const SLOW = "AI не успел прочитать меню за отведённое время. Нажми «Из PDF» ещё раз; если повторится — раздели меню на части";
+// v208 (Доп. 534): меню из Word (.docx) или текста — приложение присылает text вместо pdfBase64 (Word читается на
+// телефоне, lib/docx-text.js). Подсказки те же; модели — пояснение, что вместо PDF — этот текст.
+export const MAX_TEXT = 120000;
+export const TEXT_HEAD = "Меню — текст из файла (Word или текст вместо PDF; всё, что сказано про PDF, относится к этому тексту):\n\n";
+export const menuParts = (prompt: string, src: { pdf?: string; text?: string }) => (src && src.text
+  ? [{ type: "text", text: prompt }, { type: "text", text: TEXT_HEAD + src.text }]
+  : [{ type: "text", text: prompt }, { type: "file", file: { filename: "menu.pdf", file_data: "data:application/pdf;base64," + (src && src.pdf) } }]);
+
+export const SLOW = "AI не успел прочитать меню за отведённое время. Нажми «Из файла» ещё раз; если повторится — раздели меню на части";
 export const MAX_B64 = 4_300_000;   // PDF до 3 МБ (как в приложении: MENU_PDF_MAX) — в base64 на треть больше
 const lim = () => ({ each: Number(env("MENU_AI_EACH_MS")) || 40000, total: Number(env("MENU_AI_TOTAL_MS")) || 50000 });
 export const models = () => [env("OPENROUTER_MENU_MODEL"), "anthropic/claude-sonnet-4.6", "google/gemini-2.5-flash"].filter(Boolean);
@@ -171,7 +182,7 @@ async function whoami(token: string): Promise<Row | null> {
 
 // ── OpenRouter: модели по очереди, каждой не больше each, всем вместе не больше total ──
 type Out = { ok: true; text: string; model: string } | { ok: false; status: number; error: string };
-async function viaOpenRouter(key: string, pdfBase64: string, prompt: string, maxTokens: number): Promise<Out> {
+async function viaOpenRouter(key: string, src: { pdf?: string; text?: string }, prompt: string, maxTokens: number): Promise<Out> {
   const headers: Record<string, string> = {
     Authorization: "Bearer " + key,
     "Content-Type": "application/json",
@@ -199,10 +210,7 @@ async function viaOpenRouter(key: string, pdfBase64: string, prompt: string, max
           temperature: 0,
           messages: [{
             role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "file", file: { filename: "menu.pdf", file_data: "data:application/pdf;base64," + pdfBase64 } },
-            ],
+            content: menuParts(prompt, src),   // v208: PDF или текст из Word
           }],
         }),
       });
@@ -240,9 +248,10 @@ export async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ error: "Только POST" }, 405);
   const started = Date.now();
   let mode = "full", info = "";
-  // строка в журнале функции на каждый запрос: режим, ответ, время, сколько позиций или ошибка
+  // строка в журнале функции на каждый запрос: режим, ответ, время, сколько позиций или ошибка; у текста — пометка text
+  let from = "";
   const done = (data: unknown, status = 200) => {
-    console.log("menu-import", mode, status, (Date.now() - started) + "ms", info);
+    console.log("menu-import", mode + from, status, (Date.now() - started) + "ms", info);
     return json(data, status);
   };
 
@@ -252,8 +261,10 @@ export async function handle(req: Request): Promise<Response> {
   let body: Row = {};
   try { body = (await req.json()) as Row || {}; } catch (_e) { return done({ error: "Файл не получен" }, 400); }
   mode = body.mode === "names" || body.mode === "details" ? String(body.mode) : "full";
+  if (typeof body.text === "string" && body.text.trim()) from = "/text";
   const token = typeof body.token === "string" ? body.token : "";
   const pdf = typeof body.pdfBase64 === "string" ? body.pdfBase64 : "";
+  const text = typeof body.text === "string" ? body.text.trim() : "";   // v208: меню из Word или текста
 
   // проверки — до обращения к модели: чужой запрос не тратит ни одного токена
   const emp = await whoami(token);
@@ -261,16 +272,17 @@ export async function handle(req: Request): Promise<Response> {
   if (!(mode === "details" ? rateLimit("menud:" + token, 120, 3600_000) : rateLimit("menu:" + token, 8, 3600_000))) {
     return done({ error: "Слишком много импортов подряд — попробуй через час" }, 429);
   }
-  if (!pdf) return done({ error: "Файл не получен" }, 400);
-  if (pdf.length > MAX_B64) return done({ error: "PDF больше 3 МБ: сожми файл или раздели меню на части" }, 413);
+  if (!pdf && !text) return done({ error: "Файл не получен" }, 400);
+  if (!text && pdf.length > MAX_B64) return done({ error: "PDF больше 3 МБ: сожми файл или раздели меню на части" }, 413);
+  if (text.length > MAX_TEXT) return done({ error: "Текст меню слишком длинный: раздели файл на части" }, 413);
   const want = mode === "details" ? askNames(body.names) : null;
-  if (mode === "details" && !want) return done({ error: "Не понял, какие блюда читать: нажми «Из PDF» ещё раз" }, 400);
-  const b64 = pdf.replace(/^data:[^;]*;base64,/, "");
+  if (mode === "details" && !want) return done({ error: "Не понял, какие блюда читать: нажми «Из файла» ещё раз" }, 400);
+  const src = text ? { text } : { pdf: pdf.replace(/^data:[^;]*;base64,/, "") };
   const prompt = mode === "names" ? NAMES_PROMPT : mode === "details" ? detailsPrompt(want || []) : PROMPT;
   const maxTokens = mode === "names" ? 3000 : mode === "details" ? 4000 : 8000;
 
   try {
-    const out = await viaOpenRouter(orKey, b64, prompt, maxTokens);
+    const out = await viaOpenRouter(orKey, src, prompt, maxTokens);
     if (!out.ok) { info = out.error.slice(0, 160); return done({ error: out.error }, out.status || 502); }
     const dishes = parseDishes(out.text);
     if (!dishes) return done({ error: "Модель вернула не-JSON, попробуй ещё раз" }, 422);

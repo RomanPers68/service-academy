@@ -58,8 +58,16 @@ export const NAMES_PROMPT = `Ты — методист ресторанной а
 export const detailsPrompt = (names) => PROMPT + "\nВерни записи ТОЛЬКО для этих позиций меню, в этом порядке: "
   + names.map((n) => "«" + n + "»").join(", ") + ". Название бери из PDF. Остальные позиции не включай.";
 
+// v208 (Доп. 534): меню из Word (.docx) или текста — приложение присылает text вместо pdfBase64 (Word читается на
+// телефоне, lib/docx-text.js). Подсказки те же; модели — пояснение, что вместо PDF — этот текст.
+export const MAX_TEXT = 120000;
+export const TEXT_HEAD = "Меню — текст из файла (Word или текст вместо PDF; всё, что сказано про PDF, относится к этому тексту):\n\n";
+export const menuParts = (prompt, src) => (src && src.text
+  ? [{ type: "text", text: prompt }, { type: "text", text: TEXT_HEAD + src.text }]
+  : [{ type: "text", text: prompt }, { type: "file", file: { filename: "menu.pdf", file_data: "data:application/pdf;base64," + (src && src.pdf) } }]);
+
 // v204: сколько ждать модель в одном запросе — меньше, чем ждёт хостинг
-const SLOW = "AI не успел прочитать меню за отведённое время. Нажми «Из PDF» ещё раз; если повторится — раздели меню на части";
+const SLOW = "AI не успел прочитать меню за отведённое время. Нажми «Из файла» ещё раз; если повторится — раздели меню на части";
 const lim = () => ({ each: Number(process.env.MENU_AI_EACH_MS) || 40000, total: Number(process.env.MENU_AI_TOTAL_MS) || 50000 });
 
 // Модели OpenRouter по порядку: первая, что ответила, — победитель.
@@ -91,7 +99,7 @@ function openRouterText(data) {
 }
 
 // ── Провайдер 1: OpenRouter (основной) ───────────────────────────────────────
-async function viaOpenRouter(key, pdfBase64, prompt = PROMPT, maxTokens = 8000) {
+async function viaOpenRouter(key, src, prompt = PROMPT, maxTokens = 8000) {
   const headers = {
     Authorization: "Bearer " + key,
     "Content-Type": "application/json",
@@ -121,10 +129,7 @@ async function viaOpenRouter(key, pdfBase64, prompt = PROMPT, maxTokens = 8000) 
           temperature: 0,
           messages: [{
             role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "file", file: { filename: "menu.pdf", file_data: "data:application/pdf;base64," + pdfBase64 } },
-            ],
+            content: menuParts(prompt, src),   // v208: PDF или текст из Word
           }],
         }),
       });
@@ -162,7 +167,7 @@ async function viaOpenRouter(key, pdfBase64, prompt = PROMPT, maxTokens = 8000) 
 }
 
 // ── Провайдер 2: Anthropic напрямую (старый путь, если задан только ANTHROPIC_API_KEY)
-async function viaAnthropic(key, pdfBase64, prompt = PROMPT, maxTokens = 8000) {
+async function viaAnthropic(key, src, prompt = PROMPT, maxTokens = 8000) {
   let r, data;
   const ac = new AbortController();
   const tm = setTimeout(() => ac.abort(), lim().total);
@@ -176,10 +181,9 @@ async function viaAnthropic(key, pdfBase64, prompt = PROMPT, maxTokens = 8000) {
         max_tokens: maxTokens,
         messages: [{
           role: "user",
-          content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
-            { type: "text", text: prompt },
-          ],
+          content: src.text   // v208: текст из Word — обычным текстом
+            ? [{ type: "text", text: TEXT_HEAD + src.text }, { type: "text", text: prompt }]
+            : [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: src.pdf } }, { type: "text", text: prompt }],
         }],
       }),
     });
@@ -208,6 +212,7 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
   const { pdfBase64, token } = body;
+  const text = typeof body.text === "string" ? body.text.trim() : "";   // v208: меню из Word или текста
   // v204: names — список позиций, details — подробности для части списка, без mode — всё сразу (старая сборка)
   const mode = body.mode === "names" || body.mode === "details" ? body.mode : "full";
   // v204: строка в Runtime Logs Vercel на каждый запрос — режим, ответ, время, сколько позиций или ошибка
@@ -226,16 +231,17 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: "Слишком много импортов подряд — попробуй через час" });
   }
 
-  if (!pdfBase64 || typeof pdfBase64 !== "string") return res.status(400).json({ error: "Файл не получен" });
+  if (!text && (!pdfBase64 || typeof pdfBase64 !== "string")) return res.status(400).json({ error: "Файл не получен" });
+  if (text.length > MAX_TEXT) return res.status(413).json({ error: "Текст меню слишком длинный: раздели файл на части" });
   const want = mode === "details" ? askNames(body.names) : null;
-  if (mode === "details" && !want) return res.status(400).json({ error: "Не понял, какие блюда читать: нажми «Из PDF» ещё раз" });
+  if (mode === "details" && !want) return res.status(400).json({ error: "Не понял, какие блюда читать: нажми «Из файла» ещё раз" });
   // На всякий случай снимаем префикс data:…;base64, если клиент прислал его целиком.
-  const b64 = pdfBase64.replace(/^data:[^;]*;base64,/, "");
+  const src = text ? { text } : { pdf: pdfBase64.replace(/^data:[^;]*;base64,/, "") };
   const prompt = mode === "names" ? NAMES_PROMPT : mode === "details" ? detailsPrompt(want) : PROMPT;
   const maxTokens = mode === "names" ? 3000 : mode === "details" ? 4000 : 8000;
 
   try {
-    const out = orKey ? await viaOpenRouter(orKey, b64, prompt, maxTokens) : await viaAnthropic(anKey, b64, prompt, maxTokens);
+    const out = orKey ? await viaOpenRouter(orKey, src, prompt, maxTokens) : await viaAnthropic(anKey, src, prompt, maxTokens);
     if (!out.ok) { info = String(out.error || "").slice(0, 160); return res.status(out.status || 502).json({ error: out.error }); }
 
     const dishes = parseDishes(out.text);

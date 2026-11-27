@@ -184,7 +184,7 @@ describe("v206 · приложение: сначала Supabase, запасно�
   });
 
   it("ответ не JSON с кодом 403 — причина словами, а не «нет связи»", () => {
-    expect(lib.menuImportErr({ ok: false, status: 403, j: null })).toBe("Запрос остановили по дороге к серверу (код 403). Нажми «Из PDF» ещё раз");
+    expect(lib.menuImportErr({ ok: false, status: 403, j: null })).toBe("Запрос остановили по дороге к серверу (код 403). Нажми «Из файла» ещё раз");   // v208: кнопка «Из файла»
     expect(lib.menuImportWhy(401)).toMatch(/код 401/);
   });
 

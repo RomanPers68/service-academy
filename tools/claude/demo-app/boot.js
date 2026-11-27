@@ -908,7 +908,8 @@ const DEMO_PDF_MENU = [
   { name: "Коктейль «Иней» б/а", cat: "Напитки", desc: "Кокос, бузина и яблоко с лимоном.", ingredients: ["кокосовый сироп", "бузина", "яблочный сок", "лимон"], allergens: [], note: "200 мл; кокос", pairing: "" },
 ];
 function demoMenuImport(b) {
-  try { (window.__demoMenuCalls = window.__demoMenuCalls || []).push({ mode: b.mode || "full", names: b.names || null }); } catch (e) {}
+  // v208: откуда меню — PDF или текст (Word, .txt); text — сколько знаков пришло
+  try { (window.__demoMenuCalls = window.__demoMenuCalls || []).push({ mode: b.mode || "full", names: b.names || null, src: b.text ? "text" : "pdf", text: b.text ? String(b.text).slice(0, 400) : "" }); } catch (e) {}
   if (b.mode === "names") {
     if (localStorage.getItem("__demo_menu_504") === "1") return new Response("An error occurred with your deployment\n\nFUNCTION_INVOCATION_TIMEOUT", { status: 504, headers: { "Content-Type": "text/plain" } });
     return json({ names: DEMO_PDF_MENU.map(({ name, cat }) => ({ name, cat })), model: "demo" });

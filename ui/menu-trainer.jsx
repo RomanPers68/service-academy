@@ -38,7 +38,8 @@ import { labelStyle } from "./tokens";
 import { VoicePill, VoiceRecorder, VoicesList } from "./voice-note";
 import { SayLine, PronounceScreen } from "./pronounce";
 import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
-import { MENU_PDF_MAX, MENU_PDF_BIG, MENU_NO_DETAIL, runMenuImport, makeMenuPost } from "../lib/menu-import";   // v204 (Доп. 530): импорт PDF по частям; v206: через Supabase
+import { MENU_PDF_MAX, MENU_PDF_BIG, MENU_NO_DETAIL, runMenuImport, makeMenuPost, MENU_FILE_ACCEPT, MENU_TEXT_MAX, MENU_FILE_HINT, MENU_FILE_WHY, menuFileKind } from "../lib/menu-import";   // v204 (Доп. 530): импорт PDF по частям; v206: через Supabase
+import { docxText, docErr } from "../lib/docx-text";   // v208 (Доп. 534): меню из Word — текст прямо на телефоне
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
 import { descPrompt, descParse } from "../lib/dish-desc";   // v153 (Доп. 477): пять вариантов «вкусного описания»
@@ -297,7 +298,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v207</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v208</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -947,27 +948,46 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const [preview, setPreview] = React.useState(null); // список блюд из PDF на подтверждение
   const [importStep, setImportStep] = React.useState(null);   // v204: { done, total } — сколько позиций уже прочитано
   const [importShort, setImportShort] = React.useState(0);    // v204: у скольких позиций подробности не дочитались
+  const [importKind, setImportKind] = React.useState("pdf");  // v208: что читаем — pdf, docx или txt (подпись «Читаю Word…»)
   // v204 (Доп. 530): сначала список позиций, потом подробности по 4 (lib/menu-import.js) — каждый запрос короче минуты;
   // ответ хостинга (не JSON) — причина своими словами и с кодом, а не «сеть недоступна»
-  const onPdf = (e) => {
+  // v208 (Доп. 534): «Из файла» — PDF, Word (.docx) или текст. Word читается на телефоне (lib/docx-text.js), на сервер
+  // уходит текст; PDF — как раньше, файлом
+  const onPdf = async (e) => {
     const file = e.target.files && e.target.files[0]; e.target.value = "";
     if (!file) return;
-    if (file.size > MENU_PDF_MAX) { setImportErr(MENU_PDF_BIG); return; }
-    setImportErr(""); setImporting(true); setImportStep(null); setImportShort(0);
+    const kind = menuFileKind(file);
+    if (kind === "doc") { setImportErr(MENU_FILE_WHY.doc); return; }
+    if (!kind) { setImportErr(MENU_FILE_WHY.other); return; }
+    if (kind === "pdf") {
+      if (file.size > MENU_PDF_MAX) { setImportErr(MENU_PDF_BIG); return; }
+    }
+    setImportErr(""); setImporting(true); setImportStep(null); setImportShort(0); setImportKind(kind);
+    const token = saToken();
+    // v206 (Доп. 532): в функцию Supabase menu-import, как Наставник; её нет (404) — в /api/menu-import (там у владельца было 403)
+    const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token });
+    const done = ({ dishes, short }) => { setImporting(false); setImportStep(null); setImportShort(short.length); setPreview(dishes); };
+    const fail = (err) => { setImporting(false); setImportStep(null); setImportErr(String((err && err.message) || err || "Не получилось разобрать файл")); };
+    if (kind !== "pdf") {
+      let text = "";
+      try { text = String(kind === "docx" ? await docxText(await file.arrayBuffer()) : await file.text()).trim(); }
+      catch (err) { setImporting(false); setImportErr(docErr(err)); return; }
+      if (!text) { setImporting(false); setImportErr(MENU_FILE_WHY.empty); return; }
+      if (text.length > MENU_TEXT_MAX) { setImporting(false); setImportErr(MENU_FILE_WHY.long); return; }
+      runMenuImport({ text, post, onProgress: setImportStep }).then(done).catch(fail);
+      return;
+    }
     const fr = new FileReader();
     fr.onerror = () => { setImporting(false); setImportErr("Файл не прочитался — выбери PDF ещё раз"); };
     fr.onload = () => {
       const pdfBase64 = String(fr.result).split(",")[1];
-      const token = saToken();
-      // v206 (Доп. 532): в функцию Supabase menu-import, как Наставник; её нет (404) — в /api/menu-import (там у владельца было 403)
-      const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token });
-      runMenuImport({ pdfBase64, post, onProgress: setImportStep })
-        .then(({ dishes, short }) => { setImporting(false); setImportStep(null); setImportShort(short.length); setPreview(dishes); })
-        .catch((err) => { setImporting(false); setImportStep(null); setImportErr(String((err && err.message) || err || "Не получилось разобрать PDF")); });
+      runMenuImport({ pdfBase64, post, onProgress: setImportStep }).then(done).catch(fail);
     };
     fr.readAsDataURL(file);
   };
-  const importLabel = (idle) => (!importing ? idle : importStep && importStep.total ? `Читаю PDF… ${importStep.done} из ${importStep.total}` : "Читаю PDF…");
+  const importLabel = (idle) => (!importing ? idle : importKind !== "pdf"   // v208: Word и текст — своим словом
+    ? (importStep && importStep.total ? `Читаю ${importKind === "docx" ? "Word" : "текст"}… ${importStep.done} из ${importStep.total}` : `Читаю ${importKind === "docx" ? "Word" : "текст"}…`)
+    : importStep && importStep.total ? `Читаю PDF… ${importStep.done} из ${importStep.total}` : "Читаю PDF…");
   const acceptImport = () => {
     const now = Date.now();
     const added = (preview || []).filter(d => d && String(d.name || "").trim()).map(({ short, ask, ...d }, i) => ({
@@ -1429,14 +1449,15 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 {unpublished
                   ? <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
                   : <label className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
-                      {importLabel("Из PDF")}
-                      <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
+                      {importLabel("Из файла")}
+                      <input type="file" accept={MENU_FILE_ACCEPT} onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                     </label>}
               </div>
+              {!unpublished && !importing ? <div data-import-hint="" style={{ fontSize: 11.5, color: T.modSub.color, marginTop: 7, textAlign: "right" }}>{MENU_FILE_HINT}</div> : null}
               {unpublished ? (
                 <label className="sa-btn" style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12.5, color: T.modSub.color, cursor: "pointer" }}>
-                  {importLabel("Импорт из PDF")}
-                  <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
+                  {importLabel("Импорт из файла: PDF или Word")}
+                  <input type="file" accept={MENU_FILE_ACCEPT} onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                 </label>
               ) : null}
             </div>

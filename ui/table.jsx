@@ -28,7 +28,7 @@ import { Sign, SIGN_KEYS } from "./signs";   // v75 (Доп. 388): значки 
 import { Flame, Wine } from "./day-emblems";
 import { MicButton } from "./mic";
 import { voiceSupported } from "../lib/voice";
-import { SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { peekFor } from "../lib/peek";
 import { checkSaid } from "../lib/say-check";
 import { iconForSituation } from "../lib/situation-icons";

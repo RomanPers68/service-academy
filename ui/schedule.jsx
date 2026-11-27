@@ -12,7 +12,7 @@
 import React from "react";
 import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";

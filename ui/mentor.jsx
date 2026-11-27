@@ -15,7 +15,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { ROLE_SKILLS } from "../data/skills";
 import { onActivate, vibrate } from "../lib/utils";
-import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";
+import { rpc, rpcSync, saToken, rpcMissing } from "../lib/supabase";
 import { Confetti } from "./widgets";
 import { ROLES } from "../data/roles";
 import { labelStyle } from "./tokens";

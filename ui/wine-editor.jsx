@@ -44,7 +44,7 @@ import { titleParts } from "../lib/bar-view";   // v128: «Русское / Orig
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./wine-list";
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,

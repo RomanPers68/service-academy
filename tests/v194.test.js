@@ -1,7 +1,7 @@
 // v194 (Доп. 519): новый ролик сервис-менеджера и «Выбрал» = «Верно» у ошибки в «Аналитике → Люди». Владелец (25.11):
 // «Заменишь видео сервис менеджера, пожалуйста) И у меня системная ошибка. За ошибку засчитал правильный ответ».
 //   1. data/intro-videos.js sm0-1 — новый ролик (темп быстрее; текст новый — титры по нему в v197): rev, dur, cues;
-//   2. api/supabase.js rpcSyncSeq — «что выбрал» (log_quiz_pick) уходит только после записи ответа (log_quiz_answer):
+//   2. lib/supabase.js rpcSyncSeq — «что выбрал» (log_quiz_pick) уходит только после записи ответа (log_quiz_answer):
 //      раньше оба вызова шли разом, и текст верной попытки ложился в прошлую ошибку того же вопроса;
 //   3. ui/analytics-kit.jsx MissPlate и lib/report-model.js — «Выбрал», совпавшее с «Верно», не показываем;
 //   4. этап 60 (supabase-stage60-quiz-pick.sql): log_quiz_pick ищет запись той же верности, старые записи чинит.
@@ -38,7 +38,7 @@ globalThis.fetch = async (url, opts) => {
 };
 afterAll(() => { globalThis.localStorage = realLs; globalThis.fetch = realFetch; });
 
-import { rpcSyncSeq, rpcSync, flushQueue } from "../api/supabase.js";
+import { rpcSyncSeq, rpcSync, flushQueue } from "../lib/supabase.js";
 import { INTRO_VIDEOS } from "../data/intro-videos.js";
 import { MissPlate } from "../ui/analytics-kit.jsx";
 import { personModel, stepIndex } from "../lib/report-model.js";
@@ -170,7 +170,7 @@ describe("v194 · rpcSyncSeq: «что выбрал» — только посл�
     expect(await rpcSync("save_progress", { p: 1 })).toBe("ok");   // удачная запись сама досылает очередь
     await flushQueue();
     expect(sent.map((x) => x.fn)).toEqual(["save_progress", "save_score"]);
-    const api = rd("api/supabase.js");
+    const api = rd("lib/supabase.js");
     expect(api).toContain("const p = _flushRun().finally(() => { if (_flushing === p) _flushing = null; });");
     expect(api).not.toContain("_flushing = (async () => {");
   });
@@ -185,7 +185,7 @@ describe("v194 · rpcSyncSeq: «что выбрал» — только посл�
     expect(seg).toContain("p_answer: String((q.options || [])[idx] ?? \"\").slice(0, 300), p_right: String((q.options || [])[q.correct] ?? \"\").slice(0, 300)");
     expect(app).not.toContain('rpcSync("log_quiz_pick"');
     expect(app).not.toContain('rpcSync("log_quiz_answer"');
-    expect(app).toContain("import { rpc, saToken, rpcSync, rpcSyncSeq, flushQueue, rpcMissing, startBoot } from \"./api/supabase\";");
+    expect(app).toContain("import { rpc, saToken, rpcSync, rpcSyncSeq, flushQueue, rpcMissing, startBoot } from \"./lib/supabase\";");
   });
 });
 

@@ -19,7 +19,7 @@ import { Ic } from "./table-bits";
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в разговоре
 import { voiceSupported } from "../lib/voice";
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../lib/supabase";
 import { pickGuest, parseGuestReply, parseReceipt, mistakesForLessons, saveGuestRun, readGuestRuns, guestErrorText, CRITERIA, POS_WORD, previousRun, streamText, normPersona, placeUi, receiptKind, placeOf, NEW_IN_V42 } from "../lib/live-guest";
 import { tablePool } from "../lib/table-pick";
 import { pickWarmup } from "../lib/warmup";

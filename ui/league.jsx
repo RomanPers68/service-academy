@@ -7,7 +7,7 @@
 // v31 (этап 25): подиум, стрелки «как неделю назад», «до места — N очков: это 2 живых гостя»,
 // итоги прошлой недели и победы, нарисованный кубок и сколько недель он у заведения.
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { PlaceCard, MasterMark } from "./screens-gamification";
 import { GOLD, goldText, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";

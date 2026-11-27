@@ -48,7 +48,7 @@ import { cocktailShareItem } from "../lib/share-items";   // v130: «Подел�
 import { WINE, SPIRIT, drinkOf } from "../lib/drinks";
 import { titleParts, dotOf, sortItems } from "../lib/bar-view";
 import { readSomRules, withSomRules } from "../lib/sommelier";   // v136: «Советуем» у коктейлей — та же отметка, что в «Сомелье»
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { rememberSharedMenu } from "../lib/reference-context";
 
 const SERIF = "Georgia, 'Times New Roman', serif";

@@ -17,7 +17,7 @@ import { isNetwork } from "../lib/org-model";   // v199 (Доп. 524): рейт�
 import { hintsFor } from "../data/hints";
 import { createPortal } from "react-dom";
 import { glass, Avatar, tones } from "./analytics-kit";
-import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcSync, flushQueue, rpcMissing } from "../lib/supabase";
 import { MODULES, programOf, programAll } from "../data/modules";
 import { MODULES_INDEX } from "../data/modules-index";
 import { useAllModules } from "../lib/use-content";   // v79 (Доп. 392): счёт по всем ролям — экран сам догружает их программу

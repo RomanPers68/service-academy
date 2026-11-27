@@ -6,7 +6,7 @@
 // карточка. Данные — этап 23 в Supabase; без него экран честно говорит, что нужно.
 
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { MODULES_INDEX } from "../data/modules-index";
 import { ROLES } from "../data/roles";
 import { ROLE_SKILLS } from "../data/skills";

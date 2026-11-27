@@ -4,7 +4,7 @@
 import React from "react";
 import { faceIcon, flameIcon, trophyIcon } from "./icons-extra";
 import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо 📊 и 🔒
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { vibrate, hapticsOn } from "../lib/utils";
 import { BROWN, GOLD, GREEN, GREEN_DARK, INK, labelStyle } from "./tokens";
 

@@ -763,8 +763,8 @@ describe("v167 · 5: редактор в приложении (App.jsx)", () => 
   });
   it("в стартовую сборку справочник не попал: лёгкий слой правок не тянет ни текст глав, ни экраны, ни сам редактор", () => {
     const lib = rd("lib/ref-book.js");
-    expect([...lib.matchAll(/^import .* from "([^"]+)";/gm)].map((m) => m[1])).toEqual(["../api/supabase"]);
-    expect([...rd("lib/ref-edit.js").matchAll(/^import .* from "([^"]+)";/gm)].map((m) => m[1])).toEqual(["../api/supabase", "./ref-book"]);
+    expect([...lib.matchAll(/^import .* from "([^"]+)";/gm)].map((m) => m[1])).toEqual(["./supabase"]);
+    expect([...rd("lib/ref-edit.js").matchAll(/^import .* from "([^"]+)";/gm)].map((m) => m[1])).toEqual(["./supabase", "./ref-book"]);
     // то, что нужно только редактору (запись, дерево, кнопки оформления), лежит отдельно и грузится вместе с ним
     for (const name of ["saveRefBook", "refEditTree", "refFmt", "reorderPut", "chapterRow", "refBookErr"]) expect(lib, name).not.toContain("export function " + name);
     for (const f of ["App.jsx", "ui/reference-daily.js", "lib/chat-app.js", "lib/reference-context.js", "ui/search.jsx", "ui/ReferenceSection.jsx", "ui/use-ref-book.js"]) expect(rd(f), f).not.toMatch(/ref-edit["']/);

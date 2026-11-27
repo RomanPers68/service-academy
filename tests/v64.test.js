@@ -1,11 +1,11 @@
-// v64 (Доп. 377): старт одним запросом — app_bootstrap (этап 27) и клиентская прослойка в api/supabase.js.
+// v64 (Доп. 377): старт одним запросом — app_bootstrap (этап 27) и клиентская прослойка в lib/supabase.js.
 //
 // Владелец: «Давай поправим все, вместе с серверными изменениями😉». Вид в браузере — tools/claude/e2e-v64.mjs.
 // Здесь — поведение прослойки на заглушках fetch/localStorage: что уходит в сеть, что берётся из общего ответа,
 // как откатывается, когда этапа 27 нет или часть не собралась.
 import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
-import { rpc, startBoot, bootActive, bootPart, bootParts, flushQueue, queueLength, BOOT_FNS, BOOT_TTL_MS, _resetBoot, SUPABASE_URL } from "../api/supabase.js";
+import { rpc, startBoot, bootActive, bootPart, bootParts, flushQueue, queueLength, BOOT_FNS, BOOT_TTL_MS, _resetBoot, SUPABASE_URL } from "../lib/supabase.js";
 
 const rd = (f) => readFileSync(f, "utf8");
 
@@ -164,7 +164,7 @@ describe("v64: старт одним запросом — клиент", () => {
 describe("v64: приложение и этап 27", () => {
   it("App.jsx зовёт startBoot при старте (сразу после проверки токена) и после входа по коду", () => {
     const app = rd("App.jsx");
-    expect(app).toMatch(/import \{[^}]*startBoot[^}]*\} from "\.\/api\/supabase"/);
+    expect(app).toMatch(/import \{[^}]*startBoot[^}]*\} from "\.\/lib\/supabase"/);
     expect(app).toMatch(/if \(!token\) \{[^\n]*setScreen\("login"\); return; \}\n\s*startBoot\(token\);/);
     expect(app).toMatch(/startBoot\(token \|\| "demo"\);[^\n]*\n\s*setProfile\(prof\);\n\s*setScreen\("roleSelect"\);/);
   });

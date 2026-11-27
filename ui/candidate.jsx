@@ -17,7 +17,7 @@ import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { shuffleArray, vibrate, onActivate, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { MOD_SVG, UI_SVG, ROLE_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо ⭐ и ☁
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";

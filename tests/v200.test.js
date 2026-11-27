@@ -20,7 +20,7 @@ import { LC_PASS, LC_TRACKS, LC_MARKS, lcLevel, lcFamily, lcNet, lcCan, lcScore,
   lessonsToRepeat, lcDate, lcErr } from "../lib/live-check.js";
 import { lcPeople, lcPerson, lcSaveMarks, lcDelete, loadLevels, setPositionUp, _resetLevels } from "../lib/live-check-api.js";
 import { _resetOrg } from "../lib/org.js";
-import { rpcMissing } from "../api/supabase";
+import { rpcMissing } from "../lib/supabase";
 import { LiveCheckScreen } from "../ui/live-check.jsx";
 import { LiveCheckSummary } from "../ui/live-check-summary.jsx";
 import { STAGES } from "../lib/server-check.js";

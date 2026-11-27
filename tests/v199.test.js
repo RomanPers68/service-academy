@@ -17,7 +17,7 @@ import { renderToString } from "react-dom/server";
 import { readFileSync, readdirSync } from "node:fs";
 import { isNetwork, lensOf, lensErr, inLens, menuVenues, LENS_ALL, normOrg, orgFallback } from "../lib/org-model.js";
 import { lensFor, viewRpc, setLens, _resetOrg, LENS_KEY } from "../lib/org.js";
-import { rpcMissing } from "../api/supabase";
+import { rpcMissing } from "../lib/supabase";
 import { VenueLens, LensNote } from "../ui/venue-lens.jsx";
 import { LeaderboardScreen } from "../ui/screens-gamification.jsx";
 import { GainScreen } from "../ui/gain.jsx";

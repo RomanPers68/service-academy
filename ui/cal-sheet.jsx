@@ -4,7 +4,7 @@
 // добавить в Google Календарь; «Скопировать ссылку»; «Сбросить ссылку» — если отдал её кому-то (старая перестанет работать).
 import React from "react";
 import { createPortal } from "react-dom";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { serverMissing } from "../lib/server-text";
 

@@ -3,7 +3,7 @@
 // напоминания, кто входит без кода) и «Подключить бота» одной кнопкой (вместо SQL и ссылки с «<проект>»); расписания
 // pg_cron; адрес приложения для кнопок бота. Сервер — этап 39 (server_check, owner_tg_setup), разбор — lib/server-check.js.
 import React from "react";
-import { rpc, saToken, rpcMissing, SUPABASE_URL } from "../api/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { serverReport, stageFns, stageBuckets, REPO_URL, pushReport, pushErrText } from "../lib/server-check";

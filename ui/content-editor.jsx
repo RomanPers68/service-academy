@@ -21,7 +21,7 @@ import { hintsFor } from "../data/hints";
 import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { createPortal } from "react-dom";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { TRACKS, trackOf, customIcon } from "../lib/tracks";
 import { MOD_SVG, UI_SVG } from "./icons";
 import { faceIcon } from "./icons-extra";   // v75 (Доп. 388): настроение гостя — лицами, не эмодзи

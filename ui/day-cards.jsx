@@ -13,7 +13,7 @@ import { Candle, Glass, Ic, plural } from "./table-bits";
 import { Flame, Wine, Laurel, Medal, Val, palette, nextStreakTier } from "./day-emblems";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle, LABEL_CSS } from "./tokens";   // v73 (Доп. 386): подписи курсивом вместо моноширинного капса
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { serverMissing } from "../lib/server-text";   // v58 (Доп. 371)
 import { PushBlock, ChannelPick } from "./push-block";   // v137 (Доп. 450)
 import { RHYTHMS, COUNTS, dishWord, remindLine } from "../lib/menu-repeat";   // v193 (Доп. 518): блюда в разминке — свой ритм

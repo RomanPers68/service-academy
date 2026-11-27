@@ -3,7 +3,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate, readPhoto } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { cocktailRecords, withCocktail, withoutCocktail, recToCocktail, cachedShared } from "../lib/deck-extras";
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";

@@ -15,7 +15,7 @@ import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone (общая с чатом)
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../lib/supabase";
 import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf, webAsked, webMore, webCheckable, drinkAssistantContext } from "../lib/reference-context";   // v130: и вина с крепким; v152: интернет
 import { siteOf, oneSite, webErrText, webPost, slimHistory } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»; v154: причина ошибки поиска
 import { WINE, SPIRIT } from "../lib/drinks";

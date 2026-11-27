@@ -14,7 +14,7 @@ import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { CASE_OUTCOMES, CASE_LIMITS, outcomeLabel, caseDraft, draftProblem, draftToSit, casesToSits, readPlayed, caseAiPrompt, parseCaseAi } from "../lib/cases";
 import { MicButton } from "./mic";
 

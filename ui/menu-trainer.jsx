@@ -26,7 +26,7 @@ import { menuVenues } from "../lib/org-model";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
-import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи
 import { TimerBar, LiquidSegment } from "./widgets";
@@ -297,7 +297,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v204</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v205</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

@@ -10,7 +10,7 @@
 //             сообщение в Telegram в день); вехи 7, 30 и 100 дней. Без пары — приглашения и выбор.
 // Лениво: грузится вместе с вкладкой, приложению на старте не нужен.
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { Candle, Ic } from "./table-bits";
 import { ensureTableCss } from "./table-css";
 import { frostOf } from "./home-hubs";

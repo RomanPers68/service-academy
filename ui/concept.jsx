@@ -26,7 +26,7 @@
 // «Ознакомлен(а)» вместо «Прочитал(а)» и раздел целиком в PDF; у блока «Рассказ гостю» — тренажёр. Руководителю: лист
 // ознакомления с датами и PDF для отдела кадров, история блока с «Вернуть», удалённые блоки (ui/concept-more.jsx, этап 58).
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { TRACKS } from "../lib/tracks";

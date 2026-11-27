@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import { serverStage } from "../lib/server-text";   // v58 (Доп. 371)
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../lib/supabase";
 import { MODULES } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";

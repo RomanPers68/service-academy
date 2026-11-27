@@ -7,7 +7,7 @@ import { inkOf } from "../lib/tracks";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../lib/supabase";
 import { MODULES } from "../data/modules";
 import { countable } from "../lib/info-topics";   // v144 (Доп. 465): темы «для ознакомления» не считаются в прогрессе
 import { ROLES, RESTAURANTS } from "../data/roles";

@@ -328,7 +328,7 @@ describe("v159: сколько блюд в стопе — счёт по копи
   });
   it("модуль лёгкий: ни заготовок меню, ни коктейлей в стартовый набор он не тянет", () => {
     const imports = (f) => [...rd(f).matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
-    expect(imports("lib/menu-stops.js")).toEqual(["../api/supabase", "./menu-fresh.js"]);
+    expect(imports("lib/menu-stops.js")).toEqual(["./supabase", "./menu-fresh.js"]);
     expect(imports("lib/menu-fresh.js")).toEqual([]);
     expect(imports("lib/week-pulse.js")).toEqual([]);
     expect(imports("ui/stop-badge.jsx")).toEqual(["react", "../lib/menu-stops", "../lib/menu-fresh"]);

@@ -2,7 +2,7 @@
 // Четыре шага, как в уроке «Админ на смене»: открытие (чек-лист), брифинг с гоу-листом, закрытие (чек-лист), итог гоу-листа.
 // Сделанное отмечается само (lib/routine.js), каждый шаг открывает свой экран, строка внизу — следующий шаг.
 import React from "react";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { frostOf } from "./home-hubs";

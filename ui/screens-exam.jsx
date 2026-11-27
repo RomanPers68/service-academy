@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import { useWide, useColumn } from "./viewport";   // v52 (Доп. 365): сертификаты — карточками в две колонки на широком экране
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase } from "../lib/supabase";
 import { MODULES, programOf } from "../data/modules";
 import { ROLES, RESTAURANTS } from "../data/roles";
 import { GLOSSARY } from "../data/glossary";

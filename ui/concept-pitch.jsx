@@ -7,7 +7,7 @@
 // concept_pitch, lib/concept-pitch.js). Помощник не ответил — разбор по словам образца здесь же. Образец открывается
 // после попытки, чтобы не пересказывать его с экрана.
 import React from "react";
-import { SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, GREEN } from "./tokens";
 import { UI_SVG } from "./icons";

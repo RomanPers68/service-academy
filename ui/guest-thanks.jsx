@@ -8,7 +8,7 @@
 //   в обычном браузере, днём и в светлом зале); после отправки сердце рисуется золотой линией и один раз «бьётся».
 //   Кто выключил анимацию в телефоне (prefers-reduced-motion), видит сердце сразу целиком.
 import React from "react";
-import { rpc } from "../api/supabase";
+import { rpc } from "../lib/supabase";
 import { THANKS_TAGS, THANKS_TEXT_MAX, posLabel, deviceId, reviewButtons, HEART_PATH } from "../lib/guest-thanks";
 
 // цвета бумаги: текст золотом — тёмное золото (6:1 на бумаге), светлое золото — только линии и рисунок

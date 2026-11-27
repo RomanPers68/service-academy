@@ -8,7 +8,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { serverMissing, serverError } from "../lib/server-text";   // v58 (Доп. 371): сервер не ответил — по-человечески
 import { POS_LABELS } from "../data/positions";
-import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, rpc, saToken, rpcSync, flushQueue, supabase, rpcMissing } from "../lib/supabase";
 import { MODULES, MODULES_INDEX } from "../data/modules";
 import { cmsTitleMap } from "../lib/custom-modules";
 import { tones, toneOfFail, toneOfScore, glass, Avatar, Chip, Ring, Bar, ExitTrack, MissPlate, SectionLabel, Icon, Spark } from "./analytics-kit";

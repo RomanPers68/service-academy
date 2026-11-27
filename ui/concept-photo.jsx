@@ -4,7 +4,7 @@
 // по касанию; запомненные в памяти не просим второй раз (как фото в чате).
 import React from "react";
 import { createPortal } from "react-dom";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { useSoftImg, PhotoWait } from "./lesson-photo";   // v165 (Доп. 490): фото проявляется, как обложки разделов
 
 const PH = new Map();   // "id|1" (целиком) или "id|0" (превью) → data: URL или обещание

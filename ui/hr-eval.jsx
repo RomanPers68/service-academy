@@ -11,7 +11,7 @@
 import React from "react";
 import { HR_EVAL, HR_EVAL_V, EXP_LABEL, evalMessages } from "../data/hr-eval";
 import { evalItem, evalSummary, REF_SHARE, REAL_N, REAL_SHARE } from "../lib/hr-quality";
-import { saToken, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
 import { vibrate } from "../lib/utils";

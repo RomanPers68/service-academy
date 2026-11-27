@@ -26,7 +26,7 @@ import { trainable, newWines, learnedKey, allLearned, srKey, srMark, srDue, srKn
 import { WINE } from "../lib/drinks";   // v127: вид напитка (вина, крепкое)
 import { findPronounce, stressText } from "../lib/pronounce";   // v124: «Как произносить» на обороте карточки
 import { SayButton } from "./pronounce";
-import { rpc, rpcSync, saToken, rpcMissing } from "../api/supabase";   // v125: тренировка — на сервер (этап 44)
+import { rpc, rpcSync, saToken, rpcMissing } from "../lib/supabase";   // v125: тренировка — на сервер (этап 44)
 import { markSent } from "../lib/wine-sync";   // v126: выученное до v125 — досылка помнит, что ушло
 import { positionLabel } from "../data/positions";
 import { SkelCards } from "./skeleton";

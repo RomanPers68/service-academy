@@ -6,7 +6,7 @@
 //   • кто как знает меню: знает, не уверен, когда присылал.
 // Просить можно только в своём заведении; другое заведение (сеть) — только смотреть.
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { SkelCards } from "./skeleton";

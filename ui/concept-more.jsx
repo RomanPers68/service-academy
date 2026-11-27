@@ -11,7 +11,7 @@
 //     история блока с «Вернуть» (HistoryPanel), удалённые блоки с «Вернуть» (GonePanel).
 // Вид «Линза» (метки data-lens-*), как у остального «О нас».
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, GREEN, RED } from "./tokens";
 import { UI_SVG } from "./icons";

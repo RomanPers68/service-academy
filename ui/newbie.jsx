@@ -8,7 +8,7 @@
 // data-lens-*, правила — ui/home-look.jsx); галочки шагов, плашки тем, выбор минут и полоски — прежние.
 import React from "react";
 import { createPortal } from "react-dom";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate, isFemaleName } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { serverMissing } from "../lib/server-text";

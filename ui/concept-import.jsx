@@ -14,7 +14,7 @@
 // блока — его фото (убрать или отдать другому блоку), фото без блока — отдельной строкой; при сохранении фото сжимаются,
 // как снятые телефоном, и встают в блок.
 import React from "react";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD } from "./tokens";
 import { Sign } from "./signs";

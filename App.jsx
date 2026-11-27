@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import React from "react";
 
 // ── Вынесенные модули ──────────────────────────────────────────────
-import { rpc, saToken, rpcSync, rpcSyncSeq, flushQueue, rpcMissing, startBoot } from "./api/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом; v194: rpcSyncSeq
+import { rpc, saToken, rpcSync, rpcSyncSeq, flushQueue, rpcMissing, startBoot } from "./lib/supabase";   // v59: без открытого ключа; v64 (Доп. 377): startBoot — старт одним запросом; v194: rpcSyncSeq
 import { customIcon, TRACK_COLOR } from "./lib/tracks";
 import { buildCustomModules } from "./lib/custom-modules";
 import { normConcept, conceptFromStorage, conceptToStorage, conceptModules, conceptRecordsAll, conceptUnread, conceptHas, conceptAck } from "./lib/concept";   // v139 (Доп. 454): «О нас»
@@ -787,7 +787,7 @@ function ServiceAcademy() {
         let token = null;
         try { token = localStorage.getItem("sa_session_token"); } catch(e) {}
         if (!token) { clearTimeout(fallback); setStorageLoaded(true); setScreen("login"); return; }
-        startBoot(token);   // v64 (Доп. 377): один запрос за всем стартовым — whoami, my_state, day_brief… (api/supabase.js)
+        startBoot(token);   // v64 (Доп. 377): один запрос за всем стартовым — whoami, my_state, day_brief… (lib/supabase.js)
 
         let cached = null;
         try { const c = localStorage.getItem("sa_profile"); if (c) cached = JSON.parse(c); } catch(e) {}

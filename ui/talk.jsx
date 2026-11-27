@@ -8,7 +8,7 @@ import React from "react";
 import { createTalk, primeTalk } from "../lib/talk";
 import { voiceSupported } from "../lib/voice";
 import { vibrate } from "../lib/utils";
-import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken } from "../lib/supabase";
 
 const CSS = `
 .tkb{--tkb-bg:rgba(28,21,9,.55);--tkb-edge:rgba(200,160,80,.30);--tkb-text:#EFE4C8;--tkb-sub:#B4A584;--tkb-me:rgba(244,232,206,.92);--tkb-them:#D7B06A;

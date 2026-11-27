@@ -145,10 +145,10 @@ describe("v59: личные ключи, обходы, словари", () => {
     expect(app).not.toContain("rest/v1/");
     expect(app).not.toContain("loadLegacyProgress(");
     expect(app).not.toContain("supabase.from(");
-    expect(app).not.toMatch(/import \{[^}]*SUPABASE_KEY[^}]*\} from "\.\/api\/supabase"/);
+    expect(app).not.toMatch(/import \{[^}]*SUPABASE_KEY[^}]*\} from "\.\/lib\/supabase"/);
     const g = rd("ui/screens-gamification.jsx");
     expect(g).not.toContain("rest/v1/");
-    expect(g).not.toMatch(/import \{[^}]*SUPABASE_KEY[^}]*\} from "\.\.\/api\/supabase"/);
+    expect(g).not.toMatch(/import \{[^}]*SUPABASE_KEY[^}]*\} from "\.\.\/lib\/supabase"/);
   });
   it("lib/dates.js — один словарь дат; копии в отчёте, «Пути мастера», графике, «Смене» и «Заданиях дня» ссылаются на него", () => {
     expect(MONTH_GEN[9]).toBe("октября"); expect(MONTH_SHORT[4]).toBe("мая"); expect(WEEKDAY_CAP[0]).toBe("Воскресенье");

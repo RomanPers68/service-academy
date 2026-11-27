@@ -1,6 +1,6 @@
 // v126 (Доп. 439): выученное до v125 — на сервер. Владелец (31.10): «Да, давай» — кто нажал «Выучил новые вина ✓» до
 // обновления, запомнил это только на телефоне, и в «Кто выучил новые вина» (этап 44) был «учит». lib/wine-train.js
-// (syncKey, catchUpPlan, sentAfter, otherUsers), lib/wine-sync.js (wineCatchUp, markSent), api/supabase.js (rpcSync отвечает,
+// (syncKey, catchUpPlan, sentAfter, otherUsers), lib/wine-sync.js (wineCatchUp, markSent), lib/supabase.js (rpcSync отвечает,
 // чем кончилось), App.jsx (через 8 с после входа), ui/wine-list.jsx (при открытии карты), ui/wine-train.jsx (wineReport
 // запоминает, что ушло). e2e — tools/claude/e2e-v126.mjs.
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
@@ -127,7 +127,7 @@ describe("v126: телефон досылает (lib/wine-sync.js)", () => {
   });
   it("markSent запоминает сразу и умеет вернуть как было; rpcSync отвечает, чем кончилось", async () => {
     const { markSent } = await import("../lib/wine-sync.js");
-    const { rpcSync } = await import("../api/supabase.js");
+    const { rpcSync } = await import("../lib/supabase.js");
     ls.setItem(R.syncKey("R9"), JSON.stringify({ stats: 1 }));
     const undo = markSent("R9", "passed", ["w-pro"]);
     expect(flag("R9")).toEqual({ stats: 1, passed: "w-pro" });
@@ -140,7 +140,7 @@ describe("v126: телефон досылает (lib/wine-sync.js)", () => {
 });
 
 describe("v126: где досылается", () => {
-  const APP = rd("App.jsx"), L = rd("ui/wine-list.jsx"), TR = rd("ui/wine-train.jsx"), API = rd("api/supabase.js"), S = rd("lib/wine-sync.js");
+  const APP = rd("App.jsx"), L = rd("ui/wine-list.jsx"), TR = rd("ui/wine-train.jsx"), API = rd("lib/supabase.js"), S = rd("lib/wine-sync.js");
   it("через 8 с после входа (App), при открытии винной карты; wineReport запоминает, что ушло, и возвращает при отказе", () => {
     expect(APP).toContain('import { wineCatchUp } from "./lib/wine-sync";');
     expect(APP).toContain("const t = setTimeout(() => { wineCatchUp({ restaurant: profile.restaurant, uk: ukP }); }, 8000);");

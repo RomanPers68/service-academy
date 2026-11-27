@@ -23,7 +23,7 @@ import { RefContent } from "./ReferenceSection";
 import { labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
 import { vibrate } from "../lib/utils";
-import { saToken } from "../api/supabase";
+import { saToken } from "../lib/supabase";
 import { REF_AI_LIMITS, REF_NEW_MODES, refAiCheck, keepRefMarks, refFragment, refTake, refPlanClean, refCheckClean, refFixesText, refSources } from "../lib/ref-ai";
 import { siteOf, oneSite, openOut } from "../lib/ai-web";
 

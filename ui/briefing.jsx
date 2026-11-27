@@ -18,7 +18,7 @@ import { LineArt } from "./line-art";   // v87: рисунок золотой л
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { isNetwork } from "../lib/org-model";   // v199 (Доп. 524): фокус смены — ошибки своего заведения и у сети
 import { programAll } from "../data/modules";
 import { withConceptPrograms, conceptFromStorage } from "../lib/concept";   // v139 (Доп. 454): вопрос команде и из «О нас»

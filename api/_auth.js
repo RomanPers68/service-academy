@@ -1,4 +1,5 @@
-// api/_auth.js — общая защита серверных AI-функций (/api/assistant, /api/menu-import).
+// api/_auth.js — общая защита серверных AI-функций: /api/menu-import, /api/wine-import, /api/lesson-assist,
+// /api/web-answer. (Спящая заготовка /api/assistant удалена в v205, Доп. 531: Наставник работает через ai-chat.)
 // Файлы с «_» в начале имени Vercel НЕ превращает в маршруты — это внутренний хелпер.
 //
 // Две линии обороны:

@@ -6,7 +6,7 @@
 // в Telegram и во сколько (morning_set), «Прислать сейчас» (morning_send_now).
 // v111 (Доп. 424): в виде «Линза» карточки, кружки строк и кнопки — линзой (метки data-lens-*, правила — ui/home-look.jsx).
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { lateMinText } from "../lib/late";
 import { GOLD, labelStyle } from "./tokens";

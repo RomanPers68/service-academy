@@ -17,7 +17,7 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../api/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../lib/supabase";
 import { WINE, SPIRIT } from "../lib/drinks";
 import { dishesOf, rememberSharedMenu } from "../lib/reference-context";
 import { drinkShareItem, cocktailShareItem } from "../lib/share-items";

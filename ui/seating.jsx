@@ -23,7 +23,7 @@ import { LineArt } from "./line-art";   // v87: рисунок золотой л
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { briefRoster } from "../lib/briefing";
 import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,

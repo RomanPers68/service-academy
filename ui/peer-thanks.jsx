@@ -7,7 +7,7 @@ import React from "react";
 import { LineArt } from "./line-art";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { serverMissing } from "../lib/server-text";
 import { nm, upFirst } from "../lib/morning";
 import { FaceOver } from "./staff-photo";   // v160 (Доп. 485): фото того, кто сказал спасибо; по нажатию — крупно

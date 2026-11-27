@@ -14,7 +14,7 @@ import { LineArt } from "./line-art";   // v87: рисунок золотой л
 import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { qrMatrix, qrPath } from "../lib/qr";
 import { tagLabel, thanksUrl, posLabel, tagsLine, reviewKind, REVIEW_KINDS } from "../lib/guest-thanks";
 import { PRINT_LAYOUTS, PRINT_ORDER, drawThanksPrint, printFontsReady } from "./thanks-print";

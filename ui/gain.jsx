@@ -6,7 +6,7 @@
 // v111 (Доп. 424): в виде «Линза» карточки, кружки с инициалами, кнопки и выбор месяца — линзой (метки data-lens-*, правила —
 // ui/home-look.jsx): выбранный месяц — стеклянная плашка с кольцом.
 import React from "react";
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { MODULES_INDEX } from "../data/modules";

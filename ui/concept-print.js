@@ -4,7 +4,7 @@
 // собирается здесь: блоки (сотруднику — его трека, руководителю — все), фото целиком из базы (concept_photo), даты
 // словами по часам телефона. Файл: в браузере рисуется на телефоне и скачивается; в Telegram скачать из памяти нельзя —
 // модель уходит под билет (concept_ticket, этап 58) и файл рисует /api/report (как отчёты, ui/report.jsx).
-import { rpc, saToken, rpcMissing } from "../api/supabase";
+import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { kindOf, conceptSection, conceptHero, blockFor, dayWords, dayDots } from "../lib/concept";
 import { lessonize } from "../lib/lesson-look";
 import { POSITION_LABEL } from "../data/positions";

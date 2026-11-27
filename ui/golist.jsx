@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../api/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { GO_MAX, GO_KINDS, GO_KIND_WORD, GO_LIMITS, goCandidates, goSearch, goItem, goNormalize, goRows, goAiPrompt, goParseAi, goSoldNormalize, goSoldLine, dayBefore } from "../lib/golist";
 
 const portal = (el) => (typeof document !== "undefined" && document.body && document.body.nodeType === 1 ? createPortal(el, document.body) : el);

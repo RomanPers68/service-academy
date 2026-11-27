@@ -13,7 +13,7 @@ import { ROLES } from "../data/roles";
 import { LIVE_CHECK } from "../data/live-check";
 import { programAll } from "../data/modules";
 import { useAllModules } from "../lib/use-content";
-import { saToken } from "../api/supabase";
+import { saToken } from "../lib/supabase";
 import { mergeBank, lcErr65, LC_TRACKS } from "../lib/live-check";
 import { useLcQuestions, loadQuestions, lcQuestionSave, lcFlagDone } from "../lib/live-check-api";
 

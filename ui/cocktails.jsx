@@ -2,7 +2,7 @@ import React from "react";
 import { COCKTAILS } from "../data/cocktails";
 import { readBarcard, withBarcard, cachedShared, houseCocktails, cocktailFaq, cocktailFaqSmart, familyOf, dishLinks, bumpDaily } from "../lib/deck-extras";
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): «Наоборот» и «Родня» — след для советов в уроках
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { loadMastery, buildScenario } from "../lib/bar-lab";
 import { CocktailArt } from "./cocktail-art";
 import { Sign } from "./signs";   // v75 (Доп. 388): лёд и гарниш в порядке сборки — значками вместо ❄ ✿

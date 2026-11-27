@@ -30,7 +30,7 @@ import React from "react";
 import { useGoToday } from "../lib/use-go-today";   // v141
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
-import { rpc, saToken } from "../api/supabase";
+import { rpc, saToken } from "../lib/supabase";
 import { cachedShared } from "../lib/deck-extras";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { wineRecords, groupByColor, findWines, wineTitle, wineLine, winePrice, unchecked, COLOR_GROUP, COLOR_RU, FIELD_RU } from "../lib/wine";

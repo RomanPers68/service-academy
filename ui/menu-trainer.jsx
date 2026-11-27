@@ -38,7 +38,7 @@ import { labelStyle } from "./tokens";
 import { VoicePill, VoiceRecorder, VoicesList } from "./voice-note";
 import { SayLine, PronounceScreen } from "./pronounce";
 import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
-import { MENU_PDF_MAX, MENU_PDF_BIG, MENU_NO_DETAIL, runMenuImport } from "../lib/menu-import";   // v204 (Доп. 530): импорт PDF по частям
+import { MENU_PDF_MAX, MENU_PDF_BIG, MENU_NO_DETAIL, runMenuImport, makeMenuPost } from "../lib/menu-import";   // v204 (Доп. 530): импорт PDF по частям; v206: через Supabase
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
 import { descPrompt, descParse } from "../lib/dish-desc";   // v153 (Доп. 477): пять вариантов «вкусного описания»
@@ -297,7 +297,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v205</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v206</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -959,9 +959,8 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     fr.onload = () => {
       const pdfBase64 = String(fr.result).split(",")[1];
       const token = saToken();
-      const post = (b) => fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...b, token }) })
-        .then((r) => r.json().catch(() => null).then((j) => ({ ok: r.ok, status: r.status, j })))
-        .catch(() => ({ ok: false, status: 0, j: null }));
+      // v206 (Доп. 532): в функцию Supabase menu-import, как Наставник; её нет (404) — в /api/menu-import (там у владельца было 403)
+      const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token });
       runMenuImport({ pdfBase64, post, onProgress: setImportStep })
         .then(({ dishes, short }) => { setImporting(false); setImportStep(null); setImportShort(short.length); setPreview(dishes); })
         .catch((err) => { setImporting(false); setImportStep(null); setImportErr(String((err && err.message) || err || "Не получилось разобрать PDF")); });

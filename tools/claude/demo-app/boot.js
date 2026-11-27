@@ -1104,7 +1104,8 @@ window.fetch = function (input, init) {
     return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
   if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return unpackWeb(b).then((x) => wait(1500).then(() => json(x.mode === "desc" ? demoDesc(x) : demoWebAnswer(x)))); }   // v152; v153: описания блюд; v155: упакованный запрос
-  if (/\/api\/menu-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+  // v206 (Доп. 532): импорт идёт в функцию Supabase menu-import (её нет — в /api/menu-import); в демо — один ответ на оба
+  if (/\/functions\/v1\/menu-import|\/api\/menu-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return wait(b.mode === "details" ? 700 : 500).then(() => demoMenuImport(b)); }   // v204: импорт меню из PDF по частям
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));

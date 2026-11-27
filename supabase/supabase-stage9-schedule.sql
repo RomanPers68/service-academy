@@ -86,7 +86,9 @@ begin
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
-  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true then
+  -- [ДОСТУП] владелец ИЛИ менеджер / руководящий состав / старший бармен
+  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true
+     and coalesce(v->'employee'->>'position', '') not in ('manager', 'senior', 'senior_bartender') then
     return json_build_object('ok', false, 'error', 'forbidden');
   end if;
   v_who := trim(concat_ws(' ', v->'employee'->>'name', v->'employee'->>'surname'));
@@ -113,7 +115,9 @@ begin
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
-  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true then
+  -- [ДОСТУП] владелец ИЛИ менеджер / руководящий состав / старший бармен
+  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true
+     and coalesce(v->'employee'->>'position', '') not in ('manager', 'senior', 'senior_bartender') then
     return json_build_object('ok', false, 'error', 'forbidden');
   end if;
   v_who := trim(concat_ws(' ', v->'employee'->>'name', v->'employee'->>'surname'));
@@ -200,7 +204,9 @@ begin
   if coalesce((v->>'ok')::boolean, false) is not true then
     return json_build_object('ok', false, 'error', 'auth');
   end if;
-  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true then
+  -- [ДОСТУП] владелец ИЛИ менеджер / руководящий состав / старший бармен
+  if coalesce((v->'employee'->>'is_admin')::boolean, false) is not true
+     and coalesce(v->'employee'->>'position', '') not in ('manager', 'senior', 'senior_bartender') then
     return json_build_object('ok', false, 'error', 'forbidden');
   end if;
   v_who := trim(concat_ws(' ', v->'employee'->>'name', v->'employee'->>'surname'));

@@ -144,7 +144,7 @@ begin
     n := _sa_wipe_person(tbl, uid, who, v_name, v_surname, rest);
     if n > 0 then rep := rep || tbl || '=' || n || ' '; end if;
   end loop;
-  if to_regclass('public.player_resets') is not null then
+  if uid is not null and to_regclass('public.player_resets') is not null then   -- нет такого сотрудника (новая база) — метка не нужна
     insert into player_resets(restaurant, employee, reset_at) values (rest, who, now())
       on conflict (employee, restaurant) do update set reset_at = now();
   end if;

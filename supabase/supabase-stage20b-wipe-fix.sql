@@ -96,7 +96,7 @@ begin
   end if;
 
   -- 4. метка сброса, чтобы телефон сотрудника тоже очистился
-  if to_regclass('public.player_resets') is not null then
+  if uid is not null and to_regclass('public.player_resets') is not null then   -- нет такого сотрудника (новая база) — метка не нужна
     insert into player_resets(restaurant, employee, reset_at)
     values ((select e.restaurant from employees e where e.id::text = uid), who, now())
     on conflict (employee, restaurant) do update set reset_at = now();

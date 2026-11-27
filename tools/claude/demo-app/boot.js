@@ -1102,7 +1102,11 @@ window.fetch = function (input, init) {
   if (/\/index\.html\?ts=/.test(url)) return Promise.resolve(new Response("", { status: 200 }));   // сверка сборки: в демо одна
   if (/\/(app-)?api\/lesson-assist/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {} return wait(b.mode === "concept" || b.mode === "concept_plan" ? 1500 : 900).then(() => json(demoLessonAssist(b))); }   // v139; v191 — план «О нас»
   if (/\/(app-)?api\/wine-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
-    return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
+    return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => {
+      // v209: что ушло — режим, вино или крепкое, текст карты (Word) или PDF
+      try { (window.__demoWineCalls = window.__demoWineCalls || []).push({ mode: x.mode || "", kind: x.kind || "wine", text: x.text ? String(x.text).slice(0, 400) : "", pdf: !!x.pdfBase64 }); } catch (e) {}
+      return wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)));
+    }); }   // v120; v155: упакованный запрос поиска
   if (/\/(app-)?api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return unpackWeb(b).then((x) => wait(1500).then(() => json(x.mode === "desc" ? demoDesc(x) : demoWebAnswer(x)))); }   // v152; v153: описания блюд; v155: упакованный запрос
   // v207 (Доп. 533): винная карта, помощник уроков и поиск — в функцию Supabase app-api (/functions/v1/app-api/<имя>), демо

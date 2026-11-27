@@ -6,6 +6,8 @@
 //   "names" — { names: [...] } (до 15 за раз) → то же для списка названий (вставили столбиком из кассы, Word, переписки);
 //   "photo" — { imageBase64, mime } → страница винной карты снимком телефона: позиции с листа + что знает модель;
 //   "pdf"   — { pdfBase64 } → винная карта в PDF, как импорт меню;
+//   "doc"   — v209 (Доп. 535): { text } → карта из Word (.docx) или текста: Word читается на телефоне, сюда приходит
+//             текст; дальше — как у PDF (лист, after, cut). Больше DOC_MAX знаков — 413;
 //   "taste" — v132 (Доп. 445): { items: [...] } (до 25) → { tastes } — вкус по шкалам для Сомелье;
 //   "label" — { imageBase64, mime } → v122 (Доп. 435): бутылка снимком — модель читает этикетку (название, производитель,
 //             регион, год, сорт, крепость, объём), стиль и подачу — из своих знаний; цены и «бокалом» не заполняет.
@@ -62,6 +64,10 @@ const SHAPE = `{
   "story": "2–3 предложения о вине для официанта: стиль, чем интересно, как рассказать гостю"
 }`;
 // с листа и из PDF — только факты из карты (компактно: длинная карта должна уместиться в ответ)
+// v209 (Доп. 535): карта из Word или текста — модели пояснение, что вместо листа этот текст
+export const DOC_MAX = 120000;
+export const DOC_HEAD = "Карта — текст из файла (Word или текст вместо фото и PDF; всё, что сказано про лист, относится к этому тексту):\n\n";
+
 const SHEET_SHAPE = `{
   "name": "название вина, как в карте",
   "producer": "производитель",
@@ -422,10 +428,15 @@ export default async function handler(req, res) {
     const pdf = String(b.pdfBase64 || "").replace(/^data:[^;]*;base64,/, "");
     if (!pdf) return res.status(400).json({ error: "Файл не получен" });
     parts = [{ text: P.sheet(str(b.after, 120)) }, { pdf }];
+  } else if (b.mode === "doc") {   // v209: карта из Word или текста — текстом вместо листа
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    if (!text) return res.status(400).json({ error: "Файл не получен" });
+    if (text.length > DOC_MAX) return res.status(413).json({ error: "Текст карты слишком длинный: раздели файл на части" });
+    parts = [{ text: P.sheet(str(b.after, 120)) }, { text: DOC_HEAD + text }];
   } else return res.status(400).json({ error: "Неизвестный режим" });
 
   try {
-    const sheet = b.mode === "photo" || b.mode === "pdf";
+    const sheet = b.mode === "photo" || b.mode === "pdf" || b.mode === "doc";   // v209: и Word
     const max = sheet ? 16000 : 8000;
     const lim = b.mode === "fill" || b.mode === "label" ? quickLim() : null;   // v134: одна позиция — модель не держит запрос дольше 30 с
     const out = orKey ? await viaOpenRouter(orKey, parts, max, lim) : await viaAnthropic(anKey, parts, max, lim);

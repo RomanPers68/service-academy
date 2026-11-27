@@ -13,7 +13,7 @@
 //   lib/ref-ai.js
 //   supabase/functions/app-api/entry.js
 //   supabase/functions/app-api/shim.js
-// sources-sha256: c6bd0a0e470669161680935dd4978e96637bbdf2136be5fa8da6a105b5c15277
+// sources-sha256: 1c61607330210e53bd7e599ebbc8e1b076d78ae8419137629d3228cbbc905e13
 // supabase/functions/app-api/shim.js
 import { Buffer as Buffer2 } from "node:buffer";
 var g = globalThis;
@@ -394,6 +394,8 @@ var SHAPE = `{
   "short": "одна фраза для гостя, живо и без штампов, до 120 знаков",
   "story": "2–3 предложения о вине для официанта: стиль, чем интересно, как рассказать гостю"
 }`;
+var DOC_MAX = 12e4;
+var DOC_HEAD = "Карта — текст из файла (Word или текст вместо фото и PDF; всё, что сказано про лист, относится к этому тексту):\n\n";
 var SHEET_SHAPE = `{
   "name": "название вина, как в карте",
   "producer": "производитель",
@@ -850,9 +852,14 @@ async function handler2(req, res) {
     const pdf = String(b.pdfBase64 || "").replace(/^data:[^;]*;base64,/, "");
     if (!pdf) return res.status(400).json({ error: "Файл не получен" });
     parts = [{ text: P.sheet(str(b.after, 120)) }, { pdf }];
+  } else if (b.mode === "doc") {
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    if (!text) return res.status(400).json({ error: "Файл не получен" });
+    if (text.length > DOC_MAX) return res.status(413).json({ error: "Текст карты слишком длинный: раздели файл на части" });
+    parts = [{ text: P.sheet(str(b.after, 120)) }, { text: DOC_HEAD + text }];
   } else return res.status(400).json({ error: "Неизвестный режим" });
   try {
-    const sheet = b.mode === "photo" || b.mode === "pdf";
+    const sheet = b.mode === "photo" || b.mode === "pdf" || b.mode === "doc";
     const max = sheet ? 16e3 : 8e3;
     const lim2 = b.mode === "fill" || b.mode === "label" ? quickLim() : null;
     const out = orKey ? await viaOpenRouter(orKey, parts, max, lim2) : await viaAnthropic(anKey, parts, max, lim2);

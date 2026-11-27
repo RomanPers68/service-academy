@@ -54,6 +54,8 @@ import { drinkOf, bulkAsk, bulkPlan, bulkTotal, bulkJobs, bulkApply, webAsk, web
 import { siteOf, oneSite } from "../lib/ai-web";   // v152: ссылки «Нашлось в интернете»
 import { SPIRIT_CATS, SERVE_MODES, SPIRIT_GLASSES, PORTIONS, TEMP_HINT_SP } from "../lib/spirit";
 import { apiFetch } from "../lib/api-fetch";   // v207 (Доп. 533): AI-функции — через Supabase, Vercel — запасной
+import { DOC_ACCEPT, DOC_TEXT_MAX, fileKind, fileText } from "../lib/file-kind";   // v209 (Доп. 535): карта из Word
+import { docErr } from "../lib/docx-text";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
 const BATCH = 15;   // названий за один запрос AI
@@ -572,10 +574,25 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
   };
   // v122: длинная карта (владелец: «редактор pdf-ку не принял») — ответ мог оборваться; сервер отдаёт целые вина и cut,
   // тогда просим продолжение с вина после последнего прочитанного (after), до MAX_ROUNDS заходов; повторы — мимо
-  const runSheets = (files, kind) => {
+  // v209 (Доп. 535): владелец — «Да, давай» на «Сделать Word и для винной карты?». Файл карты: PDF — как раньше, файлом;
+  // Word (.docx) и текст — читаем на телефоне (lib/file-kind.js) и шлём текстом; старый .doc и другое — сразу словами
+  const docText = (f, sub) => fileText(f, sub).then((t) => {
+    if (!t) throw new Error("В файле не нашлось текста карты.");
+    if (t.length > DOC_TEXT_MAX) throw new Error("Текст карты слишком длинный: раздели файл на части.");
+    return t;
+  }, (e) => { throw new Error(docErr(e)); });
+  const onCardFile = (f) => {
+    const k = fileKind(f);
+    if (k === "pdf") { runSheets([f], "pdf"); return; }
+    if (k === "docx" || k === "txt") { runSheets([f], "doc", k); return; }
+    setImp({ stage: "pick", err: k === "doc" ? "Старый формат Word (.doc) не открыть. Сохрани карту как .docx или PDF." : "Подойдёт PDF, Word (.docx) или текст (.txt)." });
+  };
+  // v209 (Доп. 535): kind "doc" — карта из Word или текста (sub: "docx" | "txt"): читаем на телефоне, на сервер — текстом
+  const runSheets = (files, kind, sub = "") => {
     const found = [], seen = new Set(); let k = 0, err = "";
     const take = (ws) => { let n = 0; for (const raw of ws) { const w = fromAi(raw); const key = normName(K.title(w)); if (!w.name || seen.has(key)) continue; seen.add(key); found.push(w); n++; } return n; };
-    const label = () => (kind === "pdf" ? "Читаю PDF" : "Читаю страницу") + (found.length ? ", прочитано " + K.word(found.length) : "");
+    const label = () => (kind === "pdf" ? "Читаю PDF" : kind === "doc" ? (sub === "txt" ? "Читаю текст" : "Читаю Word") : "Читаю страницу")
+      + (found.length ? ", прочитано " + K.word(found.length) : "");
     const step = () => {
       if (k >= files.length) {
         if (!found.length) { setImp({ stage: "pick", err: err || K.t.sheetNone }); return; }
@@ -583,9 +600,10 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
       }
       const f = files[k];
       setImp({ stage: "work", label: label(), done: k, total: files.length, step: 1 });
-      (kind === "pdf" ? fileB64(f) : shrink(f)).then((b) => {
+      (kind === "pdf" ? fileB64(f) : kind === "doc" ? docText(f, sub) : shrink(f)).then((b) => {
         let round = 0, after = "";
-        const ask = () => askAiK(kind === "pdf" ? { mode: "pdf", pdfBase64: b, after } : { mode: "photo", imageBase64: b, mime: "image/jpeg", after }).then((j) => {
+        const ask = () => askAiK(kind === "pdf" ? { mode: "pdf", pdfBase64: b, after } : kind === "doc" ? { mode: "doc", text: b, after }
+          : { mode: "photo", imageBase64: b, mime: "image/jpeg", after }).then((j) => {
           const n = take(j.wines); round++;
           setImp({ stage: "work", label: label(), done: k, total: files.length, step: 1 });
           if (j.cut && n && round < MAX_ROUNDS) { after = String(j.wines[j.wines.length - 1].name || ""); return ask(); }
@@ -660,7 +678,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
           <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-imp="bottles" onClick={() => bottleRef.current && bottleRef.current.click()} style={{ ...softBtn, textAlign: "left", padding: "12px 14px", fontWeight: "normal" }}><b>Фото бутылок</b><br /><span style={{ fontSize: 12.5, color: sub }}>{K.t.bottlesSub}</span></button>
           <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-imp="photo" onClick={() => photoRef.current && photoRef.current.click()} style={{ ...softBtn, textAlign: "left", padding: "12px 14px", fontWeight: "normal" }}><b>Фото страницы</b><br /><span style={{ fontSize: 12.5, color: sub }}>Сними страницу карты, можно несколько снимков сразу</span></button>
           <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-imp="text" onClick={() => setImp({ stage: "text", text: "" })} style={{ ...softBtn, textAlign: "left", padding: "12px 14px", fontWeight: "normal" }}><b>Списком</b><br /><span style={{ fontSize: 12.5, color: sub }}>Вставь названия столбиком: из кассы, Word, переписки</span></button>
-          <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-imp="pdf" onClick={() => pdfRef.current && pdfRef.current.click()} style={{ ...softBtn, textAlign: "left", padding: "12px 14px", fontWeight: "normal" }}><b>PDF</b><br /><span style={{ fontSize: 12.5, color: sub }}>Если карта есть файлом</span></button>
+          <button type="button" className="sa-btn" data-lens-btn="soft" data-wine-imp="pdf" onClick={() => pdfRef.current && pdfRef.current.click()} style={{ ...softBtn, textAlign: "left", padding: "12px 14px", fontWeight: "normal" }}><b>PDF или Word</b><br /><span style={{ fontSize: 12.5, color: sub }}>Если карта есть файлом: PDF, Word (.docx) или текст</span></button>
         </div>
         {imp.err ? <div role="alert" style={{ fontSize: 13, color: red, marginTop: 8, lineHeight: 1.45 }}>{imp.err}</div> : null}
       </> : null}
@@ -735,7 +753,7 @@ export function WineEditor({ T, a11y, profile, onBack, startEditId, kind = "wine
       })() : null}
       <input ref={photoRef} type="file" accept="image/*" multiple onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ""; if (fs.length) runSheets(fs, "photo"); }} style={{ display: "none" }} />
       <input ref={bottleRef} type="file" accept="image/*" multiple data-wine-bottles-input="" onChange={(e) => { const fs = [...(e.target.files || [])]; e.target.value = ""; if (fs.length) runBottles(fs); }} style={{ display: "none" }} />
-      <input ref={pdfRef} type="file" accept="application/pdf" onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) runSheets([f], "pdf"); }} style={{ display: "none" }} />
+      <input ref={pdfRef} type="file" accept={DOC_ACCEPT} onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) onCardFile(f); }} style={{ display: "none" }} />
     </div>) : null;
 
   // ─────────────────────────────── ДОПИСАТЬ ПУСТОЕ (v151)

@@ -421,7 +421,7 @@ await run("IMPORT", async () => {
   const gv = wines(srv).find((w) => w.name === "Гави ди Гави");
   ok("IMPORT: с листа — цены и «бокалом» (помечены AI: прочитаны с фото)", !!gv && gv.byGlass && gv.priceGlass === 820 && gv.ai.includes("priceGlass"), JSON.stringify(gv));
   await a.page.locator("[data-wine-import-open]").click(); await sleep(300);
-  await a.page.locator('input[type="file"][accept="application/pdf"]').setInputFiles(OUT + "/in/carta.pdf");
+  await a.page.locator('input[type="file"][accept*="application/pdf"]').setInputFiles(OUT + "/in/carta.pdf");
   await until(() => shown(a.page, '[data-wine-import="review"]'), 8000);
   ok("IMPORT: PDF — файлом в запросе, «Бароло» и «Гави» уже в карте", calls.some((c) => c.mode === "pdf" && c.pdfBase64.length > 10) && /уже в карте: 2/.test(await txt(a.page.locator("[data-wine-found]"))));
   await a.page.locator('[aria-label="Закрыть импорт"]').click(); await sleep(200);

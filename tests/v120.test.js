@@ -187,7 +187,7 @@ describe("v120: экраны", () => {
   });
   it("импорт: фото (несколько снимков, ужимаются до 1800 px), PDF, списком по 15; ошибки — понятным текстом", () => {
     expect(E).toContain('accept="image/*" multiple');
-    expect(E).toContain('accept="application/pdf"');
+    expect(E).toContain("accept={DOC_ACCEPT}");   // v209: PDF, Word (.docx) или текст
     expect(E).toContain("const BATCH = 15;");
     expect(E).toContain("1800 / Math.max(img.width, img.height)");
     expect(E).toContain('"Сеть недоступна или функция /api/wine-import не развёрнута."');

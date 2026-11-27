@@ -566,6 +566,7 @@ const srv = makeServer({ today: TODAY, rest: R0, people: PEOPLE, tok: TOK, sstaf
   noStage63: lsGet("__demo_no63") === "1",   // v200 (Доп. 525): __demo_no63 = "1" — сервер без этапа 63 (живой проверки нет)
   noStage64: lsGet("__demo_no64") === "1",   // v201 (Доп. 526): __demo_no64 = "1" — сервер без этапа 64 (по пунктам — прежним вызовом, без сводки)
   noStage65: lsGet("__demo_no65") === "1",   // v202 (Доп. 527): __demo_no65 = "1" — сервер без этапа 65 (брифинг — блицем, без просьб, меню и правок вопросов)
+  noStage67: lsGet("__demo_no67") === "1",   // v211 (Доп. 537): __demo_no67 = "1" — сервер без этапа 67 (ведомости КБЖУ в базе нет)
   qday: lsGet("__demo_qday") === "1",   // v193: __demo_qday = "1" — «Вопрос дня» на главной (очередь с телефона, каждый второй — о блюде)
   progress: { "e-anna": DONE, "u-maria": [...DONE, "s1-3", "s1-4", "s2-1"], "e-petr": DONE.slice(0, 4), "e-vera": DONE, "u-roman": DONE, "e-ksenia": ["s0-1"] }, quizzes: { "e-anna": ["s0-q"], "u-maria": ["s0-q", "s1-q"], "u-roman": ["s0-q"] },
   wishes: [{ sid: 6, at: 3, kind: "hard" }, { sid: 4, at: 12, kind: "off" }],

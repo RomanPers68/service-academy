@@ -19,7 +19,8 @@ import { gainText, gainKb, monthAdd } from "../../../lib/gain.js";   // v109: «
 import { pushTextOf, pushActsOf, pushNew, pushCut } from "../../../lib/push-text.js";   // v137: уведомление на телефон, как этап 48
 import { CN_KIND_IDS, CN_TRACKS, CN_PUBLIC, cleanQuestion } from "../../../lib/concept.js";   // v139: «О нас», как этап 49
 import { orgSeed, venueOp, positionOp, cleanName } from "../../../lib/org-model.js";
-import { DEMO_NET } from "./net-seed.js";   // v210: сеть демо — здесь, в приложении встроенного списка нет   // v198: заведения и должности, как этап 61
+import { DEMO_NET } from "./net-seed.js";
+import { DEMO_NUTRITION } from "./nutrition-seed.js";   // v211: ведомость КБЖУ — у заведения на сервере   // v210: сеть демо — здесь, в приложении встроенного списка нет   // v198: заведения и должности, как этап 61
 import { lcLevel, lcCan, lcScore, LC_TRACKS, pointsScore, marksOf } from "../../../lib/live-check.js";   // v200: живая проверка, как этап 63; v201 — этап 64; v202 — этап 65
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -1414,6 +1415,16 @@ export function makeServer(opts) {
     if (fn === "spirit_progress_team") return wineTeam(p, b, "spirit");
     if (fn === "case_list") return { ok: true, lead: isLead(p), team: 0, fresh: 0, inbox: 0, mine_new: 0, top: null };
     if (fn === "menu_get") return clone(S.menu);
+    // v211 (этап 67): ведомость КБЖУ заведения — своё всем, кто вошёл, чужое — сети; opts.noStage67 — сервер без этапа
+    if (fn === "nutrition_get") {
+      if (opts.noStage67) return { code: "PGRST202", message: "Could not find the function" };
+      if (!p) return { ok: false, error: "auth" };
+      const rest = String(b.p_restaurant || "").trim() || p.restaurant || null;
+      const net = !!(p0.is_admin || p0.position === "senior");
+      if (rest && rest !== p.restaurant && rest !== p0.restaurant && !net) return { ok: false, error: "forbidden" };
+      const t = rest === R0 ? (opts.nutrition || DEMO_NUTRITION) : null;
+      return { ok: true, restaurant: rest, rows: clone(t ? t.rows : []), alias: clone(t ? t.alias : {}), tails: clone(t ? t.tails : []), updated_at: t ? TODAY + "T09:00:00Z" : null };
+    }
     if (fn === "menu_set") {
       if (!isLead(p)) return { ok: false, error: "forbidden" };
       let ds = b.p_dishes; try { if (typeof ds === "string") ds = JSON.parse(ds); } catch (e) { ds = null; }

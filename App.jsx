@@ -378,6 +378,7 @@ import { lateWindow } from "./lib/late";   // v99: «Опаздываю» — з
 import { MENU_SR_EVENT, readSr, markDish, missDish, readRhythm, saveRhythm, readWarmLog, saveWarmLog, noteWarm, isDishDay, readAsked, addAsked, askedToday,
   readFocus, personalQueue, warmPlan, sentPlan, knowData, warmData, warmWhat, rememberQdayMenu, qdayMenuOf, applyQdayMenu } from "./lib/menu-repeat";
 import { pushMenuKnow, scheduleMenuKnow, fetchMenuFocus } from "./lib/menu-know-sync";
+import { pickNutrition, loadNutrition } from "./lib/nutrition-sync";   // v211: ведомость КБЖУ — с сервера (этап 67)
 import { BreakDish, AskedSheet } from "./ui/dish-moments";
 const loadMenuPack = () => import("./lib/menu-pack");
 import { newbieModel, firstLine as nbFirstLine, dayDiff as nbDayDiff, doneCount as nbDoneCount, totalCount as nbTotalCount } from "./lib/newbie";   // v107 (Доп. 420): новичок; v110: прогресс в «Смене»
@@ -1238,6 +1239,9 @@ function ServiceAcademy() {
   // смены; «Знаю?» и ритм — на сервер (этап 59, lib/menu-know-sync.js), оттуда — просьбы руководителя и блюда, которые бот
   // назвал в напоминании (тогда в разминке — они же).
   const menuRest = (profile && profile.restaurant) || "";
+  // v211 (Доп. 537): ведомость КБЖУ своего заведения — с сервера (этап 67), сразу из копии на телефоне: Наставнику,
+  // колоде и печати меню. Тренажёр меню берёт ведомость того заведения, которое открыто.
+  useEffect(() => { if (!profile || !menuRest) return; pickNutrition(menuRest); loadNutrition(menuRest); }, [menuRest, profile && profile.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [menuPack, setMenuPack] = useState(null);
   const [menuTick, setMenuTick] = useState(0);
   const [menuLinkReady, setMenuLinkReady] = useState(false);   // ссылка «Разминка» из Telegram ждёт блюд (что назвал бот) до 6 секунд

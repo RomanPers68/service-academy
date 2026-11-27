@@ -1,7 +1,9 @@
 // КБЖУ по названию (Доп. 264): выгрузка «БЖУК Камчатка» ↔ названия меню.
 import { describe, it, expect } from "vitest";
-import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
-import { NUTRITION } from "../data/nutrition";
+import { nutritionOf, nutritionLine, dishNutrition, setNutrition } from "../lib/nutrition";
+import { DEMO_NUTRITION } from "../tools/claude/demo-app/nutrition-seed.js";   // v211: ведомость — у заведения в базе, здесь — та же
+const NUTRITION = DEMO_NUTRITION.rows;
+setNutrition(DEMO_NUTRITION, "пилот");
 
 describe("КБЖУ по названию", () => {
   it("таблица цела: у всех позиций есть выход и разумные числа", () => {

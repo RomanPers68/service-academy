@@ -14,7 +14,8 @@ import { pickLessonTip, readTipState, featureUsed, LAYER_TIPS } from "../lib/les
 import { AVAIL_KEY, SEAT_KEY, STAGE_KEY, readAvail, saveAvail, readSeatPlan, rememberSeatPlan, readStages, rememberStage, availCan, traceUse } from "../lib/tip-avail";
 import { availOf, refreshAvail, rememberSharedMenu, AVAIL_VOICES } from "../lib/reference-context";
 import { VOICE_KINDS, dishVoices } from "../lib/voice-note";
-import { dishNutrition } from "../lib/nutrition";
+import { dishNutrition, setNutrition } from "../lib/nutrition";
+import { DEMO_NUTRITION } from "../tools/claude/demo-app/nutrition-seed.js";   // v211: ведомость — с сервера, здесь — из демо
 import { syncTipData, SYNC_KEY } from "../lib/tip-sync";
 
 const rd = (p) => readFileSync(p, "utf8");
@@ -125,11 +126,15 @@ describe("v149: что есть у заведения — сводка на те
     expect(a).toMatchObject({ menu: true, voices: true, chefVoice: true, somVoice: true, kbju: "b", wines: true, spirits: false, barcard: false });
     for (const d of dishes.filter((x) => !x.archived)) expect(dishVoices(d).length > 0, d.id).toBe(true);
     expect(availOf([], [{ id: "__barcard__", cocktails: ["negroni"] }])).toMatchObject({ menu: false, voices: false, kbju: "", barcard: true });
-    // на образцах меню (пока своего нет) КБЖУ находится по названию — колода откроется на таком блюде
+    // на образцах меню (пока своего нет) КБЖУ находится по названию — колода откроется на таком блюде.
+    // v211: ведомость заведения приходит с сервера (этап 67); без неё по названию не находится
     const sample = Object.values(RESTAURANT_MENUS).flat();
+    expect(availOf(sample, []).kbju).toBe("");
+    setNutrition(DEMO_NUTRITION, "пилот");
     const withN = availOf(sample, []).kbju;
     expect(withN).toBeTruthy();
     expect(dishNutrition(sample.find((d) => String(d.id) === withN))).toBeTruthy();
+    setNutrition(null);
   });
   describe("кэш меню команды обновился — сводка пересчиталась", () => {
     let st;

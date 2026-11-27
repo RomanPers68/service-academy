@@ -20,6 +20,7 @@ import { MenuPrint } from "./menu-print";
 import { TeamMenuKnow } from "./menu-team-know";   // v193 (Доп. 518): «Как команда знает меню»
 import { isBarcard, modeOfDay, dailyCount, dailyStreak, allergenLabel } from "../lib/deck-extras";
 import { nutritionOf, nutritionLine, dishNutrition } from "../lib/nutrition";
+import { pickNutrition, loadNutrition } from "../lib/nutrition-sync";   // v211: ведомость КБЖУ заведения — с сервера
 import { RESTAURANT_MENUS, ALLERGENS_LIST } from "../data/menu";
 import { useOrg, loadOrg } from "../lib/org";   // v198 (Доп. 523): заведения — из общего списка (этап 61), а не из кода
 import { menuVenues } from "../lib/org-model";
@@ -143,12 +144,16 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
   const [shareErr, setShareErr] = React.useState(null); // текст ошибки загрузки меню команды
   const [shareStale, setShareStale] = React.useState(false); // показываем сохранённую версию, сервер недоступен
   const [focusNew, setFocusNew] = React.useState(false);
+  const [, setNutTick] = React.useState(0);   // v211: пришла ведомость КБЖУ — перерисовать
   React.useEffect(() => {
     if (!restaurant) return;
     let alive = true;
     setShareErr(null); setShareStale(false);
     const cached = cachedShared(restaurant);
     setShared(cached);
+    // v211 (Доп. 537): ведомость КБЖУ этого заведения — сразу из копии, свежая с сервера (этап 67)
+    pickNutrition(restaurant); setNutTick((t) => t + 1);
+    loadNutrition(restaurant).then((ok) => { if (alive && ok) setNutTick((t) => t + 1); });
     rpc("menu_get", { p_restaurant: restaurant }).then(res => {
       if (!alive) return;
       const arr = typeof res === "string" ? JSON.parse(res) : res;
@@ -298,7 +303,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v210</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v211</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

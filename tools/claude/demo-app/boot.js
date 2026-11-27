@@ -896,6 +896,31 @@ function demoSom(b) {
 }
 
 const json = (x, status = 200) => new Response(JSON.stringify(x === undefined ? null : x), { status, headers: { "Content-Type": "application/json" } });
+// v204 (Доп. 530): импорт меню из PDF в демо — без нейросети и без чтения файла: список позиций, потом подробности
+// (в приложении — api/menu-import.js). __demo_menu_504 = "1" — запрос списка не дождался (страница хостинга, не JSON);
+// __demo_menu_short — название позиции, подробностей которой «модель» не находит. Запросы — в window.__demoMenuCalls.
+const DEMO_PDF_MENU = [
+  { name: "Паштет из утиной печени с брусникой", cat: "Холодные закуски", desc: "Нежный паштет с брусничным соусом и тёплой бриошью.", ingredients: ["утиная печень", "сливочное масло", "брусника", "бриошь"], allergens: ["Молоко", "Глютен", "Яйца"], note: "200 г", pairing: "" },
+  { name: "Гёдза с томлёной говядиной", cat: "Горячие закуски", desc: "Гёдза с говядиной и пекинской капустой, соус кимчи.", ingredients: ["говядина", "пекинская капуста", "тесто", "соус кимчи"], allergens: ["Глютен", "Соя"], note: "120 г; чеснок", pairing: "" },
+  { name: "Салат с уткой и хурмой", cat: "Салаты", desc: "Утка в апельсиновой глазури, хурма и печёное яблоко.", ingredients: ["утка", "хурма", "яблоко", "салат фриллис", "апельсин"], allergens: [], note: "230 г; цитрус", pairing: "" },
+  { name: "Лосось Веллингтон", cat: "Горячие блюда", desc: "Лосось в слоёном тесте со шпинатом и грибным соусом.", ingredients: ["лосось", "слоёное тесто", "шпинат", "шампиньоны", "сливки"], allergens: ["Рыба", "Глютен", "Молоко"], note: "250 г", pairing: "" },
+  { name: "Трайфл «Вишня в шоколаде»", cat: "Десерты", desc: "Шоколадный бисквит, ганаш и вишня конфи.", ingredients: ["шоколадный бисквит", "ганаш", "вишня"], allergens: ["Глютен", "Молоко", "Яйца"], note: "260 г", pairing: "" },
+  { name: "Коктейль «Иней» б/а", cat: "Напитки", desc: "Кокос, бузина и яблоко с лимоном.", ingredients: ["кокосовый сироп", "бузина", "яблочный сок", "лимон"], allergens: [], note: "200 мл; кокос", pairing: "" },
+];
+function demoMenuImport(b) {
+  try { (window.__demoMenuCalls = window.__demoMenuCalls || []).push({ mode: b.mode || "full", names: b.names || null }); } catch (e) {}
+  if (b.mode === "names") {
+    if (localStorage.getItem("__demo_menu_504") === "1") return new Response("An error occurred with your deployment\n\nFUNCTION_INVOCATION_TIMEOUT", { status: 504, headers: { "Content-Type": "text/plain" } });
+    return json({ names: DEMO_PDF_MENU.map(({ name, cat }) => ({ name, cat })), model: "demo" });
+  }
+  if (b.mode === "details") {
+    const skip = localStorage.getItem("__demo_menu_short") || "";
+    const want = Array.isArray(b.names) ? b.names : [];
+    const dishes = want.map((n) => DEMO_PDF_MENU.find((d) => d.name === n)).filter((d) => d && d.name !== skip).map((d) => ({ ...d, ask: d.name }));
+    return json({ dishes, missing: want.filter((n) => !dishes.some((d) => d.ask === n)), model: "demo" });
+  }
+  return json({ dishes: DEMO_PDF_MENU, model: "demo" });
+}
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // v139 (Доп. 454): помощник «О нас» в демо — без модели. «Из документа»: абзацы по словам раскладываются по видам блоков;
 // «Придумать вопросы»: строки текста становятся верными ответами; «Улучшить текст»: строки списком
@@ -1079,6 +1104,8 @@ window.fetch = function (input, init) {
     return (b.z || b.p ? unpackWeb(b) : Promise.resolve(b)).then((x) => wait(x.mode === "fill" ? 700 : 1400).then(() => json(demoWineAi(x)))); }   // v120; v155: упакованный запрос поиска
   if (/\/api\/web-answer/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
     return unpackWeb(b).then((x) => wait(1500).then(() => json(x.mode === "desc" ? demoDesc(x) : demoWebAnswer(x)))); }   // v152; v153: описания блюд; v155: упакованный запрос
+  if (/\/api\/menu-import/.test(url)) { let b = {}; try { b = JSON.parse((init && init.body) || "{}"); } catch (e) {}
+    return wait(b.mode === "details" ? 700 : 500).then(() => demoMenuImport(b)); }   // v204: импорт меню из PDF по частям
   if (/supabase\.co/.test(url) || /\/api\//.test(url)) return wait(60).then(() => json({ error: "demo" }, 404));
   return realFetch ? realFetch(input, init) : Promise.reject(new Error("no fetch"));
 };

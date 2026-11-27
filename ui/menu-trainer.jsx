@@ -38,6 +38,7 @@ import { labelStyle } from "./tokens";
 import { VoicePill, VoiceRecorder, VoicesList } from "./voice-note";
 import { SayLine, PronounceScreen } from "./pronounce";
 import { VOICE_KINDS, dishVoices, clipTime, sweepVoices } from "../lib/voice-note";
+import { MENU_PDF_MAX, MENU_PDF_BIG, MENU_NO_DETAIL, runMenuImport } from "../lib/menu-import";   // v204 (Доп. 530): импорт PDF по частям
 import { traceUse } from "../lib/tip-avail";   // v149 (Доп. 473): след для советов в уроках
 import { stressText, hasStress } from "../lib/pronounce";
 import { descPrompt, descParse } from "../lib/dish-desc";   // v153 (Доп. 477): пять вариантов «вкусного описания»
@@ -296,7 +297,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       </div>
       ) : null}
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
-        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v203</span>
+        Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null}{canEdit ? " · ты можешь редактировать меню" : ""} <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v204</span>
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -944,27 +945,33 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
   const [importing, setImporting] = React.useState(false);
   const [importErr, setImportErr] = React.useState("");
   const [preview, setPreview] = React.useState(null); // список блюд из PDF на подтверждение
+  const [importStep, setImportStep] = React.useState(null);   // v204: { done, total } — сколько позиций уже прочитано
+  const [importShort, setImportShort] = React.useState(0);    // v204: у скольких позиций подробности не дочитались
+  // v204 (Доп. 530): сначала список позиций, потом подробности по 4 (lib/menu-import.js) — каждый запрос короче минуты;
+  // ответ хостинга (не JSON) — причина своими словами и с кодом, а не «сеть недоступна»
   const onPdf = (e) => {
     const file = e.target.files && e.target.files[0]; e.target.value = "";
     if (!file) return;
-    setImportErr(""); setImporting(true);
+    if (file.size > MENU_PDF_MAX) { setImportErr(MENU_PDF_BIG); return; }
+    setImportErr(""); setImporting(true); setImportStep(null); setImportShort(0);
     const fr = new FileReader();
+    fr.onerror = () => { setImporting(false); setImportErr("Файл не прочитался — выбери PDF ещё раз"); };
     fr.onload = () => {
       const pdfBase64 = String(fr.result).split(",")[1];
-      fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdfBase64, token: saToken() }) })
-        .then(r => r.json().then(j => ({ ok: r.ok, j })))
-        .then(({ ok, j }) => {
-          setImporting(false);
-          if (!ok || !Array.isArray(j.dishes)) { setImportErr(j.error || "Не получилось разобрать PDF. Настроен ли OPENROUTER_API_KEY в Vercel? (см. docs/UPGRADE_NOTES.md)"); return; }
-          setPreview(j.dishes);
-        })
-        .catch(() => { setImporting(false); setImportErr("Сеть недоступна или функция /api/menu-import не развёрнута."); });
+      const token = saToken();
+      const post = (b) => fetch("/api/menu-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...b, token }) })
+        .then((r) => r.json().catch(() => null).then((j) => ({ ok: r.ok, status: r.status, j })))
+        .catch(() => ({ ok: false, status: 0, j: null }));
+      runMenuImport({ pdfBase64, post, onProgress: setImportStep })
+        .then(({ dishes, short }) => { setImporting(false); setImportStep(null); setImportShort(short.length); setPreview(dishes); })
+        .catch((err) => { setImporting(false); setImportStep(null); setImportErr(String((err && err.message) || err || "Не получилось разобрать PDF")); });
     };
     fr.readAsDataURL(file);
   };
+  const importLabel = (idle) => (!importing ? idle : importStep && importStep.total ? `Читаю PDF… ${importStep.done} из ${importStep.total}` : "Читаю PDF…");
   const acceptImport = () => {
     const now = Date.now();
-    const added = (preview || []).filter(d => d && String(d.name || "").trim()).map((d, i) => ({
+    const added = (preview || []).filter(d => d && String(d.name || "").trim()).map(({ short, ask, ...d }, i) => ({
       img: "", pairing: "", note: "", cat: "", desc: "", ...d,
       ingredients: Array.isArray(d.ingredients) ? d.ingredients : String(d.ingredients || "").split(",").map(s => s.trim()).filter(Boolean),
       allergens: Array.isArray(d.allergens) ? d.allergens.filter(a => ALLERGENS_LIST.includes(a)) : [],
@@ -1366,6 +1373,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
           <div style={{ ...glass(T), padding: "14px 15px", marginBottom: 12 }}>
             <div style={{ ...labelStyle(13.5), color: gold, marginBottom: 6 }}>AI разобрал PDF · проверь до добавления</div>
             <div style={{ fontSize: 14, color: T.para?.color, lineHeight: 1.55 }}>Нашёл блюд: <b style={{ color: gold }}>{preview.length}</b>. Разделы и аллергены можно поправить прямо здесь: тап по чипу. Блюда без аллергенов подсвечены: ИИ мог их пропустить, а у стола это дорого.</div>
+            {importShort > 0 && <div data-import-short={importShort} style={{ fontSize: 13, color: gold, lineHeight: 1.5, marginTop: 6 }}>Подробности не дочитались: {importShort}. Эти блюда добавятся с названием и разделом, остальное заполни по PDF.</div>}
           </div>
           {(() => {
             const catsAll = [...CAT_ORDER, ...[...new Set(preview.map(d => normCat(d.cat)).filter(Boolean))].filter(c => !CAT_ORDER.some(x => x.toLowerCase() === c.toLowerCase()))];
@@ -1382,6 +1390,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                     <span onClick={() => setPreview(pv => pv.filter((_, k) => k !== i))} style={{ color: red, cursor: "pointer", padding: "2px 6px" }}>✕</span>
                   </div>
                   <div style={{ ...T.modSub, whiteSpace: "normal", marginTop: 2 }}>{ings.slice(0, 6).join(", ") || "состав не распознан"}</div>
+                  {d.short && <div data-import-short-dish style={{ fontSize: 12.5, color: gold, marginTop: 4 }}>{MENU_NO_DETAIL}</div>}
                   <div className="sa-hscroll" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px" }}>
                     {catsAll.map(c => <span key={c} onClick={() => upd(i, { cat: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "" : c })} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", border: `1px solid ${normCat(d.cat).toLowerCase() === c.toLowerCase() ? gold : gold + "44"}`, background: normCat(d.cat).toLowerCase() === c.toLowerCase() ? "rgba(214,178,102,0.16)" : "transparent", color: normCat(d.cat).toLowerCase() === c.toLowerCase() ? textColor : T.modSub.color }}>{c}</span>)}
                   </div>
@@ -1421,13 +1430,13 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
                 {unpublished
                   ? <button className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1px solid ${gold}88`, color: textColor }} onClick={() => setForm({ ...empty })}>+ Блюдо</button>
                   : <label className="sa-btn" data-lens-btn="soft" style={{ ...T.doneBtn, flex: 1, background: "transparent", border: `1.5px dashed ${gold}88`, color: T.para?.color, textAlign: "center", cursor: "pointer", opacity: importing ? 0.55 : 1 }}>
-                      {importing ? "Читаю PDF…" : "Из PDF"}
+                      {importLabel("Из PDF")}
                       <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                     </label>}
               </div>
               {unpublished ? (
                 <label className="sa-btn" style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 12.5, color: T.modSub.color, cursor: "pointer" }}>
-                  {importing ? "Читаю PDF…" : "Импорт из PDF"}
+                  {importLabel("Импорт из PDF")}
                   <input type="file" accept="application/pdf" onChange={onPdf} disabled={importing} style={{ display: "none" }} />
                 </label>
               ) : null}

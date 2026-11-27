@@ -16,6 +16,7 @@
 //   • «Неудачный вопрос?» прямо в проверке; вопросы с правками руководства (редактор «Вопросы живой проверки»).
 //   • Допуск к залу у «Новичка»: тест и живая проверка по «Аллергиям» и «ЧП». Своё «повторить вслух» — в «Работе над ошибками».
 //   • Сводка: план «каждого раз в N дней», проверено из стольких, средний у проверяющих рядом со средним по сети.
+// v203 (Доп. 528), владелец перед зимним меню: «Да, давай». В «Меню заведения» новинки (добавлены за 30 дней) — первыми.
 import React from "react";
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -24,7 +25,7 @@ import { ROLES } from "../data/roles";
 import { LIVE_CHECK } from "../data/live-check";
 import { LC_PASS, tracksOf, lastByModule, moduleApp, trackSummary, lcDate, pickQuestions, blitzPick, recentKeys,
   pointsScore, repeatFromItems, moduleFlags, suggestFor, suggestText, onShiftToday, isSituation,
-  isModuleCheck, mergeBank, menuQuestions, admission, askState, failedItems, calib, lcErr65, LC_MENU, PLAN_DAYS } from "../lib/live-check";
+  isModuleCheck, mergeBank, menuQuestions, menuPick, admission, askState, failedItems, calib, lcErr65, LC_MENU, PLAN_DAYS } from "../lib/live-check";
 import { lcPeople, lcPerson, lcSave, lcDelete, lcFlush, lcQueued, lcSummary, lcSchedule, newCid,
   lcRequests, lcRequest, lcFlag, lcPlanSet, useLcQuestions, saveMine, practiceDone } from "../lib/live-check-api";
 import { useOrg, loadOrg, useLens } from "../lib/org";
@@ -171,7 +172,7 @@ export function LiveCheckScreen({ T, a11y, profile, onBack, startEmp = null, sta
   const startRun = (kind, mod) => {
     vibrate("light"); setMsg(""); setFlagOpen(null);
     const recent = recentKeys(checks);
-    const qs = kind === "blitz" ? blitzPick(bank, doneMods, recent) : kind === "menu" ? pickQuestions(menuQs || [], LC_MENU, recent) : pickQuestions(bank[mod.id] || [], mod.id, recent);
+    const qs = kind === "blitz" ? blitzPick(bank, doneMods, recent) : kind === "menu" ? menuPick(menuQs || [], recent) : pickQuestions(bank[mod.id] || [], mod.id, recent);
     if (!qs.length) { setMsg(kind === "menu" ? "В меню заведения пока нет блюд с составом и описанием." : "Для блица нужно хотя бы один модуль, пройденный в приложении."); return; }
     setRun({ kind, mod: kind === "menu" ? MENU_MOD : mod, qs, step: 0, open: qs.map(() => false), got: qs.map(() => []), memo: "", cid: newCid() });
     toTop();
@@ -268,6 +269,7 @@ export function LiveCheckScreen({ T, a11y, profile, onBack, startEmp = null, sta
   const adm = person && tracksOf(person.position).includes("seasonal") ? admission(MODULES_INDEX.seasonal || [], { quiz, tests, checks }) : null;
   const fails = self ? failedItems(checks, bank, { menuQs: menuQs || [], done: practiceDone(uk) }) : [];
   const lastMenu = last[LC_MENU] || null;
+  const menuNewN = (menuQs || []).filter((q) => q.isNew).length;   // v203
   const openPerson = (id, m = null) => { vibrate("light"); setEmp(id); setTrack(null); setPend(m ? { emp: id, m } : null); toTop(); };
   const sugRow = ({ p, s }, i, key) => {
     const n = (p.name + " " + (p.surname || "")).trim();
@@ -520,6 +522,8 @@ export function LiveCheckScreen({ T, a11y, profile, onBack, startEmp = null, sta
                   <span style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 14.5, color: text, fontWeight: "bold" }}>Меню заведения</span>
                   <span data-lc-menu-last="" style={{ display: "block", fontSize: 12.5, color: sub, lineHeight: 1.4 }}>
                     {lastMenu ? "Последняя " + lcDate(lastMenu.at) + ": " + lastMenu.s + "%" + (lastMenu.p ? ", зачтено" : "") : "Четыре блюда: состав, аллергены, как рассказать гостю"}</span>
+                  {menuNewN ? <span data-lc-menu-new={menuNewN} style={{ display: "block", fontSize: 12.5, color: c.gold, lineHeight: 1.4, marginTop: 2 }}>
+                    {"Новинок в меню: " + menuNewN + ", спрошу о них первыми"}</span> : null}
                 </span>
                 <button type="button" data-lc-menu-start="" onClick={() => startRun("menu", null)} style={ghost}>Начать</button>
               </div>) : null}
@@ -577,7 +581,7 @@ export function LiveCheckScreen({ T, a11y, profile, onBack, startEmp = null, sta
             </div>
             <div data-lc-q={i} data-lc-key={runQ.k} style={{ ...card, padding: "16px 14px" }} data-lens-card="">
               <div style={{ fontSize: 12, color: sub, marginBottom: 6 }}>Вопрос {i + 1} из {run.qs.length}
-                {run.kind === "blitz" && mm ? " · " + mm.title : ""}{lessonTitle(runQ.l) ? " · урок «" + lessonTitle(runQ.l) + "»" : ""}{runQ.cat ? " · " + runQ.cat : ""}{runQ.own ? " · свой вопрос" : ""}</div>
+                {run.kind === "blitz" && mm ? " · " + mm.title : ""}{lessonTitle(runQ.l) ? " · урок «" + lessonTitle(runQ.l) + "»" : ""}{runQ.cat ? " · " + runQ.cat : ""}{runQ.isNew ? " · новинка" : ""}{runQ.own ? " · свой вопрос" : ""}</div>
               <div style={{ fontFamily: "Georgia, serif", fontSize: 17, color: text, lineHeight: 1.45, fontWeight: "bold" }}>{runQ.q}</div>
               {!open ? (<>
                 <div style={{ fontSize: 13, color: sub, lineHeight: 1.5, marginTop: 12 }}>Задай вопрос и дай человеку ответить своими словами. Ответ открой, когда он закончит.</div>

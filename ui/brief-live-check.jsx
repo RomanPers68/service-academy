@@ -17,7 +17,7 @@ import { lcPeople, lcSave, newCid, useLcQuestions, useLevels } from "../lib/live
 const ALL_MODS = Object.values(MODULES_INDEX).flatMap((ms) => ms || []);
 const modTitle = (id) => (ALL_MODS.find((m) => m.id === id) || {}).title || "";
 const lessonTitle = (id) => { for (const m of ALL_MODS) { const l = (m.lessons || []).find((x) => x.id === id); if (l) return l.title; } return ""; };
-const whereOf = (q) => (q.m === LC_MENU ? "Меню" + (q.cat ? " · " + q.cat : "") : modTitle(q.m));
+const whereOf = (q) => (q.m === LC_MENU ? "Меню" + (q.cat ? " · " + q.cat : "") + (q.isNew ? " · новинка" : "") : modTitle(q.m));   // v203: новинка — первой
 
 /** Состояние блока: кого спросить и что, отметки и сохранение. sched — ответ schedule_load (false — не пришёл, null — грузим) */
 export function useBriefLc({ profile, sched }) {

@@ -21,10 +21,10 @@ import { referenceDailyTask } from "./reference-daily";
 import { ScheduleTile } from "./schedule-tile";
 import { TracksRow } from "./tracks-row";   // v61 (Доп. 374): ряд треков под свёрнутым списком
 import { dockFit } from "../lib/dock-fit";   // v65 (Доп. 378): кружки ленты — под ширину
-import { bookStats, countNewDishes, nextSealOf } from "../data/reviews";
+import { bookStats, nextSealOf } from "../data/reviews";
 import { weekPulse } from "../lib/week-pulse";   // v159 (Доп. 484): «Пульс недели» — счёт и лидер
 import { stopsLabel } from "../lib/menu-stops";   // v159: число «в стопе» на значке «Меню»
-import { useStopCount, StopBadge } from "./stop-badge";
+import { useStopCount, StopBadge, useMenuNew } from "./stop-badge";
 import { FaceImg } from "./staff-photo";          // v159: фото лидера недели (этап 52)
 import { countUnreadPages } from "./guestbook-lite";
 import { Confetti, TimerBar, SayAloud, LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -232,6 +232,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
   // v159 (Доп. 484): сколько блюд сегодня в стопе — числом на значке «Меню». Новичку до первого урока значок «Меню»
   // не показан (ниже: newbie) — ему и не считаем, и сервер не спрашиваем.
   const stopN = useStopCount(profile?.restaurant || "", !!onMenuTrainer && !!profile && (isBoss || Object.keys(completed || {}).length > 0 || Object.keys(quizDone || {}).length > 0));
+  // v203 (Доп. 528): золотая точка «новинки» — у всех (свои блюда и меню команды), гаснет после «Выучил новинки ✓»
+  const menuNewV = useMenuNew(profile?.restaurant || "", !!onMenuTrainer && !!profile);
   // Подсказка ждёт, пока закроются карточки первого входа (WelcomeIntro в App).
   // Раньше она вставала поверх них: затемнение перехватывало касания — карточки
   // не листались, пока не пролистаешь подсказку, — а рамка обводила размытый фон
@@ -695,8 +697,8 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
           //     Остальные жетоны появляются после первого пройденного урока.
           //     Менеджеров, старших и админов это не касается. ═══
           const visibleTiles = newbie ? tiles.filter(t => ["sos", "ob", "sp"].includes(t.key)) : tiles;
-          // Бейджи-события: новинки меню (реальные данные)
-          const menuNew = countNewDishes(profile?.restaurant);
+          // Бейджи-события: новинки меню (реальные данные); v203 — и меню команды, выученную волну не показываем
+          const menuNew = menuNewV.learned ? 0 : menuNewV.n;
           return (
             /* Инструменты — жетоны в золотой оправе с люверсами.
                Неполный последний ряд центрируется. */
@@ -790,7 +792,7 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                             background:`${c}${on ? "33" : "24"}`, transition:"background .45s ease" }}>
                             {React.cloneElement(t.icon, { width:ico, height:ico })}
                             {stop > 0 ? <StopBadge n={stop} a11y={a11y} /> : (badge || dot) ? (
-                              <span style={{ position:"absolute", top:-1, right:-1, width:8, height:8,
+                              <span data-menu-dot={badge ? "new" : "day"} style={{ position:"absolute", top:-1, right:-1, width:8, height:8,
                                 borderRadius:4, background:GOLD_SOFT,
                                 border:`1.5px solid ${a11y ? "#F7F0E0" : "#1A1409"}` }} />
                             ) : null}

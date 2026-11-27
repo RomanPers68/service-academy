@@ -2,6 +2,7 @@
 // «Книга отзывов» — сердце мотивации. Каждый пройденный модуль превращается
 // в отзыв благодарного гостя. Экзамен роли — в легендарную страницу с печатью.
 // Тексты привязаны к сути модуля: человек видит, ЗАЧЕМ он это учил.
+import { newOnPhone } from "../lib/menu-stops.js";   // v203: новинки — свои блюда и меню команды
 
 // ── Отзывы за модули: { moduleId: { text, guest, table } } ──────────
 export const MODULE_REVIEWS = {
@@ -111,15 +112,11 @@ export const weeklyDialogueIdFrom = (extra = []) => {
 };
 export const weeklyDialogueId = () => weeklyDialogueIdFrom([]);
 
-// Новые позиции меню ресторана (isNew, младше 30 дней) — для бейджа на главной
-export const countNewDishes = (restaurant) => {
-  if (!restaurant) return 0;
-  let custom = [];
-  try { custom = (JSON.parse(localStorage.getItem("sa_menu_custom") || "{}")[restaurant]) || []; } catch (e) {}
-  // v79 (Доп. 392): только свои блюда — у заготовок меню (data/menu.js) пометки «новинка» нет, а сам файл (53 КБ) тянулся
-  // ради этого в стартовый набор
-  return custom.filter(d => d.isNew && d.addedAt && Date.now() - d.addedAt < 30 * 864e5).length;
-};
+// Новые позиции меню ресторана (isNew, младше 30 дней) — для бейджа на главной.
+// v79 (Доп. 392): у заготовок меню (data/menu.js) пометки «новинка» нет, а сам файл (53 КБ) тянулся ради этого в стартовый
+// набор — его не читаем. v203 (Доп. 528): не только свои блюда, но и меню команды — у сотрудника новинки приходят с сервера
+// (lib/menu-stops.js, newOnPhone: то же правило, что «Новые позиции» в «Меню»).
+export const countNewDishes = (restaurant) => (restaurant ? newOnPhone(restaurant).n : 0);
 
 // ── Звания ──────────────────────────────────────────────────────────
 // score = страницы + печати×3

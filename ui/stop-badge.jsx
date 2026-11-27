@@ -2,7 +2,7 @@
 // Рубиновый жетон с цифрой в правом верхнем углу кружка: рубин на главной уже значит «внимание» (SOS), золотая
 // точка на том же месте — «новинки» и «режим дня». Стоп важнее точки: при нём точки нет.
 import React from "react";
-import { stopCount, stopBadge, refreshStops, STOPS_BOOT_MS, STOPS_MOUNT_MS } from "../lib/menu-stops";
+import { stopCount, stopBadge, refreshStops, newOnPhone, STOPS_BOOT_MS, STOPS_MOUNT_MS } from "../lib/menu-stops";
 import { menuSubscribe } from "../lib/menu-fresh";
 
 const BOOT_AT = Date.now();
@@ -29,6 +29,27 @@ export function useStopCount(restaurant, on = true) {
     return () => { alive = false; off(); clearTimeout(first); clearInterval(tick); if (typeof document !== "undefined") document.removeEventListener("visibilitychange", vis); };
   }, [restaurant, on]);
   return n;
+}
+
+/**
+ * v203 (Доп. 528): новинки меню на этом телефоне — свои блюда и меню команды: { n, wave, learned }. Пересчёт — когда копию
+ * меню обновили с сервера (тот же menuSubscribe, что у числа «в стопе») и когда приложение снова на экране (вернулся из
+ * «Меню», где отметил «Выучил новинки ✓»). Сервер сам не спрашиваем: это делает useStopCount рядом.
+ */
+const NEW_NONE = { n: 0, wave: "0", learned: false };
+export function useMenuNew(restaurant, on = true) {
+  const [v, setV] = React.useState(() => (on && restaurant ? newOnPhone(restaurant) : NEW_NONE));
+  React.useEffect(() => {
+    if (!on || !restaurant) { setV(NEW_NONE); return undefined; }
+    let alive = true;
+    const read = () => { if (!alive) return; const x = newOnPhone(restaurant); setV((p) => (p.n === x.n && p.wave === x.wave && p.learned === x.learned ? p : x)); };
+    read();
+    const off = menuSubscribe((r, why) => { if ((!r || r === restaurant) && why === "fresh") read(); });
+    const vis = () => { if (typeof document === "undefined" || !document.hidden) read(); };
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", vis);
+    return () => { alive = false; off(); if (typeof document !== "undefined") document.removeEventListener("visibilitychange", vis); };
+  }, [restaurant, on]);
+  return v;
 }
 
 /** Жетон с числом; edge — цвет фона под кружком (тонкий кант отделяет жетон от кружка). Стоит в position: relative. */

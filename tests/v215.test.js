@@ -96,7 +96,8 @@ describe("v215 · очередь по приходу (lib/call-queue.js)", () =>
     expect(queueOf({ ...EMPTY, others: [{ id: "x", name: "X", from: "10" }, { id: "y", name: "Y", from: 99 }] }).others.map((x) => x.from)).toEqual([null, null]);
   });
   it("«Все по графику» — в конец, по началу смены; уже в очереди и убранные остаются; позвали не из очереди — не дописываем", () => {
-    const q = queueOf({ ...EMPTY, list: [{ id: "v", name: "Вера Соколова" }], others: EMPTY.others.filter((x) => x.id !== "v") });
+    // v217: «Все, кто на смене» — тех, кто по графику уже на смене; вечер, 23:00, — на смене все
+    const q = queueOf({ ...EMPTY, min: 23 * 60, list: [{ id: "v", name: "Вера Соколова" }], others: EMPTY.others.filter((x) => x.id !== "v") });
     const all = queueBySchedule(q);
     expect(queueOrd(all).map((x) => x.id)).toEqual(["v", "p", "a"]);
     expect(all.others.map((x) => x.id)).toEqual(["d"]);
@@ -106,7 +107,8 @@ describe("v215 · очередь по приходу (lib/call-queue.js)", () =>
   });
   it("строка очереди: имена коротко, моё место, перерыв; пустая — null", () => {
     const q = queueOf({ ...EMPTY, list: [{ id: "a", name: "Анна Смирнова" }, { id: "v", name: "Вера Соколова", away: true }, { id: "p", name: "Пётр Орлов" }], others: [] });
-    expect(queueLine(q, "p")).toEqual({ names: ["Анна С.", "Вера С.", "Пётр О."], next: { id: "a", name: "Анна Смирнова", away: false, out: false }, pos: 3, away: false, n: 3 });
+    expect(queueLine(q, "p")).toEqual({ names: ["Анна С.", "Вера С.", "Пётр О."], next: { id: "a", name: "Анна Смирнова", away: false, out: false, stay: false, from: null, to: null },
+      pos: 3, away: false, n: 3, over: 0, meOver: false });   // v217: часы смены, over и meOver
     expect(queueLine(q, "v").away).toBe(true);
     expect(queueLine(q, "x").pos).toBe(0);
     expect(queueLine(queueOf(EMPTY), "a")).toBe(null);
@@ -200,9 +202,10 @@ describe("v215 · демо-сервер", () => {
 describe("v215 · экран", () => {
   it("правка очереди: пустая — подсказка, «Сегодня по графику» с часом, «Все по графику», кто не в графике", async () => {
     const { QueuePanel } = await import("../ui/call-queue.jsx");
-    const html = R(h(QueuePanel, { q: queueOf(EMPTY), onChange() {} }));
+    // v217: вечер (23:00) — по графику на смене все; кнопка — «Все, кто на смене»
+    const html = R(h(QueuePanel, { q: queueOf({ ...EMPTY, min: 23 * 60 }), onChange() {} }));
     expect(html).toContain("Отмечай официантов по приходу: кто пришёл первым, тот и первый в очереди.");
-    expect(html).toMatch(/Сегодня по графику, по началу смены<\/span><button[^>]*data-queue-all=""[^>]*>Все по графику</);
+    expect(html).toMatch(/Сейчас на смене по графику, по началу смены<\/span><button[^>]*data-queue-all=""[^>]*>Все, кто на смене</);
     expect(html).toMatch(/data-queue-add="p"[^>]*>\+ Пётр О\.<span class="ch-q-from"> · с 10:00<\/span>/);
     expect(html).toMatch(/Не в графике сегодня[\s\S]*data-queue-rest=""[\s\S]*data-queue-add="d"[^>]*>\+ Дина Б\.</);
     expect(html.indexOf('data-queue-add="p"')).toBeLessThan(html.indexOf('data-queue-add="v"'));

@@ -3,6 +3,8 @@
 # колокольчики. Поверх базы run25.sh: копия satest69, этапы 26, 31, 32, 34, 35, 36, 37, 54, 55, 56, 38 и 68. В заведении
 # ещё официанты Вера, Глеб, Дина и хостес Ольга; график на сегодня: Глеб — утро, Вера и Ольга — день, Анна — вечер,
 # Мария — утро (Дина — в отпуске). Очередь утром пустая: её составляет хостес по приходу.
+# v216 (этап 71): официант для очереди — по графику месяца. v217 (этап 73): часы смены, «Остался», день заведения с 6 утра;
+# время в проверках этапа 73 подставное (sa.qmin).
 # Без этапа 68 — понятная ошибка. Этап 69 дважды. Отправка в Telegram — заглушка pg_net (net.sent_log).
 # Нужен psql; сервер — PGHOST (по умолчанию /tmp/pgsock) и PGPORT (5433), пользователь postgres.
 #   bash run25.sh && bash test69.sh
@@ -205,6 +207,41 @@ chk "Анна по графику раннер — ушла из очереди;
   '^Вера Соколова\|Ольга Ли:12$'
 Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$AEMP'), jsonb_build_object('id', '$OEMP'), jsonb_build_object('id', '$VEMP')))" >/dev/null
 chk "queue_set: раннера (Анну) не берёт, Ольгу — берёт" "$(QL $OLGA)" '^Ольга Ли, Вера Соколова$'
+
+# ── Этап 73 (v217, Доп. 543): очередь по часам смены из графика ───────────────────────────────────────
+cp "$SRC/supabase-stage73-queue-hours.sql" "$D/"; chmod a+r "$D/supabase-stage73-queue-hours.sql"
+RC=0; run supabase-stage73-queue-hours.sql; run supabase-stage73-queue-hours.sql
+chk "этап 73 дважды — без ошибок; итог" "$RC|$(echo "$OUT" | grep -o 'Очередь по часам смены: .*' | head -1 | sed 's/ · очередей.*//')" '^0\|Очередь по часам смены: from, to, «Остался», день заведения с 6 утра$'
+chk "день заведения — с 6 утра; минуты дня — от его полуночи (6:00…29:59)" \
+  "$(PP "select _sa_queue_day('Два моря, Океан') = ((now() at time zone _sa_tz('Два моря, Океан')) - interval '6 hours')::date and _sa_queue_now('Два моря, Океан') between 360 and 1799")" '^t$'
+# время — подставное: день графика — сегодняшний календарный (как в начале теста), минуты — из sa.qmin
+PP "create or replace function _sa_queue_day(p_rest text) returns date language sql stable security definer set search_path to public as \$f\$ select (now() at time zone _sa_tz(p_rest))::date \$f\$;
+  create or replace function _sa_queue_now(p_rest text) returns int language sql stable security definer set search_path to public as \$f\$ select coalesce(nullif(current_setting('sa.qmin', true), '')::int, 720) \$f\$" >/dev/null
+# график сегодня: Вера — день (12–20), Глеб — утро (10–18), Ольга — вечер (16–24); Анна — раннер, Дина — выходной.
+# Глеб и Дина снова официанты (выше их увольняли и переводили в бар)
+PP "update employees set status = 'active', position = 'waiter' where id in ('$GEMP', '$DEMP')" >/dev/null
+$P0 -d $DB -c "do \$\$ declare dn text := extract(day from (now() at time zone _sa_tz('Два моря, Океан'))::date)::int::text; begin
+  update schedule_months set payload = jsonb_set(jsonb_set(payload, array['plan', 's5', dn], '\"В\"'), array['plan', 's3', dn], '\"У\"') where restaurant = 'Два моря, Океан';
+end \$\$" >/dev/null
+QH() { Q "set sa.qmin = '$1'; select string_agg((x->>'name') || ':' || coalesce(x->>'from', '-') || '-' || coalesce(x->>'to', '-') || case when (x->>'stay')::boolean then '·о' else '' end, ', ' order by o)
+  from jsonb_array_elements(queue_get('$OLGA')->'$2') with ordinality t(x, o)"; }
+chk "11:00 — в очереди часы смены (Ольга 16–24, Вера 12–20), others: Глеб 10–18, Дина без смены; min = 660" \
+  "$(QH 660 list) | $(QH 660 others) | $(Q "set sa.qmin = '660'; select queue_get('$OLGA')->>'min'")" '^Ольга Ли:16-24, Вера Соколова:12-20 \| Глеб Орлов:10-18, Дина Белова:--- \| 660$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP'), jsonb_build_object('id', '$OEMP'), jsonb_build_object('id', '$VEMP')))" >/dev/null
+NX() { PP "set sa.qmin = '$1'; select coalesce((select name || ' ' || surname from employees where id::text = _sa_queue_next('Два моря, Океан', $2)), 'никого')"; }
+chk "17:59 — следующий Глеб; 18:05 — у Глеба смена кончилась, следующая Ольга (передать дальше его пропустит)" \
+  "$(NX 1079 "array[]::text[]") | $(NX 1085 "array[]::text[]")" '^Глеб Орлов \| Ольга Ли$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP', 'stay', true), jsonb_build_object('id', '$OEMP'), jsonb_build_object('id', '$VEMP', 'stay', 'да')))" >/dev/null
+chk "«Остался»: Глеб снова следующий; stay только true (у Веры «да» — нет)" "$(NX 1085 "array[]::text[]") | $(QH 1085 list)" \
+  '^Глеб Орлов \| Глеб Орлов:10-18·о, Ольга Ли:16-24, Вера Соколова:12-20$'
+PP "select _sa_queue_move('Два моря, Океан', '$GEMP', false)" >/dev/null
+chk "позвали Глеба к столу — в конце, «Остался» сохранился" "$(QH 1085 list)" '^Ольга Ли:16-24, Вера Соколова:12-20, Глеб Орлов:10-18·о$'
+chk "20:30 — Вера закончила: без Ольги следующий Глеб (остался); 0:30 — Ольга тоже (24), остаётся Глеб" \
+  "$(NX 1230 "array['$OEMP']") | $(NX 1470 "array[]::text[]")" '^Глеб Орлов \| Глеб Орлов$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP', 'stay', false), jsonb_build_object('id', '$OEMP'), jsonb_build_object('id', '$VEMP')))" >/dev/null
+chk "0:30, Глеб ушёл («Остался» сняли) — передать некому" "$(NX 1470 "array[]::text[]")" '^никого$'
+chk "права: служебные функции очереди закрыты от anon" "$(PP "select string_agg(proname || ':' || has_function_privilege('anon', oid, 'execute'), ' ' order by proname) from pg_proc
+  where proname in ('_sa_queue_now', '_sa_queue_hrs', '_sa_queue_over', 'queue_set', 'queue_get')")" '^_sa_queue_hrs:false _sa_queue_now:false _sa_queue_over:false queue_get:true queue_set:true$'
 
 echo; echo "Итого: ✓ $pass  ✗ $fail"
 $P0 -d postgres -c "drop database if exists $DB" >/dev/null 2>&1

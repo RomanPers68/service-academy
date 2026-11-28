@@ -331,6 +331,12 @@ button.ch-mava:active{opacity:.75}
 .ch-q-sub{margin:10px 0 6px;font-size:12.5px;line-height:1.4;color:var(--sub)}
 .ch-q-subrow{display:flex;align-items:baseline;gap:10px}.ch-q-subrow>span{flex:1;min-width:0}
 .ch-q-from{color:var(--sub);font-size:12.5px}
+/* v217 (Доп. 543): смена по графику кончилась — бледнее; «По графику уже на смене» — кнопками под очередью и в строке чата */
+.ch-chip.over{opacity:.5}
+.ch-q-due{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.ch-q-due-l{flex:0 0 100%;font-size:12.5px;color:var(--sub)}
+.ch-qs .ch-q-due{max-width:640px;margin:2px auto 3px}
+.ch-qs .ch-q-due .ch-chip{min-height:32px;padding:4px 11px;font-size:13px}
 .ch-qs{flex:0 0 auto;position:relative;z-index:3;padding:5px 12px;background:var(--head);border-bottom:1px solid var(--head-line)}
 .ch-qs-b{display:flex;align-items:baseline;gap:8px;width:100%;max-width:640px;margin:0 auto;border:0;background:none;padding:3px 0;text-align:left;font-family:inherit;color:var(--text);cursor:pointer}
 .ch-qs-b:disabled{cursor:default;opacity:1}

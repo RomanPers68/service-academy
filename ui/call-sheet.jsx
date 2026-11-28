@@ -26,7 +26,7 @@ import { vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";
 import { CALL_WHO, CALL_WHY, CALL_OWN_MAX, chatInitials, bubbleName } from "../lib/chat";
 import { callAction, callHint, afterCall, shiftChips, recentCalls, rememberCall, tableMarks, cachedTeam, cachedBoard, freshTeam, freshBoard, callStates, markIds } from "../lib/call-series";
-import { queueOf, queueLive, queueNext, queueAfterCall, queueOrd, queueEmpty, passedLine, passErrText } from "../lib/call-queue";
+import { queueOf, queueLive, queueNext, queueAfterCall, queueOrd, queueEmpty, queueAdd, passedLine, passErrText } from "../lib/call-queue";
 import { IC, posName, stop } from "./chat-kit";
 import { FaceImg } from "./staff-photo";
 import { QueueChips, QueuePanel } from "./call-queue";
@@ -220,7 +220,8 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
           {why === "table" && !plan && boardDone ? <input className="ch-field num sa-field" inputMode="numeric" value={table} maxLength={6} placeholder="Номер стола" aria-label="Номер стола" data-chat-table=""
             onChange={(e) => { setTable(e.target.value); touch(); }} /> : null}
           {useQ ? <QueueChips q={q} picked={who === "person" && person ? person.id : null} auto={auto} edit={q.edit} editing={qEdit}
-            onPick={pickPerson} onSkip={skipNext} onEdit={() => { setQEdit((e) => !e); setQErr(""); }} /> : null}
+            onPick={pickPerson} onSkip={skipNext} onEdit={() => { setQEdit((e) => !e); setQErr(""); }}
+            onAdd={(x) => saveQ(queueAdd(q, x.id))} busy={qBusy} /> : null}   {/* v217: «По графику уже на смене» — пришёл, добавить */}
           {qOn && !useQ && q.edit ? <div className="ch-lbl ch-q-lbl" data-queue-none=""><span>Очередь к столам не составлена</span>
             <button type="button" className="ch-q-edit" data-queue-open={qEdit ? "on" : ""} aria-expanded={qEdit} onClick={() => { vibrate("light"); setQEdit((e) => !e); setQErr(""); }}>{qEdit ? "Готово" : "Составить"}</button></div> : null}
           {qOn && qEdit && q.edit ? <QueuePanel q={q} busy={qBusy} err={qErr} onChange={saveQ} /> : null}

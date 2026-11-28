@@ -121,7 +121,7 @@ describe("v213 · очередь на телефоне (lib/call-queue.js)", () 
   it("ответ сервера: повторы убраны, others — без тех, кто в очереди; не очередь — null", () => {
     const q = queueOf(Q0);
     expect(q.list.map((x) => x.id)).toEqual(["a", "v", "p", "g"]);
-    expect(q.others).toEqual([{ id: "d", name: "Дина Белова", from: null }]);   // v215: from — начало смены сегодня
+    expect(q.others).toEqual([{ id: "d", name: "Дина Белова", from: null, to: null }]);   // v215: from — начало смены сегодня; v217: to — конец
     expect([q.edit, q.day]).toEqual([true, "2026-11-28"]);
     expect([queueOf({ ok: false, error: "missing" }), queueOf(null), queueOf({ ok: true })]).toEqual([null, null, null]);
   });
@@ -154,8 +154,9 @@ describe("v213 · очередь на телефоне (lib/call-queue.js)", () 
     expect(queueFlag(q, "a", "bogus", true)).toBe(q);
     const add = queueAdd(q, "d");
     expect([ids(add), add.others.length]).toEqual(["a,v·п,p,d", 0]);
-    expect(queueOrd(add)).toEqual([{ id: "a", away: false, out: false }, { id: "v", away: true, out: false }, { id: "p", away: false, out: false },
-      { id: "g", away: false, out: true }, { id: "d", away: false, out: false }]);
+    // v217: и stay — «Остался» после смены
+    expect(queueOrd(add)).toEqual([{ id: "a", away: false, out: false, stay: false }, { id: "v", away: true, out: false, stay: false }, { id: "p", away: false, out: false, stay: false },
+      { id: "g", away: false, out: true, stay: false }, { id: "d", away: false, out: false, stay: false }]);
     expect(queueLabels([{ name: "Анна Смирнова" }, { name: "Анна Сидорова" }, { name: "Пётр Орлов" }])).toEqual(["Анна Смирнова", "Анна Сидорова", "Пётр О."]);
   });
   it("можно ли передать: лично к столу, без ответа, не передан, моложе 10 минут; тот, кого звали, кто звал, руководитель", () => {

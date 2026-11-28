@@ -149,6 +149,6 @@ describe("v219 · экран графика", () => {
     expect(S).toContain("Час пик {hoursLabel(r.from, r.to)} · {posName(pos).toLowerCase()}: {have} из {r.n}");
     expect(S).toContain('data-attn-row="hour"');
     expect(S).toContain("Часы пик не закрыты: {h.title.toLowerCase()}");
-    expect(S).toContain("const calm = !confl.length && !holes.length && !hourHoles.length && !waiting.length && !tk103;");
+    expect(S).toContain("const calm = !confl.length && !holes.length && !hourHoles.length && !aloneBy.length && !waiting.length && !tk103;");
   });
 });

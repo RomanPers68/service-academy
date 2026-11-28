@@ -379,7 +379,7 @@ describe("v141 (Доп. 459): «График» — ТК РФ, ст. 103", () => 
     expect(s).toContain('<div data-attn-row="tk103"');
     expect(s).toContain("ТК РФ, ст. 103: график сменности доводят до сотрудников не позже чем за месяц до начала");
     expect(s).toContain("onClick={() => { goMonth(1); vibrate(\"light\"); }}>Открыть ›</button>");
-    expect(s).toContain("const calm = !confl.length && !holes.length && !hourHoles.length && !waiting.length && !tk103;");   // v219: и «Часы пик»
+    expect(s).toContain("const calm = !confl.length && !holes.length && !hourHoles.length && !aloneBy.length && !waiting.length && !tk103;");   // v219: и «Часы пик»; v220: и новичок один
     expect(s).toContain('rpc("schedule_load", { p_token: saToken(), p_restaurant: profile?.restaurant || "", p_month: nx.key })');
   });
 });

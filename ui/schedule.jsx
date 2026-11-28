@@ -16,7 +16,8 @@ import { rpc, saToken } from "../lib/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule, dateOf, dayHours, hoursOn, dayNeed, needDowFrom, datesList } from "../lib/schedule-days";   // v214 (Доп. 540): закрытые дни и тип дня на дату
 import { mergeCells, mergedDays } from "../lib/schedule-merge";
-import { hourPlan, hourHave, hourHolesIn, hoursLabel } from "../lib/schedule-hours";   // v219 (Доп. 545): «Часы пик»   // v93: смены из чата и «Сохранить»
+import { hourPlan, hourHave, hourHolesIn, hoursLabel } from "../lib/schedule-hours";   // v219 (Доп. 545): «Часы пик»
+import { aloneOn, aloneDays, peakUneven, singleOffs, ruleOn } from "../lib/schedule-team";   // v220 (Доп. 546): состав и честность   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
 import { NO_AUTOCORRECT } from "../lib/search-field";   // v173 (Доп. 498): строка «Найти…» без автозамены
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
@@ -167,7 +168,9 @@ export const DEFAULT_CONFIG = {
   dates: {}, needDow: null,
   // hourNeed — «Часы пик» (v219): { должность: [{ from, to, n, dows }] } — сколько людей нужно в эти часы
   hourNeed: {},
+  // newbieAlone, peakFair, pairOff (v220): новичок не один в смене, пиковые дни поровну, выходные парами
   rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], needMode:"levels", maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
+    newbieAlone:true, peakFair:true, pairOff:true,
     // floor — норма это обязательная выработка, сверх неё можно;
     // cap — норму превышать нельзя.
     normMode:"floor" },
@@ -1401,6 +1404,14 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const left = staff.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra && !isLocked(s.id, d); });
       if (left.length) out.push(`${d} ${MONTHS_R[M]}: заведение закрыто, а смены остались (${left.slice(0, 3).map(s => shortName(s.name)).join(", ")}${left.length > 3 ? ` и ещё ${left.length - 3}` : ""}). Сними их в листе дня или нажми «Заполнить»`);
     }
+    // v220 (Доп. 546): состав смены и честный график
+    const tctx = { staff, plan, shiftOf, lvlOf, DAYS };
+    if (ruleOn(R, "newbieAlone")) for (let d = 1; d <= DAYS; d++) aloneOn(d, tctx).forEach(x =>
+      out.push(`${d} ${MONTHS_R[M]} · ${shortName(x.name)}, новичок, один в смене: рядом нет опытного (${posName(x.pos).toLowerCase()})`));
+    if (ruleOn(R, "peakFair")) peakUneven(tctx).forEach(x =>
+      out.push(`Пиковые дни неровно (${posName(x.pos).toLowerCase()}): у ${shortName(x.most.name)} ${x.most.peak}, у ${shortName(x.least.name)} ${x.least.peak}`));
+    if (ruleOn(R, "pairOff")) staff.forEach(s => { const n = singleOffs(s, { ...tctx, skip: (q, d) => onVac(q, d) || closedOf(d) });
+      if (n >= 2) out.push(`${s.name}: ${n} ${plural(n, "выходной", "выходных", "выходных")} одним днём, без пары`); });
     staff.forEach(s => {
       let h = 0, st = 0, mx = 0;
       for (let d = 1; d <= DAYS; d++) {
@@ -2459,7 +2470,8 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     const nHour = Object.values(cfg.hourNeed || {}).reduce((a, arr) => a + (Array.isArray(arr) ? arr.length : 0), 0);   // v219
     const sum3 = (byDow ? "по дням недели: " + DOWL.map((dl, wi) => Object.values(cfg.needDow).reduce((a, arr) => a + (Number((arr || [])[wi]) || 0), 0)).join(" ") + " чел."
       : LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.") + (nHour ? ` · часы пик: ${nHour}` : "");
-    const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
+    const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`
+      + (staffAll.some(x => x.newbie) && ruleOn(cfg.rules, "newbieAlone") ? " · новичок не один" : "");
     const nVac = staff.filter(vacOn).length;
     const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
     return (
@@ -2929,6 +2941,19 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           </Pill>
         </div>
 
+        {/* v220 (Доп. 546): состав смены и честный график — три правила, все включены по умолчанию */}
+        <div style={{ ...labelStyle(11.5), color:P.sub, padding:"14px 0 5px" }}>Состав смены и честность</div>
+        <div data-team-rules="" style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {[["newbieAlone", "Новичок не один", "В смене с новичком всегда кто-то из опытных той же должности. Новичка отмечают в «Сотрудниках»."],
+            ["peakFair", "Пиковые дни поровну", `Смены в ${(cfg.rules.peakDows || []).map(w => DOWL[w]).join(", ") || "пиковые дни"} делятся поровну, полставочнику меньше, по его норме.`],
+            ["pairOff", "Выходные парами", "Выходной одним днём между сменами генератор ставит реже: отдыхают два дня подряд."]].map(([k, t, h]) => (
+            <div key={k} style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+              <Pill a11y={a11y} P={P} on={ruleOn(cfg.rules, k)} attrs={{ "data-team-rule": k, "aria-pressed": ruleOn(cfg.rules, k) }} style={{ flex:"0 0 150px", padding:"7px 8px" }}
+                onClick={() => patch(c => { c.rules[k] = !ruleOn(c.rules, k); })}>{t}</Pill>
+              <span style={{ fontSize:11, color:P.sub, flex:1, lineHeight:1.45 }}>{h}</span>
+            </div>
+          ))}
+        </div>
         <div style={{ ...labelStyle(11.5),
           color:P.sub, padding:"14px 0 5px" }}>Что означает норма часов</div>
         <div style={{ display:"flex", gap:6 }}>
@@ -3106,7 +3131,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:14, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sf.name}</div>
                 <div style={{ fontSize:11, color:P.sub }}>
-                  {posName(sf.pos)} · {sf.norm} ч
+                  {posName(sf.pos)} · {sf.norm} ч{sf.newbie ? " · новичок" : ""}
                   {sf.phone ? <> · <IcoPhone size={10} color={P.sub} dy={-1} /></> : ""}
                   {sf.till && mkey > sf.till ? <span onClick={e => { e.stopPropagation(); patch(c => { delete c.staff[i].till; }); }}
                     style={{ marginLeft:6, fontSize:9, color:P.warn, border:`1px solid ${P.warn}55`, borderRadius:999, padding:"1px 7px", cursor:"pointer" }}>не работает · вернуть</span> : null}
@@ -3168,6 +3193,12 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 <Num inp={inp} v={sf.rate || 0} min={0} max={sf.rateMode === "month" ? 2000000 : 20000}
                   set={v => patch(c => { c.staff[i].rate = v; })} />
               </Field>
+            </div>
+            {/* v220 (Доп. 546): новичок — в смене рядом с ним генератор ставит опытного той же должности */}
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+              <Pill a11y={a11y} P={P} on={!!sf.newbie} attrs={{ "data-emp-newbie": sf.id, "aria-pressed": !!sf.newbie }} style={{ flexShrink:0, padding:"7px 12px" }}
+                onClick={() => patch(c => { if (c.staff[i].newbie) delete c.staff[i].newbie; else c.staff[i].newbie = true; })}>Новичок</Pill>
+              <span style={{ fontSize:11, color:P.sub, lineHeight:1.45 }}>{sf.newbie ? "В смене с ним всегда кто-то из опытных. Сними отметку, когда освоится." : "Отметь, пока человек осваивается: одного в смену его не поставим"}</span>
             </div>
             <div style={{ display:"flex", gap:6, marginTop:6 }}>
               {[["hour", "почасовая"], ["shift", "за смену"], ["month", "оклад/мес"]].map(([v, t]) => (
@@ -4492,7 +4523,10 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const toAudit = () => { setAnOpen("audit"); vibrate("light");
         setTimeout(() => { try { const el = document.querySelector("[data-sec-audit]"); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 80); };
       const tk103 = needNextPlan({ Y, M, now, admin: isAdmin, next: nextPlan });   // v141: ТК РФ, ст. 103
-      const calm = !confl.length && !holes.length && !hourHoles.length && !waiting.length && !tk103;
+      // v220 (Доп. 546): новичок один в смене — по людям, с днями
+      const alone = ruleOn(cfg.rules, "newbieAlone") ? aloneDays(win, { staff, plan, shiftOf }) : [];
+      const aloneBy = Object.values(alone.reduce((m, x) => { (m[x.id] = m[x.id] || { id: x.id, name: x.name, pos: x.pos, days: [] }).days.push(x.d); return m; }, {}));
+      const calm = !confl.length && !holes.length && !hourHoles.length && !aloneBy.length && !waiting.length && !tk103;
       return (
         <div data-attn="" data-lens-edge="" style={{ ...card, flexShrink:0 }}>
           <div style={{ ...eyebrow, marginBottom:2 }}><span>Требует внимания</span>
@@ -4521,6 +4555,21 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 </div>
               </div>
               <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => { setFillAsk({ d: h.days[0].d, pos: h.pos }); vibrate("light"); }}>Кто может?</button>
+            </div>
+          ))}
+          {aloneBy.map(x => (
+            <div key={"al" + x.id} data-attn-row="alone" data-attn-emp={x.id} style={{ ...row(true), alignItems:"flex-start" }}>
+              <span style={{ paddingTop:2 }}><IcoUsers size={16} color={P.warn} /></span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13.5, color:P.text }}>Новичок один в смене: {shortName(x.name)}</div>
+                <div style={{ marginTop:1 }}>
+                  {x.days.slice(0, 8).map(d => (
+                    <span key={d} data-attn-aday={d} style={dayChip} onClick={() => { setBossDay(d); vibrate("light"); }}
+                      {...onActivate(() => setBossDay(d))}>{DOWL[dow(d)]} {d}</span>
+                  ))}
+                  {x.days.length > 8 ? <span style={{ fontSize:11.5, color:P.sub }}>и ещё {x.days.length - 8}</span> : null}
+                </div>
+              </div>
             </div>
           ))}
           {hourHoles.map(h => (
@@ -4665,6 +4714,11 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                   <span data-day-special="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
                     style={{ color:P.acc, cursor:"pointer", textDecoration:"underline" }}>{cfg.dates?.[isoD(d)] ? "изменить в «Особых днях»" : "свои часы или люди на эту дату"}</span>
                 </div>); })() : null}
+            {/* v220 (Доп. 546): новичок один — в его часы рядом нет опытного той же должности */}
+            {!cl && ruleOn(cfg.rules, "newbieAlone") ? aloneOn(d, { staff, plan, shiftOf }).map(x => (
+              <div key={"al" + x.id} data-day-alone={x.id} style={{ fontSize:11.5, color:P.warn, marginTop:6, lineHeight:1.4 }}>
+                {shortName(x.name)}, новичок, один: рядом нет опытного ({posName(x.pos).toLowerCase()}). Поставь к нему кого-то из опытных.
+              </div>)) : null}
             {/* v219 (Доп. 545): «Часы пик» дня — сколько стоит людей в эти часы против нужного */}
             {!cl ? (() => { const hp = hourPlanOfD(d), items = Object.entries(hp); if (!items.length) return null;
               return (
@@ -4732,7 +4786,8 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                       return (
                         <div key={x.id} data-day-person={x.id} onClick={() => { setPick({ id: x.id, d }); vibrate("light"); }} {...onActivate(() => setPick({ id: x.id, d }))}
                           style={{ display:"flex", alignItems:"center", gap:8, height:21, cursor:"pointer" }}>
-                          <span style={{ width:76, flexShrink:0, fontSize:12, color:P.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{shortName(x.name)}</span>
+                          <span style={{ width:76, flexShrink:0, fontSize:12, color:P.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                            {shortName(x.name)}{x.newbie ? <span data-day-newbie="" title="новичок" style={{ fontSize:9.5, color:P.acc, marginLeft:3 }}>нов.</span> : null}</span>
                           <span style={track}>
                             <span style={{ position:"absolute", left: pc(q.from) + "%", width: (pc(e) - pc(q.from)) + "%", top:0, bottom:0, borderRadius:7, boxSizing:"border-box",
                               background: c ? (a11y ? c.bgL : c.bg) : "transparent", border:`1px solid ${c ? (a11y ? c.bdL : c.bd) : P.sub}`,

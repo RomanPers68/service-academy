@@ -7,12 +7,17 @@
    • v223: Supabase по полному адресу (картинки и файлы из базы, кнопки уведомлений) — через свой сайт, /sb/…;
      свои /sb/ и /api/ — только сеть (картинки — как картинки).
    Версию менять при смене стратегии; файлы сборки версии не требуют — у них хэш в имени.
-   v137: ещё уведомления на телефон (push, notificationclick) — внизу файла. */
+   v137: ещё уведомления на телефон (push, notificationclick) — внизу файла.
+   v224: страница — сеть первой, но не дольше NAV_WAIT: медленная сеть — сразу сохранённая копия, свежая ложится фоном;
+     файлы сборки держим, пока их не больше ASSET_LIMIT (новая сборка их больше не стирает); фото из хранилища, раз
+     скачанное, отдаём из памяти без повторного скачивания (у каждой версии фото свой адрес). */
 const VERSION = "sa-sw-v1";
 const SHELL = VERSION + "-shell";
 const ASSETS = VERSION + "-assets";
 const IMAGES = VERSION + "-images";
 const IMG_LIMIT = 300;
+const ASSET_LIMIT = 400;   // v224: файлы сборки нескольких последних версий; старые уходят первыми
+const NAV_WAIT = 2500;     // v224: столько ждём страницу из сети, потом — сохранённая копия
 // v177 (Доп. 502): видео-знакомства, взятые заранее (lib/intro-warm.js, VIDEO_CACHE), кладёт и читает сама страница;
 // воркер их не трогает и при обновлении не стирает
 const VIDEO = "sa-video-v1";
@@ -56,10 +61,14 @@ async function viaSite(req, u) {
   return vercelNo(r) ? fetch(req).catch(() => r) : r;
 }
 // картинка: сначала из памяти телефона, свежая — фоном; src — откуда брать по сети (через сайт), иначе сам запрос
+// v224: файл хранилища под своим адресом не меняется (новое фото — новый адрес) — второй раз его не качаем. Кроме ответов
+// «вслепую» (opaque: чужой адрес без CORS): по ним не видно, фото это или ошибка, такие освежаем, как раньше
+const fixed = (u) => /\/storage\/v1\/object\/public\//.test(u.href);
 function imageFirst(req, src) {
   return (async () => {
     const c = await caches.open(IMAGES);
     const hit = await c.match(req);
+    if (hit && hit.type !== "opaque" && fixed(new URL(req.url))) return hit;
     const get = src ? fetch(src).then((r) => (vercelNo(r) ? fetch(req).catch(() => r) : r), () => fetch(req)) : fetch(req);
     const net = get.then(res => { if (res.ok || res.type === "opaque") { c.put(req, res.clone()); trim(IMAGES, IMG_LIMIT); } return res; }).catch(() => null);
     return hit || (await net) || Response.error();
@@ -89,14 +98,26 @@ self.addEventListener("fetch", (e) => {
   if (u.origin === self.location.origin && u.pathname.startsWith("/video/") && !isImage(u)) return;
 
   if (req.mode === "navigate") {
+    // v224: сеть первой, но не дольше NAV_WAIT. На медленной сети (ярлык на iPhone, Камчатка) — сразу сохранённая копия,
+    // а свежая ложится фоном и встанет при следующем открытии (сборку сверяет main.jsx). Копии нет — ждём сеть, как раньше.
+    // Копию снимаем сразу, как пришёл ответ: тело страницы читается браузером, второй раз его не прочесть.
+    const net = fetch(req);
+    e.waitUntil(net.then((fresh) => {
+      if (!fresh || !fresh.ok) return undefined;
+      const copy = fresh.clone();
+      return caches.open(SHELL).then((c) => c.put("/", copy));
+    }).catch(() => {}));
     e.respondWith((async () => {
-      try {
-        const fresh = await fetch(req);
-        const c = await caches.open(SHELL); c.put("/", fresh.clone());
-        return fresh;
-      } catch (err) {
-        const c = await caches.open(SHELL);
-        return (await c.match("/")) || (await c.match(req)) || new Response("<!doctype html><meta charset=utf-8><body style='background:#171208;color:#C8A96E;font-family:Georgia,serif;text-align:center;padding:40vh 24px 0'>✦ SA<br><br>Нет сети и нет сохранённой копии.<br>Открой приложение один раз при связи.</body>", { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      let saved = null;
+      try { const c = await caches.open(SHELL); saved = (await c.match("/")) || (await c.match(req)) || null; } catch (err) {}
+      let fresh = null;
+      if (saved) {
+        const slow = new Promise((r) => setTimeout(() => r(null), NAV_WAIT));
+        try { fresh = await Promise.race([net, slow]); } catch (err) { fresh = null; }
+        return fresh && fresh.ok ? fresh : saved;
+      }
+      try { return await net; } catch (err) {
+        return new Response("<!doctype html><meta charset=utf-8><body style='background:#171208;color:#C8A96E;font-family:Georgia,serif;text-align:center;padding:40vh 24px 0'>✦ SA<br><br>Нет сети и нет сохранённой копии.<br>Открой приложение один раз при связи.</body>", { headers: { "Content-Type": "text/html; charset=utf-8" } });
       }
     })());
     return;
@@ -106,7 +127,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith((async () => {
       const c = await caches.open(ASSETS);
       const hit = await c.match(req); if (hit) return hit;
-      const res = await fetch(req); if (res.ok) c.put(req, res.clone()); return res;
+      const res = await fetch(req); if (res.ok) { c.put(req, res.clone()).then(() => trim(ASSETS, ASSET_LIMIT)).catch(() => {}); } return res;
     })());
     return;
   }

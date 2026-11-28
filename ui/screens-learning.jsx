@@ -609,10 +609,16 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
     const t = e.touches && e.touches[0];
     if (!t || e.touches.length > 1) { peekG.current = null; return; }
     const row = pin ? pinNumsRef.current : stripRef.current;
-    peekG.current = { x: t.clientX, y: t.clientY, i, pin, on: false, out: false, drag: false, sl: row ? row.scrollLeft : 0 };
+    // v224 (Доп. 550): номера помещаются в ряд (на них около 20 px на палец) — подпись темы встаёт сразу под пальцем: видно,
+    // куда попал, и до того, как отпустить, палец можно довести до нужного номера. Ряд листается (номеров много) — как раньше:
+    // подпись по долгому нажатию, а движение вбок листает ряд.
+    const fits = !(row && row.scrollWidth > row.clientWidth + 1);
+    peekG.current = { x: t.clientX, y: t.clientY, i, pin, on: fits, lock: false, out: false, drag: false, sl: row ? row.scrollLeft : 0 };
+    if (fits) setPeek({ i, pinned: pin });
     peekT.current = setTimeout(() => {
       const g = peekG.current; if (!g) return;
-      g.on = true; vibrate("light"); setPeek({ i: g.i, pinned: g.pin });
+      if (!g.on) { g.on = true; setPeek({ i: g.i, pinned: g.pin }); }
+      g.lock = true; vibrate("light");
     }, 380);
   };
   const peekCancel = () => { clearTimeout(peekT.current); const g = peekG.current; peekG.current = null; if (g && g.on) setPeek(null); };
@@ -640,6 +646,13 @@ export function HomeScreen({ role, modules = [], completed, quizDone = {}, progr
         if (g.drag) { if (e.cancelable) e.preventDefault(); if (r0) r0.scrollLeft = g.sl - dx; return; }
         if (Math.abs(dx) > 9 || Math.abs(dy) > 9) { clearTimeout(peekT.current); peekG.current = null; }
         return;
+      }
+      // v224: подпись встала сразу, а палец пошёл вверх или вниз — это прокрутка страницы: подпись убираем, страницу не держим
+      if (!g.lock) {
+        const dx = t.clientX - g.x, dy = t.clientY - g.y;
+        if (Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)) { clearTimeout(peekT.current); peekG.current = null; setPeek(null); return; }
+        if (Math.abs(dx) <= 6) return;
+        g.lock = true; clearTimeout(peekT.current);
       }
       if (e.cancelable) e.preventDefault();   // ведёт по номерам — страница стоит
       const hit = document.elementFromPoint(t.clientX, t.clientY);

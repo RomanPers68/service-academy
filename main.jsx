@@ -137,7 +137,10 @@ function announceUpdate() {
       told = m[1];
       sessionStorage.setItem(KEY, String(Date.now()));
       if ("serviceWorker" in navigator) {
-        try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
+        // v224 (Доп. 550): стираем только сохранённую копию страницы. Фото, ролики и файлы сборки остаются: у файлов сборки
+        // в имени отпечаток, у фото из хранилища свой адрес на каждую версию. Раньше каждая новая сборка стирала всё, и после
+        // выкладки фото, экраны и ролики заново ехали по сети.
+        try { const keys = await caches.keys(); await Promise.all(keys.filter(k => /-shell$/.test(k)).map(k => caches.delete(k))); } catch (e) {}
         try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.update())); } catch (e) {}
       }
       // v59: при открытии — перезагрузка сразу (ничего не прервём); вернулся из другого приложения — тост «Обновить»

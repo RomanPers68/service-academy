@@ -207,7 +207,9 @@ if (want("STORE")) {
   await nav(page, "shift", 2400);
   const s1 = await rpcs(page, "staff_photo");
   const m1 = await faces(page, "[data-shift-mates] [data-mate]");
-  ok("STORE: «Смена» в первый раз — превью коллег одним запросом", s1.length === 1 && s1[0][1] >= 2 && s1[0][2] === false, JSON.stringify(s1));
+  // v224 (Доп. 550): превью всей команды приложение берёт и само, заранее (lib/staff-photo.js, aheadStaffThumbs): рядом с
+  // запросом экрана может быть ещё один — за остальных; оба пачкой и без целых фото
+  ok("STORE: «Смена» в первый раз — превью коллег пачкой (экран и заранее — не больше двух запросов)", s1.length >= 1 && s1.length <= 2 && s1.some((x) => x[1] >= 2) && s1.every((x) => x[2] === false), JSON.stringify(s1));
   ok("STORE: фото в кружках", m1.filter((x) => x.face && x.ok).length === 2, JSON.stringify(m1));
   await nav(page, "home", 2600);
   const cov1 = await page.evaluate(() => { const i = document.querySelector(".tbm-cover img"); return i ? i.naturalWidth > 0 : null; });
@@ -349,7 +351,7 @@ if (want("INI")) {
   ok("INI: «Ким Мария» теперь «МК», а «КМ» — Ксения Миронова", row.some((x) => x.who === "Ким Мария" && x.t === "МК") && row.some((x) => x.who === "Миронова Ксения" && x.t === "КМ"), JSON.stringify(row));
   ok("INI: у кого есть фото — оно в кружке, у Анны и Ксении буквы", row.filter((x) => x.face).length >= 3 && row.filter((x) => !x.face).some((x) => x.who === "Смирнова Анна"), JSON.stringify(row));
   const sp1 = await rpcs(page, "staff_photo");
-  ok("INI: все фото графика — одним запросом", sp1.length === 1 && sp1[0][1] >= 3, JSON.stringify(sp1));
+  ok("INI: все фото графика — пачкой (экран и заранее — не больше двух запросов, v224)", sp1.length >= 1 && sp1.length <= 2 && sp1.reduce((a, x) => a + x[1], 0) >= 3, JSON.stringify(sp1));
   await shot(page, "ini-schedule");
   ok("INI: без ошибок страницы", !errs.length, errs.join(" | "));
   await ctx.close();

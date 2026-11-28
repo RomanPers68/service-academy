@@ -221,7 +221,7 @@ export function ModuleMenu({ mod, completed = {}, quizDone = {}, onLesson, onBac
                     {marker}
                     <div className="tbm-card">
                       <div className="tbm-cc">
-                        <div className="tbm-ck"><span className="tbm-kchip">{kind}</span><span>{"≈ " + est(l) + " мин" + (l.type !== "lesson" ? " · " + detail(l, est(l)) : "")}</span></div>
+                        <div className="tbm-ck"><span className="tbm-kchip">{kind}</span><span className="tbm-ckt">{/* v224 (Доп. 550): части не режутся посреди слова — не влезло, вторая часть уходит строкой ниже */}<span>{"≈ " + est(l) + " мин"}</span>{l.type !== "lesson" ? <>{" · "}<span>{detail(l, est(l))}</span></> : null}</span></div>
                         <span className="tbm-ct">{l.title}</span>
                         <span className="tbm-cs">{"шаг " + (i + 1) + " из " + real.length + (doneN ? " · пройдено " + doneN : " · начало раздела")}</span>
                       </div>

@@ -126,6 +126,7 @@ html.sa-light .tbm-cover::after{background:linear-gradient(180deg,rgba(248,241,2
 .tbm-card{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:18px;background:var(--cur-bg);border:1px solid var(--cur-edge);border-top-color:var(--cur-top);box-shadow:var(--cur-shadow)}
 .tbm-cc{flex:1;min-width:0}
 .tbm-ck{display:flex;align-items:center;gap:7px;${LABEL_CSS};font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden}
+.tbm-ck{flex-wrap:wrap;row-gap:2px}.tbm-ckt{min-width:0;white-space:normal}.tbm-ckt>span{white-space:nowrap}
 .tbm-kchip{${LABEL_CSS};font-size:12.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--role-edge,var(--edge-gold));color:var(--role-ink,var(--gold-ink));background:var(--chip-bg)}
 .tbm-ct{display:block;margin:4px 0 1px;font-family:var(--font-display);font-size:17px;font-weight:700;line-height:1.22;color:var(--text);text-wrap:balance}
 .tbm-cs{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.35;color:var(--sub)}

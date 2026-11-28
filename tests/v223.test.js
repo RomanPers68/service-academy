@@ -146,7 +146,7 @@ describe("v223 · сервис-воркер: полные адреса Supabase 
       return new Response(o.json ? JSON.stringify(o.json) : "ok", { status: 200 });
     };
     vm.runInNewContext(rd("public/sw.js"), { self, caches: { open: async () => cache, keys: async () => [] }, fetch, URL, Response, Request, console, Promise, setTimeout: (f) => f(), Math, JSON, String, Number, Array, Set });
-    const go = async (request) => { let p = null; H.fetch({ request, respondWith: (x) => { p = x; } }); return p ? p : undefined; };
+    const go = async (request) => { let p = null; H.fetch({ request, respondWith: (x) => { p = x; }, waitUntil: () => {} }); return p ? p : undefined; };
     const click = async (ev) => { let p = null; H.notificationclick({ ...ev, waitUntil: (x) => { p = x; } }); await p; };
     return { fetched, store, go, click };
   };
@@ -158,7 +158,7 @@ describe("v223 · сервис-воркер: полные адреса Supabase 
     expect(s.fetched.map((x) => x.url)).toEqual([SITE + "/sb/storage/v1/object/public/menu/borsch.jpg"]);
     expect([...s.store.keys()]).toEqual([IMG]);
     await s.go(new Request(IMG));
-    expect(s.fetched.length).toBe(2);   // из памяти отдали сразу, свежая — фоном
+    expect(s.fetched.length).toBe(1);   // v224: из памяти и без повторного скачивания — у файла хранилища адрес не меняется
   });
   it("запись в базу по полному адресу (POST) — через сайт с тем же телом; сайт не ответил — напрямую", async () => {
     const s = load(HOST);

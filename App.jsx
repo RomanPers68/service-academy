@@ -15,6 +15,7 @@ import { MODULES, loadRoleModules, loadAllModules, loadOpenModules, loadSpgModul
 import { useContentVersion } from "./lib/use-content";
 import { HubScreen, ShiftHero, TeamHero, MeHero, MeShelf, frostOf, MastersBanner, TeamFeed, NewbieHero } from "./ui/home-hubs";
 import { shiftMates } from "./lib/shift-mates";   // v157 (Доп. 481): «Смена» — кто сегодня со мной
+import { menuPhotosAhead, AHEAD_DELAY } from "./lib/photo-ahead";   // v224 (Доп. 550): фото меню заранее
 import { warmLessonPhotos, WARM_HOLD } from "./lib/lesson-photo";   // v158 (Доп. 483): превью фото с телефона — в память при запуске; v163: заставка их ждёт
 import { warmStaffPhotos, loadStaffPhotos } from "./lib/staff-photo";   // v158: фото сотрудников в кружках (этап 52)
 import { loadRefBook } from "./lib/ref-book";   // v167 (Доп. 492): правки справочника (этап 53) — один запрос за заход
@@ -1210,6 +1211,13 @@ function ServiceAcademy() {
   const shiftCrew = useMemo(() => (profile ? shiftMates(profile, new Date()) : null), [profile, todayKey, screen, schedTick]);   // eslint-disable-line react-hooks/exhaustive-deps
   // v158 (Доп. 483): фото, скачанные раньше, лежат на телефоне — превью поднимаем в память сразу, обложки встают без задержки
   useEffect(() => { warmLessonPhotos(); warmStaffPhotos(); }, []);
+  // v224 (Доп. 550): фото меню своего заведения — в память телефона заранее, когда главная уже стоит (lib/photo-ahead.js)
+  const aheadRest = profile && profile.restaurant ? profile.restaurant : "";
+  useEffect(() => {
+    if (!aheadRest) return undefined;
+    const t = setTimeout(() => { menuPhotosAhead(aheadRest); }, AHEAD_DELAY);
+    return () => clearTimeout(t);
+  }, [aheadRest]);
   // список «у кого есть фото» — один запрос за заход, как только известно, кто вошёл (кружки в «Смене» и «Графике» уже с фото)
   const profId = profile ? profile.id || profile.name : null;
   useEffect(() => { if (profId) { loadStaffPhotos(); loadRefBook(); } }, [profId]);   // v167: и правки справочника — «глава дня», чат и Наставник уже с ними
@@ -1740,15 +1748,22 @@ function ServiceAcademy() {
   // входе во вкладки «Смена» и «Команда», не чаще раза в пять минут; без этапа — прежние пункты (по треку «Новичок»)
   const [nbInfo, setNbInfo] = useState(null);
   const nbAskRef = useRef({ at: 0, off: false });
+  // v224 (Доп. 550): прошлый ответ — с телефона, сразу. На медленной сети «Смена» сначала показывала «Первую неделю» по
+  // треку, а через пару секунд ответ сервера её убирал: карточка мелькала и экран прыгал.
+  const nbKey = ukP ? "sa_nb_me" + ukP : "";
+  useEffect(() => {
+    if (!nbKey) return;
+    try { const c = JSON.parse(localStorage.getItem(nbKey) || "null"); if (c && typeof c === "object") setNbInfo((v) => v || (c.off ? { off: true } : newbieModel(c))); } catch (e) {}
+  }, [nbKey]);
   const loadNbInfo = useCallback((force) => {
     const st = nbAskRef.current;
     if (!profile || st.off || (!force && Date.now() - st.at < 5 * 60e3)) return;
     st.at = Date.now();
     rpc("newbie_me", { p_token: saToken() }).then((r) => {
-      if (rpcMissing(r)) { st.off = true; setNbInfo({ off: true }); return; }
-      if (r && r.ok) setNbInfo(newbieModel(r));
+      if (rpcMissing(r)) { st.off = true; setNbInfo({ off: true }); try { if (nbKey) localStorage.setItem(nbKey, JSON.stringify({ off: true })); } catch (e) {} return; }
+      if (r && r.ok) { setNbInfo(newbieModel(r)); try { if (nbKey) localStorage.setItem(nbKey, JSON.stringify(r)); } catch (e) {} }
     }).catch(() => { st.at = 0; });
-  }, [profile]);
+  }, [profile, nbKey]);
   useEffect(() => { if ((screen === "shift" || screen === "teamHub") && storageLoaded) loadNbInfo(false); }, [screen, storageLoaded, loadNbInfo]);
   const nbOn = !!nbInfo && !nbInfo.off;
   // v84 (Доп. 397): спасибо от гостей — пункт в «Я» (свой QR) и в «Команде» у руководителя. Числа для подписи — my_thanks,

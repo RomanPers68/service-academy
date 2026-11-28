@@ -280,25 +280,27 @@ export function makeServer(opts) {
     S.queue = S.queue || {};
     const ws = PEOPLE.filter((e) => e.restaurant === rest && qWaiter(e) && e.status !== "fired");
     S.queue[rest] = (S.queue[rest] || []).filter((x, i, a) => ws.some((e) => e.id === x.id) && a.findIndex((y) => y.id === x.id) === i)
-      .map((x) => ({ id: x.id, away: !!x.away, out: !!x.out, stay: !!x.stay }));
+      .map((x) => ({ id: x.id, away: !!x.away, out: !!x.out, stay: !!x.stay, here: !!x.here }));
     return S.queue[rest];
   };
   // этап 73: часы смены сегодня (to после полуночи — 25, 26), минуты дня заведения (с 6 утра), смена кончилась без «Остался»
   const qHrs = (e) => { const s = staffOf(e.id), sh = s ? def(code(String(s.id), TODAY)) : null;
     return sh && !sh.extra ? { from: sh.from, to: sh.to <= sh.from ? sh.to + 24 : sh.to } : { from: null, to: null }; };
   const qMin = () => { const t = new Date(clock()), m = t.getHours() * 60 + t.getMinutes(); return m < 360 ? m + 1440 : m; };
-  const qOver = (x) => { if (x.stay) return false; const h = qHrs(who(x.id) || { id: x.id }); return h.to != null && qMin() >= h.to * 60; };
+  // этап 74: вне смены — и до неё (больше чем за полчаса, без «Пришёл»)
+  const qOver = (x) => { const h = qHrs(who(x.id) || { id: x.id }), m = qMin();
+    return (!x.stay && h.to != null && m >= h.to * 60) || (!x.here && h.from != null && m < h.from * 60 - 30); };
   const qCan = (p) => isLead(p) || p.position === "hostess";
   const qJson = (p, rest) => {
     const ord = qOrd(rest);
-    return { ok: true, day: TODAY, edit: qCan(p), min: qMin(), list: ord.map((x) => ({ id: x.id, name: full(who(x.id)), away: !!x.away, out: !!x.out, stay: !!x.stay, ...qHrs(who(x.id)) })),
+    return { ok: true, day: TODAY, edit: qCan(p), min: qMin(), list: ord.map((x) => ({ id: x.id, name: full(who(x.id)), away: !!x.away, out: !!x.out, stay: !!x.stay, here: !!x.here, ...qHrs(who(x.id)) })),
       others: PEOPLE.filter((e) => e.restaurant === rest && qWaiter(e) && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e), ...qHrs(e) }))
         .sort((a, b) => (a.from == null) - (b.from == null) || (a.from || 0) - (b.from || 0) || a.name.localeCompare(b.name, "ru")) };
   };
   const qMove = (rest, id, firstPlace) => {
     const e = who(id); if (!e || e.restaurant !== rest || !qWaiter(e)) return;
     if (!qOrd(rest).some((x) => x.id === id)) return;   // v215: кого нет в очереди — не дописываем
-    const ord = qOrd(rest).filter((x) => x.id !== id), it = { id, away: false, out: false, stay: !!(qOrd(rest).find((x) => x.id === id) || {}).stay };
+    const ord = qOrd(rest).filter((x) => x.id !== id), cur = qOrd(rest).find((x) => x.id === id) || {}, it = { id, away: false, out: false, stay: !!cur.stay, here: !!cur.here };
     S.queue[rest] = firstPlace ? [it, ...ord] : [...ord, it];
   };
   const view = (c, p) => {
@@ -1949,7 +1951,7 @@ export function makeServer(opts) {
       if (!qCan(p)) return { ok: false, error: "forbidden" };
       if (!Array.isArray(b.p_ord)) return { ok: false, error: "bad_request" };
       const old = qOrd(p.restaurant), seen = new Set(), nq = [];
-      for (const x of b.p_ord) { const e = x && who(String(x.id)); if (e && e.restaurant === p.restaurant && qWaiter(e) && !seen.has(e.id)) { seen.add(e.id); nq.push({ id: e.id, away: x.away === true, out: x.out === true, stay: x.stay === true }); } }
+      for (const x of b.p_ord) { const e = x && who(String(x.id)); if (e && e.restaurant === p.restaurant && qWaiter(e) && !seen.has(e.id)) { seen.add(e.id); nq.push({ id: e.id, away: x.away === true, out: x.out === true, stay: x.stay === true, here: x.here === true }); } }
       S.queue[p.restaurant] = [...nq, ...old.filter((x) => !seen.has(x.id))];
       return qJson(p, p.restaurant);
     }
@@ -1962,7 +1964,7 @@ export function makeServer(opts) {
       if ((k.going || []).length || k.done) return { ok: false, error: "going", msg: J(m) };
       if (clock() - Date.parse(m.at) >= 600000) return { ok: false, error: "stale" };
       const skip = [...new Set([k.emp, ...(k.skip || [])])], rest = chatOf(m.chat).rest;
-      const nx = qOrd(rest).find((x) => !x.away && !x.out && !skip.includes(x.id) && !qOver(x));   // этап 73: смена кончилась — мимо
+      const nx = qOrd(rest).find((x) => !x.away && !x.out && !skip.includes(x.id) && !qOver(x));   // этапы 73, 74: вне смены — мимо
       if (!nx) return { ok: false, error: "nobody" };
       qMove(rest, k.emp, true); qMove(rest, nx.id, false);
       const to = who(nx.id), caller = who(m.emp) || p;

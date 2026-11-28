@@ -154,9 +154,10 @@ describe("v213 · очередь на телефоне (lib/call-queue.js)", () 
     expect(queueFlag(q, "a", "bogus", true)).toBe(q);
     const add = queueAdd(q, "d");
     expect([ids(add), add.others.length]).toEqual(["a,v·п,p,d", 0]);
-    // v217: и stay — «Остался» после смены
-    expect(queueOrd(add)).toEqual([{ id: "a", away: false, out: false, stay: false }, { id: "v", away: true, out: false, stay: false }, { id: "p", away: false, out: false, stay: false },
-      { id: "g", away: false, out: true, stay: false }, { id: "d", away: false, out: false, stay: false }]);
+    // v217: и stay — «Остался» после смены; v218: here — «Пришёл» до смены
+    const f = { stay: false, here: false };
+    expect(queueOrd(add)).toEqual([{ id: "a", away: false, out: false, ...f }, { id: "v", away: true, out: false, ...f }, { id: "p", away: false, out: false, ...f },
+      { id: "g", away: false, out: true, ...f }, { id: "d", away: false, out: false, ...f }]);
     expect(queueLabels([{ name: "Анна Смирнова" }, { name: "Анна Сидорова" }, { name: "Пётр Орлов" }])).toEqual(["Анна Смирнова", "Анна Сидорова", "Пётр О."]);
   });
   it("можно ли передать: лично к столу, без ответа, не передан, моложе 10 минут; тот, кого звали, кто звал, руководитель", () => {

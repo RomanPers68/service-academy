@@ -4,7 +4,7 @@
 # ещё официанты Вера, Глеб, Дина и хостес Ольга; график на сегодня: Глеб — утро, Вера и Ольга — день, Анна — вечер,
 # Мария — утро (Дина — в отпуске). Очередь утром пустая: её составляет хостес по приходу.
 # v216 (этап 71): официант для очереди — по графику месяца. v217 (этап 73): часы смены, «Остался», день заведения с 6 утра;
-# время в проверках этапа 73 подставное (sa.qmin).
+# время в проверках этапа 73 подставное (sa.qmin). v218 (этап 74): до начала смены — «Пришёл».
 # Без этапа 68 — понятная ошибка. Этап 69 дважды. Отправка в Telegram — заглушка pg_net (net.sent_log).
 # Нужен psql; сервер — PGHOST (по умолчанию /tmp/pgsock) и PGPORT (5433), пользователь postgres.
 #   bash run25.sh && bash test69.sh
@@ -242,6 +242,26 @@ Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP',
 chk "0:30, Глеб ушёл («Остался» сняли) — передать некому" "$(NX 1470 "array[]::text[]")" '^никого$'
 chk "права: служебные функции очереди закрыты от anon" "$(PP "select string_agg(proname || ':' || has_function_privilege('anon', oid, 'execute'), ' ' order by proname) from pg_proc
   where proname in ('_sa_queue_now', '_sa_queue_hrs', '_sa_queue_over', 'queue_set', 'queue_get')")" '^_sa_queue_hrs:false _sa_queue_now:false _sa_queue_over:false queue_get:true queue_set:true$'
+
+# ── Этап 74 (v218, Доп. 544): и до начала смены — «Пришёл» ─────────────────────────────────────────────
+cp "$SRC/supabase-stage74-queue-early.sql" "$D/"; chmod a+r "$D/supabase-stage74-queue-early.sql"
+RC=0; run supabase-stage74-queue-early.sql; run supabase-stage74-queue-early.sql
+chk "этап 74 дважды — без ошибок; итог" "$RC|$(echo "$OUT" | grep -o 'Очередь до начала смены: .*' | head -1 | sed 's/ · очередей.*//')" '^0\|Очередь до начала смены: «Пришёл», вне смены по графику столы не идут$'
+# очередь: Глеб (10–18), Ольга (16–24), Вера (12–20); время по-прежнему подставное (sa.qmin)
+chk "11:00 — после Глеба никого: Ольга (с 16) и Вера (с 12) ещё не пришли; 11:40 — Вера уже на смене (за полчаса)" \
+  "$(NX 660 "array['$GEMP']") | $(NX 700 "array['$GEMP']")" '^никого \| Вера Соколова$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP'), jsonb_build_object('id', '$OEMP', 'here', true), jsonb_build_object('id', '$VEMP', 'here', 'да')))" >/dev/null
+QF() { Q "set sa.qmin = '$1'; select string_agg((x->>'name') || case when (x->>'here')::boolean then '·п' else '' end || case when (x->>'stay')::boolean then '·о' else '' end, ', ' order by o)
+  from jsonb_array_elements(queue_get('$OLGA')->'list') with ordinality t(x, o)"; }
+chk "«Пришёл» у Ольги — в 11:00 после Глеба она; here только true (у Веры «да» — нет)" "$(NX 660 "array['$GEMP']") | $(QF 660)" '^Ольга Ли \| Глеб Орлов, Ольга Ли·п, Вера Соколова$'
+PP "select _sa_queue_move('Два моря, Океан', '$OEMP', false)" >/dev/null
+chk "позвали Ольгу к столу — в конце, «Пришёл» сохранился" "$(QF 660)" '^Глеб Орлов, Вера Соколова, Ольга Ли·п$'
+chk "_sa_queue_over: вне смены — до (без «Пришёл»), после (без «Остался»); без графика — никогда" \
+  "$(PP "select string_agg(_sa_queue_over('Два моря, Океан', e, m)::text, ' ' order by n) from (values
+    (1, jsonb_build_object('id', '$OEMP'), 929), (2, jsonb_build_object('id', '$OEMP'), 930), (3, jsonb_build_object('id', '$OEMP', 'here', true), 600),
+    (4, jsonb_build_object('id', '$OEMP'), 1440), (5, jsonb_build_object('id', '$OEMP', 'stay', true), 1500), (6, jsonb_build_object('id', '$DEMP'), 100)) v(n, e, m)")" \
+  '^true false false true false false$'
+chk "права: _sa_queue_over закрыта от anon" "$(PP "select has_function_privilege('anon', '_sa_queue_over(text, jsonb, int)', 'execute')")" '^f(alse)?$'
 
 echo; echo "Итого: ✓ $pass  ✗ $fail"
 $P0 -d postgres -c "drop database if exists $DB" >/dev/null 2>&1

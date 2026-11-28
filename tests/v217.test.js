@@ -84,7 +84,7 @@ describe("v217 · очередь по часам смены (lib/call-queue.js)"
     expect([queuePos(q, "o", 1085), queuePos(q, "g", 1085)]).toEqual([1, 0]);
     const st = queueFlag(q, "g", "stay", true);
     expect(queueNext(st, [], 1085).id).toBe("g");
-    expect(queueOrd(st)[0]).toEqual({ id: "g", away: false, out: false, stay: true });
+    expect(queueOrd(st)[0]).toEqual({ id: "g", away: false, out: false, stay: true, here: false });   // v218: here
     expect(queueLine(q, "g", 1085)).toMatchObject({ names: ["Ольга Л.", "Вера С."], pos: 0, n: 2, over: 1, meOver: true });
     expect(queueLine(q, "o", 1085)).toMatchObject({ pos: 1, meOver: false });
     expect(queueLine(Q(1470, [G, V]), "v", 1470)).toMatchObject({ names: [], n: 0, over: 2, meOver: true });
@@ -100,13 +100,14 @@ describe("v217 · очередь по часам смены (lib/call-queue.js)"
     expect(all.others.map((x) => x.id)).toEqual(["v", "o", "d"]);
     expect(queueBySchedule(q, 16 * 60).list.map((x) => x.id)).toEqual(["g", "v", "o"]);
     expect(queueToday(q, 18 * 60).map((x) => x.id)).toEqual(["v", "o"]);   // у Глеба смена кончилась
-    expect(queueAdd(q, "o").list[0]).toEqual({ id: "o", name: "Ольга Ли", away: false, out: false, stay: false, from: 16, to: 24 });
+    // v218: добавили до смены — «Пришёл» сразу
+    expect(queueAdd(q, "o").list[0]).toEqual({ id: "o", name: "Ольга Ли", away: false, out: false, stay: false, here: true, from: 16, to: 24 });
   });
   it("позвали к столу — в конец, часы и «Остался» остаются", () => {
     const q = queueFlag(Q(1085, [G, O, V]), "g", "stay", true);
     const after = queueAfterCall(q, "g");
     expect(after.list.map((x) => x.id)).toEqual(["o", "v", "g"]);
-    expect(after.list[2]).toEqual({ id: "g", name: "Глеб Орлов", away: false, out: false, stay: true, from: 10, to: 18 });
+    expect(after.list[2]).toEqual({ id: "g", name: "Глеб Орлов", away: false, out: false, stay: true, here: false, from: 10, to: 18 });
   });
 });
 
@@ -117,7 +118,8 @@ describe("v217 · экран (ui/call-queue.jsx)", () => {
     const html = R(h(QueueChips, { q, picked: "v", auto: true, edit: true, editing: false, onPick() {}, onSkip() {}, onEdit() {}, onAdd() {} }));
     expect(html).toMatch(/class="ch-chip over" data-call-qperson="g" data-call-qover="1" aria-label="1\. Глеб Орлов, смена закончилась"/);
     expect(html).toMatch(/data-call-qperson="g"[^>]*>.*?Глеб О\.<span class="ch-q-pause" aria-hidden="true"> · до 18:00<\/span>/);
-    expect(html).toMatch(/aria-label="2\. Анна Смирнова, смена с 20:00"[^>]*>.*?Анна С\.<span class="ch-q-pause" aria-hidden="true"> · с 20:00<\/span>/);
+    // v218: до смены больше получаса — тоже бледная, «ещё не пришёл»
+    expect(html).toMatch(/class="ch-chip over" data-call-qperson="a" data-call-qearly="1" aria-label="2\. Анна Смирнова, смена с 20:00, ещё не пришёл"[^>]*>.*?Анна С\.<span class="ch-q-pause" aria-hidden="true"> · с 20:00<\/span>/);
     expect(html).toMatch(/aria-label="3\. Вера Соколова"[^>]*>.*?Вера С\.<\/button>/);
     expect(html).toMatch(/data-queue-due="call"[\s\S]*По графику уже на смене:[\s\S]*data-queue-due-add="p"[^>]*>\+ Пётр О\.<span class="ch-q-from"> · с 18:00<\/span>/);
     expect(R(h(QueueChips, { q, picked: "v", auto: true, edit: false, editing: false, onPick() {}, onSkip() {}, onEdit() {}, onAdd() {} }))).not.toContain("data-queue-due");
@@ -129,17 +131,18 @@ describe("v217 · экран (ui/call-queue.jsx)", () => {
     const html = R(h(QueuePanel, { q, onChange() {} }));
     expect(html).toMatch(/data-queue-row="g"[\s\S]*?<span class="ch-q-away" data-queue-ended="1">смена до 18:00 закончилась<\/span>[\s\S]*?aria-pressed="false" data-queue-stay="g"[^>]*>Остался</);
     expect(html).toMatch(/data-queue-row="v"[\s\S]*?data-queue-ended="stay">остался после смены<\/span>[\s\S]*?aria-pressed="true" data-queue-stay="v"/);
-    expect(html).toMatch(/data-queue-row="a"[\s\S]*?data-queue-later-row="">смена с 20:00<\/span>[\s\S]*?data-queue-pause="a"[^>]*>Перерыв</);
+    // v218: до смены больше получаса — «Пришёл» вместо «Перерыв»
+    expect(html).toMatch(/data-queue-row="a"[\s\S]*?data-queue-early="1">смена с 20:00, ещё не пришёл<\/span>[\s\S]*?aria-pressed="false" data-queue-here="a"[^>]*>Пришёл</);
     expect(html).toMatch(/Пришёл ещё кто-то из графика\? Нажми<\/span><\/div><div class="ch-chips sub" data-queue-today=""><button[^>]*data-queue-add="o"/);
     expect(html).toMatch(/Позже по графику: добавь, когда придёт<\/div><div class="ch-chips sub" data-queue-later=""><button[^>]*data-queue-add="p"[^>]*>\+ Пётр О\.<span class="ch-q-from"> · с 20:00<\/span>/);
     expect(html).toMatch(/Не в графике сегодня[\s\S]*data-queue-rest=""[\s\S]*data-queue-add="k"[^>]*>\+ Карина К\.<\/button>[\s\S]*data-queue-add="d"/);   // у Карины смена кончилась
-    expect(html).toContain("Кончилась смена по графику: столы ему не идут, пока не нажмёшь «Остался».");
+    expect(html).toContain("Вне смены по графику столы не идут: до смены, пока не нажмёшь «Пришёл», и после, пока не нажмёшь «Остался».");
     expect(html).not.toContain("data-queue-all");                                   // на смене один — кнопки «Все» нет
   });
   it("строка в чате: «смена закончилась», «у всех смена закончилась», «По графику уже на смене» в строке", () => {
     const S = rd("ui/call-queue.jsx");
-    expect(S).toContain('const mine = line && line.meOver ? "смена закончилась" : line && line.pos ? (line.away ? "ты на перерыве" : "ты " + line.pos + "-й") : "";');
-    expect(S).toContain('const names = line && line.names.length ? line.names.join(" → ") : line && line.over ? "у всех смена закончилась" : "";');
+    expect(S).toContain('const mine = line && line.meOver ? "смена закончилась" : line && line.meEarly ? "смена " + line.meFrom : line && line.pos ? (line.away ? "ты на перерыве" : "ты " + line.pos + "-й") : "";');
+    expect(S).toContain('line.over && !line.early ? "у всех смена закончилась"');
     expect(S).toContain('{due.length ? <DueChips due={due} busy={busy} onAdd={(x) => save(queueAdd(q, x.id))} mark="strip" /> : null}');
     expect(S).toContain("const due = q.edit && line ? queueDue(q, m) : [];");
     expect(rd("ui/call-sheet.jsx")).toContain("onAdd={(x) => saveQ(queueAdd(q, x.id))} busy={qBusy} />");

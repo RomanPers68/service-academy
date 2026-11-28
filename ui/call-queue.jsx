@@ -12,12 +12,14 @@
 //   подсвечивается; в правке вместо «Перерыв» — «Остался» (на продление). «Все, кто на смене» ставит только тех, у
 //   кого смена началась; вечерние — в «Позже по графику» с часом. Пришло их время — над кнопками и в строке чата
 //   «По графику уже на смене» с кнопкой: хостес добавляет того, кто пришёл.
+// v218 (Доп. 544): и до начала смены: кто в очереди, а смена начнётся больше чем через полчаса, — бледный «с 17:00», в
+//   правке «Пришёл» вместо «Перерыв». Добавила из «Позже по графику» — «Пришёл» уже стоит.
 // Данные и правила — lib/call-queue.js. Стили — в CHAT_CSS (ui/chat.jsx), рядом со стилями листа.
 import React from "react";
 import { vibrate } from "../lib/utils";
 import { accName, bubbleName } from "../lib/chat";
 import { queueOf, queueLive, queueMove, queueFlag, queueAdd, queueLabels, queueOrd, queueDue, queueLater, queueBySchedule, fromLabel, toLabel, queueLine,
-  queueNow, shiftOver, shiftLater } from "../lib/call-queue";
+  queueNow, shiftOver, shiftLater, shiftEarly, shiftOff, EARLY_MIN } from "../lib/call-queue";
 
 const Arrow = ({ up }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -48,8 +50,10 @@ export function QueueChips({ q, picked, auto, edit, editing, onPick, onSkip, onE
       {edit ? <button type="button" className="ch-q-edit" data-queue-open={editing ? "on" : ""} aria-expanded={editing} onClick={() => { vibrate("light"); onEdit(); }}>{editing ? "Готово" : "Изменить очередь"}</button> : null}</div>
     <div className="ch-chips" role="radiogroup" aria-label="Очередь официантов" data-call-queue="">
       {live.map((x, i) => <button key={x.id} type="button" role="radio" aria-checked={picked != null && String(picked) === x.id}
-        className={"ch-chip" + (x.away ? " away" : "") + (shiftOver(x, m) ? " over" : "")} data-call-qperson={x.id} data-call-qover={shiftOver(x, m) ? "1" : undefined}
-        aria-label={(i + 1) + ". " + x.name + (x.away ? ", на перерыве" : "") + (shiftOver(x, m) ? ", смена закончилась" : "") + (shiftLater(x, m) ? ", смена " + fromLabel(x) : "")} onClick={() => onPick(x)}>
+        className={"ch-chip" + (x.away ? " away" : "") + (shiftOff(x, m) ? " over" : "")} data-call-qperson={x.id} data-call-qover={shiftOver(x, m) ? "1" : undefined}
+        data-call-qearly={shiftEarly(x, m) ? "1" : undefined}
+        aria-label={(i + 1) + ". " + x.name + (x.away ? ", на перерыве" : "") + (shiftOver(x, m) ? ", смена закончилась" : "")
+          + (shiftLater(x, m) ? ", смена " + fromLabel(x) + (shiftEarly(x, m) ? ", ещё не пришёл" : "") : "")} onClick={() => onPick(x)}>
         <span className="ch-q-i" aria-hidden="true">{i + 1}</span>{labels[i]}{tail(x) ? <span className="ch-q-pause" aria-hidden="true">{tail(x)}</span> : null}</button>)}
     </div>
     {pickedOne ? <button type="button" className="ch-q-skip" data-call-skip={pickedOne.id} onClick={() => { vibrate("light"); onSkip(pickedOne); }}>
@@ -64,6 +68,7 @@ export function QueuePanel({ q, busy = false, err = "", onChange }) {
   const m = queueNow(q), today = queueDue(q, m), later = queueLater(q, m);
   const rest = q.others.filter((x) => x.from == null || shiftOver(x, m));   // не в графике сегодня или смена уже кончилась
   const ended = (x) => x.to != null && m >= x.to * 60;                       // смена по графику кончилась («Остался» или нет)
+  const before = (x) => x.from != null && m < x.from * 60 - EARLY_MIN;        // до смены больше получаса («Пришёл» или нет)
   const ch = (nq) => { vibrate("light"); onChange(nq); };
   const add = (x) => <button key={x.id} type="button" className="ch-chip" data-queue-add={x.id} disabled={busy} onClick={() => ch(queueAdd(q, x.id))}>
     {"+ " + (bubbleName(x.name) || x.name)}{x.from != null && !shiftOver(x, m) ? <span className="ch-q-from">{" · " + fromLabel(x)}</span> : null}</button>;
@@ -75,10 +80,12 @@ export function QueuePanel({ q, busy = false, err = "", onChange }) {
           <span className="ch-q-n" aria-hidden="true">{i + 1}</span>
           <span className="ch-q-name" title={x.name}><span className="ch-q-nm">{labels[i]}</span>{x.away ? <span className="ch-q-away">на перерыве</span>
             : ended(x) ? <span className="ch-q-away" data-queue-ended={x.stay ? "stay" : "1"}>{x.stay ? "остался после смены" : "смена " + toLabel(x) + " закончилась"}</span>
+            : before(x) ? <span className="ch-q-away" data-queue-early={x.here ? "here" : "1"}>{x.here ? "пришёл раньше смены" : "смена " + fromLabel(x) + ", ещё не пришёл"}</span>
             : shiftLater(x, m) ? <span className="ch-q-away" data-queue-later-row="">{"смена " + fromLabel(x)}</span> : null}</span>
           <button type="button" className="ch-q-btn" aria-label={"Выше: " + x.name} data-queue-up={x.id} disabled={busy || i === 0} onClick={() => ch(queueMove(q, x.id, -1))}><Arrow up /></button>
           <button type="button" className="ch-q-btn" aria-label={"Ниже: " + x.name} data-queue-down={x.id} disabled={busy || i === live.length - 1} onClick={() => ch(queueMove(q, x.id, 1))}><Arrow /></button>
           {ended(x) ? <button type="button" className="ch-q-tog" aria-pressed={x.stay} data-queue-stay={x.id} disabled={busy} onClick={() => ch(queueFlag(q, x.id, "stay", !x.stay))}>Остался</button>
+            : before(x) ? <button type="button" className="ch-q-tog" aria-pressed={x.here} data-queue-here={x.id} disabled={busy} onClick={() => ch(queueFlag(q, x.id, "here", !x.here))}>Пришёл</button>
             : <button type="button" className="ch-q-tog" aria-pressed={x.away} data-queue-pause={x.id} disabled={busy} onClick={() => ch(queueFlag(q, x.id, "away", !x.away))}>{x.away ? "Вернуть" : "Перерыв"}</button>}
           <button type="button" className="ch-q-btn" aria-label={"Убрать из очереди на сегодня: " + x.name} data-queue-out={x.id} disabled={busy} onClick={() => ch(queueFlag(q, x.id, "out", true))}><Cross /></button>
         </div>))}
@@ -93,7 +100,7 @@ export function QueuePanel({ q, busy = false, err = "", onChange }) {
         {rest.map(add)}
       </div> : null}
       {err ? <div className="ch-err" role="alert" style={{ marginTop: 8, padding: 0 }} data-queue-err="">{err}</div> : null}
-      <div className="ch-q-sub" style={{ marginBottom: 2 }}>Позвали к столу или посадили гостей: официант уходит в конец. Занят и передал стол: остаётся первым. Кончилась смена по графику: столы ему не идут, пока не нажмёшь «Остался».</div>
+      <div className="ch-q-sub" style={{ marginBottom: 2 }}>Позвали к столу или посадили гостей: официант уходит в конец. Занят и передал стол: остаётся первым. Вне смены по графику столы не идут: до смены, пока не нажмёшь «Пришёл», и после, пока не нажмёшь «Остался».</div>
     </div>);
 }
 
@@ -127,8 +134,9 @@ export function QueueStrip({ api, me }) {
     }, () => { setBusy(false); setErr("Не сохранилось. Проверь связь и попробуй ещё раз."); load(); });
   };
   const tap = () => { if (!q.edit) return; vibrate("light"); setErr(""); setOpen(true); };
-  const mine = line && line.meOver ? "смена закончилась" : line && line.pos ? (line.away ? "ты на перерыве" : "ты " + line.pos + "-й") : "";
-  const names = line && line.names.length ? line.names.join(" → ") : line && line.over ? "у всех смена закончилась" : "";
+  const mine = line && line.meOver ? "смена закончилась" : line && line.meEarly ? "смена " + line.meFrom : line && line.pos ? (line.away ? "ты на перерыве" : "ты " + line.pos + "-й") : "";
+  const names = line && line.names.length ? line.names.join(" → ") : !line ? "" : line.over && !line.early ? "у всех смена закончилась"
+    : line.early && !line.over ? "смена ещё не началась" : "сейчас по графику никого";
   return (<>
     <div className="ch-qs" data-queue-strip={line ? "on" : "none"}>
       <button type="button" className="ch-qs-b" onClick={tap} disabled={!q.edit} aria-label={line ? "Очередь к столам: " + (line.names.join(", ") || names) + (mine ? ", " + mine : "") : "Очередь к столам не составлена"}>

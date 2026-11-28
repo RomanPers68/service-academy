@@ -107,8 +107,8 @@ describe("v215 · очередь по приходу (lib/call-queue.js)", () =>
   });
   it("строка очереди: имена коротко, моё место, перерыв; пустая — null", () => {
     const q = queueOf({ ...EMPTY, list: [{ id: "a", name: "Анна Смирнова" }, { id: "v", name: "Вера Соколова", away: true }, { id: "p", name: "Пётр Орлов" }], others: [] });
-    expect(queueLine(q, "p")).toEqual({ names: ["Анна С.", "Вера С.", "Пётр О."], next: { id: "a", name: "Анна Смирнова", away: false, out: false, stay: false, from: null, to: null },
-      pos: 3, away: false, n: 3, over: 0, meOver: false });   // v217: часы смены, over и meOver
+    expect(queueLine(q, "p")).toEqual({ names: ["Анна С.", "Вера С.", "Пётр О."], next: { id: "a", name: "Анна Смирнова", away: false, out: false, stay: false, here: false, from: null, to: null },
+      pos: 3, away: false, n: 3, over: 0, early: 0, meOver: false, meEarly: false, meFrom: "" });   // v217: часы смены, over и meOver; v218: here, early
     expect(queueLine(q, "v").away).toBe(true);
     expect(queueLine(q, "x").pos).toBe(0);
     expect(queueLine(queueOf(EMPTY), "a")).toBe(null);
@@ -182,7 +182,8 @@ describe("v215 · демо-сервер", () => {
   it("колокольчики: ждём, «Иду», «На месте», передали — по последнему в цепочке; погас через 10 минут", () => {
     clock = t;
     const s = mk();
-    s.rpc("queue_set", { p_token: "th", p_ord: [{ id: "e-anna" }, { id: "e-vera" }, { id: "e-petr" }] });
+    // v218: Анна (вечер, с 16) пришла раньше — «Пришёл», иначе до смены стол ей не передают
+    s.rpc("queue_set", { p_token: "th", p_ord: [{ id: "e-anna", here: true }, { id: "e-vera" }, { id: "e-petr" }] });
     const c1 = s.rpc("chat_call", { p_token: "th", p_who: "person", p_emp: "e-anna", p_why: "table", p_table: "5" }).msg;
     const c2 = s.rpc("chat_call", { p_token: "th", p_who: "person", p_emp: "e-vera", p_why: "table", p_table: "6" }).msg;
     const c3 = s.rpc("chat_call", { p_token: "th", p_who: "person", p_emp: "e-petr", p_why: "table", p_table: "7" }).msg;

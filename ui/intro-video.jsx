@@ -60,7 +60,8 @@ import { createPortal, flushSync } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { introVideoOf, fmtDur, durWords } from "../data/intro-videos";
 import { cueBack, cueNext, soundFrom, introFirst, introSeenOf, markIntroSeen, coverPos, fillSize } from "../lib/intro-video";
-import { warmIntro, introSrc, introWarmFailed } from "../lib/intro-warm";
+import { warmIntro, introSrc, introWarmFailed, markBlobBad, BLOB_WAIT } from "../lib/intro-warm";
+import { holdNet } from "../lib/net-quiet";   // v226: пока плеер открыт, фото «заранее» ждут
 import { ACCENT_SERIF } from "./styles";
 
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -173,6 +174,14 @@ const useLayout = typeof document !== "undefined" && typeof document.createEleme
 const tryPlay = (v) => { try { const p = v.play(); return p && typeof p.then === "function" ? p : Promise.resolve(); } catch (e) { return Promise.reject(e); } };
 const playSafe = (v) => { tryPlay(v).catch(() => {}); };
 const calmMotion = () => { try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; } };
+// v226 (Доп. 552): сторож загрузки ролика (IntroPlayer). Из сети ни нового байта и ни кадра NET_STUCK мс — тот же ролик
+// заново, новым адресом (у iPhone загрузка бывает «залипает», и помогает только новый адрес), не больше NET_RETRY раз;
+// ждём дольше SLOW_HINT — подпись «Медленная связь».
+export const NET_STUCK = 7000, NET_RETRY = 2, SLOW_HINT = 6000, WATCH_MS = 500;
+/** Докуда ролик уже загружен, с */
+const bufEnd = (v) => { try { const b = v.buffered; return b && b.length ? b.end(b.length - 1) : 0; } catch (e) { return 0; } };
+/** Тот же адрес, но новый для телефона: «залипшая» загрузка начнётся заново */
+export const freshSrc = (src, now = Date.now()) => String(src) + (String(src).indexOf("?") >= 0 ? "&" : "?") + "r=" + now.toString(36);
 
 /**
  * v177: ролик урока — заранее, пока человек на экране перед ним (главная под «Начни здесь», раздел, урок над обложкой),
@@ -285,6 +294,7 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
   const [st, setSt] = React.useState({ playing: false, waiting: false, ended: false, failed: false, muted: false });
+  const [slow, setSlow] = React.useState(false);   // v226: ролик грузится дольше SLOW_HINT — «Медленная связь»
   const [ui, setUi] = React.useState(true);          // кнопки на экране
   const [forced, setForced] = React.useState(false); // звук выключил телефон (первым экраном), а не человек
   // v177: плеер встаёт с погасшими кнопками и через кадр проявляет их своим стеклом (не прозрачностью всего плеера)
@@ -350,6 +360,45 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     };
     const evs = ["play", "playing", "pause", "waiting", "canplay", "canplaythrough", "ended", "error", "loadeddata", "seeked", "volumechange"];
     evs.forEach((n) => el.addEventListener(n, sync));
+    // v226 (Доп. 552): сторож. Ролик просят играть, а он стоит: из памяти телефона (blob:) за BLOB_WAIT ни кадра — берём из
+    // сети, а телефону запоминаем, что так у него не идёт (lib/intro-warm.js); из сети NET_STUCK ни байта и ни кадра —
+    // тот же ролик новым адресом. Пока плеер открыт, связь — ролику: фото «заранее» ждут (lib/net-quiet.js).
+    const free = holdNet();
+    let lastT = el.currentTime || 0, lastBuf = bufEnd(el), dataAt = Date.now(), waitAt = 0, tries = 0, slowNow = false;
+    const onData = () => { dataAt = Date.now(); };
+    el.addEventListener("progress", onData);
+    const setSlowOnce = (v) => { if (v !== slowNow) { slowNow = v; setSlow(v); } };
+    const retry = () => {
+      const at = el.currentTime || 0;
+      try {
+        el.setAttribute("data-intro-from", "net");
+        el.src = freshSrc(video.src);
+        el.load();
+        if (at > 0.5) el.addEventListener("loadedmetadata", () => { try { el.currentTime = at; } catch (e) { /* */ } }, { once: true });
+      } catch (e) { /* */ }
+      playSafe(el);
+    };
+    const watch = setInterval(() => {
+      if (!live) return;
+      const now = Date.now(), t = el.currentTime || 0, b = bufEnd(el);
+      if (b > lastBuf + 0.01) { lastBuf = b; dataAt = now; }
+      if (el.paused || el.ended || el.error || t > lastT + 0.02) { lastT = t; waitAt = 0; setSlowOnce(false); return; }
+      if (!waitAt) { waitAt = now; return; }
+      const from = el.getAttribute("data-intro-from");
+      if (from === "warm" && t < 0.05 && now - waitAt >= BLOB_WAIT) {
+        markBlobBad();
+        fromNet();
+        waitAt = now; dataAt = now; lastBuf = 0;
+        return;
+      }
+      if (from === "net" && tries < NET_RETRY && now - waitAt >= NET_STUCK && now - dataAt >= NET_STUCK) {
+        tries++;
+        retry();
+        waitAt = now; dataAt = now; lastBuf = 0;
+        return;
+      }
+      setSlowOnce(now - waitAt >= SLOW_HINT);
+    }, WATCH_MS);
     el.addEventListener("loadedmetadata", fit);
     window.addEventListener("resize", fit);
     if (title) {
@@ -392,6 +441,9 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
     try { if (xRef.current) xRef.current.focus({ preventScroll: true }); } catch (e) { /* */ }
     return () => {
       live = false;
+      clearInterval(watch);
+      el.removeEventListener("progress", onData);
+      free();
       cancelAnimationFrame(raf);
       clearTimeout(hideT.current);
       window.removeEventListener("keydown", key, true);
@@ -576,6 +628,13 @@ export function IntroPlayer({ video, el, mode = "view", onClose }) {
       {/* кнопки спрятаны, а ролик ждёт загрузки — круг посередине */}
       {state === "waiting" && !vis ? (
         <div aria-hidden="true" data-intro-wait="" style={{ ...center, transform: "translate(-50%, -50%)", pointerEvents: "none" }}><Spinner /></div>
+      ) : null}
+      {/* v226: ролик грузится дольше SLOW_HINT — подпись под кругом, чтобы было понятно, что ждём связь */}
+      {state === "waiting" && slow ? (
+        <Glass as="div" data-intro-slow="" role="status"
+          style={{ position: "absolute", left: "50%", top: "calc(50% + 74px)", transform: "translateX(-50%)", fontFamily: SERIF, fontSize: 14.5, lineHeight: 1.35, textAlign: "center",
+            padding: "8px 14px", borderRadius: 14, maxWidth: "calc(100% - 48px)", pointerEvents: "none" }} face={{ display: "block" }}>
+          Медленная связь — видео ещё грузится</Glass>
       ) : null}
       {state === "ended" || state === "failed" ? (
         <div data-intro-end={state} onClick={keep}

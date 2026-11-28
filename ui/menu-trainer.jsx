@@ -305,7 +305,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
         {/* v224 (Доп. 550): служебная строка (сколько блюд, откуда, номер сборки, пищевая ценность) — только тем, кто правит
             меню. Официанту она ни о чём не говорит: владелец увидел её на снимке экрана сотрудника. */}
-        {canEdit ? <span data-menu-service="">Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null} · ты можешь редактировать меню <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v225</span></span> : null}
+        {canEdit ? <span data-menu-service="">Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null} · ты можешь редактировать меню <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v226</span></span> : null}
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {canEdit && dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));

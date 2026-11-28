@@ -349,6 +349,10 @@ export const injectStyles = () => {
     @media (prefers-reduced-motion: reduce) { .sa-photo-in { animation:none; } .sa-photo-wait { animation:none; opacity:1; } }
     @keyframes saPulse { 0%,100% { opacity:.35; } 50% { opacity:.85; } }
     .sa-pulse { animation: saPulse 1.15s ease-in-out infinite; }
+    /* v215 (Доп. 541): колокольчик вызова «ждём ответа» на схеме зала покачивается; ответили — замирает */
+    @keyframes saBellRing { 0%, 55%, 100% { transform: rotate(0deg); } 8% { transform: rotate(16deg); } 18% { transform: rotate(-14deg); } 28% { transform: rotate(10deg); } 38% { transform: rotate(-6deg); } 46% { transform: rotate(3deg); } }
+    .sa-bell-ring { animation: saBellRing 1.8s ease-in-out infinite; transform-origin: 50% 12%; }
+    @media (prefers-reduced-motion: reduce) { .sa-bell-ring { animation: none; } }
     /* Онбординг: появление подложки, «выпрыгивание» иконки, всплытие подсказки */
     @keyframes saFadeIn { from { opacity:0; } to { opacity:1; } }
     .sa-fadein { animation: saFadeIn .3s ease both; }

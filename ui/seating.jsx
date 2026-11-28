@@ -27,6 +27,7 @@ import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/sup
 import { briefRoster } from "../lib/briefing";
 import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
 import { keepBoard } from "../lib/call-series";   // v212 (Доп. 538): схема для «Позвать» — в копию на телефоне
+import { queueOf, queueNext, queueAfterCall } from "../lib/call-queue";   // v215 (Доп. 541): следующий официант по очереди
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
@@ -261,10 +262,15 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
               ) : <span style={{ fontSize: fs, opacity: 0.9, whiteSpace: "nowrap" }}>{sub}</span>}
               {r.status === "seat" && r.waiter_name && cell >= 56 ? <span data-table-waiter="" style={{ fontSize: cell * 0.15, opacity: 0.85, whiteSpace: "nowrap" }}>{initials(r.waiter_name)}</span> : null}
             </span>
-            {called ? <span data-table-mark="" aria-hidden="true" style={{ position: "absolute", right: -2, top: -2, width: bs, height: bs, borderRadius: "50%", background: c.gold,
+            {/* v215 (Доп. 541): колокольчик по состоянию вызова — ждём (золотой, покачивается), «Иду» (зелёный, галочка),
+                две минуты без ответа (красный). Покачивание — CSS sa-bell-ring, при «уменьшить движение» его нет */}
+            {called ? <span data-table-mark={called.st || "wait"} className={called.st === "wait" || !called.st ? "sa-bell-ring" : undefined} aria-hidden="true"
+              style={{ position: "absolute", right: -2, top: -2, width: bs, height: bs, borderRadius: "50%",
+              background: called.st === "going" || called.st === "done" ? (a11y ? "#2C6B48" : "#7FC79A") : called.st === "late" ? (a11y ? "#A33A2A" : "#E07070") : c.gold,
               color: a11y ? "#FBF7EE" : "#1A1008", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px " + c.casing, pointerEvents: "none" }}>
               <svg width={Math.round(bs * 0.64)} height={Math.round(bs * 0.64)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" focusable="false">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg></span> : null}
+                {called.st === "going" || called.st === "done" ? <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  : <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>}</svg></span> : null}
           </button>);
       })}
       {links.length ? (
@@ -289,7 +295,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
 
 // ── Карточка стола ──────────────────────────────────────────────────────────────
 export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose, wcolor = null,
-  seat2 = false, group = [], joinWith = null, fromWait = null, cnt0 = 0, onMove, onJoin, onUnjoin, onCall = null }) {
+  seat2 = false, group = [], joinWith = null, fromWait = null, cnt0 = 0, onMove, onJoin, onUnjoin, onCall = null, queue = null }) {
   const [st, setSt] = React.useState(NEXT[row.status] || "seat");
   // v187: сколько гостей — из листа ожидания или под объединённые столы (не урезаем до мест одного стола)
   const [cnt, setCnt] = React.useState(() => (cnt0 > 0 ? Math.min(40, cnt0) : defaultCnt(t, row, party)));
@@ -297,15 +303,22 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
   const [rtime, setRtime] = React.useState(row.rtime || "");
   const [waiter, setWaiter] = React.useState(row.waiter_id || "");
   const [all, setAll] = React.useState(false);
+  // v215 (Доп. 541): посадить гостей — официант по очереди выбран сразу (кто в «Рассадке» есть); выбрала сама — не трогаем.
+  // Сохранили — он уходит в конец очереди (этап 69, seat_set)
+  const touched = React.useRef(!!row.waiter_id);
+  const qNext = !isBusy(row) && queue ? queueNext(queue) : null;
+  const qNextId = qNext && (staff || []).some((e) => String(e.id) === qNext.id) ? qNext.id : "";
+  React.useEffect(() => { if (qNextId && !touched.current) setWaiter(qNextId); }, [qNextId]);
+  const pickW = (id) => { touched.current = true; setWaiter(id); };
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState("");
   // официанты: сначала кто сегодня в графике; остальные — по «Ещё» (в большой команде список длинный)
   const list = waiterList(staff, shiftMap);
   const anyOn = list.some((e) => shiftMap[e.id]);
-  const first = anyOn ? list.filter((e) => shiftMap[e.id] || e.id === row.waiter_id) : list;   // выбранный раньше — сразу виден
+  const first = anyOn ? list.filter((e) => shiftMap[e.id] || e.id === row.waiter_id || String(e.id) === qNextId) : list;   // выбранный раньше и следующий по очереди — сразу видны
   const rest = anyOn ? list.filter((e) => !first.includes(e)) : [];
   const wChip = (e) => (
-    <button key={e.id} type="button" data-waiter={e.id} onClick={() => { vibrate("light"); setWaiter(e.id); }} data-lens-btn={waiter === e.id ? "tab" : "soft"} data-lens-ink="" style={chip(c, waiter === e.id, a11y)}>
+    <button key={e.id} type="button" data-waiter={e.id} data-waiter-next={String(e.id) === qNextId ? "" : undefined} onClick={() => { vibrate("light"); pickW(e.id); }} data-lens-btn={waiter === e.id ? "tab" : "soft"} data-lens-ink="" style={chip(c, waiter === e.id, a11y)}>
       {wcolor && wcolor(e.id) ? <span data-waiter-dot="" aria-hidden="true" style={{ display: "inline-block", width: 9, height: 9, borderRadius: 5, border: `2px solid ${wcolor(e.id)}`, marginRight: 6, verticalAlign: "-1px" }} /> : null}
       {shortName(e.name + " " + (e.surname || ""))}{load[e.id] ? " · " + load[e.id] : ""}</button>);
   const save = (status) => {
@@ -356,9 +369,9 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
           </div>) : null}
         {st === "seat" ? (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 6 }}>Официант</div>
+            <div style={{ ...labelStyle(13.5), color: c.gold, marginBottom: 6 }}>Официант{qNextId ? <span data-waiter-queue="" style={{ color: c.sub }}>{" · по очереди " + shortName(qNext.name)}</span> : null}</div>
             <div data-waiters-pick="" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" data-waiter="" onClick={() => setWaiter("")} data-lens-btn={!waiter ? "tab" : "soft"} data-lens-ink="" style={chip(c, !waiter, a11y)}>Не назначен</button>
+              <button type="button" data-waiter="" onClick={() => pickW("")} data-lens-btn={!waiter ? "tab" : "soft"} data-lens-ink="" style={chip(c, !waiter, a11y)}>Не назначен</button>
               {first.map(wChip)}
               {rest.length && !all ? <button type="button" data-waiter-more="" onClick={() => { vibrate("light"); setAll(true); }} data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), borderStyle: "dashed" }}>Ещё {rest.length}</button> : null}
             </div>
@@ -366,7 +379,7 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
               <div style={{ fontSize: 12, color: c.sub, margin: "10px 2px 6px" }}>Сегодня не в графике</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{rest.map(wChip)}</div>
             </> : null}
-            <div style={{ fontSize: 11.5, color: c.sub, marginTop: 8, lineHeight: 1.45 }}>{anyOn ? "Сначала те, кто сегодня в графике. " : ""}Число после имени: столы с гостями у официанта сейчас. Если у официанта подключён бот, он получит сообщение.</div>
+            <div style={{ fontSize: 11.5, color: c.sub, marginTop: 8, lineHeight: 1.45 }}>{anyOn ? "Сначала те, кто сегодня в графике. " : ""}Число после имени: столы с гостями у официанта сейчас. Если у официанта подключён бот, он получит сообщение.{qNextId ? " Посадили гостей официанту из очереди: он уходит в её конец." : ""}</div>
           </div>) : null}
         {err ? <div role="alert" style={{ fontSize: 13, color: c.red, marginBottom: 10 }}>{err}</div> : null}
         <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
@@ -792,11 +805,15 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing, onCall = nu
   const [pick, setPick] = React.useState(null);   // v187: выбрать стол на схеме: { kind: "move" | "join" | "wait", tid, w }
   const [pend, setPend] = React.useState(null);   // v187: карточка стола с продолжением: { main, with, cnt } или { wait, cnt }
   const [waitForm, setWaitForm] = React.useState(false);
+  const [queue, setQueue] = React.useState(null);   // v215 (Доп. 541): очередь официантов (этап 69); нет — как раньше
   const restaurant = (profile && profile.restaurant) || "";
   // v179: редактор спрашивает перед выходом без сохранения; «По фото плана» с пустой доски — сразу в редактор с фото
   const guard = React.useRef(null);
   const [photo0, setPhoto0] = React.useState(null);
   const openEditor = (file) => { vibrate("light"); setMsg(""); setPhoto0(file || null); setEdit(true); };
+  const qDead = React.useRef(false);   // нет этапа 69 на сервере — очередь не спрашиваем
+  const loadQueue = React.useCallback(() => (qDead.current ? Promise.resolve() : rpc("queue_get", { p_token: saToken() }).then((r) => { if (rpcMissing(r)) qDead.current = true; setQueue(queueOf(r)); }).catch(() => {})), []);
+  React.useEffect(() => { loadQueue(); const t = setInterval(() => { if (typeof document === "undefined" || !document.hidden) loadQueue(); }, POLL_MS); return () => clearInterval(t); }, [loadQueue]);
   const load = React.useCallback(() => rpc("seat_board", { p_token: saToken() }).then((r) => {
     if (rpcMissing(r)) { setSt({ status: "missing" }); rememberSeatPlan(restaurant, null, undefined, true); if (onMissing) onMissing(); }
     else if (r && r.ok) { setSt({ status: "ok", ...r, at: Date.now() }); keepBoard(restaurant, r); rememberSeatPlan(restaurant, r); }   // v149: есть ли схема — для советов в уроках; v212: схема для «Позвать» — в копию
@@ -853,6 +870,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing, onCall = nu
       vibrate("success");
       const p = pend;
       setSt((s) => ({ ...s, tables: mergeRows(s.tables, r.tables || [r.table]) }));   // v187: и приставленные
+      if (f.status === "seat" && f.waiter) { setQueue((qq) => queueAfterCall(qq, f.waiter)); loadQueue(); }   // v215: посадили — в конец очереди
       setSel(null); setParty(0);
       setMsg(f.status === "seat" ? "Стол " + t.n + ": посадили." : f.status === "bill" ? "Стол " + t.n + ": попросили счёт." : f.status === "res" ? "Стол " + t.n + ": бронь на " + f.rtime + "." : f.status === "clean" ? "Стол " + t.n + ": на уборку." : "Стол " + t.n + " свободен.");
       // v187: посадили за объединённые — приставить; из листа ожидания — отметить «посадили»
@@ -1046,7 +1064,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing, onCall = nu
         seat2={seat2} group={groupOf(map, selT.id).slice(1).map(tById).filter((q) => q.id)} joinWith={pend && pend.main === selT.id && pend.with ? pend.with.map(tById).filter((q) => q.id) : null}
         fromWait={pend && pend.wait ? pend.wait : null} cnt0={pend ? pend.cnt || 0 : 0} onUnjoin={doUnjoin}
         onMove={() => { setSel(null); setPick({ kind: "move", tid: selT.id }); }} onJoin={() => { setSel(null); setPick({ kind: "join", tid: selT.id }); }}
-        now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} onCall={onCall ? (q) => { setSel(null); onCall({ tid: q.id, table: String(q.n) }); } : null} /> : null}
+        queue={queue} now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} onCall={onCall ? (q) => { setSel(null); onCall({ tid: q.id, table: String(q.n) }); } : null} /> : null}
     </div>
   );
 }

@@ -299,7 +299,8 @@ if (want("SERIES")) {
     && !(await sh.locator("[data-call-err]").count()), JSON.stringify(cc));
   ok("SERIES: колокольчики у столов 5 и 7, «позвали: 2»", (await marks(o.page)) === 2 && (await txt(sh.locator("[data-call-count]"))) === "позвали: 2");
   await sh.locator('[data-call-floor] [data-table="t5"]').click(); await sleep(150);
-  ok("SERIES: стол 5 снова — под схемой «позвали Анну только что»", /позвали Анну только что/.test(await txt(sh.locator("[data-call-picked]"))), await txt(sh.locator("[data-call-picked]")));
+  // v215 (Доп. 541): метка говорит, что с вызовом — «позвали Анну, ждём» (было «позвали Анну только что»)
+  ok("SERIES: стол 5 снова — под схемой «позвали Анну, ждём»", /позвали Анну, ждём/.test(await txt(sh.locator("[data-call-picked]"))), await txt(sh.locator("[data-call-picked]")));
   await sh.locator('[data-call-person="e-anna"]').click(); await send(o.page).click(); await sleep(900);
   ok("SERIES: Анну к столу 5 ещё раз — «уже позвали, ждём ответа», счёт тот же", (await txt(sh.locator('[data-call-last="again"]'))) === "Анну к столу 5 уже позвали, ждём ответа"
     && (await txt(sh.locator("[data-call-count]"))) === "позвали: 2");

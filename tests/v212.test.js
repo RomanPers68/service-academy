@@ -183,10 +183,12 @@ describe("v212 · метки «позвали» на схеме (10 минут, 
       { tid: null, table: "7", who: "waiter", why: "table", at: T0 + 1 },
       { tid: null, table: "", who: "lead", why: "help", at: T0 + 2 },
       { tid: "t13", table: "13", who: "person", toName: "Пётр Орлов", why: "table", at: T0 + 3 },
-      { tid: null, table: "99", who: "waiter", why: "table", at: T0 + 4 }], PLAN);
-    expect(marks).toEqual({ t13: { label: "позвали Петра", at: T0 + 3 }, t7: { label: "позвали официанта", at: T0 + 1 } });
-    expect(markLine(marks.t13, T0 + 30e3)).toBe("позвали Петра только что");
-    expect(markLine(marks.t13, T0 + 150e3)).toBe("позвали Петра 2 мин назад");
+      { tid: null, table: "99", who: "waiter", why: "table", at: T0 + 4 }], PLAN, {}, T0 + 10);
+    // v215 (Доп. 541): у метки ещё состояние вызова — ждём, «Иду», «На месте», молчит (tests/v215.test.js)
+    expect(marks).toMatchObject({ t13: { st: "wait", label: "позвали Петра, ждём", at: T0 + 3 }, t7: { st: "wait", label: "позвали официанта, ждём", at: T0 + 1 } });
+    expect(Object.keys(marks).sort()).toEqual(["t13", "t7"]);
+    expect(markLine(marks.t13, T0 + 30e3)).toBe("позвали Петра, ждём");
+    expect(markLine(marks.t13, T0 + 150e3)).toBe("позвали Петра, ждём · 2 мин");
     expect(markLine(null)).toBe("");
   });
 });
@@ -306,17 +308,18 @@ describe("v212 · лист «Позвать» (ui/call-sheet.jsx)", () => {
   it("схема с метками: колокольчик у стола, «позвали Анну» диктору и под схемой", async () => {
     const { CallTables } = await import("../ui/call-table.jsx");
     const at = Date.now() - 2 * 60e3 - 5000;
-    const html = R(h(CallTables, { a11y: false, board: BOARD, tid: "t13", who: "", marks: { t13: { label: "позвали Анну", at } }, onPick() {}, onWaiter() {}, onManual() {} }));
-    expect((html.match(/data-table-mark=""/g) || []).length).toBe(1);
+    // v215 (Доп. 541): у метки состояние — «ждём» (wait), строка под схемой — «… · 2 мин»
+    const html = R(h(CallTables, { a11y: false, board: BOARD, tid: "t13", who: "", marks: { t13: { st: "wait", label: "позвали Анну", at } }, onPick() {}, onWaiter() {}, onManual() {} }));
+    expect((html.match(/data-table-mark="wait"/g) || []).length).toBe(1);
     expect(html).toMatch(/data-table="t13"[^>]*aria-label="Стол 13[^"]*, позвали Анну"/);
-    expect(html).toMatch(/data-call-picked-mark=""[^>]*> · позвали Анну 2 мин назад</);
+    expect(html).toMatch(/data-call-picked-mark="wait"[^>]*> · позвали Анну · 2 мин</);
     expect(R(h(CallTables, { a11y: false, board: BOARD, tid: null, who: "", onPick() {}, onWaiter() {}, onManual() {} }))).not.toContain("data-table-mark");
   });
   it("в коде листа: серия (лист не закрывается), «уже позвали», метки, кнопка внизу, onSent и onClose(n)", () => {
     const s = rd("ui/call-sheet.jsx");
     expect(s).toContain("const res = afterCall({ who, person, tid, table, own }, c, r);");
     expect(s).toContain("if (!res.done) { setErr(res.err); return; }");
-    expect(s).toContain("rememberCall(rest, { key, tid: c.why === \"table\" ? tid : null, table: c.table, who: c.who, emp: c.emp || null, toName: c.toName || \"\", why: c.why, text: c.text });");
+    expect(s).toContain("rememberCall(rest, { key, msg: msg && msg.id != null ? msg.id : null, tid: c.why === \"table\" ? tid : null, table: c.table, who: c.who, emp: c.emp || null, toName: c.toName || \"\", why: c.why, text: c.text });");   // v215: и id вызова
     expect(s).toContain("if (!res.again) { setCount((k) => k + 1); vibrate(\"success\"); if (onSent) onSent(msg); }");
     expect(s).toContain("const close = () => { if (onClose) onClose(count); };");
     expect(s).toContain('<div className="ch-cs-body sa-dlgscroll" data-call-body="">');

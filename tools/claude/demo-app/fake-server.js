@@ -270,25 +270,26 @@ export function makeServer(opts) {
   const touch = (m) => { m.upd = now(); };
   const unread = (c, p) => S.msgs.filter((m) => m.chat === c.id && !m.del && m.emp !== p.id && m.id > rd(c, p.id)).length;
   const callFor = (m, p) => m.kind === "call" && !m.del && m.emp !== p.id && (m.call.who === "person" ? m.call.emp === p.id : m.call.who === "lead" ? isLead(p) : ({ host: ["hostess"], bar: ["bartender"], waiter: ["waiter"] }[m.call.who] || []).includes(p.position));
-  const calls = (p) => S.msgs.filter((m) => callFor(m, p) && !(m.call.going || []).length && !m.call.passed && clock() - Date.parse(m.at) < 600000).map(J);   // v213: без переданных дальше
+  const calls = (p) => S.msgs.filter((m) => callFor(m, p) && !(m.call.going || []).length && !m.call.passed && !m.call.done && clock() - Date.parse(m.at) < 600000).map(J);   // v213: без переданных дальше; v215: и без «На месте»
   // v213 (Доп. 539): очередь официантов на сегодня (этап 69): [{ id, away, out }] по ресторану; opts.noStage69 — этапа нет
+  // v215 (Доп. 541): очередь составляет хостес по приходу — сама утром не собирается
   const qOrd = (rest) => {
     S.queue = S.queue || {};
     const ws = PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired");
-    const on = ws.filter((e) => personToday(e)), base = on.length ? on : ws;
-    const cur = (S.queue[rest] || []).filter((x, i, a) => ws.some((e) => e.id === x.id) && a.findIndex((y) => y.id === x.id) === i);
-    const add = base.filter((e) => !cur.some((x) => x.id === e.id)).sort((a, b) => full(a).localeCompare(full(b), "ru")).map((e) => ({ id: e.id, away: false, out: false }));
-    S.queue[rest] = [...cur, ...add];
+    S.queue[rest] = (S.queue[rest] || []).filter((x, i, a) => ws.some((e) => e.id === x.id) && a.findIndex((y) => y.id === x.id) === i);
     return S.queue[rest];
   };
+  const qFrom = (e) => { const s = staffOf(e.id), sh = s ? def(code(String(s.id), TODAY)) : null; return sh && !sh.extra ? sh.from : null; };
   const qCan = (p) => isLead(p) || p.position === "hostess";
   const qJson = (p, rest) => {
     const ord = qOrd(rest);
     return { ok: true, day: TODAY, edit: qCan(p), list: ord.map((x) => ({ id: x.id, name: full(who(x.id)), away: !!x.away, out: !!x.out })),
-      others: PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e) })) };
+      others: PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e), from: qFrom(e) }))
+        .sort((a, b) => (a.from == null) - (b.from == null) || (a.from || 0) - (b.from || 0) || a.name.localeCompare(b.name, "ru")) };
   };
   const qMove = (rest, id, firstPlace) => {
     const e = who(id); if (!e || e.restaurant !== rest || e.position !== "waiter") return;
+    if (!qOrd(rest).some((x) => x.id === id)) return;   // v215: кого нет в очереди — не дописываем
     const ord = qOrd(rest).filter((x) => x.id !== id), it = { id, away: false, out: false };
     S.queue[rest] = firstPlace ? [it, ...ord] : [...ord, it];
   };
@@ -1912,7 +1913,29 @@ export function makeServer(opts) {
       return { ok: true, msg: J(m) };
     }
     // v213 (Доп. 539): очередь официантов и «Занят, передать дальше» — как этап 69
-    if ((fn === "queue_get" || fn === "queue_set" || fn === "chat_pass") && opts.noStage69) return { code: "PGRST202", message: "Could not find the function" };
+    if ((fn === "queue_get" || fn === "queue_set" || fn === "chat_pass" || fn === "chat_call_state" || fn === "chat_call_done") && opts.noStage69) return { code: "PGRST202", message: "Could not find the function" };
+    // v215 (Доп. 541): колокольчики — что с вызовами; «На месте» — хостес отмечает, что официант подошёл
+    if (fn === "chat_call_state") {
+      const ids = Array.isArray(b.p_ids) ? b.p_ids : [];
+      if (ids.length > 40) return { ok: false, error: "bad_request" };
+      const list = [];
+      for (const id of ids) {
+        let m = msgOf(id); if (!m || m.kind !== "call" || !visible(chatOf(m.chat), p)) continue;
+        let hops = 0; while (m.call.passed && msgOf(m.call.passed.msg) && hops < 8) { m = msgOf(m.call.passed.msg); hops++; }
+        const g = (m.call.going || [])[0] || null, dn = m.call.done || null;
+        const st = g ? "going" : dn ? "done" : m.del || clock() - Date.parse(m.at) >= 600000 ? "gone" : "wait";
+        list.push({ id: Number(id), msg: m.id, st, who: m.call.who, emp: m.call.emp || null, name: m.call.to_name || "", table: m.call.table || "", at: m.at,
+          by: g ? g.name : dn ? dn.by_name : null, going_at: g ? g.at : dn ? dn.at : null, hops });
+      }
+      return { ok: true, list };
+    }
+    if (fn === "chat_call_done") {
+      const m = msgOf(b.p_msg); if (!m || m.del || m.kind !== "call" || !visible(chatOf(m.chat), p)) return { ok: false, error: "not_found" };
+      if (m.emp !== p.id && !qCan(p)) return { ok: false, error: "forbidden" };
+      if (m.call.passed) return { ok: false, error: "passed", msg: J(m) };
+      if (!m.call.done) { m.call.done = { by: p.id, by_name: full(p), at: now() }; touch(m); }
+      return { ok: true, msg: J(m) };
+    }
     if (fn === "queue_get") return qJson(p, p.restaurant);
     if (fn === "queue_set") {
       if (!qCan(p)) return { ok: false, error: "forbidden" };
@@ -1928,7 +1951,7 @@ export function makeServer(opts) {
       const self = k.emp === p.id;
       if (!self && m.emp !== p.id && !isLead(p)) return { ok: false, error: "forbidden" };
       if (k.passed) return { ok: false, error: "passed", msg: J(m) };
-      if ((k.going || []).length) return { ok: false, error: "going", msg: J(m) };
+      if ((k.going || []).length || k.done) return { ok: false, error: "going", msg: J(m) };
       if (clock() - Date.parse(m.at) >= 600000) return { ok: false, error: "stale" };
       const skip = [...new Set([k.emp, ...(k.skip || [])])], rest = chatOf(m.chat).rest;
       const nx = qOrd(rest).find((x) => !x.away && !x.out && !skip.includes(x.id));

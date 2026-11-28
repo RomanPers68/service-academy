@@ -40,6 +40,7 @@ import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine, mentorC
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 // v189 (Доп. 514): «К столу» — стол выбирают на схеме зала (схема из «Рассадки» грузится, только когда нужна)
 import { CallSheet } from "./call-sheet";   // v212 (Доп. 538): «Позвать» подряд; схема зала — там же (ui/call-table.jsx)
+import { QueueStrip } from "./call-queue";   // v215 (Доп. 541): очередь к столам строкой в «Вся команда»
 import { canPass, passedLine, fromLine, passErrText } from "../lib/call-queue";   // v213 (Доп. 539): «Занят, передать дальше»
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
@@ -328,6 +329,15 @@ button.ch-mava:active{opacity:.75}
 .ch-q-tog{flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:999px;border:1px solid var(--opt-edge);background:var(--opt);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer}
 .ch-q-tog[aria-pressed="true"]{border-color:var(--gold);background:rgba(214,178,102,0.18)}
 .ch-q-sub{margin:10px 0 6px;font-size:12.5px;line-height:1.4;color:var(--sub)}
+.ch-q-subrow{display:flex;align-items:baseline;gap:10px}.ch-q-subrow>span{flex:1;min-width:0}
+.ch-q-from{color:var(--sub);font-size:12.5px}
+.ch-qs{flex:0 0 auto;position:relative;z-index:3;padding:5px 12px;background:var(--head);border-bottom:1px solid var(--head-line)}
+.ch-qs-b{display:flex;align-items:baseline;gap:8px;width:100%;max-width:640px;margin:0 auto;border:0;background:none;padding:3px 0;text-align:left;font-family:inherit;color:var(--text);cursor:pointer}
+.ch-qs-b:disabled{cursor:default;opacity:1}
+.ch-qs-l{flex:0 0 auto;font-size:12px;font-style:italic;color:var(--gold-ink)}
+.ch-qs-t{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-qs-me{flex:0 0 auto;font-size:12px;color:var(--sub)}
+.ch-qs-go{flex:0 0 auto;margin-left:auto;font-size:12.5px;color:var(--gold-ink);text-decoration:underline;text-underline-offset:3px}
 .ch-pass{display:block;margin:8px auto 0}
 .ch-call-from{font-size:12.5px;color:var(--sub);margin-top:2px}
 .ch-call-s.passed{color:var(--gold-ink)}
@@ -1123,8 +1133,8 @@ function CallCard({ row, me, now, busyGo, hl, onGo, onPass = null, onMenu, onRep
         <div className="ch-call-t">{m.del ? "Вызов удалён" : callLine(m, me && me.id)}</div>
         {/* v213 (Доп. 539): вызов пришёл передачей — от кого; передан дальше — кому */}
         {!m.del && fromLine(m.call) ? <div className="ch-call-from" data-chat-call-from="">{fromLine(m.call)}</div> : null}
-        {!m.del ? <div className={"ch-call-s" + (st.st === "going" ? " going" : st.st === "passed" ? " passed" : "")}>
-          {st.st === "passed" ? passedLine(m.call) : st.st === "going" ? "Идёт: " + st.going.map((g) => bubbleName(g.name)).join(", ") : st.st === "stale" ? "Без ответа" : st.min ? "Ждёт ответа · " + st.min + " мин" : "Ждёт ответа"}</div> : null}
+        {!m.del ? <div className={"ch-call-s" + (st.st === "going" || st.st === "done" ? " going" : st.st === "passed" ? " passed" : "")}>
+          {st.st === "passed" ? passedLine(m.call) : st.st === "done" ? "На месте" : st.st === "going" ? "Идёт: " + st.going.map((g) => bubbleName(g.name)).join(", ") : st.st === "stale" ? "Без ответа" : st.min ? "Ждёт ответа · " + st.min + " мин" : "Ждёт ответа"}</div> : null}
         {!m.del && forMe && !iGo && st.st === "wait" ? <button type="button" className="ch-go" data-chat-go={m.id} disabled={busyGo === m.id} onClick={(e) => { e.stopPropagation(); onGo(m); }}>Иду</button> : null}
         {!m.del && onPass && canPass(m, me, now) ? <button type="button" className="ch-pass" data-chat-pass={m.id} disabled={busyGo === m.id}
           onClick={(e) => { e.stopPropagation(); onPass(m); }}>{String(m.call.emp) === String(me && me.id) ? "Занят, передать дальше" : "Передать дальше по очереди"}</button> : null}
@@ -1572,6 +1582,8 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
           {canPin(chat, me) ? <button type="button" className="ch-x" data-chat-unpin="" aria-label="Открепить" onClick={() => { vibrate("light"); pinMsg(null); }}>{IC.x}</button> : null}
         </div>
       </div>) : null}
+    {/* v215 (Доп. 541): очередь официантов к столам — строкой под шапкой «Вся команда»; хостес правит её отсюда же */}
+    {chat.kind === "team" && api.queue ? <QueueStrip api={api} me={me} /> : null}
     <div className="ch-chatwrap sa-dlgpath">
       {/* v96: лента едет с клавиатурой трансформом внутри рамки .ch-chatwrap (уходит под шапку, не налезая) — ui/keyboard.js */}
       <div ref={chatRef} className="ch-chat sa-dlgscroll" role="log" aria-live="polite" aria-relevant="additions" onScroll={onScroll} data-chat-feed="" data-kbm="" data-kbm-scroll="">

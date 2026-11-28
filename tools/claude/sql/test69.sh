@@ -1,7 +1,8 @@
 #!/bin/bash
-# Этап 69 (v213, Доп. 539): очередь официантов и «Занят, передать дальше».
-# Поверх базы run25.sh: копия satest69, этапы 26, 31, 32, 34, 35, 36, 37, 38 и 68 — как у test68.sh. В заведении ещё
-# официанты Вера, Глеб, Дина и хостес Ольга; график на сегодня: Анна, Вера, Глеб, Ольга, Мария (Дина — выходной).
+# Этап 69 (v213, Доп. 539; v215, Доп. 541): очередь официантов, «Занят, передать дальше», очередь в «Рассадке» и
+# колокольчики. Поверх базы run25.sh: копия satest69, этапы 26, 31, 32, 34, 35, 36, 37, 54, 55, 56, 38 и 68. В заведении
+# ещё официанты Вера, Глеб, Дина и хостес Ольга; график на сегодня: Глеб — утро, Вера и Ольга — день, Анна — вечер,
+# Мария — утро (Дина — в отпуске). Очередь утром пустая: её составляет хостес по приходу.
 # Без этапа 68 — понятная ошибка. Этап 69 дважды. Отправка в Telegram — заглушка pg_net (net.sent_log).
 # Нужен psql; сервер — PGHOST (по умолчанию /tmp/pgsock) и PGPORT (5433), пользователь postgres.
 #   bash run25.sh && bash test69.sh
@@ -14,7 +15,7 @@ P0="psql -h $PGH -p $PGP -U postgres -v ON_ERROR_STOP=1 -q"
 $P0 -d postgres -c "drop database if exists $DB" -c "create database $DB template satest25" >/dev/null 2>&1 || { echo "нет базы satest25 — сначала run25.sh"; exit 1; }
 S68=supabase-stage68-call-series.sql; S69=supabase-stage69-waiter-queue.sql
 PRE="supabase-stage26-mastery.sql supabase-stage31-qday.sql supabase-stage32-briefing.sql supabase-stage34-guest-thanks.sql supabase-stage35-seating.sql"
-POST="supabase-stage36-comfort.sql supabase-stage37-halls-qday.sql supabase-stage38-chat.sql"
+POST="supabase-stage36-comfort.sql supabase-stage37-halls-qday.sql supabase-stage54-tall-tables.sql supabase-stage55-chair-sides.sql supabase-stage56-join-move-wait.sql supabase-stage38-chat.sql"
 D=$(mktemp -d); for f in $PRE $POST $S68 $S69; do cp "$SRC/$f" "$D/"; done; chmod -R a+r "$D"
 RC=0; OUT=""
 run() { out=$($P0 -d $DB -f "$D/$1" 2>&1); rc=$?; RC=$((RC + rc)); echo "── $1 (rc=$rc)"; echo "$out" | grep -iE "error|ошибк" | head -3; OUT="$out"; }
@@ -42,7 +43,7 @@ $P0 -d $DB -c "create or replace function my_reset_at(p_token text) returns json
 for f in $POST; do run $f; done
 chk "без этапа 68: «Сначала этап 68»" "$($P0 -d $DB -f "$D/$S69" 2>&1 | grep -o 'Сначала этап 68[^:]*: «Позвать» подряд' | head -1)" '^Сначала этап 68 \(supabase-stage68-call-series.sql\): «Позвать» подряд$'
 run $S68
-chk "этапы 26, 31, 32, 34, 35, 36, 37, 38, 68 — без ошибок" "$RC" '^0$'
+chk "этапы 26, 31, 32, 34, 35, 36, 37, 54, 55, 56, 38, 68 — без ошибок" "$RC" '^0$'
 
 # ── Заведение: ещё официанты и хостес, график на сегодня, Telegram ──────────────────────────────────
 PP "insert into employees (id, name, surname, restaurant, position, is_admin, status) values
@@ -66,7 +67,7 @@ $P -c "delete from net.sent_log; delete from tg_sent; delete from sa_notify_pref
 
 # ── Этап 69 дважды ──────────────────────────────────────────────────────────────
 RC=0; run $S69
-chk "этап 69: итог" "$(echo "$OUT" | grep -o 'Очередь официантов: .*' | head -1 | sed 's/[[:space:]]*$//')" '^Очередь официантов: sa_queue закрыта, queue_get, queue_set, chat_pass · очередей сегодня: 0$'
+chk "этап 69: итог" "$(echo "$OUT" | grep -o 'Очередь официантов: .*' | head -1 | sed 's/[[:space:]]*$//')" '^Очередь официантов: sa_queue закрыта, queue_get, queue_set, chat_pass, chat_call_state, chat_call_done, seat_set двигает очередь · очередей сегодня: [0-9]+$'
 run $S69
 chk "этап 69 ещё раз — без ошибок" "$RC" '^0$'
 chk "таблица закрыта для ключа приложения" "$(Q "select count(*) from sa_queue")" 'permission denied'
@@ -75,10 +76,16 @@ chk "функции: security definer, вызывает ключ приложе�
   '^_sa_chat_pass_do:true:false _sa_queue_ord:true:false chat_pass:true:true queue_get:true:true queue_set:true:true$'
 
 # ── Очередь на сегодня ─────────────────────────────────────────────────────────────
-chk "собралась сама: официанты по графику на сегодня, по имени (Дина — выходной, уволенного нет)" "$(QL $OLGA)" '^Анна Смирнова, Вера Соколова, Глеб Орлов$'
-chk "others — официанты не в очереди (Дина); хостес может менять, официант — нет" "$(Q "select (queue_get('$OLGA')->'others'->0->>'name') || ' ' || (queue_get('$OLGA')->>'edit') || ' ' || (queue_get('$ANNA')->>'edit')")" '^Дина Белова true false$'
-chk "видят все в заведении; без входа — auth; другое заведение — своя очередь (в Порту графика нет — все официанты)" "$(QL $ANNA)|$(Q "select queue_get('x')->>'error'")|$(QL $IRINA)" \
-  '^Анна Смирнова, Вера Соколова, Глеб Орлов\|auth\|Иван Петров$'
+chk "утром очередь пустая: сама не собирается" "$(QL $OLGA)|$(Q "select jsonb_array_length(queue_get('$OLGA')->'list')")" '^\|0$'
+chk "others — сегодняшние по началу смены (Глеб 10, Вера 12, Анна 16), потом остальные (Дина в отпуске)" \
+  "$(Q "select string_agg((x->>'name') || ':' || coalesce(x->>'from', '-'), ', ' order by o) from jsonb_array_elements(queue_get('$OLGA')->'others') with ordinality t(x, o)")" \
+  '^Глеб Орлов:10, Вера Соколова:12, Анна Смирнова:16, Дина Белова:-'
+chk "хостес может менять, официант — нет" "$(Q "select (queue_get('$OLGA')->>'edit') || ' ' || (queue_get('$ANNA')->>'edit')")" '^true false$'
+Q "select chat_call('$OLGA', 'person', '$AEMP', 'table', '2', null)" >/dev/null
+chk "позвали Анну к столу, пока очереди нет, — в очередь она сама не попадает" "[$(QL $OLGA)]" '^\[\]$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$AEMP'), jsonb_build_object('id', '$VEMP'), jsonb_build_object('id', '$GEMP')))" >/dev/null
+chk "хостес составила по приходу: Анна, Вера, Глеб; видят все в заведении; без входа — auth; в Порту — своя, пустая" "$(QL $ANNA)|$(Q "select queue_get('x')->>'error'")|$(QL $IRINA)" \
+  '^Анна Смирнова, Вера Соколова, Глеб Орлов\|auth\|$'
 chk "официанту менять нельзя — forbidden" "$(Q "select queue_set('$ANNA', '[]'::jsonb)->>'error'")" '^forbidden$'
 R=$(Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$GEMP'), jsonb_build_object('id', '$AEMP', 'away', true), jsonb_build_object('id', '$GEMP', 'away', true),
   jsonb_build_object('id', '$IEMP'), jsonb_build_object('id', '00000000-0000-0000-0000-0000000000b2')))->>'ok'")
@@ -140,11 +147,46 @@ chk "Telegram: передать некому — предупреждение, �
 TGU "$(CBJ 4 555 "cg:$C6" "Ольга зовёт тебя: к столу 9")" >/dev/null
 chk "Telegram: «Иду» (Вера) — как раньше" "$(PP "select call->'going'->0->>'name' from sa_chat_msgs where id = $C6")" '^Вера Соколова$'
 
+# ── «Рассадка»: посадили гостей — официант в конец очереди ─────────────────────────────────────────
+PP "insert into sa_floor (restaurant, plan) values ('Два моря, Океан', '{\"v\": 1, \"tables\": [{\"id\": \"t13\", \"n\": \"13\", \"seats\": 4}, {\"id\": \"t14\", \"n\": \"14\", \"seats\": 2}]}'::jsonb)
+  on conflict (restaurant) do update set plan = excluded.plan" >/dev/null
+# очередь — напрямую: queue_set не убирает тех, кого не прислали, а здесь нужна очередь без Дины
+PP "update sa_queue set ord = jsonb_build_array(jsonb_build_object('id', '$AEMP', 'away', false, 'out', false), jsonb_build_object('id', '$VEMP', 'away', false, 'out', false),
+  jsonb_build_object('id', '$GEMP', 'away', false, 'out', false)) where restaurant = 'Два моря, Океан' and day = (now() at time zone _sa_tz('Два моря, Океан'))::date" >/dev/null
+chk "посадили гостей за 13-й Анне — она в конце очереди" "$(Q "select seat_set('$OLGA', 't13', 'seat', 3, '', '', '$AEMP')->>'ok'")|$(QL $OLGA)" '^true\|Вера Соколова, Глеб Орлов, Анна Смирнова$'
+Q "select seat_set('$OLGA', 't13', 'seat', 4, '', '', '$AEMP')" >/dev/null; Q "select seat_set('$OLGA', 't13', 'bill', 4, '', '', '$AEMP')" >/dev/null
+chk "поправили число гостей и «Счёт» у того же официанта — очередь стоит" "$(QL $OLGA)" '^Вера Соколова, Глеб Орлов, Анна Смирнова$'
+Q "select seat_set('$OLGA', 't14', 'seat', 2, '', '', '$DEMP')" >/dev/null
+chk "посадили Дине (её нет в очереди) — очередь та же, Дину не дописали" "$(QL $OLGA)" '^Вера Соколова, Глеб Орлов, Анна Смирнова$'
+Q "select seat_set('$OLGA', 't14', 'seat', 2, '', '', '$VEMP')" >/dev/null
+chk "стол 14 передали Вере — она в конце" "$(QL $OLGA)" '^Глеб Орлов, Анна Смирнова, Вера Соколова$'
+
+# ── Колокольчики: что с вызовами ──────────────────────────────────────────────────────────────
+C7=$(Q "select chat_call('$OLGA', 'person', '$GEMP', 'table', '21', null)->'msg'->>'id'")
+ST() { Q "select string_agg((x->>'id') || ':' || (x->>'st') || ':' || (x->>'name') || ':' || coalesce(x->>'by', '-') || ':' || (x->>'hops'), ', ' order by o)
+  from jsonb_array_elements(chat_call_state('$1', array[$2]::bigint[])->'list') with ordinality t(x, o)"; }
+chk "вызов 13-го: передавали дважды, Глеб нажал «Иду»; 9-го: передали Вере, она идёт; 21-го: ждём; 7-го: 10 минут без ответа" \
+  "$(ST $OLGA "$C1, $C5, $C7, $C4")" "^$C1:going:Глеб Орлов:Глеб Орлов:2, $C5:going:Вера Соколова:Вера Соколова:1, $C7:wait:Глеб Орлов:-:0, $C4:gone:Анна Смирнова:-:0\$"
+chk "официант своего заведения тоже видит; чужое заведение — пусто; не вызов и мусор — пропуск" "$(ST $ANNA "$C7")|$(ST $IRINA "$C7")|$(ST $OLGA "$CH, 999999")" \
+  "^$C7:wait:Глеб Орлов:-:0\|\|$CH:wait:Вера Соколова:-:0$"
+chk "больше 40 — bad_request; без входа — auth; ключу приложения можно" "$(Q "select chat_call_state('$OLGA', array(select generate_series(1, 41))::bigint[])->>'error'")|$(Q "select chat_call_state('x', array[1]::bigint[])->>'error'")|$(PP "select has_function_privilege('anon', 'chat_call_state(text, bigint[])', 'execute')")" \
+  '^bad_request\|auth\|t$'
+
+# ── «На месте»: официант подошёл, не нажав «Иду» ─────────────────────────────────────────────────
+chk "Глеб видит вызов к 21-му у себя; официант (Анна) отметить «на месте» не может — forbidden" \
+  "$(Q "select count(*) from jsonb_array_elements(chat_unread('$GLEB')->'calls') x where (x->>'id')::bigint = $C7")|$(Q "select chat_call_done('$ANNA', $C7)->>'error'")" '^1\|forbidden$'
+chk "Ольга: «На месте» — done в вызове, у Глеба вызов пропал, колокольчик — done (отметила Ольга)" \
+  "$(Q "select (chat_call_done('$OLGA', $C7)->'msg'->'call'->'done'->>'by_name')")|$(Q "select count(*) from jsonb_array_elements(chat_unread('$GLEB')->'calls') x where (x->>'id')::bigint = $C7")|$(ST $OLGA "$C7")" \
+  "^Ольга Ли\|0\|$C7:done:Глеб Орлов:Ольга Ли:0\$"
+T0=$(PP "select call->'done'->>'at' from sa_chat_msgs where id = $C7")
+chk "второй раз — то же время; передать дальше нельзя — going" "$(Q "select (chat_call_done('$OLGA', $C7)->'msg'->'call'->'done'->>'at') = '$T0'")|$(Q "select chat_pass('$OLGA', $C7)->>'error'")" '^t(rue)?\|going$'
+chk "права: chat_call_done — ключу приложения можно" "$(PP "select has_function_privilege('anon', 'chat_call_done(text, bigint)', 'execute')")" '^t$'
+
 # ── Уволили, сменили должность, новый день ──────────────────────────────────────────────────
 PP "update employees set status = 'fired' where id = '$DEMP'; update employees set position = 'bartender' where id = '$GEMP'" >/dev/null
-chk "уволенной и сменившего должность в очереди нет" "$(QL $OLGA)" '^Вера Соколова, Анна Смирнова$'
+chk "уволенной и сменившего должность в очереди нет" "$(QL $OLGA)" '^Анна Смирнова, Вера Соколова$'
 PP "update sa_queue set day = day - 1" >/dev/null
-chk "новый день — очередь собирается заново по графику" "$(QL $ANNA)|$(PP "select count(*) from sa_queue where restaurant = 'Два моря, Океан'")" '^Анна Смирнова, Вера Соколова\|2$'
+chk "новый день — очередь снова пустая, пока хостес не составит" "$(QL $ANNA)|$(PP "select count(*) from sa_queue where restaurant = 'Два моря, Океан'")" '^\|2$'
 PP "update sa_queue set day = day - 9 where day < (now() at time zone _sa_tz('Два моря, Океан'))::date" >/dev/null
 Q "select queue_get('$ANNA')" >/dev/null
 chk "старше недели — стирается" "$(PP "select count(*) from sa_queue where restaurant = 'Два моря, Океан'")" '^1$'

@@ -61,15 +61,17 @@ describe("v213 · этап 69", () => {
     expect(sql).toContain("primary key (restaurant, day),");
     expect(sql).toContain("alter table sa_queue enable row level security;");
     expect(sql).toContain("revoke all on table sa_queue from public, anon, authenticated;");
-    expect(sql).toContain("grant execute on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint)\n  to anon, authenticated;");
-    expect(sql).toMatch(/revoke all on function _sa_queue_day\(text\), [\s\S]*_sa_chat_pass_do\(jsonb, sa_chat_msgs\), _sa_chat_calls\(jsonb\), _sa_chat_tg_cb\(jsonb\) from public, anon, authenticated;/);
+    // v215 (Доп. 541): и колокольчики (chat_call_state), «На месте» (chat_call_done), «Рассадка» (seat_set)
+    expect(sql).toContain("grant execute on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint),\n  chat_call_state(text, bigint[]), chat_call_done(text, bigint), seat_set(text, text, text, int, text, text, text) to anon, authenticated;");
+    expect(sql).toMatch(/revoke all on function _sa_queue_day\(text\), [\s\S]*_sa_chat_pass_do\(jsonb, sa_chat_msgs\), _sa_chat_calls\(jsonb\), _sa_chat_tg_cb\(jsonb\), _sa_queue_from\(text, text\) from public, anon, authenticated;/);
     expect(sql).toContain("notify pgrst, 'reload schema';");
   });
   it("очередь дня: по графику (нет графика — все официанты), по имени; позже вышедшие — в конец; старше недели — стирается", () => {
+    // v215 (Доп. 541): сама очередь не собирается — её составляет хостес по приходу; здесь только чистка
     const f = fnBody(sql, "_sa_queue_ord");
-    expect(f).toContain("where (today is null or cardinality(today) = 0 or w.id = any(today))");
-    expect(f).toContain("order by fresh.nm, fresh.id");
-    expect(f).toContain("lower(coalesce(e.position, '')) = 'waiter'");
+    expect(f).not.toContain("_sa_chat_today");
+    expect(f).toContain("from jsonb_array_elements(q) with ordinality x(e, o) where _sa_queue_waiter(p_rest, x.e->>'id')");
+    expect(fnBody(sql, "_sa_queue_waiter")).toContain("lower(coalesce(e.position, '')) = 'waiter'");
     expect(f).toContain("delete from sa_queue where restaurant = p_rest and day < d - 7;");
     expect(fnBody(sql, "_sa_queue_day")).toContain("select (now() at time zone _sa_tz(p_rest))::date");
   });
@@ -119,7 +121,7 @@ describe("v213 · очередь на телефоне (lib/call-queue.js)", () 
   it("ответ сервера: повторы убраны, others — без тех, кто в очереди; не очередь — null", () => {
     const q = queueOf(Q0);
     expect(q.list.map((x) => x.id)).toEqual(["a", "v", "p", "g"]);
-    expect(q.others).toEqual([{ id: "d", name: "Дина Белова" }]);
+    expect(q.others).toEqual([{ id: "d", name: "Дина Белова", from: null }]);   // v215: from — начало смены сегодня
     expect([q.edit, q.day]).toEqual([true, "2026-11-28"]);
     expect([queueOf({ ok: false, error: "missing" }), queueOf(null), queueOf({ ok: true })]).toEqual([null, null, null]);
   });
@@ -137,8 +139,8 @@ describe("v213 · очередь на телефоне (lib/call-queue.js)", () 
     expect(ids(queueAfterCall(q, "a"))).toBe("v·п,p,a");
     expect(ids(queueAfterCall(q, "v"))).toBe("a,p,v");
     expect(ids(queueAfterCall(q, "g"))).toBe("a,v·п,p,g");
-    const d = queueAfterCall(q, "d");
-    expect([ids(d), d.others.length]).toEqual(["a,v·п,p,d", 0]);
+    const d = queueAfterCall(q, "d");   // v215: кого нет в очереди — не дописываем, дописывает хостес
+    expect([ids(d), d.others.length, d === q]).toEqual(["a,v·п,p", 1, true]);
     expect(queueAfterCall(q, "x")).toBe(q);
   });
   it("правки: выше и ниже (убранные стоят на месте), перерыв, убрать и вернуть (в конец), добавить; для queue_set", () => {
@@ -197,11 +199,13 @@ describe("v213 · демо-сервер — как этап 69", () => {
   const mk = (o = {}) => makeServer({ today: "2026-11-28", clock: () => t, rest: "R", people: P, tok: { th: "u-host", ta: "e-anna", tv: "e-vera", tp: "e-petr", tm: "u-m" },
     sstaff: [], cfg: { shifts: [], staff: [] }, plan: {}, menu: [], cheers: false, ...o });
   const names = (s, tok = "th") => s.rpc("queue_get", { p_token: tok }).list.filter((x) => !x.out).map((x) => x.name.split(" ")[0] + (x.away ? "·п" : "")).join(",");
-  it("очередь: графика нет — все официанты по имени; менять — хостес и руководитель; позвали к столу — в конец", () => {
+  it("очередь: утром пустая, составляет хостес; менять — хостес и руководитель; позвали к столу — в конец", () => {
     const s = mk();
-    expect(names(s)).toBe("Анна,Вера,Пётр");
+    expect(names(s)).toBe("");   // v215: сама не собирается
+    expect(s.rpc("queue_get", { p_token: "th" }).others.map((x) => x.name.split(" ")[0])).toEqual(["Анна", "Вера", "Пётр"]);
     expect(s.rpc("queue_get", { p_token: "ta" }).edit).toBe(false);
     expect(s.rpc("queue_set", { p_token: "ta", p_ord: [] }).error).toBe("forbidden");
+    s.rpc("queue_set", { p_token: "th", p_ord: [{ id: "e-anna" }, { id: "e-vera" }, { id: "e-petr" }] });
     expect(names({ rpc: (fn, b) => s.rpc(fn, b) }, "ta")).toBe("Анна,Вера,Пётр");
     s.rpc("queue_set", { p_token: "th", p_ord: [{ id: "e-petr" }, { id: "e-anna", away: true }, { id: "e-petr" }, { id: "u-m" }] });
     expect(names(s)).toBe("Пётр,Анна·п,Вера");
@@ -213,6 +217,7 @@ describe("v213 · демо-сервер — как этап 69", () => {
   });
   it("передать дальше: следующему в очереди, занятый — первым; повтор — passed; «Иду» на переданный — passed; некому — nobody", () => {
     const s = mk();
+    s.rpc("queue_set", { p_token: "th", p_ord: [{ id: "e-anna" }, { id: "e-vera" }, { id: "e-petr" }] });   // v215: очередь составила хостес
     const c1 = s.rpc("chat_call", { p_token: "th", p_who: "person", p_emp: "e-anna", p_why: "table", p_table: "9" }).msg;
     expect(s.rpc("chat_pass", { p_token: "tp", p_msg: c1.id }).error).toBe("forbidden");
     const r = s.rpc("chat_pass", { p_token: "ta", p_msg: c1.id });
@@ -257,9 +262,9 @@ describe("v213 · экран", () => {
     expect(html).toMatch(/aria-label="Выше: Анна Смирнова" data-queue-up="a" disabled=""/);
     expect(html).toMatch(/aria-label="Ниже: Пётр Орлов" data-queue-down="p" disabled=""/);
     expect(html).toMatch(/aria-pressed="true" data-queue-pause="v"[^>]*>Вернуть</);
-    expect(html).toMatch(/data-queue-back="g"[^>]*>\+ Глеб Орлов</);
-    expect(html).toMatch(/data-queue-add="d"[^>]*>\+ Дина Белова</);
-    expect(html).toContain("Позвали к столу: официант уходит в конец. Занят и передал стол: остаётся первым.");
+    expect(html).toMatch(/data-queue-back="g"[^>]*>\+ Глеб О\.</);   // v215: коротко, как в очереди
+    expect(html).toMatch(/data-queue-add="d"[^>]*>\+ Дина Б\.</);
+    expect(html).toContain("Позвали к столу или посадили гостей: официант уходит в конец. Занят и передал стол: остаётся первым.");   // v215: и «Рассадка»
   });
   it("«Смена»: «Очередь к столам», «Ты в очереди: 3 из 3», на перерыве — так и пишем", async () => {
     const { QueueCard } = await import("../ui/shift-role.jsx");
@@ -282,7 +287,7 @@ describe("v213 · экран", () => {
   });
   it("в коде: лист «Позвать» с очередью, карточка вызова с «передать», App — баннер и «Смена»", () => {
     const s = rd("ui/call-sheet.jsx");
-    expect(s).toContain("const useQ = why === \"table\" && !!q && queueLive(q).length > 0;");
+    expect(s).toContain("const useQ = qOn && !queueEmpty(q);");   // v215: пустая очередь — «не составлена · Составить»
     expect(s).toContain("if (n) { setWho(\"person\"); setPerson({ id: n.id, name: n.name }); setAuto(true); }");
     expect(s).toContain("if (c.who === \"person\" && c.why === \"table\" && !res.again) { setQ((qq) => queueAfterCall(qq, c.emp)); setSkip([]); }");
     expect(s).toContain("Promise.resolve(api.queueSet(queueOrd(nq)))");
@@ -294,7 +299,7 @@ describe("v213 · экран", () => {
     const a = rd("App.jsx");
     expect(a).toContain("onPass={canPass(myCall, chatMe) ? callPass : null} note={callNote}");
     expect(a).toContain("chatApiObj.pass(id).then((r) => {");
-    expect(a).toContain("{queueInfo && queueWho && queueLive(queueInfo).length ? <QueueCard a11y={a11y} q={queueInfo} meId={profile.id}");
+    expect(a).toContain("{queueInfo && queueWho && (queueLive(queueInfo).length || (queueInfo.edit && callHost)) ? <QueueCard a11y={a11y} q={queueInfo} meId={profile.id}");   // v215
     expect(a).toContain("if (r && r.error === \"missing\") { queueOffRef.current = true; setQueueInfo(null); return; }");
   });
 });

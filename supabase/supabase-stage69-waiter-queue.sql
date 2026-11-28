@@ -8,9 +8,11 @@
 -- Что делает:
 --   1. Таблица sa_queue — очередь официантов заведения на день: ord — [{ id, away, out }] по порядку (away — на
 --      перерыве, очередь его пропускает; out — убран из очереди на сегодня). Напрямую закрыта, старше недели стирается.
---   2. queue_get(token) — очередь на сегодня. Первый раз за день собирается сама: официанты по графику на сегодня
---      (графика нет — все официанты заведения), по имени; кто появился в графике позже — в конец. Уволенных и
---      сменивших должность в ней нет. Видят все в заведении; others — официанты, которых в очереди нет.
+--   2. queue_get(token) — очередь на сегодня. Составляет её хостес или руководитель, по приходу: кто пришёл первым,
+--      тот первый (владелец: «она составляется в том порядке, в какое время сотрудник зашел на работу»). Сама не
+--      собирается: утром она пустая. Уволенных и сменивших должность в ней нет. Видят все в заведении; others —
+--      официанты, которых в очереди нет: сначала сегодняшние по графику, по времени начала смены (from), потом
+--      остальные по имени.
 --   3. queue_set(token, ord) — порядок, «на перерыве», убрать и вернуть. Руководитель, старший и хостес.
 --   4. chat_call (этап 68) — как был, плюс: официанта позвали лично к столу — он уходит в конец очереди. В Telegram у
 --      такого вызова две кнопки: «Иду» и «Занят, передать дальше».
@@ -21,8 +23,15 @@
 --      Следующему — Telegram с кнопками, позвавшему — «Анна передаёт стол 13 дальше: позвали Петра.».
 --      Передать некому — nobody; на вызов уже идут — going; уже передан — passed; старше 10 минут — stale.
 --   6. «Иду» на переданный вызов — passed (и в приложении, и в Telegram); в «вызовах мне» переданных нет.
+--   7. seat_set (этап 56) — как был, плюс: в «Рассадке» посадили гостей официанту — он уходит в конец очереди, как
+--      после «Позвать» к столу. Двигается только тот, кто в очереди: добавляет в неё хостес.
+--   8. chat_call_state(token, ids) — колокольчики на схеме: что с вызовами к столам — ждём ответа, «Иду» (кто и
+--      когда), «на месте», передали дальше (кому). По каждому вызову — последний в цепочке передач.
+--   9. chat_call_done(token, msg) — «На месте»: официант подошёл, не нажав «Иду» (владелец: «чаще всего официант
+--      подходит сразу не нажимая «иду»»). Отмечает тот, кто позвал, хостес, старший или руководитель; вызов пропадает у
+--      официанта, передать его дальше уже нельзя (going).
 --
--- Нужны этапы 38 и 68. Безвреден повторно.
+-- Нужны этапы 38, 56 и 68. Безвреден повторно.
 -- ════════════════════════════════════════════════════════════════════════════════════════════════
 
 -- Страховка: очередь живёт в вызовах этапа 68
@@ -31,6 +40,9 @@ begin
   if to_regprocedure('public.chat_call(text,text,text,text,text,text)') is null
      or position('''already''' in pg_get_functiondef('public.chat_call(text,text,text,text,text,text)'::regprocedure)) = 0 then
     raise exception 'Сначала этап 68 (supabase-stage68-call-series.sql): «Позвать» подряд';
+  end if;
+  if to_regprocedure('public._sa_seat_follow(text,date,text,text,text)') is null then
+    raise exception 'Сначала этап 56 (supabase-stage56-join-move-wait.sql): объединить столы, пересадить гостей, лист ожидания';
   end if;
 end $$;
 
@@ -61,29 +73,21 @@ returns boolean language sql stable security definer set search_path to public a
                    and coalesce(e.status, 'active') = 'active' and lower(coalesce(e.position, '')) = 'waiter')
 $$;
 
--- очередь дня: впервые за день — собрать; дописать вышедших по графику позже; убрать уволенных и не официантов
+-- очередь дня: строка на сегодня; уволенных, сменивших должность и повторы — убрать. Сама очередь не собирается:
+-- её составляет хостес или руководитель по приходу (queue_set)
 create or replace function _sa_queue_ord(p_rest text)
 returns jsonb language plpgsql volatile security definer set search_path to public as $$
-declare d date := _sa_queue_day(p_rest); today text[]; q jsonb; nq jsonb;
+declare d date := _sa_queue_day(p_rest); q jsonb; nq jsonb;
 begin
   insert into sa_queue (restaurant, day) values (p_rest, d) on conflict (restaurant, day) do nothing;
   select ord into q from sa_queue where restaurant = p_rest and day = d for update;
-  today := _sa_chat_today(p_rest);
-  with w as (
-    select e.id::text as id, btrim(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')) as nm from employees e
-     where e.restaurant is not distinct from p_rest and coalesce(e.status, 'active') = 'active' and lower(coalesce(e.position, '')) = 'waiter'
-  ), cur as (
+  with cur as (
     select x.e, x.o, row_number() over (partition by x.e->>'id' order by x.o) as k
-      from jsonb_array_elements(q) with ordinality x(e, o) where exists (select 1 from w where w.id = x.e->>'id')
-  ), fresh as (
-    select w.id, w.nm from w
-     where (today is null or cardinality(today) = 0 or w.id = any(today))
-       and not exists (select 1 from cur where cur.e->>'id' = w.id)
+      from jsonb_array_elements(q) with ordinality x(e, o) where _sa_queue_waiter(p_rest, x.e->>'id')
   )
-  select coalesce((select jsonb_agg(jsonb_build_object('id', cur.e->>'id', 'away', coalesce(cur.e->>'away' = 'true', false),
-             'out', coalesce(cur.e->>'out' = 'true', false)) order by cur.o) from cur where cur.k = 1), '[]'::jsonb)
-      || coalesce((select jsonb_agg(jsonb_build_object('id', fresh.id, 'away', false, 'out', false) order by fresh.nm, fresh.id) from fresh), '[]'::jsonb)
-    into nq;
+  select coalesce(jsonb_agg(jsonb_build_object('id', cur.e->>'id', 'away', coalesce(cur.e->>'away' = 'true', false),
+           'out', coalesce(cur.e->>'out' = 'true', false)) order by cur.o), '[]'::jsonb)
+    into nq from cur where cur.k = 1;
   if nq is distinct from q then
     update sa_queue set ord = nq, updated_at = now() where restaurant = p_rest and day = d;
   end if;
@@ -91,14 +95,16 @@ begin
   return nq;
 end; $$;
 
--- переставить официанта: в конец (позвали к столу) или первым (занят, передал стол); вернуть в очередь, если
--- убирали, и снять «на перерыве» — раз зовут, он работает
+-- переставить официанта: в конец (позвали к столу, посадили гостей) или первым (занят, передал стол); вернуть в
+-- очередь, если убирали, и снять «на перерыве» — раз зовут, он работает. Кого в очереди нет, не трогаем: в неё
+-- добавляет хостес
 create or replace function _sa_queue_move(p_rest text, p_emp text, p_first boolean)
 returns void language plpgsql volatile security definer set search_path to public as $$
 declare q jsonb; others jsonb; e jsonb;
 begin
   if p_emp is null or not _sa_queue_waiter(p_rest, p_emp) then return; end if;
   q := _sa_queue_ord(p_rest);
+  if not exists (select 1 from jsonb_array_elements(q) x where x->>'id' = p_emp) then return; end if;
   e := jsonb_build_object('id', p_emp, 'away', false, 'out', false);
   select coalesce(jsonb_agg(x.e order by x.o), '[]'::jsonb) into others from jsonb_array_elements(q) with ordinality x(e, o) where x.e->>'id' <> p_emp;
   update sa_queue set ord = case when p_first then jsonb_build_array(e) || others else others || jsonb_build_array(e) end, updated_at = now()
@@ -120,17 +126,32 @@ returns boolean language sql immutable as $$
   select coalesce((c->>'lead')::boolean, false) or coalesce((c->>'admin')::boolean, false) or lower(coalesce(c->>'position', '')) in ('hostess', 'senior')
 $$;
 
--- ответ: list — очередь по порядку с именами; others — официанты, которых в ней нет; edit — можно ли менять
+-- во сколько у официанта сегодня начинается смена по графику (null — сегодня не в графике): подсказка хостес, кто
+-- скоро придёт. Строка графика — по словам имени, как у смен в чате (этап 38)
+create or replace function _sa_queue_from(p_rest text, p_emp text)
+returns int language plpgsql stable security definer set search_path to public as $$
+declare cfg jsonb := _sa_sh_cfg(p_rest); d date := _sa_queue_day(p_rest); s jsonb; def jsonb;
+begin
+  if cfg is null then return null; end if;
+  s := _sa_sh_staff(cfg, p_emp, to_char(d, 'YYYY-MM'));
+  if s is null then return null; end if;
+  def := _sa_sh_def(cfg, _sa_sh_code(p_rest, s->>'id', d));
+  if def is null or coalesce(def->>'extra', '') in ('1', 'true') or coalesce(def->>'from', '') !~ '^[0-9]{1,2}$' then return null; end if;
+  return (def->>'from')::int;
+end; $$;
+
+-- ответ: list — очередь по порядку с именами; others — официанты, которых в ней нет (сначала сегодняшние по графику,
+-- по времени начала смены; from — час начала); edit — можно ли менять
 create or replace function _sa_queue_json(c jsonb, p_rest text, q jsonb)
 returns jsonb language sql stable security definer set search_path to public as $$
   select jsonb_build_object('ok', true, 'day', _sa_queue_day(p_rest), 'edit', _sa_queue_can(c),
     'list', coalesce((select jsonb_agg(jsonb_build_object('id', x.e->>'id', 'name', btrim(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')),
         'away', coalesce(x.e->>'away' = 'true', false), 'out', coalesce(x.e->>'out' = 'true', false)) order by x.o)
       from jsonb_array_elements(q) with ordinality x(e, o) join employees e on e.id::text = x.e->>'id'), '[]'::jsonb),
-    'others', coalesce((select jsonb_agg(jsonb_build_object('id', e.id::text, 'name', btrim(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')))
-        order by btrim(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')))
-      from employees e where e.restaurant is not distinct from p_rest and coalesce(e.status, 'active') = 'active' and lower(coalesce(e.position, '')) = 'waiter'
-        and not exists (select 1 from jsonb_array_elements(q) y where y->>'id' = e.id::text)), '[]'::jsonb))
+    'others', coalesce((select jsonb_agg(jsonb_build_object('id', w.id, 'name', w.nm, 'from', w.f) order by w.f is null, w.f, w.nm, w.id)
+      from (select e.id::text as id, btrim(coalesce(e.name, '') || ' ' || coalesce(e.surname, '')) as nm, _sa_queue_from(p_rest, e.id::text) as f
+              from employees e where e.restaurant is not distinct from p_rest and coalesce(e.status, 'active') = 'active' and lower(coalesce(e.position, '')) = 'waiter'
+               and not exists (select 1 from jsonb_array_elements(q) y where y->>'id' = e.id::text)) w), '[]'::jsonb))
 $$;
 
 create or replace function queue_get(p_token text)
@@ -258,7 +279,7 @@ returns jsonb language sql stable security definer set search_path to public as 
     from sa_chat_msgs m join sa_chats ch on ch.id = m.chat_id
    where ch.restaurant is not distinct from (c->>'restaurant') and ch.kind = 'team' and m.kind = 'call' and not m.deleted
      and m.created_at > now() - interval '10 minutes' and coalesce(jsonb_array_length(m.call->'going'), 0) = 0
-     and not (m.call ? 'passed')
+     and not (m.call ? 'passed') and not (m.call ? 'done')
      and _sa_chat_call_for(m, c)
 $$;
 
@@ -294,7 +315,7 @@ begin
     return jsonb_build_object('ok', false, 'error', 'forbidden');
   end if;
   if m.call ? 'passed' then return jsonb_build_object('ok', false, 'error', 'passed', 'msg', _sa_chat_msg_json(m)); end if;
-  if coalesce(jsonb_array_length(m.call->'going'), 0) > 0 then return jsonb_build_object('ok', false, 'error', 'going', 'msg', _sa_chat_msg_json(m)); end if;
+  if coalesce(jsonb_array_length(m.call->'going'), 0) > 0 or m.call ? 'done' then return jsonb_build_object('ok', false, 'error', 'going', 'msg', _sa_chat_msg_json(m)); end if;
   if m.created_at < now() - interval '10 minutes' then return jsonb_build_object('ok', false, 'error', 'stale'); end if;
   -- кому нельзя: тот, кого звали, и все, кто этот стол уже передал
   select coalesce(array_agg(distinct z.s), array[]::text[]) into skip
@@ -426,15 +447,144 @@ begin
   perform _sa_chat_tg_api('answerCallbackQuery', jsonb_build_object('callback_query_id', cq->>'id', 'text', left(tip, 190)));
   return jsonb_build_object('ok', true, 'act', mm[1], 'msg', m.id, 'done', ok);
 end; $$;
--- ── 7) Права ──────────────────────────────────────────────────────────────────
+-- ── 7) «Рассадка»: посадили гостей — официант в конец очереди ──────────────────────────────────────
+-- seat_set этапа 56 слово в слово, плюс очередь в конце
+create or replace function seat_set(p_token text, p_tid text, p_status text, p_cnt int, p_name text, p_rtime text, p_waiter text)
+returns jsonb language plpgsql security definer set search_path to public as $$
+declare c jsonb; rest text; ld date; pl jsonb; tn text; old sa_seat; r sa_seat; st text; wn text; wid text; chat bigint; busy boolean;
+        kept jsonb; touched text[]; who text;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  rest := nullif(btrim(coalesce(c->>'restaurant', '')), '');
+  if rest is null then return jsonb_build_object('ok', false, 'error', 'no_restaurant'); end if;
+  select plan into pl from sa_floor where restaurant = rest;
+  select t->>'n' into tn from jsonb_array_elements(coalesce(pl->'tables', '[]'::jsonb)) t where t->>'id' = p_tid;
+  if tn is null then return jsonb_build_object('ok', false, 'error', 'no_table'); end if;
+  st := coalesce(p_status, '');
+  if st not in ('free', 'res', 'seat', 'bill', 'clean') or coalesce(p_cnt, 0) not between 0 and 40
+     or length(coalesce(p_name, '')) > 60 or coalesce(p_rtime, '') !~ '^(([01]\d|2[0-3]):[0-5]\d)?$' then
+    return jsonb_build_object('ok', false, 'error', 'bad_request');
+  end if;
+  busy := st in ('seat', 'bill');
+  wid := nullif(btrim(coalesce(p_waiter, '')), '');
+  if wid is not null then
+    begin
+      execute 'select btrim(e.name || '' '' || coalesce(e.surname, '''')) from employees e where e.id::text = $1 and e.restaurant = $2 and coalesce(to_jsonb(e)->>''status'', ''active'') = ''active'''
+        into wn using wid, rest;
+    exception when others then wn := null; end;
+    if wn is null then return jsonb_build_object('ok', false, 'error', 'bad_waiter'); end if;
+  end if;
+  who := coalesce(c->>'who', '');
+  ld := (now() at time zone _sa_tz(rest))::date;
+  select * into old from sa_seat where restaurant = rest and day = ld and tid = p_tid for update;
+  touched := array[p_tid];
+  -- v187: приставленному столу ставят статус сам по себе — он отделяется (главный его больше не держит) и считается
+  -- свободным: посадили за него — новое время посадки и сообщение официанту
+  if old.main is not null then
+    update sa_seat set joined = joined - p_tid, updated_at = now() where restaurant = rest and day = ld and tid = old.main;
+    touched := touched || old.main;
+    old.status := 'free'; old.waiter_id := null; old.since := null;
+  end if;
+  -- приставленные остаются, пока за столом гости, счёт или бронь; освободили или на уборку — отпускаем
+  kept := case when st in ('seat', 'bill', 'res') then coalesce(old.joined, '[]'::jsonb) else '[]'::jsonb end;
+  insert into sa_seat (restaurant, day, tid, status, cnt, name, rtime, since, waiter_id, waiter_name, main, joined, updated_by, updated_name, updated_at)
+  values (rest, ld, p_tid, st,
+    case when busy or st = 'res' then coalesce(p_cnt, 0) else 0 end,
+    case when st = 'res' then btrim(coalesce(p_name, '')) else '' end,
+    case when st = 'res' then coalesce(p_rtime, '') else '' end,
+    case when busy then case when coalesce(old.status, '') in ('seat', 'bill') then old.since else now() end end,
+    case when busy then wid end, case when busy then coalesce(wn, '') else '' end,
+    null, kept, c->>'id', who, now())
+  on conflict (restaurant, day, tid) do update set status = excluded.status, cnt = excluded.cnt, name = excluded.name, rtime = excluded.rtime,
+    since = excluded.since, waiter_id = excluded.waiter_id, waiter_name = excluded.waiter_name, main = null, joined = excluded.joined,
+    updated_by = excluded.updated_by, updated_name = excluded.updated_name, updated_at = now()
+  returning * into r;
+  if jsonb_array_length(coalesce(old.joined, '[]'::jsonb)) > 0 then
+    touched := touched || array(select jsonb_array_elements_text(old.joined));
+    if jsonb_array_length(kept) > 0 then perform _sa_seat_follow(rest, ld, p_tid, c->>'id', who);
+    else perform _sa_seat_reset(rest, ld, array(select jsonb_array_elements_text(old.joined)), st, c->>'id', who); end if;
+  end if;
+  -- официанту — когда ему посадили гостей (новая посадка или стол передали ему); «Счёт» и возврат из него — без сообщения
+  if st = 'seat' and wid is not null and wid <> c->>'id' and (coalesce(old.status, '') not in ('seat', 'bill') or old.waiter_id is distinct from wid) and _sa_tg_ready() then
+    chat := _sa_tg_chat(wid, 'seat');
+    if chat is not null then
+      perform sa_tg_send(chat, 'Стол ' || tn || ': посадили ' || r.cnt || ' ' ||
+        case when r.cnt % 10 = 1 and r.cnt % 100 <> 11 then 'гостя' else 'гостей' end || '. Посадил(а): ' || coalesce(nullif(who, ''), 'хостес') || '.',
+        'Рассадка', 'seat');
+    end if;
+  end if;
+  -- этап 69: посадили гостей официанту — он уходит в конец очереди, как после «Позвать» к столу
+  if st = 'seat' and wid is not null and (coalesce(old.status, '') not in ('seat', 'bill') or old.waiter_id is distinct from wid) then
+    perform _sa_queue_move(rest, wid, false);
+  end if;
+  return jsonb_build_object('ok', true, 'table', _sa_seat_json(r), 'tables', _sa_seat_rows(rest, ld, touched));
+end; $$;
+
+-- ── 8) Колокольчики на схеме: что с вызовами к столам ───────────────────────────────────────────
+-- p_ids — вызовы с телефона хостес за 10 минут. По каждому — последний в цепочке «передали дальше»: msg — его id,
+-- st — wait (ждём ответа), going (нажали «Иду»: by — кто, going_at — когда), done («На месте» отметила хостес: by — кто
+-- отметил, going_at — когда) или gone (10 минут без ответа, удалён);
+-- emp и name — кого зовут сейчас, at — когда позвали, hops — сколько раз передавали. Чужие и не вызовы — пропуск.
+create or replace function chat_call_state(p_token text, p_ids bigint[])
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; out jsonb := '[]'::jsonb; i bigint; m sa_chat_msgs; m2 sa_chat_msgs; ch sa_chats; hops int; g jsonb; st text;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  if p_ids is null or cardinality(p_ids) > 40 then return jsonb_build_object('ok', false, 'error', 'bad_request'); end if;
+  foreach i in array p_ids loop
+    m := null;
+    select * into m from sa_chat_msgs where id = i;
+    if m.id is null or m.kind <> 'call' then continue; end if;
+    select * into ch from sa_chats where id = m.chat_id;
+    if not _sa_chat_ok(c, ch) then continue; end if;
+    hops := 0;
+    while m.call ? 'passed' and hops < 8 loop
+      m2 := null;
+      select * into m2 from sa_chat_msgs where id = case when coalesce(m.call->'passed'->>'msg', '') ~ '^[0-9]{1,18}$' then (m.call->'passed'->>'msg')::bigint end;
+      exit when m2.id is null;
+      m := m2; hops := hops + 1;
+    end loop;
+    g := case when jsonb_typeof(m.call->'going') = 'array' and jsonb_array_length(m.call->'going') > 0 then m.call->'going'->0 end;
+    if g is null and jsonb_typeof(m.call->'done') = 'object' then g := jsonb_build_object('name', m.call->'done'->>'by_name', 'at', m.call->'done'->>'at'); st := 'done';
+    else st := case when g is not null then 'going' when m.deleted or m.created_at < now() - interval '10 minutes' then 'gone' else 'wait' end; end if;
+    out := out || jsonb_build_object('id', i, 'msg', m.id, 'st', st, 'who', m.call->>'who', 'emp', m.call->>'emp', 'name', coalesce(m.call->>'to_name', ''),
+      'table', coalesce(m.call->>'table', ''), 'at', m.created_at, 'by', g->>'name', 'going_at', g->>'at', 'hops', hops);
+  end loop;
+  return jsonb_build_object('ok', true, 'list', out);
+end; $$;
+
+-- ── 9) «На месте»: официант подошёл, не нажав «Иду» ──────────────────────────────────────────
+create or replace function chat_call_done(p_token text, p_msg bigint)
+returns jsonb language plpgsql volatile security definer set search_path to public as $$
+declare c jsonb; m sa_chat_msgs; ch sa_chats;
+begin
+  c := _sa_caller(p_token);
+  if c is null then return jsonb_build_object('ok', false, 'error', 'auth'); end if;
+  select * into m from sa_chat_msgs where id = p_msg;
+  select * into ch from sa_chats where id = m.chat_id;
+  if m.id is null or m.kind <> 'call' or m.deleted or not _sa_chat_ok(c, ch) then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if m.emp_id <> c->>'id' and not _sa_queue_can(c) then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  if m.call ? 'passed' then return jsonb_build_object('ok', false, 'error', 'passed', 'msg', _sa_chat_msg_json(m)); end if;
+  if not (m.call ? 'done') then
+    update sa_chat_msgs set call = call || jsonb_build_object('done', jsonb_build_object('by', c->>'id', 'by_name', coalesce(c->>'who', ''), 'at', now())),
+           updated_at = now()
+     where id = m.id returning * into m;
+  end if;
+  return jsonb_build_object('ok', true, 'msg', _sa_chat_msg_json(m));
+end; $$;
+
+-- ── 10) Права ──────────────────────────────────────────────────────────────────
 revoke all on function _sa_queue_day(text), _sa_queue_waiter(text, text), _sa_queue_ord(text), _sa_queue_move(text, text, boolean),
   _sa_queue_next(text, text[]), _sa_queue_can(jsonb), _sa_queue_json(jsonb, text, jsonb), _sa_chat_call_kb(bigint, bigint, boolean),
-  _sa_chat_pass_do(jsonb, sa_chat_msgs), _sa_chat_calls(jsonb), _sa_chat_tg_cb(jsonb) from public, anon, authenticated;
-revoke all on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint) from public;
-grant execute on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint)
-  to anon, authenticated;
+  _sa_chat_pass_do(jsonb, sa_chat_msgs), _sa_chat_calls(jsonb), _sa_chat_tg_cb(jsonb), _sa_queue_from(text, text) from public, anon, authenticated;
+revoke all on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint),
+  chat_call_state(text, bigint[]), chat_call_done(text, bigint), seat_set(text, text, text, int, text, text, text) from public;
+grant execute on function queue_get(text), queue_set(text, jsonb), chat_pass(text, bigint), chat_call(text, text, text, text, text, text), chat_go(text, bigint),
+  chat_call_state(text, bigint[]), chat_call_done(text, bigint), seat_set(text, text, text, int, text, text, text) to anon, authenticated;
 
 notify pgrst, 'reload schema';
 
-select 'Очередь официантов: sa_queue закрыта, queue_get, queue_set, chat_pass · очередей сегодня: '
+select 'Очередь официантов: sa_queue закрыта, queue_get, queue_set, chat_pass, chat_call_state, chat_call_done, seat_set двигает очередь · очередей сегодня: '
   || (select count(*) from sa_queue where day >= current_date - 1) as result;

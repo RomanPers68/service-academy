@@ -10,6 +10,9 @@
 // только когда нужна).
 // v212 (Доп. 538): marks — к каким столам уже звали с этого телефона за 10 минут (lib/call-series.js): у стола на
 // схеме колокольчик, под схемой у выбранного стола — «позвали Анну 2 мин назад».
+// v215 (Доп. 541): колокольчик по состоянию вызова: ждём (золотой, покачивается), «Иду» (зелёный, галочка), две минуты
+// без ответа (красный). Под схемой: «Анна идёт · 1 мин назад», «Анна не отвечает 3 мин» и кнопка «Передать следующему
+// по очереди». Сама не передаёт: решает хостес (владелец: «Пусть это делает сам хостес»).
 import React from "react";
 import { Floor } from "./seating";
 import { boardMap, stateOf, zonesOf, zoneOfX, STATUS, isBusy, shortName, guestsWord, minutesSince, sinceLabel } from "../lib/seating";
@@ -36,7 +39,7 @@ export function ownWaiter(r) {
   return { id: String(r.waiter_id), name: String(r.waiter_name).trim(), label: "Позвать только " + accName(first) + (rest.length ? " " + rest[0][0] + "." : "") };
 }
 
-export function CallTables({ a11y, board, tid, who, marks = null, onPick, onWaiter, onManual }) {
+export function CallTables({ a11y, board, tid, who, marks = null, onPick, onWaiter, onManual, onPass = null, onHere = null, passBusy = false }) {
   const plan = board.plan, map = React.useMemo(() => boardMap(board.tables || []), [board]);
   const now = board.now ? Date.parse(board.now) || Date.now() : Date.now();
   const zones = zonesOf(plan), t = tid ? (plan.tables || []).find((q) => q.id === tid) : null;
@@ -56,9 +59,15 @@ export function CallTables({ a11y, board, tid, who, marks = null, onPick, onWait
       </div>
       {/* что выбрано — диктор прочтёт сам, когда выберут стол */}
       <div data-call-status="" role="status" aria-live="polite" style={{ marginTop: 8, lineHeight: 1.45 }}>
-        {t ? <span data-call-picked="" style={{ fontSize: 13.5, color: "var(--text)" }}>{pickedLine(t, r, now)}{mk ? <span data-call-picked-mark="" style={{ color: "var(--gold-ink)" }}>{" · " + markLine(mk)}</span> : null}</span>
+        {t ? <span data-call-picked="" style={{ fontSize: 13.5, color: "var(--text)" }}>{pickedLine(t, r, now)}{mk ? <span data-call-picked-mark={mk.st}
+          style={{ color: mk.st === "going" || mk.st === "done" ? "var(--ok-ink, #2C6B48)" : mk.st === "late" ? "var(--red, #C25A5A)" : "var(--gold-ink)" }}>{" · " + markLine(mk)}</span> : null}</span>
           : <span style={{ fontSize: 13, color: "var(--sub)" }}>Нажми на стол на схеме.</span>}
       </div>
+      {/* официант подошёл, не нажав «Иду», — «На месте»; молчит — «Передать следующему по очереди» (решает хостес) */}
+      {mk && mk.msg && (mk.st === "wait" || mk.st === "late") && (onHere || onPass) ? <div className="ch-chips" style={{ marginTop: 8 }}>
+        {onHere ? <button type="button" className="ch-chip" data-call-here-mark={mk.msg} disabled={passBusy} onClick={() => { vibrate("light"); onHere(mk); }}>На месте</button> : null}
+        {onPass && mk.who === "person" ? <button type="button" className="ch-chip" data-call-pass-mark={mk.msg} disabled={passBusy} onClick={() => { vibrate("light"); onPass(mk); }}>Передать следующему по очереди</button> : null}
+      </div> : null}
       {own ? <div className="ch-chips" style={{ marginTop: 8 }}>
         <button type="button" className="ch-chip" data-call-own={own.id} onClick={() => { vibrate("light"); onWaiter(own); }}>{own.label}</button>
         <span style={{ alignSelf: "center", fontSize: 12, color: "var(--sub)", lineHeight: 1.35 }}>Вызов уйдёт только официанту этого стола.</span>

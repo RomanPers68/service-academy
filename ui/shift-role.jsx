@@ -131,10 +131,19 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief, onCall = null }) {
 /** «Очередь к столам»: q — очередь (lib/call-queue.js, queueOf); meId — кто смотрит; onOpen — открыть «Позвать» (хостес). */
 export function QueueCard({ a11y, q, meId, onOpen = null }) {
   const live = queueLive(q);
-  if (!live.length) return null;
   const c = C(a11y), labels = queueLabels(live), pos = queuePos(q, meId), mine = live.find((x) => x.id === String(meId));
   const open = onOpen ? () => { vibrate("light"); onOpen(); } : null;
   const shell = { ...frostOf(a11y), borderRadius: 18, padding: "13px 16px", marginTop: 10, marginBottom: 4, cursor: open ? "pointer" : "default" };
+  // v215 (Доп. 541): очередь составляет хостес по приходу — пустая утром; хостес видит, что её пора составить
+  if (!live.length) {
+    if (!(q && q.edit && open)) return null;
+    return (
+      <div className="sa-card sa-pagein" data-queue-card="none" data-lens-card="" style={shell} onClick={open} {...onActivate(open)} aria-label="Очередь к столам не составлена. Составить">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ ...labelStyle(a11y ? 14.5 : 13.5), color: c.gold, flex: 1 }}>Очередь к столам</div><Chevron color={c.gold} /></div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, marginTop: 4 }}>Ещё не составлена</div>
+        <div style={{ fontSize: 13, color: c.sub, marginTop: 4, lineHeight: 1.45 }}>Отмечай официантов по приходу: кто пришёл первым, тот первый.</div>
+      </div>);
+  }
   return (
     <div className="sa-card sa-pagein" data-queue-card="" data-lens-card="" style={shell} {...(open ? { onClick: open, ...onActivate(open) } : {})}
       aria-label={"Очередь к столам: " + live.map((x, i) => (i + 1) + ". " + x.name + (x.away ? ", на перерыве" : "")).join("; ")}>

@@ -3768,7 +3768,7 @@ function ServiceAcademy() {
               line={nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования"} /> : null}
             <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} onCall={callHost ? () => openCall(null) : null} />
             {/* v213 (Доп. 539): очередь официантов к столам; хостес нажимает — «Позвать» */}
-            {queueInfo && queueWho && queueLive(queueInfo).length ? <QueueCard a11y={a11y} q={queueInfo} meId={profile.id} onOpen={callHost ? () => openCall(null) : null} /> : null}
+            {queueInfo && queueWho && (queueLive(queueInfo).length || (queueInfo.edit && callHost)) ? <QueueCard a11y={a11y} q={queueInfo} meId={profile.id} onOpen={callHost ? () => openCall({ queue: true }) : null} /> : null}
             {/* v141 (Доп. 459): «Распорядок смены» — открытие, брифинг с гоу-листом, закрытие, итог; в выходной не показываем */}
             {isLead && profile.restaurant && !(shiftToday && shiftToday.off) ? <Suspense fallback={null}><RoutineCard a11y={a11y} brief={teamBrief} briefKnown={briefKnown} onOpen={openRoutine} /></Suspense> : null}
             {/* v82 (Доп. 395): брифинг смены от руководителя */}

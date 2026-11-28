@@ -4,6 +4,8 @@
    • /assets/* (файлы сборки с хэшем в имени): кэш первым — они неизменяемы;
    • картинки (/menu, /reference, /icons, Supabase Storage): кэш первым, обновление фоном;
    • API (Supabase, OpenRouter, Vercel /api): только сеть — данные приложение кэширует само (localStorage).
+   • v223: Supabase по полному адресу (картинки и файлы из базы, кнопки уведомлений) — через свой сайт, /sb/…;
+     свои /sb/ и /api/ — только сеть (картинки — как картинки).
    Версию менять при смене стратегии; файлы сборки версии не требуют — у них хэш в имени.
    v137: ещё уведомления на телефон (push, notificationclick) — внизу файла. */
 const VERSION = "sa-sw-v1";
@@ -37,6 +39,28 @@ self.addEventListener("activate", (e) => {
 const isApi = (u) => /supabase\.co|openrouter\.ai|\/api\//.test(u.href) || u.pathname.startsWith("/api/");
 const isAsset = (u) => u.origin === self.location.origin && u.pathname.startsWith("/assets/");
 const isImage = (u) => /\.(png|jpe?g|webp|gif|svg|ico)$/i.test(u.pathname) || /\/storage\/v1\/object\/public\//.test(u.href);
+// v223 (Доп. 549): база — через свой сайт. В России провайдеры режут соединения с Supabase (он за Cloudflare), а сайт на
+// Vercel открывается; vercel.json пересылает /sb/… в Supabase. Запросы к базе приложение и так шлёт через /sb
+// (lib/supabase.js), а здесь — то, что идёт в Supabase по полному адресу: картинки и файлы из базы, кнопки под
+// уведомлениями. Сайт не ответил — как раньше, напрямую. Локально и на чужом адресе — ничего не меняется.
+const SB_HOST = "gvxhgdynjuaisswplroh.supabase.co";
+const SB_VIA_SITE = /\.vercel\.app$/i.test(String((self.location && self.location.hostname) || ""));
+const sbSite = (u) => self.location.origin + "/sb" + u.pathname + u.search;
+async function viaSite(req, u) {
+  const init = { method: req.method, headers: req.headers, redirect: "follow" };
+  if (req.method !== "GET" && req.method !== "HEAD") init.body = await req.clone().arrayBuffer();
+  try { return await fetch(sbSite(u), init); } catch (err) { return fetch(req); }
+}
+// картинка: сначала из памяти телефона, свежая — фоном; src — откуда брать по сети (через сайт), иначе сам запрос
+function imageFirst(req, src) {
+  return (async () => {
+    const c = await caches.open(IMAGES);
+    const hit = await c.match(req);
+    const get = src ? fetch(src).catch(() => fetch(req)) : fetch(req);
+    const net = get.then(res => { if (res.ok || res.type === "opaque") { c.put(req, res.clone()); trim(IMAGES, IMG_LIMIT); } return res; }).catch(() => null);
+    return hit || (await net) || Response.error();
+  })();
+}
 
 async function trim(cacheName, limit) {
   const c = await caches.open(cacheName); const keys = await c.keys();
@@ -45,9 +69,17 @@ async function trim(cacheName, limit) {
 
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET") return;
   const u = new URL(req.url);
+  // v223: в Supabase по полному адресу — через свой сайт (картинка — как все картинки, из памяти телефона)
+  if (SB_VIA_SITE && u.hostname === SB_HOST) {
+    e.respondWith(req.method === "GET" && isImage(u) ? imageFirst(req, sbSite(u)) : viaSite(req, u));
+    return;
+  }
+  if (req.method !== "GET") return;
   if (isApi(u)) return; // данные — только сеть
+  // v223: свои пути к базе и серверу (/sb/…, /api/…) — только сеть, кроме картинок. Иначе переход по ссылке туда (код
+  // подключения бота, календарь) лёг бы в память телефона как само приложение
+  if (/^\/(sb|api)\//.test(u.pathname) && !isImage(u)) return;
   // v174 (Доп. 499): видео-знакомства (/video/*.mp4) — мимо воркера, прямо в сеть: плеер iPhone берёт ролик кусками
   // (запросы Range), кэш здесь не нужен и только мешает. Обложки роликов (.jpg) — как прочие картинки.
   if (u.origin === self.location.origin && u.pathname.startsWith("/video/") && !isImage(u)) return;
@@ -76,12 +108,7 @@ self.addEventListener("fetch", (e) => {
   }
 
   if (isImage(u)) {
-    e.respondWith((async () => {
-      const c = await caches.open(IMAGES);
-      const hit = await c.match(req);
-      const net = fetch(req).then(res => { if (res.ok || res.type === "opaque") { c.put(req, res.clone()); trim(IMAGES, IMG_LIMIT); } return res; }).catch(() => null);
-      return hit || (await net) || Response.error();
-    })());
+    e.respondWith(imageFirst(req));
     return;
   }
   // шрифты и прочее с CDN — сеть, при отказе кэш (если был)
@@ -150,10 +177,13 @@ async function openGo(go) {
   if (self.clients.openWindow) await self.clients.openWindow("/" + (go ? "?go=" + encodeURIComponent(go) : ""));
 }
 // кнопка под уведомлением: в функцию push-send; → ответ { ok, text, badge } или null
+// v223: адрес функции — Supabase; на своём адресе — через сайт, не вышло — напрямую
 async function pressAct(data, act, reply) {
+  const body = JSON.stringify(act === "reply" ? { k: data.k, a: act, r: reply } : { k: data.k, a: act });
+  const send = (url) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
   try {
-    const r = await fetch(data.u, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(act === "reply" ? { k: data.k, a: act, r: reply } : { k: data.k, a: act }) });
+    const u = new URL(data.u);
+    const r = SB_VIA_SITE && u.hostname === SB_HOST ? await send(sbSite(u)).catch(() => send(data.u)) : await send(data.u);
     const j = await r.json();
     return j && typeof j === "object" ? j : null;
   } catch (err) { return null; }

@@ -3,7 +3,7 @@
 // напоминания, кто входит без кода) и «Подключить бота» одной кнопкой (вместо SQL и ссылки с «<проект>»); расписания
 // pg_cron; адрес приложения для кнопок бота. Сервер — этап 39 (server_check, owner_tg_setup), разбор — lib/server-check.js.
 import React from "react";
-import { rpc, saToken, rpcMissing, SUPABASE_URL } from "../lib/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_DIRECT } from "../lib/supabase";   // v223: серверу — настоящий адрес
 import { vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
 import { serverReport, stageFns, stageBuckets, REPO_URL, pushReport, pushErrText } from "../lib/server-check";
@@ -30,7 +30,7 @@ export function ServerScreen({ T, a11y, profile, onBack }) {
   const [tgMsg, setTgMsg] = React.useState("");
   const check = React.useCallback(() => {
     setSt((x) => (x.phase === "ready" ? { ...x, again: true } : { phase: "load" }));
-    rpc("server_check", { p_token: saToken(), p_fns: stageFns().concat(["server_check"]), p_buckets: stageBuckets(), p_url: SUPABASE_URL }).then((r) => {
+    rpc("server_check", { p_token: saToken(), p_fns: stageFns().concat(["server_check"]), p_buckets: stageBuckets(), p_url: SUPABASE_DIRECT }).then((r) => {
       if (rpcMissing(r)) { setSt({ phase: "missing" }); return; }
       if (!r || !r.ok) { setSt({ phase: "error", text: r && r.error === "forbidden" ? "Этот экран только у владельца." : r && r.error === "auth" ? "Сессия устарела. Войди заново." : "Сервер не ответил. Попробуй ещё раз." }); return; }
       const rep = serverReport(r);

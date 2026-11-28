@@ -3,7 +3,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate, readPhoto } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn } from "../lib/supabase";
 import { cocktailRecords, withCocktail, withoutCocktail, recToCocktail, cachedShared } from "../lib/deck-extras";
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
@@ -71,7 +71,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
     readPhoto(file, (data) => {
       setForm(f => ({ ...f, img: data })); setPhotoState("uploading");
       fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("ck-" + Date.now()), image: data }) })
-        .then(r => r.json()).then(j => { if (j && j.ok && j.url) { setForm(f => ({ ...f, img: j.url })); setPhotoState("cloud"); } else setPhotoState("local"); }).catch(() => setPhotoState("local"));
+        .then(r => r.json()).then(j => { if (j && j.ok && j.url) { setForm(f => ({ ...f, img: sbIn(j.url) })); setPhotoState("cloud"); } else setPhotoState("local"); }).catch(() => setPhotoState("local"));
     });
   };
   // ── AI: история и фраза гостю — три варианта, как в редакторе меню

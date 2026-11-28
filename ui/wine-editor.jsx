@@ -44,7 +44,7 @@ import { titleParts } from "../lib/bar-view";   // v128: «Русское / Orig
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn } from "../lib/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./wine-list";
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,
@@ -121,7 +121,7 @@ const uploadPhoto = (restaurant, id, data) => fetch(`${SUPABASE_URL}/functions/v
   headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
   body: JSON.stringify({ token: saToken(), restaurant, dishId: id, image: data }) })
   .catch(() => { throw new Error("нет связи с сервером"); })
-  .then((r) => r.json().catch(() => null).then((j) => { if (j && j.ok && j.url) return j.url; throw new Error(photoWhy(r.status, j)); }));
+  .then((r) => r.json().catch(() => null).then((j) => { if (j && j.ok && j.url) return sbIn(j.url); throw new Error(photoWhy(r.status, j)); }));
 const fileB64 = (file) => new Promise((ok, bad) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = () => bad(new Error("Файл не прочитался")); fr.readAsDataURL(file); });
 // AI: ответ — { wines, cut } (cut — ответ оборвался на длинной карте: просим продолжение); ошибка — понятным текстом
 // v134: ответ не JSON — это страница Vercel, а не наша функция: 504 — не дождался AI, 413 — файл больше 4,5 МБ, 5xx — сбой

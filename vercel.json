@@ -31,6 +31,24 @@
       ]
     },
     {
+      "source": "/sb/((?!storage/v1/object/public/).*)",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/sb/storage/v1/object/public/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {

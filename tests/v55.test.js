@@ -39,7 +39,7 @@ describe("v55: быстрый старт — профиль с телефона 
     expect(pc).toBeGreaterThan(0);
     expect(html).toContain("<link rel=\"dns-prefetch\" href=\"https://gvxhgdynjuaisswplroh.supabase.co\">");
     expect(pc).toBeLessThan(html.indexOf("telegram-web-app.js"));
-    expect(rd("lib/supabase.js")).toContain("|| \"https://gvxhgdynjuaisswplroh.supabase.co\";");
+    expect(rd("lib/supabase.js")).toContain("const SB_DEFAULT = \"https://gvxhgdynjuaisswplroh.supabase.co\";");   // v223: адрес по умолчанию — в SB_DEFAULT
   });
 });
 

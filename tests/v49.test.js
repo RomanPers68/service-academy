@@ -56,7 +56,7 @@ describe("v49: день по часам", () => {
   });
   it("шапка: листок с числом, уровень дня, сколько в смене из нужных, кого не хватает, старший", () => {
     expect(day).toContain("<CalendarPage day={d} p={palette(a11y)} a11y={a11y} w={40} h={44} />");
-    expect(day).toContain('lvT = holName(d) ? "Праздник" : lv === 3 ? "Пиковый день" : lv === 2 ? "Загруженный день" : "Обычный день"');
+    expect(day).toContain('lvT = holName(d) && !marked && !cl ? "Праздник" : lv === 3 ? "Пиковый день" : lv === 2 ? "Загруженный день" : "Обычный день"');   // v214: закрыто и пометка даты
     expect(day).toContain("{lvT} · {onMain} из {needTot}");
     expect(day).toContain('"не хватает: " + missPos.map(x => x.t.toLowerCase()).join(", ") : "все на месте ✓"');
   });
@@ -94,7 +94,7 @@ describe("v49: месяц полоской, неделя во всю высот�
   });
   it("полоска: недобор по дням, высота — уровень дня, сегодня в кольце, прошедшие бледнее, выбранная неделя в рамке; тап — неделя", () => {
     expect(strip).toContain("const gaps = Array.from({ length: DAYS }, (_, i) => gapOf(i + 1));");
-    expect(strip).toContain("height: lv === 3 ? 30 : lv === 2 ? 24 : 18");
+    expect(strip).toContain("height: cl ? 7 : lv === 3 ? 30 : lv === 2 ? 24 : 18");   // v214: закрытый день — пунктирный пенёк
     expect(strip).toContain("opacity: past ? 0.42 : 1");
     expect(strip).toContain('data-strip-sel={selW[0] + "-" + selW[selW.length - 1]}');
     expect(strip).toContain("onClick={() => { const wi = weeks.findIndex(w => w.includes(d)); if (wi >= 0) setWeekIdx(wi); vibrate(\"light\"); }}");

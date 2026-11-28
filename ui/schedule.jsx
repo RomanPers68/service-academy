@@ -14,6 +14,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../lib/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
+import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule } from "../lib/schedule-days";   // v214 (Доп. 540): закрытые дни и тип дня на дату
 import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
 import { NO_AUTOCORRECT } from "../lib/search-field";   // v173 (Доп. 498): строка «Найти…» без автозамены
@@ -100,7 +101,7 @@ const VENUE_PRESETS = [
     shifts: [{k:"Д",name:"День",from:16,to:24},{k:"В",name:"Ночь",from:19,to:3},{k:"К",name:"Кейтеринг",from:14,to:22,extra:1}], dayShift: "Д" },
   { id: "cafe", t: "Кофейня", s: "08:00–22:00 · две смены", hours: [[8,22],[8,22],[8,22],[8,22],[8,23],[9,23],[9,22]],
     shifts: [{k:"У",name:"Утро",from:8,to:15},{k:"Д",name:"Вечер",from:15,to:22},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "У" },
-  { id: "day", t: "Столовая / бизнес-ланч", s: "09:00–18:00 · одна смена", hours: [[9,18],[9,18],[9,18],[9,18],[9,18],[10,16],[0,0]],
+  { id: "day", t: "Столовая / бизнес-ланч", s: "09:00–18:00 · одна смена · вс выходной", closed: [6], hours: [[9,18],[9,18],[9,18],[9,18],[9,18],[10,16],[0,0]],
     shifts: [{k:"Д",name:"Смена",from:9,to:18},{k:"К",name:"Кейтеринг",from:8,to:16,extra:1}], dayShift: "Д" },
   { id: "24", t: "Круглосуточно", s: "две смены по 12 часов", hours: [[0,24],[0,24],[0,24],[0,24],[0,24],[0,24],[0,24]],
     shifts: [{k:"Д",name:"День",from:8,to:20},{k:"В",name:"Ночь",from:20,to:8},{k:"К",name:"Подмена",from:12,to:20,extra:1}], dayShift: "Д" },
@@ -157,7 +158,8 @@ export const DEFAULT_CONFIG = {
   // Если для позиции ничего не задано — все идут в основную смену.
   // Числа здесь — часть общей потребности, а не надбавка сверх неё.
   split: { waiter: { "Д":5, "В":1 } },
-  rules: { peakDows:[4,5], highDows:[3,6], maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
+  // closedDows — дни недели, когда заведение закрыто (v214): генератор их пропускает, «Проверка» не ищет там дыр
+  rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
     // floor — норма это обязательная выработка, сверх неё можно;
     // cap — норму превышать нельзя.
     normMode:"floor" },
@@ -268,9 +270,9 @@ function Hint({ children, P, label = "как это работает?" }) {
   );
 }
 
-function Pill({ on, children, onClick, a11y, P, style }) {
+function Pill({ on, children, onClick, a11y, P, style, attrs = null }) {
   return (
-    <button onClick={onClick} className="sa-btn" style={{
+    <button {...attrs} onClick={onClick} className="sa-btn" style={{
       padding:"6px 10px", borderRadius:999, cursor:"pointer", fontFamily:serif, fontSize:11,
       color: on ? GOLD : P.sub, background: on ? "rgba(200,169,110,0.13)" : "transparent",
       boxShadow: on ? "inset 0 0 0 1px rgba(214,178,102,0.40), inset 0 0 12px rgba(255,230,170,0.09), inset 0 1px 0 rgba(255,255,255,0.14)" : "none",
@@ -722,18 +724,12 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     ? [[1, "обычный"], [2, "высокий"], [3, "пиковый"]]
     : [[1, "обычный"], [3, "пиковый"]];
 
-  const lvlOf = d => {
-    const o = days[d];
-    // Ручная пометка дня «высоким» при двух уровнях читается как пик:
-    // иначе день попал бы на уровень, которого на экране больше нет.
-    if (o && o.lvl) return (o.lvl === 2 && levels === 2) ? 3 : o.lvl;
-    const R = cfg?.rules || DEFAULT_CONFIG.rules;
-    if (holName(d) && R.holidayPeak) return 3;
-    const w = dow(d);
-    if (R.peakDows.includes(w)) return 3;
-    if (levels === 3 && R.highDows.includes(w)) return 2;
-    return 1;
-  };
+  // Ручная пометка дня «высоким» при двух уровнях читается как пик: иначе день попал бы на уровень, которого на экране
+  // больше нет. v214 (Доп. 540): уровень 0 — заведение закрыто (каждую неделю или этой датой), потребности нет вовсе.
+  // Раньше закрытого дня не было: понедельник без гостей требовал тех же людей, и «Проверка» сыпала недоборами.
+  const dayCtx = { rules: cfg?.rules || DEFAULT_CONFIG.rules, days, dow, holName, levels };
+  const lvlOf = d => dayLevel(dayCtx, d);
+  const closedOf = d => isClosed(dayCtx, d);
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
   const onVac = (s, d) => vacRanges(s, mkey).some(r => d >= r[0] && d <= r[1]);
@@ -1373,6 +1369,13 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         if (have < n) out.push(`${d} ${MONTHS_R[M]} · ${posName(pos).toLowerCase()}: ${have} из ${n}${holeWhy(d, pos, why)}`);
       });
     }
+    // v214 (Доп. 540): смены, оставшиеся в закрытый день от прошлой расстановки. Закреплённые руками не в счёт: так
+    // ставят уборку или инвентаризацию, когда гостей нет, а люди работают. Прошедшие дни — история, их не трогаем.
+    for (let d = Math.max(1, frozenBefore()); d <= DAYS; d++) {
+      if (!closedOf(d)) continue;
+      const left = staff.filter(s => { const sh = shiftOf(plan[s.id]?.[d]); return sh && !sh.extra && !isLocked(s.id, d); });
+      if (left.length) out.push(`${d} ${MONTHS_R[M]}: заведение закрыто, а смены остались (${left.slice(0, 3).map(s => shortName(s.name)).join(", ")}${left.length > 3 ? ` и ещё ${left.length - 3}` : ""}). Сними их в листе дня или нажми «Заполнить»`);
+    }
     staff.forEach(s => {
       let h = 0, st = 0, mx = 0;
       for (let d = 1; d <= DAYS; d++) {
@@ -1458,7 +1461,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   // и React падает с #310. Уже падал: третий бокал вина за день.
   const badCells = React.useMemo(() => {
     const bad = new Set(); if (!cfg) return bad;
-    const R = cfg.rules;
+    const R = cfg.rules, fb = frozenBefore();
     staff.forEach(sf => {
       let run = [];
       for (let d = 1; d <= DAYS + 1; d++) {
@@ -1470,11 +1473,13 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           if (q && (24 - q.to + sh.from) < R.minRest) { bad.add(sf.id + ":" + d); bad.add(sf.id + ":" + (d - 1)); }
         }
         if (d <= DAYS && plan[sf.id]?.[d] && onVac(sf, d)) bad.add(sf.id + ":" + d);
+        // v214: смена в закрытый день, не закреплённая руками, — остаток прошлой расстановки
+        if (d <= DAYS && sh && !sh.extra && d >= fb && closedOf(d) && !isLocked(sf.id, d)) bad.add(sf.id + ":" + d);
       }
     });
     return bad;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, cfg, staff, DAYS]);
+  }, [plan, cfg, staff, DAYS, days, locks]);
 
   // Покрытие месяца считаем ЗДЕСЬ, до анимации. Раньше значение писалось в
   // covTarget в теле вида менеджера — то есть ПОСЛЕ раннего выхода при
@@ -1566,6 +1571,41 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   };
 
 
+  // v214 (Доп. 540): смены, оставшиеся в закрытые дни от прошлой расстановки. Считаем и снимаем только будущее и только
+  // не закреплённые руками: закреплённая смена в закрытый день — это уборка или инвентаризация, её ставили нарочно.
+  // В листе дня снимаются все смены этого дня (withLocked): там руководитель видит, кого снимает.
+  const closedLeft = () => {
+    let n = 0;
+    for (let d = Math.max(1, frozenBefore()); d <= DAYS; d++) if (closedOf(d)) staff.forEach(x => {
+      const q = shiftOf(plan[x.id]?.[d]); if (q && !q.extra && !isLocked(x.id, d)) n++;
+    });
+    return n;
+  };
+  const clearClosed = (onlyD = 0, withLocked = false) => {
+    const fb = frozenBefore(), next = { ...plan }, nl = { ...locks };
+    let n = 0;
+    staff.forEach(x => {
+      const row = { ...(next[x.id] || {}) }; let ch = false;
+      for (let d = Math.max(1, fb); d <= DAYS; d++) {
+        if ((onlyD && d !== onlyD) || !closedOf(d)) continue;
+        const q = shiftOf(row[d]);
+        if (!q || q.extra || (isLocked(x.id, d) && !withLocked)) continue;
+        delete row[d]; ch = true; n++;
+        if (nl[x.id] && nl[x.id][d]) { nl[x.id] = { ...nl[x.id] }; delete nl[x.id][d]; }
+      }
+      if (ch) next[x.id] = row;
+    });
+    if (!n) return 0;
+    snapUndo(); setPlan(next); setLocks(nl); setDirty(true); setGenKey(k => k + 1);
+    return n;
+  };
+
+  // v214: тип дня на дату из листа дня. t — 1 | 2 | 3 | "closed" | null (как в правилах); пометка живёт в месяце
+  const setDayType = (d, t) => {
+    setDays(dd => { const o = markDayType({ ...dayCtx, days: dd }, d, t), nx = { ...dd }; if (o) nx[d] = o; else delete nx[d]; return nx; });
+    setDirty(true); vibrate("light");
+  };
+
   // Доп. 258/262: перенос прошлого месяца — теперь общий, вызывается из «Ещё»
   const copyPrevMonth = () => {
               const fb = frozenBefore();
@@ -1576,6 +1616,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 staff.forEach(st => {
                   const row = { ...(nx[st.id] || {}) }; const from = src[st.id] || {};
                   for (let d = Math.max(1, fb); d <= DAYS; d++) {
+                    if (closedOf(d)) continue;                     // v214: в закрытый день прошлый месяц не переносим
                     const k = from[d] || "";                       // день в день: ритм месяца обычно повторяется
                     if (k && !row[d] && (cfg.shifts || []).some(x => x.k === k)) { row[d] = k; n++; }
                   }
@@ -1753,9 +1794,13 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     // шапка дней
     let y = HEAD;
     x.font = "11px ui-monospace, Menlo, monospace";
+    // v214 (Доп. 540): закрытый день — штриховкой во весь столбец, как в таблице приложения
+    const hatch = (cx, y0, h) => { x.save(); x.beginPath(); x.rect(cx, y0, CELL, h); x.clip(); x.strokeStyle = C.line; x.lineWidth = 1;
+      for (let k = -h; k < CELL; k += 7) { x.beginPath(); x.moveTo(cx + k, y0 + h); x.lineTo(cx + k + h, y0); x.stroke(); } x.restore(); };
     for (let d = 1; d <= DAYS; d++) {
       const cx = NAME + (d - 1) * CELL, w = dow(d);
       if (w >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y - 24, CELL, 24); }
+      if (closedOf(d)) hatch(cx, y - 24, 24);
       x.fillStyle = holOf(d) ? C.hol : C.text;
       if (holOf(d)) x.font = "600 11px ui-monospace, Menlo, monospace";
       x.fillText(String(d), cx + CELL / 2 - (d > 9 ? 7 : 3.5), y - 16);
@@ -1803,6 +1848,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           // «линия прерывается» — fillRect ложился ровно на штрих)
           if (dow(d) >= 5 || holOf(d)) { x.fillStyle = C.weBg; x.fillRect(cx, y + 1, CELL, ROW - 1); }
           const k = plan[s.id]?.[d] || "";
+          if (closedOf(d) && !k) { hatch(cx, y + 1, ROW - 1); continue; }
           const vac = onVac(s, d), fix = !k && !vac && (s.off || []).includes(dow(d));
           const glyph = k || (vac ? "О" : fix ? "✕" : "·");
           const chip = CHIP && CHIP[glyph];
@@ -1829,7 +1875,8 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     const legend = (cfg.shifts || []).map(sh => ({
       mark: sh.k, mc: kColor(sh.k),
       rest: ` — ${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00${sh.extra ? " (вручную)" : ""}`,
-    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "✕", mc: C.dim, rest: " — постоянный выходной" }]);
+    })).concat([{ mark: "О", mc: C.hol, rest: " — отпуск" }, { mark: "✕", mc: C.dim, rest: " — постоянный выходной" }],
+      [...Array(DAYS)].some((_, i) => closedOf(i + 1)) ? [{ mark: "///", mc: C.faint, rest: " — заведение закрыто" }] : []);
     let lx = 12, ly = y + 22;
     legend.forEach(t => {
       x.font = "600 11px ui-monospace, Menlo, monospace";
@@ -1903,7 +1950,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       x.fillStyle = holOf(d) ? C.hol : C.dim;
       x.fillText(`${String(d).padStart(2, " ")} ${DOWL[w]}`, 16, y + ROWH / 2);
       const main = sh ? `${sh.name} · ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00`
-        : vac ? "Отпуск" : "";
+        : vac ? "Отпуск" : closedOf(d) ? "Заведение закрыто" : "";
       x.font = sh ? "13px Georgia, serif" : "italic 12px Georgia, serif";
       x.fillStyle = sh ? C.text : vac ? C.hol : C.faint;
       x.fillText(main || "—", 74, y + ROWH / 2 - (note ? 6 : 0));
@@ -2249,6 +2296,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const pr = W.preset;
       patch(c => {
         if (pr) { c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+          c.rules = { ...c.rules, closedDows: [...(pr.closed || [])] };   // v214
           const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
           c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
           if (c.evening && !keys.includes(c.evening.shift)) c.evening = { ...c.evening, shift: keys[keys.length - 1] };
@@ -2328,7 +2376,12 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   const setupView = () => {
     // Сводки для свёрнутых секций: закрытая секция отвечает «что настроено»,
     // открытая — «что это значит». Обзор всех настроек без единого тапа.
-    const sum1 = `с ${Math.min(...cfg.hours.map(h => h[0]))}:00 до ${Math.max(...cfg.hours.map(h => h[1]))}:00`;
+    // v214 (Доп. 540): выходные дни заведения — в «Часах работы»; их часы в сводку не идут
+    const closedW = (cfg.rules.closedDows || []).filter(w => w >= 0 && w <= 6).sort((a, b) => a - b);
+    const openHrs = cfg.hours.filter((h, i) => !closedW.includes(i));
+    const sum1 = (openHrs.length ? `с ${Math.min(...openHrs.map(h => h[0]))}:00 до ${Math.max(...openHrs.map(h => h[1]))}:00` : "закрыто всю неделю")
+      + (closedW.length ? ` · выходной: ${closedW.map(w => DOWL[w]).join(", ")}` : "");
+    const leftClosed = closedLeft();
     const sum2 = `${cfg.shifts.map(x => x.k).join(" ")} · авто: ${cfg.shifts.filter(x => !x.extra).length}`;
     const sum3 = LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
     const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
@@ -2371,6 +2424,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           if (!window.confirm(`Настроить как «${pr.t}»? Часы, смены и правила заменятся. Расставленные смены и люди останутся.`)) return;
           patch(c => {
             c.hours = pr.hours.map(x => [...x]); c.shifts = pr.shifts.map(x => ({ ...x })); c.dayShift = pr.dayShift;
+            c.rules = { ...c.rules, closedDows: [...(pr.closed || [])] };   // v214: выходные дни типового заведения
             const keys = pr.shifts.filter(x => !x.extra).map(x => x.k);
             // потребность и разбивка — под новые смены, лишние ключи убираем
             c.split = Object.fromEntries(Object.entries(c.split || {}).map(([pos, m]) => [pos, Object.fromEntries(Object.entries(m || {}).filter(([k]) => keys.includes(k)))]).filter(([, m]) => Object.keys(m).length));
@@ -2404,7 +2458,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           const list = staff.filter(x => x.pos === pos);
           let cap = 0;
           list.forEach(x => {
-            let avail = 0; for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+            let avail = 0; for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d) && !closedOf(d)) avail++;   // v214: в закрытый день не выйти никому
             let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
             if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
             cap += c;
@@ -2438,7 +2492,12 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       <div style={{ ...labelStyle(11.5),
         color:P.sub, margin:"16px 4px 6px" }}>Шесть шагов настройки</div>
       <Sec no={1} title="Часы работы" hint={openSec===1 ? "Когда открываемся и закрываемся в каждый день недели" : sum1} P={P} open={openSec===1} onToggle={() => setOpenSec(openSec===1?0:1)}>
-        {DOWL.map((dl, i) => (
+        {DOWL.map((dl, i) => closedW.includes(i) ? (
+          <div key={i} data-hours-closed={i} style={rowStyle}>
+            <span style={{ flex:"0 0 40px", fontSize:12.5, color:P.sub }}>{dl}</span>
+            <span style={{ flex:1, fontSize:12.5, color:P.sub, fontStyle:"italic" }}>закрыто весь день</span>
+          </div>
+        ) : (
           <div key={i} style={rowStyle}>
             <span style={{ flex:"0 0 40px", fontSize:12.5, color:P.sub }}>{dl}</span>
             <Num inp={inp} v={cfg.hours[i][0]} min={0} max={23} set={v => patch(c => { c.hours[i][0] = v; })} />
@@ -2450,7 +2509,27 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
             </span>
           </div>
         ))}
-        <div style={hintStyle}>Работу после полуночи пишем как 25 или 26: это час и два ночи.</div>
+        {/* v214 (Доп. 540): выходные дни заведения. Раньше закрыть день было нечем: потребность действовала каждый
+            день, и в закрытый понедельник «Проверка» требовала полную смену, а генератор ставил туда людей. */}
+        <div style={{ ...labelStyle(11.5), color:P.sub, margin:"12px 0 6px" }}>Выходные дни заведения</div>
+        <div data-closed-dows="" style={{ display:"flex", gap:4 }}>
+          {DOWL.map((dl, wi) => (
+            <Pill a11y={a11y} P={P} key={wi} on={closedW.includes(wi)} attrs={{ "data-closed-dow": wi }} style={{ flex:1, padding:"6px 0" }}
+              onClick={() => patch(c => {
+                const cur = (c.rules.closedDows || []).filter(x => x !== wi);
+                c.rules.closedDows = closedW.includes(wi) ? cur : [...cur, wi].sort((a, b) => a - b);
+              })}>{dl}</Pill>
+          ))}
+        </div>
+        {leftClosed ? (
+          <div data-closed-left={leftClosed} style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, fontSize:12.5, color:P.warn, lineHeight:1.45 }}>
+            <span style={{ flex:1, minWidth:0 }}>В закрытые дни остались смены: {leftClosed}. Генератор их больше не ставит.</span>
+            <button className="sa-btn" data-closed-clear="" data-lens-btn="soft" style={{ ...ghost, flexShrink:0, padding:"8px 12px", fontSize:12.5 }}
+              onClick={() => { const n = clearClosed(); vibrate(n ? "success" : "light");
+                setMsg(n ? `Сняли ${n} ${plural(n, "смену", "смены", "смен")} в закрытые дни. Не забудь «Сохранить»` : "Снимать нечего"); setTimeout(() => setMsg(""), 5000); }}>Снять</button>
+          </div>
+        ) : null}
+        <div style={hintStyle}>Работу после полуночи пишем как 25 или 26: это час и два ночи. В выходной заведения генератор никого не ставит, а «Проверка» не ищет там дыр. Закрыть одну дату (санитарный день, 1 января) или открыть выходной под банкет можно в таблице: тап по числу.</div>
       </Sec>
 
       <Sec no={2} title="Смены" hint={openSec===2 ? "Во сколько люди приходят и уходят" : sum2} P={P} open={openSec===2} onToggle={() => setOpenSec(openSec===2?0:2)}>
@@ -2557,7 +2636,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         <div style={{ ...labelStyle(11.5), color:P.sub, paddingBottom:4 }}>Пиковые дни недели</div>
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
-            <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.peakDows.includes(wi)} style={{ flex:1, padding:"6px 0" }}
+            <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.peakDows.includes(wi)} style={{ flex:1, padding:"6px 0", opacity: closedW.includes(wi) ? .35 : 1 }}
               onClick={() => patch(c => {
                 c.rules.peakDows = c.rules.peakDows.includes(wi)
                   ? c.rules.peakDows.filter(x => x !== wi) : [...c.rules.peakDows, wi];
@@ -2570,7 +2649,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         <div style={{ display:"flex", gap:4, marginBottom:8 }}>
           {DOWL.map((dl, wi) => (
             <Pill a11y={a11y} P={P} key={wi} on={cfg.rules.highDows.includes(wi)} style={{ flex:1, padding:"6px 0",
-              opacity: cfg.rules.peakDows.includes(wi) ? .35 : 1 }}
+              opacity: cfg.rules.peakDows.includes(wi) || closedW.includes(wi) ? .35 : 1 }}
               onClick={() => { if (cfg.rules.peakDows.includes(wi)) return; patch(c => {
                 c.rules.highDows = c.rules.highDows.includes(wi)
                   ? c.rules.highDows.filter(x => x !== wi) : [...c.rules.highDows, wi];
@@ -3202,8 +3281,8 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
             const todayD = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
             const offerDays = new Set(swaps.filter(w => w.status === "open" && String(w.from_staff) !== String(me.id)
               && (staff.find(q => String(q.id) === String(w.from_staff)) || {}).pos === me.pos && !shiftOf(plan[me.id]?.[w.day])).map(w => w.day));
-            const used = new Set(); let anyWish = false, anyHard = false, anyVac = false, anyLate = false;
-            for (let d = 1; d <= DAYS; d++) { const kk = plan[me.id]?.[d]; if (shiftOf(kk)) used.add(kk); if (wishOf(me.id, d)) anyWish = true; if (hardOf(me.id, d)) anyHard = true; if (onVac(me, d)) anyVac = true; if (lateOf(me.id, d)) anyLate = true; }
+            const used = new Set(); let anyWish = false, anyHard = false, anyVac = false, anyLate = false, anyClosed = false;
+            for (let d = 1; d <= DAYS; d++) { const kk = plan[me.id]?.[d]; if (shiftOf(kk)) used.add(kk); if (wishOf(me.id, d)) anyWish = true; if (hardOf(me.id, d)) anyHard = true; if (onVac(me, d)) anyVac = true; if (lateOf(me.id, d)) anyLate = true; if (!shiftOf(kk) && closedOf(d)) anyClosed = true; }
             const calTap = (d) => {
               if (wishRange) { wishTap(d); return; }
               vibrate("light"); setSheetCall(null); setSheetMore(false); setDaySheet(d);
@@ -3221,7 +3300,8 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                     const wish = wishOf(me.id, d), hd = hardOf(me.id, d), vac = onVac(me, d), off = !sh && !vac && isDayOff(me, d);
                     const note = days[d]?.note || notes[d], offerHere = !sh && offerDays.has(d), selOn = wishRange ? wishSelOn(d) : false;
                     const fg = sh && col ? (a11y ? col.fgL : col.fg) : P.text;
-                    const what = sh ? `${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00` : vac ? "отпуск" : wish ? "прошу выходной" : hd ? "не смогу выйти" : offerHere ? "смену коллеги можно взять" : "выходной";
+                    const cl = !sh && closedOf(d);   // v214: заведение закрыто
+                    const what = sh ? `${sh.name} ${sh.from}:00–${sh.to > 24 ? sh.to - 24 : sh.to}:00` : vac ? "отпуск" : cl ? "заведение закрыто" : wish ? "прошу выходной" : hd ? "не смогу выйти" : offerHere ? "смену коллеги можно взять" : "выходной";
                     return (
                       <button key={d} className="sa-btn" data-cal-day={d} data-cal-k={kk || ""} onClick={() => calTap(d)}
                         aria-label={`${d} ${MONTHS_R[M]}, ${DOWF[dow(d)]}: ${what}${isT ? ", сегодня" : ""}`}
@@ -3232,6 +3312,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                           boxShadow: isT ? "0 0 0 2px rgba(214,178,102,0.25), 0 0 12px rgba(214,178,102,0.35)" : "none" }}>
                         <span style={{ fontFamily:serif, fontSize:13.5, lineHeight:1, color: holOf(d) && !sh ? P.warn : fg, fontWeight: isT ? "bold" : "normal" }}>{d}</span>
                         {sh ? <span style={{ fontFamily:mono, fontSize: a11y ? 9.5 : 8.5, lineHeight:1.1, color: fg, opacity:0.9 }}>{sh.from}–{sh.to > 24 ? sh.to - 24 : sh.to}</span>
+                          : cl && !vac ? <span data-cal-closed={d} style={{ fontSize: a11y ? 9.5 : 8.5, lineHeight:1, color:P.sub }}>закр.</span>
                           : wish ? <IcoSun size={11} color={P.acc} /> : hd ? <IcoBan size={11} color={P.warn} />
                           : vac ? <IcoWave size={11} color={a11y ? "#3C6E8F" : "#9CC7E0"} /> : offerHere ? <span style={{ fontSize:11, lineHeight:1, color:P.acc }}>⇄</span>
                           : off ? <span style={{ fontSize:10, lineHeight:1, color:P.sub }}>✕</span> : <span style={{ height:11 }} />}
@@ -3249,6 +3330,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                   {anyVac ? <span style={lg}><IcoWave size={10} color={a11y ? "#3C6E8F" : "#9CC7E0"} />отпуск</span> : null}
                   {offerDays.size ? <span style={lg}><span style={{ color:P.acc }}>⇄</span>можно взять</span> : null}
                   {anyLate ? <span style={lg}><IcoLate size={10} color={P.warn} />предупреждал(а) об опоздании</span> : null}
+                  {anyClosed ? <span style={lg}><span style={{ fontSize:9, color:P.sub }}>закр.</span>заведение закрыто</span> : null}
                 </div>
                 <div style={{ fontSize:11, color: wishRange ? P.acc : P.sub, fontStyle:"italic", marginTop:8, lineHeight:1.5 }}>
                   {wishBusy ? wishBusy : wishRange ? (wishRange.from ? "Теперь тапни последний день периода" : "Тапни первый день периода")
@@ -4004,7 +4086,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     let cap = 0;
     staff.filter(x => x.pos === pos).forEach(x => {
       let avail = 0;
-      for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d)) avail++;
+      for (let d = 1; d <= DAYS; d++) if (!onVac(x, d) && !isDayOff(x, d) && !closedOf(d)) avail++;   // v214: в закрытый день не выйти никому
       let c = Math.min(avail, Math.round(DAYS * (7 - (cfg.rules?.minOff || 0)) / 7));
       if ((cfg.posRules?.[pos]?.pattern) === "2x2") c = Math.min(c, Math.ceil(DAYS / 2));
       cap += c;
@@ -4101,6 +4183,9 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   const dialogBox = { ...sheetBox, margin:"calc(70px + var(--sa-st, env(safe-area-inset-top, 0px))) 12px 0", maxHeight:"70vh" };
   const veil = (top) => ({ position:"fixed", inset:0, zIndex: top ? 62 : 60, background:"rgba(0,0,0,0.45)", display:"flex",
     alignItems: top ? "flex-start" : "flex-end", justifyContent:"center" });
+  // v214 (Доп. 540): закрытый день — штриховкой во всю высоту столбца, в шапке, строке позиции и клетках
+  const closedBg = a11y ? "repeating-linear-gradient(135deg, rgba(120,90,30,0.10) 0 3px, transparent 3px 7px)"
+    : "repeating-linear-gradient(135deg, rgba(255,250,238,0.06) 0 3px, transparent 3px 7px)";
   const todayCol = (role) => {
     const edge = a11y ? "rgba(175,135,50,0.42)" : "rgba(214,178,102,0.38)";
     const glow = a11y ? "inset 0 0 14px rgba(255,255,255,0.45)"
@@ -4271,14 +4356,16 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const span = Math.max(1, H1 - H0), pc = (h) => +(((h - H0) / span) * 100).toFixed(3);
       const cnt = []; for (let hh = H0; hh < H1; hh++) cnt.push(on.filter(x => { const q = shiftOf(plan[x.id][d]); return q.from <= hh && endOf(q) > hh; }).length);
       const mx = Math.max(1, ...cnt);
-      const isOpen = (hh) => hh >= openH && hh < closeH;
+      const isOpen = (hh) => !cl && hh >= openH && hh < closeH;
       const thin = (c, hh) => isOpen(hh) && (c === 0 || c < mx * 0.3);   // зал пустеет в часы работы
       const todayD = (now.getFullYear() === Y && now.getMonth() === M) ? now.getDate() : 0;
       const nowH = now.getHours() + now.getMinutes() / 60;
       const needAll = needOf(d), needTot = Object.values(needAll).reduce((a, b) => a + (b || 0), 0);
       const onMain = on.filter(x => !shiftOf(plan[x.id][d]).extra).length;
       const missPos = POS.filter(({ id }) => (needAll[id] || 0) > staff.filter(x => { const q = x.pos === id && shiftOf(plan[x.id]?.[d]); return q && !q.extra; }).length);
-      const lv = lvlOf(d), lvT = holName(d) ? "Праздник" : lv === 3 ? "Пиковый день" : lv === 2 ? "Загруженный день" : "Обычный день";
+      // v214 (Доп. 540): закрытый день и тип дня на дату — здесь же, пилюлями под шапкой
+      const cl = closedOf(d), marked = dayMarked(days, d), why = dayTypeWhy(dayCtx, d);
+      const lv = lvlOf(d), lvT = holName(d) && !marked && !cl ? "Праздник" : lv === 3 ? "Пиковый день" : lv === 2 ? "Загруженный день" : "Обычный день";
       const note = days[d]?.note || "";
       const lead = leadOn(d);
       const hlab = (hh) => String(hh > 24 ? hh - 24 : hh);   // «16–24», после полуночи — «22–2», как в остальном графике
@@ -4293,18 +4380,46 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
               <CalendarPage day={d} p={palette(a11y)} a11y={a11y} w={40} h={44} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ ...labelStyle(11.5), color:P.acc }}>{upFirst(DOWF[dow(d)])} · {d} {MONTHS_R[M]}{holName(d) ? " · " + String(holName(d)) : ""}</div>
-                <div data-day-title="" style={{ fontFamily:serif, fontSize:17, color:P.text, marginTop:1 }}>{lvT} · {onMain} из {needTot} {needTot % 10 === 1 && needTot % 100 !== 11 ? "человека" : "человек"}</div>
-                <div data-day-miss="" style={{ fontSize:11.5, marginTop:1, color: missPos.length ? P.warn : okC }}>
-                  {missPos.length ? "не хватает: " + missPos.map(x => x.t.toLowerCase()).join(", ") : "все на месте ✓"}{lead ? <span style={{ color:P.sub }}> · старший: {lead}</span> : null}</div>
+                <div data-day-title="" style={{ fontFamily:serif, fontSize:17, color:P.text, marginTop:1 }}>{cl ? <>Заведение закрыто{onMain ? ` · смен: ${onMain}` : ""}</>
+                  : <>{lvT} · {onMain} из {needTot} {needTot % 10 === 1 && needTot % 100 !== 11 ? "человека" : "человек"}</>}</div>
+                <div data-day-miss="" style={{ fontSize:11.5, marginTop:1, color: cl ? P.sub : missPos.length ? P.warn : okC }}>
+                  {cl ? (onMain ? "гостей нет, смены стоят" : "в этот день никого не ставим") : missPos.length ? "не хватает: " + missPos.map(x => x.t.toLowerCase()).join(", ") : "все на месте ✓"}{lead ? <span style={{ color:P.sub }}> · старший: {lead}</span> : null}</div>
               </div>
             </div>
+            {/* v214 (Доп. 540): тип дня на эту дату. Пометка «пик» под банкет или «закрыто» на санитарный день живёт
+                в месяце (days[d]); совпала с правилами — не хранится. «Как в правилах» снимает пометку. */}
+            <div data-day-type="" role="radiogroup" aria-label="Тип дня" style={{ display:"flex", gap:4, marginTop:12 }}>
+              {[...LVLS, [0, "закрыто"]].map(([l, nm]) => (
+                <Pill key={l} a11y={a11y} P={P} on={l === 0 ? cl : !cl && lv === l} attrs={{ "data-day-lvl": l, role:"radio", "aria-checked": l === 0 ? cl : !cl && lv === l }}
+                  style={{ flex:1, padding:"7px 0", fontSize:12 }} onClick={() => setDayType(d, l === 0 ? "closed" : l)}>{upFirst(nm)}</Pill>
+              ))}
+            </div>
+            {why || marked ? (
+              <div data-day-why="" style={{ fontSize:11.5, color:P.sub, marginTop:5, lineHeight:1.4 }}>
+                {why}{marked ? <>{why ? " · " : ""}<span data-day-reset="" onClick={() => setDayType(d, null)} {...onActivate(() => setDayType(d, null))}
+                  style={{ color:P.acc, cursor:"pointer", textDecoration:"underline" }}>как в правилах</span></> : null}
+              </div>
+            ) : null}
+            {cl && !on.length ? (
+              <div data-day-closed="" style={{ marginTop:12, padding:"12px 13px", borderRadius:12, fontSize:12.5, lineHeight:1.5, color:P.sub,
+                border:`1px dashed ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}` }}>
+                Гостей не принимаем: генератор никого не ставит, «Проверка» не ищет здесь дыр. Нужны люди на уборку или инвентаризацию? Поставь смену вручную, тапом по клетке.
+              </div>
+            ) : null}
+            {cl && on.some(x => !shiftOf(plan[x.id][d]).extra) && d >= frozenBefore() ? (
+              <button className="sa-btn" data-day-clear="" data-lens-btn="soft" style={{ ...ghostInk, width:"100%", marginTop:10, padding:"9px 11px", fontSize:12.5 }}
+                onClick={() => { const n = clearClosed(d, true); vibrate(n ? "success" : "light");
+                  setMsg(n ? `Сняли ${n} ${plural(n, "смену", "смены", "смен")} ${d}-го. Не забудь «Сохранить»` : "Снимать нечего"); setTimeout(() => setMsg(""), 5000); }}>
+                Снять смены этого дня</button>
+            ) : null}
+            {!cl || on.length ? <>
             {/* силуэт дня: сколько людей в зале по часам; часы работы — подложкой */}
             <div style={{ ...labelStyle(11.5), color:P.sub, margin:"12px 0 4px", display:"flex", justifyContent:"space-between", gap:8 }}>
-              <span>Людей в зале по часам</span><span>открыты {openH}:00–{hlab(closeH)}:00</span>
+              <span>Людей в зале по часам</span><span>{cl ? "заведение закрыто" : <>открыты {openH}:00–{hlab(closeH)}:00</>}</span>
             </div>
             <div data-day-skyline="" style={{ position:"relative", height:46, display:"flex", alignItems:"flex-end", gap:2 }}>
-              <i style={{ position:"absolute", left: pc(openH) + "%", width: (pc(closeH) - pc(openH)) + "%", top:0, bottom:0, borderRadius:6,
-                background: a11y ? "rgba(214,178,102,0.12)" : "rgba(214,178,102,0.06)", border:`1px dashed ${a11y ? "rgba(139,106,48,0.3)" : "rgba(200,169,110,0.22)"}` }} />
+              {cl ? null : <i style={{ position:"absolute", left: pc(openH) + "%", width: (pc(closeH) - pc(openH)) + "%", top:0, bottom:0, borderRadius:6,
+                background: a11y ? "rgba(214,178,102,0.12)" : "rgba(214,178,102,0.06)", border:`1px dashed ${a11y ? "rgba(139,106,48,0.3)" : "rgba(200,169,110,0.22)"}` }} />}
               {cnt.map((c, i) => { const hh = H0 + i, bad = thin(c, hh), prev = i ? cnt[i - 1] : -1;
                 return (
                   <span key={hh} data-hour={hh} data-count={c} style={{ position:"relative", flex:"1 1 0", minWidth:0, height:"100%", display:"flex", alignItems:"flex-end" }}>
@@ -4366,6 +4481,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 );
               })}
             </div>
+            </> : null}
             <div data-day-note="" onClick={() => { setDayEdit(d); vibrate("light"); }} {...onActivate(() => setDayEdit(d))}
               style={{ marginTop:12, padding:"8px 11px", borderRadius:12, cursor:"pointer", fontSize:12.5, lineHeight:1.4,
                 border:`1px solid ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}`, background: a11y ? "rgba(255,252,244,0.7)" : "rgba(0,0,0,0.18)",
@@ -4985,7 +5101,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         <div style={{ ...eyebrow, cursor:"pointer", alignItems:"center", gap:8 }}
           onClick={() => { setTodayOpen(o => !o); setCallWho(null); vibrate("light"); }}
           {...onActivate(() => { setTodayOpen(o => !o); setCallWho(null); })}>
-          <span style={{ flex:1, minWidth:0 }}>Сегодня · {today} {MONTHS_R[M]}</span>
+          <span style={{ flex:1, minWidth:0 }}>Сегодня · {today} {MONTHS_R[M]}{closedOf(today) ? " · заведение закрыто" : ""}</span>
           {!todayOpen && leadOn(today) ? (
             <span style={{ color:P.acc, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               старший: {leadOn(today)}
@@ -5289,16 +5405,17 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                   boxShadow:"0 0 10px rgba(214,178,102,0.16)" }} /> : null}
                 <div style={{ display:"flex", alignItems:"flex-end", height:32, position:"relative" }}>
                   {gaps.map((g, i) => {
-                    const d = i + 1, lv = lvlOf(d), past = todayD && d < todayD, isT = d === todayD, we = dow(d) >= 5;
+                    const d = i + 1, lv = lvlOf(d), past = todayD && d < todayD, isT = d === todayD, we = dow(d) >= 5, cl = lv === 0;   // v214: закрыто — пунктирный пенёк
                     const ok1 = a11y ? (we ? "linear-gradient(180deg,#D2B272,#A8823E)" : "linear-gradient(180deg,#E2CB98,#C2A066)")
                       : (we ? "linear-gradient(180deg,rgba(233,207,147,0.85),rgba(168,133,63,0.75))" : "linear-gradient(180deg,rgba(214,178,102,0.55),rgba(150,115,50,0.45))");
                     return (
-                      <button key={d} className="sa-btn" data-strip-day={d} data-strip-short={g}
-                        aria-label={`${d} ${MONTHS_R[M]}, ${DOWF[dow(d)]}${g ? ": не хватает " + g : ""}${isT ? ", сегодня" : ""}`}
+                      <button key={d} className="sa-btn" data-strip-day={d} data-strip-short={g} data-strip-closed={cl ? "1" : undefined}
+                        aria-label={`${d} ${MONTHS_R[M]}, ${DOWF[dow(d)]}${cl ? ", заведение закрыто" : g ? ": не хватает " + g : ""}${isT ? ", сегодня" : ""}`}
                         onClick={() => { const wi = weeks.findIndex(w => w.includes(d)); if (wi >= 0) setWeekIdx(wi); vibrate("light"); }}
                         style={{ flex:"1 1 0", minWidth:0, height:"100%", padding:"0 1.4px", border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"flex-end" }}>
-                        <span style={{ display:"block", width:"100%", height: lv === 3 ? 30 : lv === 2 ? 24 : 18, borderRadius:3, opacity: past ? 0.42 : 1,
-                          background: g ? (g > 1 ? "linear-gradient(180deg,#F0A0A0,#C25A5A)" : "linear-gradient(180deg,#E8A8A0,#B86A60)") : ok1,
+                        <span style={{ display:"block", width:"100%", boxSizing:"border-box", height: cl ? 7 : lv === 3 ? 30 : lv === 2 ? 24 : 18, borderRadius:3, opacity: past ? 0.42 : 1,
+                          border: cl ? `1px dashed ${a11y ? "rgba(139,106,48,0.55)" : "rgba(200,169,110,0.5)"}` : "none",
+                          background: cl ? "transparent" : g ? (g > 1 ? "linear-gradient(180deg,#F0A0A0,#C25A5A)" : "linear-gradient(180deg,#E8A8A0,#B86A60)") : ok1,
                           boxShadow: isT ? `0 0 0 1.5px ${a11y ? "#FFFCF4" : "#1A1408"}, 0 0 0 3px ${a11y ? "#7A5A22" : "#F3E3B8"}` : g ? "0 0 6px rgba(224,120,120,0.45)" : "none" }} />
                       </button>
                     );
@@ -5366,6 +5483,11 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
               fontWeight:600, color: a11y ? "#6B5B40" : "#9A8C74" }}>✕</span>
             пост. выходной
           </span>
+          {(cfg.rules.closedDows || []).length || Object.values(days || {}).some(o => o && o.closed === true) ? (
+            <span data-legend-closed="" style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:P.sub }}>
+              <span style={{ width:16, height:16, borderRadius:6, background: closedBg, border:`1px solid ${a11y ? "rgba(139,106,48,0.35)" : "rgba(200,169,110,0.3)"}`, boxSizing:"border-box" }} />
+              заведение закрыто
+            </span>) : null}
         </div>
         {/* Доп. 257: фильтр по позиции — таблица на 20 человек не влезает в экран */}
         {(() => {
@@ -5388,13 +5510,14 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
               <tr>
                 <th className="sa-schednm" style={{ width:92, minWidth:92 }} />
                 {visibleDays.map(d => (
-                  <th key={d} style={{ width:26, minWidth:26, ...labelStyle(11), color:P.sub, padding:"3px 0", lineHeight:1.2,
+                  <th key={d} data-day-closed-col={closedOf(d) ? d : undefined} style={{ width:26, minWidth:26, ...labelStyle(11), color:P.sub, padding:"3px 0", lineHeight:1.2,
+                    ...(closedOf(d) ? { background: closedBg } : null),
                     ...(d === today ? todayCol("head") : null),
                     borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                     {/* v73: день недели под числом — курсивом («пн»); само число — по-прежнему моноширинным */}
                     <b data-day-open={d} onClick={() => { setBossDay(d); vibrate("light"); }} style={{ display:"block", fontFamily:mono, fontStyle:"normal", fontSize:11, cursor:"pointer",
                       fontWeight: d === today ? "bold" : "normal",
-                      color: d === today ? (a11y ? P.acc : GOLD) : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : (a11y ? P.text : SAND) }}>{d}</b>
+                      color: d === today ? (a11y ? P.acc : GOLD) : closedOf(d) ? P.sub : holOf(d) ? P.warn : dow(d) >= 5 ? P.acc : (a11y ? P.text : SAND) }}>{d}</b>
                     {DOWL[dow(d)]}
                     {days[d]?.note ? <span style={{ display:"block", width:4, height:4, borderRadius:3, background:GOLD, margin:"1px auto 0" }} /> : null}
                   </th>
@@ -5425,6 +5548,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                         return (
                           <td key={d} className="sa-schedgrp" style={{ fontSize:9, minWidth:26, height:22, textAlign:"center",
                             color: short ? P.warn : P.sub, fontWeight: short ? "bold" : "normal",
+                            ...(closedOf(d) ? { background: closedBg } : null),
                             ...(d === today ? todayCol("group") : null),
                             borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                             {/* v46: в порядке — бледная галочка, не хватает — красное «−1», сверх — «+1»;
@@ -5466,6 +5590,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                               <td key={d} onClick={() => tapCell(s, d)}
                                 className={"sa-schedcell" + (dow(d) >= 5 ? " sa-schedwe" : "")}
                                 style={{ width:26, minWidth:26, height:30, cursor:"pointer", textAlign:"center",
+                                  ...(closedOf(d) ? { background: closedBg } : null),
                                   ...(d === today ? todayCol(isLastRow ? "last" : "cell") : null),
                                   borderLeft: dow(d) === 0 ? `1px solid ${GOLD}44` : undefined }}>
                                 <div style={{

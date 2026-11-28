@@ -354,7 +354,7 @@ describe("v99: экран «Сервер» у владельца (lib/server-che
     expect(SQL.match(/function server_check[\s\S]*?end; \$\$;/)[0]).toContain(owner);
     expect(SQL.match(/function owner_tg_setup[\s\S]*?end; \$\$;/)[0]).toContain(owner);
     const ui = rd("ui/server.jsx");
-    expect(ui).toContain('rpc("server_check", { p_token: saToken(), p_fns: stageFns().concat(["server_check"]), p_buckets: stageBuckets(), p_url: SUPABASE_DIRECT })');   // v223: настоящий адрес
+    expect(ui).toContain('rpc("server_check", { p_token: saToken(), p_fns: stageFns().concat(["server_check"]), p_buckets: stageBuckets(), p_url: SUPABASE_URL })');
     expect(ui).toContain('rpc("owner_tg_setup", { p_token: saToken(), p_app: typeof window !== "undefined" ? window.location.origin : "" })');
     const app = rd("App.jsx");
     expect(app).toContain('const ServerScreen = lazyOf(() => import("./ui/server"), "ServerScreen");');

@@ -369,8 +369,9 @@ import { thanksSub } from "./lib/guest-thanks";   // v84: спасибо от г
 import { peerSub } from "./lib/team-warm";   // v108 (Доп. 421): «Спасибо от коллег» — подпись пункта в «Я»
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
 import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
-import { ShiftRoleCard } from "./ui/shift-role";
+import { ShiftRoleCard, QueueCard } from "./ui/shift-role";
 import { keepBoard, prefetchTeam, forgetCalls } from "./lib/call-series";   // v212 (Доп. 538): «Позвать» — схема и команда из копии
+import { queueOf, queueLive, canPass, passErrText } from "./lib/call-queue";   // v213 (Доп. 539): очередь официантов, «передать дальше»
 import { rememberGoToday, goToday } from "./lib/golist-day";   // v141 (Доп. 458): гоу-лист дня — метка в меню и Наставник
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 import { readPushFlag, PUSH_EVENT, pushEnv, pushRefresh, pushUnsubscribe, setAppBadge, remindSub, pushRowSub } from "./lib/push";   // v137 (Доп. 450): уведомления на телефон
@@ -1860,8 +1861,21 @@ function ServiceAcademy() {
   const callGo = () => {
     if (!myCall || callBusy) return;
     const id = myCall.id;
-    setCallBusy(true); vibrate("medium");
+    setCallBusy(true); vibrate("medium"); setCallNote("");
     chatApiObj.go(id).then(() => { setCallBusy(false); setCallGone((g) => ({ ...g, [id]: 1 })); loadChatInfo(true); });
+  };
+  // v213 (Доп. 539): «Занят, передать дальше» — стол уходит следующему в очереди; передать некому — объясняем в баннере
+  const [callNote, setCallNote] = useState("");
+  useEffect(() => { setCallNote(""); }, [myCall && myCall.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const callPass = () => {
+    if (!myCall || callBusy) return;
+    const id = myCall.id;
+    setCallBusy(true); vibrate("medium"); setCallNote("");
+    chatApiObj.pass(id).then((r) => {
+      setCallBusy(false);
+      if (r && r.ok) { setCallGone((g) => ({ ...g, [id]: 1 })); loadChatInfo(true); }
+      else setCallNote(passErrText(r));
+    });
   };
   const openChat = (id) => { vibrate("light"); setChatOpen(id != null ? { id } : true); if (isLead) loadTeamBrief(false); };
   // v97 (Доп. 410): чат с делом из приложения (ui/chat.jsx, intent): «Поделиться в чат», «Отдать в чате» из «Графика»,
@@ -1884,6 +1898,20 @@ function ServiceAcademy() {
     const t = setTimeout(() => { prefetchTeam(chatApiObj, profile.restaurant); }, 2500);
     return () => clearTimeout(t);
   }, [screen, callHost, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // v213 (Доп. 539): «Очередь к столам» в «Смене» — у официантов, хостес и руководителей (этап 69); без этапа — не спрашиваем
+  const [queueInfo, setQueueInfo] = useState(null);
+  const queueOffRef = useRef(false);
+  const queueWho = !!(callOn && profile && (["waiter", "hostess"].includes(profile.position) || isLead));
+  useEffect(() => {
+    if (screen !== "shift" || !storageLoaded || !queueWho || queueOffRef.current) return undefined;
+    const ask = () => chatApiObj.queue().then((r) => {
+      if (r && r.error === "missing") { queueOffRef.current = true; setQueueInfo(null); return; }
+      const qq = queueOf(r); if (qq) setQueueInfo(qq);
+    }).catch(() => {});
+    ask();
+    const t = setInterval(() => { if (typeof document === "undefined" || !document.hidden) ask(); }, 60e3);
+    return () => clearInterval(t);
+  }, [screen, storageLoaded, queueWho]);   // eslint-disable-line react-hooks/exhaustive-deps
   // «График»: смены из чата на экране (chat_shift_board), «Отдать / Поменяться в чате», «Спросить в чате», «График готов»
   const openChatWithRef = useRef(null); openChatWithRef.current = openChatWith;
   const [chatClosedAt, setChatClosedAt] = useState(0);   // чат закрыли — «График» тихо перечитает смены
@@ -3476,6 +3504,7 @@ function ServiceAcademy() {
           intent={typeof chatOpen === "object" && chatOpen ? chatOpen.intent || null : null}
           onBack={() => { setChatOpen(null); setChatClosedAt(Date.now()); loadChatInfo(true); }} onUnread={(r) => setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] })} /></Suspense> : null}
         {myCall && chatMe ? <Suspense fallback={null}><CallBanner a11y={a11y} me={chatMe} call={myCall} busy={callBusy} onGo={callGo}
+          onPass={canPass(myCall, chatMe) ? callPass : null} note={callNote}
           onClose={() => setCallGone((g) => ({ ...g, [myCall.id]: 1 }))} onOpen={() => { setCallGone((g) => ({ ...g, [myCall.id]: 1 })); openChat(myCall.chat); }} /></Suspense> : null}
         {/* v212 (Доп. 538): «Позвать» поверх экрана — порталом в body, как чат */}
         {callLayer && chatMe && chatOpen == null ? <Suspense fallback={null}><CallLayer a11y={a11y} me={chatMe} api={chatApiObj} init={callLayer}
@@ -3738,6 +3767,8 @@ function ServiceAcademy() {
             {nbOn && nbInfo.newbie ? <NewbieHero a11y={a11y} done={nbDoneCount(nbInfo)} total={nbTotalCount(nbInfo)} onOpen={() => navigate("newbie")}
               line={nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования"} /> : null}
             <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} onCall={callHost ? () => openCall(null) : null} />
+            {/* v213 (Доп. 539): очередь официантов к столам; хостес нажимает — «Позвать» */}
+            {queueInfo && queueWho && queueLive(queueInfo).length ? <QueueCard a11y={a11y} q={queueInfo} meId={profile.id} onOpen={callHost ? () => openCall(null) : null} /> : null}
             {/* v141 (Доп. 459): «Распорядок смены» — открытие, брифинг с гоу-листом, закрытие, итог; в выходной не показываем */}
             {isLead && profile.restaurant && !(shiftToday && shiftToday.off) ? <Suspense fallback={null}><RoutineCard a11y={a11y} brief={teamBrief} briefKnown={briefKnown} onOpen={openRoutine} /></Suspense> : null}
             {/* v82 (Доп. 395): брифинг смены от руководителя */}

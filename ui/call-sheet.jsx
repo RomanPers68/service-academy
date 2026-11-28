@@ -12,6 +12,9 @@
 //     стол и человек сброшены, можно сразу следующий стол. Тот же вызов второй раз за 30 секунд сервер не шлёт
 //     (этап 68): «Анну к столу 13 уже позвали, ждём ответа»;
 //   • схема и люди листаются, кнопка внизу всегда на виду.
+// v213 (Доп. 539): очередь официантов (этап 69, ui/call-queue.jsx). При «К столу» «Кого» — по очереди: следующий выбран
+//   сразу, «Пропустить» — следующий за ним (пропущенный остаётся первым), позвали — он в конец, выбран следующий.
+//   Хостес и руководитель правят очередь здесь же: «Изменить очередь». Нет этапа 69 — «Кого», как в v212.
 // Открывают: колокольчик в чате «Вся команда» и в списке чатов (ui/chat.jsx), «Позвать» с главной хостес, из «Смены»
 // и «Рассадки» (CallLayer в ui/chat.jsx; init — стол, который уже выбран).
 import React from "react";
@@ -19,8 +22,10 @@ import { vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";
 import { CALL_WHO, CALL_WHY, CALL_OWN_MAX, chatInitials, bubbleName } from "../lib/chat";
 import { callAction, callHint, afterCall, shiftChips, recentCalls, rememberCall, tableMarks, cachedTeam, cachedBoard, freshTeam, freshBoard } from "../lib/call-series";
+import { queueOf, queueLive, queueNext, queueAfterCall, queueOrd } from "../lib/call-queue";
 import { IC, posName, stop } from "./chat-kit";
 import { FaceImg } from "./staff-photo";
+import { QueueChips, QueuePanel } from "./call-queue";
 
 const CallTables = React.lazy(() => import("./call-table").then((m) => ({ default: m.CallTables })));
 // «К столу» зовут официантов: по должности — сначала они
@@ -76,6 +81,13 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
   const [teamBad, setTeamBad] = React.useState(false);
   const [manual, setManual] = React.useState(false);
   const [more, setMore] = React.useState(false);
+  // v213: очередь официантов — только свежая с сервера (копия могла устареть: кто следующий, решает сервер)
+  const [q, setQ] = React.useState(null);
+  const [skip, setSkip] = React.useState([]);     // пропущенные в этот раз (остаются первыми в очереди)
+  const [auto, setAuto] = React.useState(false);  // человек выбран очередью, а не нажатием
+  const [qEdit, setQEdit] = React.useState(false);
+  const [qBusy, setQBusy] = React.useState(false);
+  const [qErr, setQErr] = React.useState("");
   const busyRef = React.useRef(false);
   React.useEffect(() => {
     let on = true;
@@ -83,15 +95,39 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
     freshTeam(api, rest).then((l) => { if (!on) return; if (l) { setTeam(l); setTeamBad(false); } else setTeamBad(true); });
     return () => { on = false; };
   }, [api, rest]);
+  const loadQ = React.useCallback(() => (api && api.queue ? Promise.resolve(api.queue()).then((r) => { const qq = queueOf(r); if (qq) setQ(qq); }).catch(() => {}) : Promise.resolve()), [api]);
+  React.useEffect(() => {
+    loadQ();
+    const t = setInterval(() => { try { if (!document.hidden) loadQ(); } catch (e) { /* */ } }, 20000);   // другая хостес тоже зовёт
+    return () => clearInterval(t);
+  }, [loadQ]);
   const plan = !!board && !manual;
+  const useQ = why === "table" && !!q && queueLive(q).length > 0;
+  // «К столу» и никто не выбран — следующий по очереди
+  React.useEffect(() => {
+    if (!useQ || who) return;
+    const n = queueNext(q, skip);
+    if (n) { setWho("person"); setPerson({ id: n.id, name: n.name }); setAuto(true); }
+  }, [useQ, q, who, skip]);   // eslint-disable-line react-hooks/exhaustive-deps
   const call = { who, emp: person && person.id, toName: person && person.name, why, table: why === "table" ? table : "", text: why === "own" ? own : "" };
   const hint = callHint(call, plan);
   const chips = React.useMemo(() => shiftChips(team, meId), [team, meId]);
   const marks = React.useMemo(() => (board ? tableMarks(recent, board.plan) : {}), [board, recent]);
-  const inChips = !!(person && chips.list.some((p) => p.id === String(person.id)));
+  const inChips = !!(person && (useQ ? queueLive(q) : chips.list).some((p) => p.id === String(person.id)));
   const touch = () => setErr("");
-  const pickPerson = (p) => { vibrate("light"); setWho("person"); setPerson({ id: String(p.id), name: String(p.name || "") }); setMore(false); touch(); };
-  const pickRole = (id) => { vibrate("light"); setWho(id); setPerson(null); setMore(false); touch(); };
+  const pickPerson = (p) => { vibrate("light"); setWho("person"); setPerson({ id: String(p.id), name: String(p.name || "") }); setAuto(false); setMore(false); touch(); };
+  const pickRole = (id) => { vibrate("light"); setWho(id); setPerson(null); setAuto(false); setMore(false); touch(); };
+  const skipNext = (x) => { setSkip((sk) => [...sk, String(x.id)]); setWho(""); setPerson(null); setAuto(false); touch(); };
+  const saveQ = (nq) => {
+    setQ(nq); setQBusy(true); setQErr("");
+    if (auto) { setWho(""); setPerson(null); setAuto(false); }   // следующий — по новой очереди
+    Promise.resolve(api.queueSet(queueOrd(nq))).then((r) => {
+      setQBusy(false);
+      const qq = queueOf(r);
+      if (qq) setQ(qq);
+      else { setQErr(r && r.error === "forbidden" ? "Менять очередь может хостес или руководитель." : "Не сохранилось. Проверь связь и попробуй ещё раз."); loadQ(); }
+    }, () => { setQBusy(false); setQErr("Не сохранилось. Проверь связь и попробуй ещё раз."); loadQ(); });
+  };
   const close = () => { if (onClose) onClose(count); };
   const submit = () => {
     if (busyRef.current) return;
@@ -109,6 +145,10 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
         setRecent(recentCalls(rest));
       }
       setLast({ line: res.line, again: res.again });
+      // v213: позвали лично к столу — он в конец очереди (сервер делает так же), выбран следующий; пропуски — заново
+      if (c.who === "person" && c.why === "table" && !res.again) { setQ((qq) => queueAfterCall(qq, c.emp)); setSkip([]); }
+      if (q) loadQ();
+      setAuto(false);
       setWho(res.pick.who); setPerson(res.pick.person); setTid(res.pick.tid); setTable(res.pick.table); setOwn(res.pick.own);
       if (!res.again) { setCount((k) => k + 1); vibrate("success"); if (onSent) onSent(msg); }
     };
@@ -134,12 +174,15 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
           {why === "table" && !plan && !boardDone ? <div className="ch-cs-wait" data-call-board-wait="">Загружаю схему зала…</div> : null}
           {why === "table" && !plan && boardDone ? <input className="ch-field num sa-field" inputMode="numeric" value={table} maxLength={6} placeholder="Номер стола" aria-label="Номер стола" data-chat-table=""
             onChange={(e) => { setTable(e.target.value); touch(); }} /> : null}
-          <div className="ch-lbl" style={why === "table" ? undefined : { marginTop: 2 }}>Кого</div>
-          {chips.list.length ? <div className="ch-chips" role="radiogroup" aria-label={chips.shift ? "Кто сегодня в смене" : "Официанты"} data-call-people={chips.shift ? "shift" : "waiters"}>
+          {useQ ? <QueueChips q={q} picked={who === "person" && person ? person.id : null} auto={auto} edit={q.edit} editing={qEdit}
+            onPick={pickPerson} onSkip={skipNext} onEdit={() => { setQEdit((e) => !e); setQErr(""); }} /> : null}
+          {useQ && qEdit ? <QueuePanel q={q} busy={qBusy} err={qErr} onChange={saveQ} /> : null}
+          {!useQ ? <div className="ch-lbl" style={why === "table" ? undefined : { marginTop: 2 }}>Кого</div> : null}
+          {useQ ? null : chips.list.length ? <div className="ch-chips" role="radiogroup" aria-label={chips.shift ? "Кто сегодня в смене" : "Официанты"} data-call-people={chips.shift ? "shift" : "waiters"}>
             {chips.list.map((p) => <button key={p.id} type="button" role="radio" aria-checked={who === "person" && !!person && String(person.id) === p.id} className="ch-chip" data-call-person={p.id}
               aria-label={p.name + (posName(p.pos) ? ", " + posName(p.pos).toLowerCase() : "")} onClick={() => pickPerson(p)}>{p.label}</button>)}
           </div> : !team && !teamBad ? <div className="ch-cs-wait">Загружаю, кто в смене…</div> : null}
-          <div className="ch-cs-or">{chips.list.length ? "или всех по должности" : "по должности"}</div>
+          <div className="ch-cs-or">{chips.list.length || useQ ? "или всех по должности" : "по должности"}</div>
           <div className="ch-chips sub" role="radiogroup" aria-label="По должности">
             {ROLES.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={who === id} className="ch-chip" data-chat-who={id} onClick={() => pickRole(id)}>{label}</button>)}
             <button type="button" role="radio" aria-checked={who === "person" && !!person && !inChips} className="ch-chip" data-call-more=""
@@ -150,7 +193,7 @@ export function CallSheet({ a11y = false, me, api, chat = null, init = null, onC
           <div className="ch-lbl">Зачем</div>
           <div className="ch-chips sub" role="radiogroup" aria-label="Зачем" data-call-why="">
             {CALL_WHY.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={why === id} className="ch-chip" data-chat-why={id}
-              onClick={() => { vibrate("light"); setWhy(id); touch(); }}>{label}</button>)}
+              onClick={() => { vibrate("light"); if (auto && id !== "table") { setWho(""); setPerson(null); setAuto(false); } setWhy(id); touch(); }}>{label}</button>)}
           </div>
           {why === "own" ? <input className="ch-field sa-field" value={own} maxLength={CALL_OWN_MAX} placeholder="Например: принеси детский стульчик" aria-label="Зачем зовёшь" data-chat-own=""
             onChange={(e) => { setOwn(e.target.value); touch(); }} /> : null}

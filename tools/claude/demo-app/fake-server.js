@@ -270,7 +270,28 @@ export function makeServer(opts) {
   const touch = (m) => { m.upd = now(); };
   const unread = (c, p) => S.msgs.filter((m) => m.chat === c.id && !m.del && m.emp !== p.id && m.id > rd(c, p.id)).length;
   const callFor = (m, p) => m.kind === "call" && !m.del && m.emp !== p.id && (m.call.who === "person" ? m.call.emp === p.id : m.call.who === "lead" ? isLead(p) : ({ host: ["hostess"], bar: ["bartender"], waiter: ["waiter"] }[m.call.who] || []).includes(p.position));
-  const calls = (p) => S.msgs.filter((m) => callFor(m, p) && !(m.call.going || []).length && clock() - Date.parse(m.at) < 600000).map(J);
+  const calls = (p) => S.msgs.filter((m) => callFor(m, p) && !(m.call.going || []).length && !m.call.passed && clock() - Date.parse(m.at) < 600000).map(J);   // v213: без переданных дальше
+  // v213 (Доп. 539): очередь официантов на сегодня (этап 69): [{ id, away, out }] по ресторану; opts.noStage69 — этапа нет
+  const qOrd = (rest) => {
+    S.queue = S.queue || {};
+    const ws = PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired");
+    const on = ws.filter((e) => personToday(e)), base = on.length ? on : ws;
+    const cur = (S.queue[rest] || []).filter((x, i, a) => ws.some((e) => e.id === x.id) && a.findIndex((y) => y.id === x.id) === i);
+    const add = base.filter((e) => !cur.some((x) => x.id === e.id)).sort((a, b) => full(a).localeCompare(full(b), "ru")).map((e) => ({ id: e.id, away: false, out: false }));
+    S.queue[rest] = [...cur, ...add];
+    return S.queue[rest];
+  };
+  const qCan = (p) => isLead(p) || p.position === "hostess";
+  const qJson = (p, rest) => {
+    const ord = qOrd(rest);
+    return { ok: true, day: TODAY, edit: qCan(p), list: ord.map((x) => ({ id: x.id, name: full(who(x.id)), away: !!x.away, out: !!x.out })),
+      others: PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e) })) };
+  };
+  const qMove = (rest, id, firstPlace) => {
+    const e = who(id); if (!e || e.restaurant !== rest || e.position !== "waiter") return;
+    const ord = qOrd(rest).filter((x) => x.id !== id), it = { id, away: false, out: false };
+    S.queue[rest] = firstPlace ? [it, ...ord] : [...ord, it];
+  };
   const view = (c, p) => {
     const last = [...S.msgs].reverse().find((m) => m.chat === c.id && !m.del);
     const peer = c.kind === "dm" ? who(c.members.find((x) => x !== p.id)) : null;
@@ -1800,7 +1821,7 @@ export function makeServer(opts) {
       return { ok: true, n: mine.length, month: mine.filter((x) => x.day >= TODAY.slice(0, 8) + "01").length };
     }
     if (fn === "cheer_poke") return { ok: true, n: p.restaurant ? cheerDue(true, p.restaurant).length : 0 };
-    if (!/^chat_/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };
+    if (!/^(chat_|queue_)/.test(fn)) return { code: "PGRST202", message: "demo: " + fn };   // v213: и очередь официантов (queue_get, queue_set)
     S.log.push({ fn, at: now() }); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
     if (!p) return { ok: false, error: "auth" };
     if (fn === "chat_list") {
@@ -1886,10 +1907,42 @@ export function makeServer(opts) {
         const five = mine.filter((m) => age(m) < 300000);
         if (five.length >= 15) return { ok: false, error: "too_many", wait: Math.max(1, Math.ceil((300000 - age(five[0])) / 1000)) };
       }
-      return { ok: true, msg: J(put(c, p, "", { kind: "call", call: k })) };
+      const m = put(c, p, "", { kind: "call", call: k });
+      if (!opts.noStage69 && k.who === "person" && k.why === "table") qMove(p.restaurant, k.emp, false);   // v213: позвали к столу — в конец очереди
+      return { ok: true, msg: J(m) };
+    }
+    // v213 (Доп. 539): очередь официантов и «Занят, передать дальше» — как этап 69
+    if ((fn === "queue_get" || fn === "queue_set" || fn === "chat_pass") && opts.noStage69) return { code: "PGRST202", message: "Could not find the function" };
+    if (fn === "queue_get") return qJson(p, p.restaurant);
+    if (fn === "queue_set") {
+      if (!qCan(p)) return { ok: false, error: "forbidden" };
+      if (!Array.isArray(b.p_ord)) return { ok: false, error: "bad_request" };
+      const old = qOrd(p.restaurant), seen = new Set(), nq = [];
+      for (const x of b.p_ord) { const e = x && who(String(x.id)); if (e && e.restaurant === p.restaurant && e.position === "waiter" && !seen.has(e.id)) { seen.add(e.id); nq.push({ id: e.id, away: x.away === true, out: x.out === true }); } }
+      S.queue[p.restaurant] = [...nq, ...old.filter((x) => !seen.has(x.id))];
+      return qJson(p, p.restaurant);
+    }
+    if (fn === "chat_pass") {
+      const m = msgOf(b.p_msg); if (!m || m.del || m.kind !== "call" || !visible(chatOf(m.chat), p)) return { ok: false, error: "not_found" };
+      const k = m.call; if (k.who !== "person" || k.why !== "table") return { ok: false, error: "bad_request" };
+      const self = k.emp === p.id;
+      if (!self && m.emp !== p.id && !isLead(p)) return { ok: false, error: "forbidden" };
+      if (k.passed) return { ok: false, error: "passed", msg: J(m) };
+      if ((k.going || []).length) return { ok: false, error: "going", msg: J(m) };
+      if (clock() - Date.parse(m.at) >= 600000) return { ok: false, error: "stale" };
+      const skip = [...new Set([k.emp, ...(k.skip || [])])], rest = chatOf(m.chat).rest;
+      const nx = qOrd(rest).find((x) => !x.away && !x.out && !skip.includes(x.id));
+      if (!nx) return { ok: false, error: "nobody" };
+      qMove(rest, k.emp, true); qMove(rest, nx.id, false);
+      const to = who(nx.id), caller = who(m.emp) || p;
+      const m2 = put(chatOf(m.chat), caller, "", { kind: "call", call: { who: "person", why: "table", table: k.table, text: "", emp: to.id, to_name: full(to), going: [], skip,
+        from: { id: k.emp, name: k.to_name || "", self } } });
+      k.passed = { by: p.id, by_name: full(p), to: to.id, to_name: full(to), at: now(), msg: m2.id }; touch(m);
+      return { ok: true, msg: J(m), next: J(m2) };
     }
     if (fn === "chat_go") {
       const m = msgOf(b.p_msg); if (!m || m.kind !== "call") return { ok: false, error: "not_found" };
+      if (m.call.passed) return { ok: false, error: "passed", msg: J(m) };   // v213: стол уже передали дальше
       m.call.going = [...(m.call.going || []).filter((x) => x.emp !== p.id), { emp: p.id, name: full(p), at: now() }]; touch(m); return { ok: true, msg: J(m) };
     }
     // ── смены ──

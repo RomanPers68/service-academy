@@ -40,6 +40,7 @@ import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine, mentorC
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 // v189 (Доп. 514): «К столу» — стол выбирают на схеме зала (схема из «Рассадки» грузится, только когда нужна)
 import { CallSheet } from "./call-sheet";   // v212 (Доп. 538): «Позвать» подряд; схема зала — там же (ui/call-table.jsx)
+import { canPass, passedLine, fromLine, passErrText } from "../lib/call-queue";   // v213 (Доп. 539): «Занят, передать дальше»
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
 import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
@@ -308,6 +309,30 @@ button.ch-mava:active{opacity:.75}
 .ch-chips.sub .ch-chip{padding:6px 11px;font-size:13.5px}
 .ch-cs-list{margin-top:8px;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-radius:14px;border:1px solid var(--edge);padding-bottom:6px}
 .ch-cs-list .ch-search{width:calc(100% - 16px);margin:8px auto 4px}
+/* v213 (Доп. 539): очередь официантов в «Позвать» (ui/call-queue.jsx) и «Занят, передать дальше» у вызова */
+.ch-q-lbl{display:flex;align-items:center;gap:8px}
+.ch-q-edit,.ch-q-skip,.ch-pass{border:0;background:none;color:var(--gold-ink);font-family:inherit;font-size:13.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px 0}
+.ch-q-edit{margin-left:auto;padding:2px 0}
+.ch-q-skip{display:block;margin-top:6px}
+.ch-chip .ch-q-i{display:inline-block;min-width:14px;margin-right:6px;font-size:12px;color:var(--sub)}
+.ch-chip.away{opacity:.62;border-style:dashed}
+.ch-q-pause{font-size:12.5px;color:var(--sub)}
+.ch-q-ed{margin-top:8px;border:1px solid var(--edge);border-radius:14px;padding:4px 10px 8px}
+.ch-q-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--edge)}
+.ch-q-n{min-width:16px;color:var(--sub);font-size:13px;text-align:right}
+.ch-q-name{flex:1;min-width:0;display:flex;flex-direction:column}
+.ch-q-nm{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-q-away{font-size:12px;color:var(--sub)}
+.ch-q-btn{width:34px;height:34px;flex:0 0 auto;border-radius:50%;border:1px solid var(--opt-edge);background:var(--opt);color:var(--gold-ink);display:grid;place-items:center;padding:0;cursor:pointer}
+.ch-q-btn:disabled{opacity:.35;cursor:default}
+.ch-q-tog{flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:999px;border:1px solid var(--opt-edge);background:var(--opt);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer}
+.ch-q-tog[aria-pressed="true"]{border-color:var(--gold);background:rgba(214,178,102,0.18)}
+.ch-q-sub{margin:10px 0 6px;font-size:12.5px;line-height:1.4;color:var(--sub)}
+.ch-pass{display:block;margin:8px auto 0}
+.ch-call-from{font-size:12.5px;color:var(--sub);margin-top:2px}
+.ch-call-s.passed{color:var(--gold-ink)}
+.ch-banner .ch-pass{margin:3px 0 0;padding:2px 0;text-align:left;font-size:13.5px}
+.ch-banner-note{display:block;margin-top:2px;font-size:12.5px;line-height:1.35;color:var(--bad-ink)}
 .ch-act{display:flex;align-items:center;gap:12px;width:100%;padding:13px 6px;border:0;border-bottom:1px solid var(--edge);background:none;color:var(--text);font-size:16px;cursor:pointer;text-align:left}
 .ch-act:last-child{border-bottom:0}
 .ch-act svg{color:var(--gold-ink);flex:0 0 auto}
@@ -1086,7 +1111,7 @@ function Bubble({ row, me, api, reads, myLastId, othersN, group, net = false, hl
     </div>);
 }
 
-function CallCard({ row, me, now, busyGo, hl, onGo, onMenu, onReply, onReact }) {
+function CallCard({ row, me, now, busyGo, hl, onGo, onPass = null, onMenu, onReply, onReact }) {
   const m = row.m;
   const sw = useSwipe(!m.del, () => onReply(m));
   const st = callState(m, now), forMe = isCallForMe(m, me), iGo = st.st === "going" && st.going.some((g) => String(g.id) === String(me && me.id));
@@ -1096,9 +1121,13 @@ function CallCard({ row, me, now, busyGo, hl, onGo, onMenu, onReply, onReact }) 
       <div className={"ch-call" + (st.st === "stale" ? " stale" : "")} data-chat-call={st.st} data-chat-forme={forMe ? "1" : "0"} onClick={() => { if (!sw.quiet.current && !m.del) onMenu(m); }}>
         <div className="ch-call-h">{IC.bell}<span>Вызов · {hhmm(m.at)}</span></div>
         <div className="ch-call-t">{m.del ? "Вызов удалён" : callLine(m, me && me.id)}</div>
-        {!m.del ? <div className={"ch-call-s" + (st.st === "going" ? " going" : "")}>
-          {st.st === "going" ? "Идёт: " + st.going.map((g) => bubbleName(g.name)).join(", ") : st.st === "stale" ? "Без ответа" : st.min ? "Ждёт ответа · " + st.min + " мин" : "Ждёт ответа"}</div> : null}
+        {/* v213 (Доп. 539): вызов пришёл передачей — от кого; передан дальше — кому */}
+        {!m.del && fromLine(m.call) ? <div className="ch-call-from" data-chat-call-from="">{fromLine(m.call)}</div> : null}
+        {!m.del ? <div className={"ch-call-s" + (st.st === "going" ? " going" : st.st === "passed" ? " passed" : "")}>
+          {st.st === "passed" ? passedLine(m.call) : st.st === "going" ? "Идёт: " + st.going.map((g) => bubbleName(g.name)).join(", ") : st.st === "stale" ? "Без ответа" : st.min ? "Ждёт ответа · " + st.min + " мин" : "Ждёт ответа"}</div> : null}
         {!m.del && forMe && !iGo && st.st === "wait" ? <button type="button" className="ch-go" data-chat-go={m.id} disabled={busyGo === m.id} onClick={(e) => { e.stopPropagation(); onGo(m); }}>Иду</button> : null}
+        {!m.del && onPass && canPass(m, me, now) ? <button type="button" className="ch-pass" data-chat-pass={m.id} disabled={busyGo === m.id}
+          onClick={(e) => { e.stopPropagation(); onPass(m); }}>{String(m.call.emp) === String(me && me.id) ? "Занят, передать дальше" : "Передать дальше по очереди"}</button> : null}
         {!m.del && reactGroups(m.reacts, me && me.id).length ? <div className="ch-rxs"><Reactions m={m} me={me} onReact={onReact} /></div> : null}
       </div>
     </div>);
@@ -1416,7 +1445,17 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   const go = (m) => {
     if (busyGo) return;
     vibrate("medium"); setBusyGo(m.id);
-    Promise.resolve(api.go(m.id)).then((r) => { setBusyGo(null); if (r && r.ok && r.msg) { addMsgs([r.msg], { quiet: true }); heat(); } }).catch(() => setBusyGo(null));
+    Promise.resolve(api.go(m.id)).then((r) => { setBusyGo(null); if (r && r.ok && r.msg) { addMsgs([r.msg], { quiet: true }); heat(); } else if (r && r.error === "passed") { if (r.msg) addMsgs([r.msg], { quiet: true }); flash(passErrText(r)); } }).catch(() => setBusyGo(null));
+  };
+  // v213 (Доп. 539): «Занят, передать дальше» — стол уходит следующему в очереди (этап 69)
+  const pass = (m) => {
+    if (busyGo || !api.pass) return;
+    vibrate("medium"); setBusyGo(m.id);
+    Promise.resolve(api.pass(m.id)).then((r) => {
+      setBusyGo(null);
+      if (r && r.ok) { addMsgs([r.msg, r.next].filter(Boolean), { quiet: true }); heat(); flash(passedLine(r.msg && r.msg.call) || "Стол передан дальше"); }
+      else { if (r && r.msg) addMsgs([r.msg], { quiet: true }); flash(passErrText(r)); }
+    }, () => { setBusyGo(null); flash(passErrText({ error: "net" })); });
   };
   // v91 (Доп. 404): очистить чат целиком у всех
   const clearChat = () => {
@@ -1493,7 +1532,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
           <button type="button" className="ch-sys" data-chat-sys="" onClick={() => { if (to) jumpTo(to); }}>{IC.pinS}<span>{m.body}</span></button>
         </div>);
     }
-    if (m.kind === "call") return <CallCard key={row.key} row={row} me={me} now={now} busyGo={busyGo} hl={isHl} onGo={go} onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} />;
+    if (m.kind === "call") return <CallCard key={row.key} row={row} me={me} now={now} busyGo={busyGo} hl={isHl} onGo={go} onPass={api.pass ? pass : null} onMenu={(x) => setSheet({ msg: x })} onReply={startReply} onReact={react} />;
     if (m.kind === "card") return <CardMsg key={row.key} row={row} me={me} app={app} busy={cardBusy === m.id} hl={isHl} showWho={whoOpen.has(String(m.id))} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} />;   // v93
     if (m.kind === "ai") return <AiMsg key={row.key} row={row} me={me} hl={isHl} onAct={onAct} onMenu={(x) => setSheet({ msg: x })} ava={avaOn} />;
     return <Bubble key={row.key} row={row} me={me} api={api} reads={reads} myLastId={myLast && myLast.id} othersN={others.length} group={group} net={chat.kind === "net"} hl={isHl}
@@ -1785,14 +1824,17 @@ function Viewer({ api, msg, me, onClose }) {
 
 // ── вызов мне — поверх любого экрана ──
 /** call: сообщение-вызов (kind "call"); onGo — «Иду»; onClose — «позже»; onOpen — открыть чат. */
-export function CallBanner({ a11y, me, call, onGo, onClose, onOpen, busy = false }) {
+export function CallBanner({ a11y, me, call, onGo, onClose, onOpen, busy = false, onPass = null, note = "" }) {
   ensureChatCss();
   if (!call) return null;
   return portal(
     <div className={"sa-dlg ch" + (a11y ? " lt" : "")} style={{ position: "static", inset: "auto", background: "none", display: "contents" }}>
       <div className="ch-banner" role="alertdialog" aria-label="Вызов" data-chat-banner={call.id}>
         <span className="ch-ava team" aria-hidden="true" style={{ width: 38, height: 38 }}>{IC.bell}</span>
-        <span className="ch-banner-t" {...(onOpen ? { onClick: onOpen, ...onActivate(onOpen), style: { cursor: "pointer" } } : {})}><b>{callLine(call, me && me.id)}</b></span>
+        <span className="ch-banner-t"><b {...(onOpen ? { onClick: onOpen, ...onActivate(onOpen), style: { cursor: "pointer" } } : {})}>{callLine(call, me && me.id).replace(/ (\S{1,6})$/, "\u00a0$1")}</b>
+          {/* v213 (Доп. 539): «Занят, передать дальше» — стол следующему в очереди */}
+          {onPass ? <button type="button" className="ch-pass" data-chat-banner-pass="" disabled={busy} onClick={onPass}>Занят, передать дальше</button> : null}
+          {note ? <span className="ch-banner-note" role="alert" data-chat-banner-note="">{note}</span> : null}</span>
         <button type="button" className="ch-go" data-chat-banner-go="" disabled={busy} onClick={onGo}>Иду</button>
         <button type="button" className="ch-x" aria-label="Позже" onClick={onClose}>{IC.x}</button>
       </div>

@@ -178,7 +178,7 @@ describe("v90: экран чата (ui/chat.jsx)", () => {
   it("баннер вызова: «Ольга зовёт тебя: к столу 5» и «Иду»", async () => {
     const { CallBanner } = await import("../ui/chat.jsx");
     const html = R(h(CallBanner, { a11y: false, me: { id: "me" }, call: { id: 7, emp: "p2", name: "Ольга Ли", kind: "call", call: { who: "person", emp: "me", toName: "Роман", why: "table", table: "5" } }, onGo: () => {}, onClose: () => {} }));
-    expect(html).toContain("Ольга зовёт тебя: к столу 5");
+    expect(html.replace(/\u00a0/g, " ")).toContain("Ольга зовёт тебя: к столу 5");   // v213: номер стола не отрывается (неразрывный пробел)
     expect(html).toMatch(/<button type="button" class="ch-go" data-chat-banner-go=""[^>]*>Иду<\/button>/);
   });
 });

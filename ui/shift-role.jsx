@@ -3,12 +3,15 @@
 //   состояний столов в цветах схемы, сколько свободно и ближайшая бронь; официанту — его столы кружками с номером.
 // v212 (Доп. 538): хостес — кнопка «Позвать к столу» (onCall: лист «Позвать» поверх, App.jsx) в карточке зала; схемы
 //   зала нет — карточка с одной этой кнопкой.
+// v213 (Доп. 539): QueueCard — «Очередь к столам» (этап 69): официанты по порядку, ты — золотом, на перерыве — бледнее;
+//   официанту — «Ты в очереди: 2 из 4». Хостес нажимает — лист «Позвать».
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
 import { frostOf } from "./home-hubs";
 import { hallHead, hallParts, hallLine, resLine, tableChip } from "../lib/shift-role";
 import { guestsWord } from "../lib/seating";
+import { queueLive, queuePos, queueLabels } from "../lib/call-queue";
 
 const C = (a11y) => ({
   gold: a11y ? "#7A5D2A" : "#D2A85A",
@@ -123,4 +126,32 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief, onCall = null }) {
       </div>
     </div>
   );
+}
+
+/** «Очередь к столам»: q — очередь (lib/call-queue.js, queueOf); meId — кто смотрит; onOpen — открыть «Позвать» (хостес). */
+export function QueueCard({ a11y, q, meId, onOpen = null }) {
+  const live = queueLive(q);
+  if (!live.length) return null;
+  const c = C(a11y), labels = queueLabels(live), pos = queuePos(q, meId), mine = live.find((x) => x.id === String(meId));
+  const open = onOpen ? () => { vibrate("light"); onOpen(); } : null;
+  const shell = { ...frostOf(a11y), borderRadius: 18, padding: "13px 16px", marginTop: 10, marginBottom: 4, cursor: open ? "pointer" : "default" };
+  return (
+    <div className="sa-card sa-pagein" data-queue-card="" data-lens-card="" style={shell} {...(open ? { onClick: open, ...onActivate(open) } : {})}
+      aria-label={"Очередь к столам: " + live.map((x, i) => (i + 1) + ". " + x.name + (x.away ? ", на перерыве" : "")).join("; ")}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ ...labelStyle(a11y ? 14.5 : 13.5), color: c.gold, flex: 1 }}>Очередь к столам</div>{open ? <Chevron color={c.gold} /> : null}</div>
+      {pos ? <div data-queue-me="" style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text, marginTop: 4 }}>
+        {mine && mine.away ? "Ты на перерыве: очередь тебя пропускает" : "Ты в очереди: " + pos + " из " + live.length}</div> : null}
+      <div aria-hidden="true" style={{ display: "flex", flexWrap: "wrap", gap: "6px 8px", marginTop: 8 }}>
+        {live.map((x, i) => {
+          const me = x.id === String(meId);
+          return (
+            <span key={x.id} data-queue-chip={x.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px 4px 4px", borderRadius: 999, fontSize: 13,
+              border: `1px solid ${me ? c.gold : c.line}`, color: c.text, opacity: x.away ? 0.55 : 1, borderStyle: x.away ? "dashed" : "solid" }}>
+              <span style={{ minWidth: 22, height: 22, borderRadius: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+                background: me ? c.gold : "transparent", color: me ? (a11y ? "#FBF7EE" : "#1A1008") : c.sub, border: me ? 0 : `1px solid ${c.line}` }}>{i + 1}</span>
+              {me ? "ты" : labels[i]}{x.away ? <span style={{ color: c.sub }}>· перерыв</span> : null}
+            </span>);
+        })}
+      </div>
+    </div>);
 }

@@ -83,6 +83,7 @@ const CandidateScreen = lazy(() => retryImport(() => import("./ui/candidate")).t
 const AssistantScreen = lazy(() => retryImport(() => import("./ui/assistant")).then(m => ({ default: m.AssistantScreen })));
 const ChatScreen = lazy(() => retryImport(() => import("./ui/chat")).then(m => ({ default: m.ChatScreen })));   // v90: чат смены
 const CallBanner = lazy(() => retryImport(() => import("./ui/chat")).then(m => ({ default: m.CallBanner })));
+const CallLayer = lazy(() => retryImport(() => import("./ui/chat")).then(m => ({ default: m.CallLayer })));   // v212 (Доп. 538): «Позвать» поверх экрана
 // Доп. 309: отчёты по сотрудникам (Excel и PDF) — грузятся только руководителю и по кнопке
 const ReportScreen = lazy(() => retryImport(() => import("./ui/report")).then(m => ({ default: m.ReportScreen })));
 const LiveGuestScreen = lazy(() => retryImport(() => import("./ui/live-guest")).then(m => ({ default: m.LiveGuestScreen })));   // v30: Доп. 312
@@ -369,6 +370,7 @@ import { peerSub } from "./lib/team-warm";   // v108 (Доп. 421): «Спаси
 import { myTablesOf, myTablesSub } from "./lib/seating";   // v86: «Твои столы» в пункте «Рассадка»
 import { shiftRoleOf, roleCard } from "./lib/shift-role";   // v87 (Доп. 400): «Смена» под роль
 import { ShiftRoleCard } from "./ui/shift-role";
+import { keepBoard, prefetchTeam, forgetCalls } from "./lib/call-series";   // v212 (Доп. 538): «Позвать» — схема и команда из копии
 import { rememberGoToday, goToday } from "./lib/golist-day";   // v141 (Доп. 458): гоу-лист дня — метка в меню и Наставник
 import { tgBind, tgOff } from "./lib/tg-login";   // v99 (Доп. 412): вход через Telegram без кода
 import { readPushFlag, PUSH_EVENT, pushEnv, pushRefresh, pushUnsubscribe, setAppBadge, remindSub, pushRowSub } from "./lib/push";   // v137 (Доп. 450): уведомления на телефон
@@ -1796,6 +1798,7 @@ function ServiceAcademy() {
         if (rpcMissing(r)) { setSeatOn(false); rememberSeatPlan(profile.restaurant, null, undefined, true); return; }
         if (r && r.ok) setSeatBoard(r);
         if (r && r.ok) rememberSeatPlan(profile.restaurant, r);   // v149 (Доп. 473): есть ли схема зала — для советов в уроках
+        if (r && r.ok) keepBoard(profile.restaurant, r);   // v212 (Доп. 538): «Позвать» открывается сразу со схемой
         if (r && r.ok) setMyTables(myTablesOf(r, profile.id));
       }).catch(() => { seatAskRef.current = 0; });
     };
@@ -1869,6 +1872,18 @@ function ServiceAcademy() {
   // v99 (Доп. 412): «Опаздываю» — чат «Вся команда» с листом сразу; на главной и во вкладке «Смена» — за 3 часа до смены и 2 после начала
   const lateOn = !!(chatOn && profile && profile.restaurant && lateWindow(shiftToday, new Date()));
   const openLate = () => openChatWith({ kind: "late" });
+  // v212 (Доп. 538): «Позвать» поверх экрана, без захода в чат: с главной и из «Смены» у хостес, из «Рассадки» у всех
+  // (из карточки стола — со столом). Лист — ui/call-sheet.jsx; команда и схема зала — из копии (lib/call-series.js),
+  // у хостес команда берётся заранее, пока она на главной и в «Смене»
+  const [callLayer, setCallLayer] = useState(null);   // null | { tid, table }
+  const callOn = !!(chatOn && profile && profile.restaurant);
+  const callHost = callOn && shiftRoleOf(profile) === "host";
+  const openCall = (init) => { vibrate("light"); setCallLayer(init && typeof init === "object" ? init : {}); };
+  useEffect(() => {
+    if (!callHost || !storageLoaded || (screen !== "roleSelect" && screen !== "shift")) return undefined;
+    const t = setTimeout(() => { prefetchTeam(chatApiObj, profile.restaurant); }, 2500);
+    return () => clearTimeout(t);
+  }, [screen, callHost, storageLoaded]);   // eslint-disable-line react-hooks/exhaustive-deps
   // «График»: смены из чата на экране (chat_shift_board), «Отдать / Поменяться в чате», «Спросить в чате», «График готов»
   const openChatWithRef = useRef(null); openChatWithRef.current = openChatWith;
   const [chatClosedAt, setChatClosedAt] = useState(0);   // чат закрыли — «График» тихо перечитает смены
@@ -2044,6 +2059,7 @@ function ServiceAcademy() {
       localStorage.removeItem("sa_profile");
       localStorage.removeItem("sa_last_role");
     } catch(e) {}
+    forgetCalls();   // v212: копия команды, схемы и метки «позвали» прошлого человека
     setProfile(null);
     setRole(null); setRoleAuto(false);
     setScreen("login");
@@ -3461,6 +3477,9 @@ function ServiceAcademy() {
           onBack={() => { setChatOpen(null); setChatClosedAt(Date.now()); loadChatInfo(true); }} onUnread={(r) => setChatInfo({ unread: Number(r.unread) || 0, calls: Array.isArray(r.calls) ? r.calls : [] })} /></Suspense> : null}
         {myCall && chatMe ? <Suspense fallback={null}><CallBanner a11y={a11y} me={chatMe} call={myCall} busy={callBusy} onGo={callGo}
           onClose={() => setCallGone((g) => ({ ...g, [myCall.id]: 1 }))} onOpen={() => { setCallGone((g) => ({ ...g, [myCall.id]: 1 })); openChat(myCall.chat); }} /></Suspense> : null}
+        {/* v212 (Доп. 538): «Позвать» поверх экрана — порталом в body, как чат */}
+        {callLayer && chatMe && chatOpen == null ? <Suspense fallback={null}><CallLayer a11y={a11y} me={chatMe} api={chatApiObj} init={callLayer}
+          onClose={() => { setCallLayer(null); loadChatInfo(true); }} /></Suspense> : null}
         {/* Доп. 288: вспышка — порталом в body, поверх слоёв урока «у стола» (z-index 1000) */}
         {celebrate ? createPortal(
           <div className="sa-celeb">
@@ -3677,6 +3696,7 @@ function ServiceAcademy() {
               : { key: "asked", label: "Спросили о блюде?", title: "Отметь", onClick: () => setAskOpen(true) }] : [] }}
           nowFoot={breakCur ? <BreakDish item={breakCur.item} female={menuFemale} onMark={onWarmDish} onMore={nextBreak} onClose={() => setBreakCur(null)} /> : null}
           look={look} nowCard={nowCard} nowOn={nowOn} firstDay={firstDay} roleAuto={roleAuto} tracksOpen={tracksWanted} lateRow={lateOn ? { key: "late", label: "Опаздываю?", title: "предупредить", onClick: openLate } : null}   /* v56 (Доп. 369): «что сейчас» — главная карточка по времени и смене */
+          callRow={callHost && !(shiftToday && shiftToday.off) ? { key: "call", label: "Позвать:", title: "официанта к столу", onClick: () => openCall(null) } : null}   /* v212 (Доп. 538): хостес */
           qdayCard={qdayData && qdayData.item && (!Number.isInteger(qdayData.item.answer) || qdayKeep) ? <QdayCard a11y={a11y} data={qdayData} busy={qdayBusy} err={qdayErr} onAnswer={answerQday} onMistakes={() => navigate("mistakes")} onHide={() => setQdayKeep(false)} menu={!!qdayMenuOf(ukP, qdayData.item.q)} /> : null}   /* v88; v89 — отвеченный только сразу после ответа */
           warmupCard={warmShow ? <WarmupCard compact a11y={a11y} shift={shiftText} known={!!shiftToday} done={warmDone === todayKey} onStart={openWarmup} what={warmWhat(warmSits.some((s) => s.genre !== "quiz") ? "ситуации" : "вопроса", warmDishes.length)}>
             {!tgRemind && inTelegramApp() ? <div role="button" tabIndex={0} onClick={() => setRemindOpen(true)} {...onActivate(() => setRemindOpen(true))}
@@ -3685,7 +3705,7 @@ function ServiceAcademy() {
         {screen === "glossary" && <div className="sa-tabpad"><GlossaryScreen T={T} a11y={a11y} onBack={() => goBack("roleSelect")} color={toolColor("gl", a11y)} saved={saved} onToggleFav={toggleFav} onSetNote={setNote} /></div>}
         {screen === "leaderboard" && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><LeaderboardScreen T={T} leaderboard={leaderboard} scores={titledScores} profile={profile} practiceStars={liveStars} masters={mastersIdx} onBack={() => goBack("roleSelect")} onLeague={() => navigate("league")} /></Suspense></div>}
         {screen === "seat" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><SeatingScreen T={T} a11y={a11y} profile={profile}
-          onMissing={() => setSeatOn(false)} onBack={() => goBack("shift")} /></Suspense></div>}
+          onMissing={() => setSeatOn(false)} onBack={() => goBack("shift")} onCall={callOn ? openCall : null} /></Suspense></div>}
         {screen === "thanks" && profile && <div className="sa-tabpad"><Suspense fallback={<ScreenLoader T={T} />}><ThanksScreen T={T} a11y={a11y} profile={profile} lead={isLead} startTab={thanksTab}
           onLoaded={(r) => { setThanksInfo(r); setThanksOn(true); try { localStorage.setItem("sa_thanks_on" + ukP, "1"); } catch (e) {} }}
           onBack={() => goBack(thanksTab === "team" ? "teamHub" : "me")} /></Suspense></div>}
@@ -3717,7 +3737,7 @@ function ServiceAcademy() {
             {/* v110 (Доп. 423): новичку (этап 41) — «Первая неделя» карточкой с прогрессом под сменой (была группа с одним пунктом) */}
             {nbOn && nbInfo.newbie ? <NewbieHero a11y={a11y} done={nbDoneCount(nbInfo)} total={nbTotalCount(nbInfo)} onOpen={() => navigate("newbie")}
               line={nbInfo.first && nbDayDiff(nbInfo.day, nbInfo.first.day) >= 0 ? nbFirstLine(nbInfo) : "План по дням и темы с собеседования"} /> : null}
-            <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} />
+            <ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} onCall={callHost ? () => openCall(null) : null} />
             {/* v141 (Доп. 459): «Распорядок смены» — открытие, брифинг с гоу-листом, закрытие, итог; в выходной не показываем */}
             {isLead && profile.restaurant && !(shiftToday && shiftToday.off) ? <Suspense fallback={null}><RoutineCard a11y={a11y} brief={teamBrief} briefKnown={briefKnown} onOpen={openRoutine} /></Suspense> : null}
             {/* v82 (Доп. 395): брифинг смены от руководителя */}

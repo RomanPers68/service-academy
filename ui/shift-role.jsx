@@ -1,6 +1,8 @@
 // ui/shift-role.jsx — v87 (Доп. 400): карточка «Смены» под роль (данные и правила — lib/shift-role.js).
 //   Руководителю — «Брифинг на сегодня ещё не отправлен» (в день смены) и строка зала; хостес — зал сейчас: полоса
 //   состояний столов в цветах схемы, сколько свободно и ближайшая бронь; официанту — его столы кружками с номером.
+// v212 (Доп. 538): хостес — кнопка «Позвать к столу» (onCall: лист «Позвать» поверх, App.jsx) в карточке зала; схемы
+//   зала нет — карточка с одной этой кнопкой.
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
@@ -35,14 +37,36 @@ function HallBar({ a11y, hall }) {
   );
 }
 
-/** Карточка под ролью. card — из roleCard(); onSeat / onBrief — открыть рассадку и брифинг. */
-export function ShiftRoleCard({ a11y, card, onSeat, onBrief }) {
-  if (!card) return null;
+const Bell = ({ color, s = 16 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>);
+
+/** Карточка под ролью. card — из roleCard(); onSeat / onBrief — открыть рассадку и брифинг; onCall — «Позвать» (хостес). */
+export function ShiftRoleCard({ a11y, card, onSeat, onBrief, onCall = null }) {
   const c = C(a11y), P = PART(a11y);
-  const seat = () => { vibrate("light"); onSeat && onSeat(); };
-  const brief = () => { vibrate("light"); onBrief && onBrief(); };
+  const call = (e) => { if (e && e.stopPropagation) e.stopPropagation(); vibrate("light"); if (onCall) onCall(); };
   const shell = { ...frostOf(a11y), borderRadius: 18, padding: "13px 16px", marginTop: 10, marginBottom: 4 };
   const tag = { ...labelStyle(a11y ? 14.5 : 13.5), color: c.gold };
+  // v212: «Позвать к столу» — кнопкой; в карточке зала нажатие на неё не открывает «Рассадку»
+  const callBtn = onCall ? (
+    <button type="button" data-role-call="" onClick={call} onKeyDown={(e) => e.stopPropagation()}
+      style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 10, padding: "8px 14px", borderRadius: 999, border: `1px solid ${c.gold}`, background: "transparent",
+        color: c.gold, fontFamily: "Georgia, serif", fontSize: 14, cursor: "pointer" }}><Bell color={c.gold} />Позвать к столу</button>) : null;
+  if (!card) {
+    if (!onCall) return null;
+    return (
+      <div className="sa-card sa-pagein" data-shift-role="call" data-lens-card="" onClick={call} {...onActivate(call)} aria-label="Позвать к столу: официанта, менеджера или бар"
+        style={{ ...shell, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+        <Bell color={c.gold} s={22} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: c.text }}>Позвать к столу</div>
+          <div style={{ fontSize: 12.5, color: c.sub, marginTop: 2 }}>Официанта, менеджера или бар: вызов уходит сразу</div>
+        </div>
+        <Chevron color={c.gold} />
+      </div>);
+  }
+  const seat = () => { vibrate("light"); onSeat && onSeat(); };
+  const brief = () => { vibrate("light"); onBrief && onBrief(); };
   if (card.role === "host") {
     const h = card.hall;
     return (
@@ -56,6 +80,7 @@ export function ShiftRoleCard({ a11y, card, onSeat, onBrief }) {
         </div>
         <div data-hall-res="" style={{ fontSize: 13, color: card.res ? c.text : c.sub, marginTop: 8, lineHeight: 1.4 }}>
           {card.res ? <><span style={{ color: c.gold }}>Ближайшая бронь:</span> {resLine(card.res)}</> : "Броней на сегодня нет"}</div>
+        {callBtn}
       </div>
     );
   }

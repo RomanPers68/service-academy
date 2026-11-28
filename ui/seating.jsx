@@ -26,6 +26,7 @@ import { labelStyle } from "./tokens";
 import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
 import { briefRoster } from "../lib/briefing";
 import { rememberSeatPlan } from "../lib/tip-avail";   // v149 (Доп. 473)
+import { keepBoard } from "../lib/call-series";   // v212 (Доп. 538): схема для «Позвать» — в копию на телефоне
 import { GRID_W, MAX_TABLES, STATUS, SHAPES, PARTY, NEXT, isBusy, soonFree, boardMap, stateOf, summary, suggest, minutesSince, sinceLabel, tableSub, defaultCnt, reservations,
   onShiftToday, waiterList, initials, shortName, waiterLoad, addTable, moveTable, updateTable, removeTable, planProblem, gridRows, emptyPlan,
   MAX_ZONES, MAX_ITEMS, ITEM_KINDS, zonesOf, zone1, zoneOfX, zoneTables, zoneItems, fits, withZones, addZone, renameZone, removeZone, addWall, addBar, addDoor, removeItem, planV1,
@@ -109,7 +110,9 @@ const DoorIcon = ({ s, color }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M5 21V4h9v17" /><path d="M14 4l5 2v15l-5-2" /><path d="M11 12.5h.01" /><path d="M3 21h18" /></svg>);
 
-export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop, wcolor = null, fine = false }) {
+// v212 (Доп. 538): marks — { [id стола]: { label } }: к столу уже позвали (лист «Позвать», ui/call-table.jsx) — колокольчик
+// в углу стола и «позвали Анну» в подписи для диктора
+export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, selItem, edit = false, tool = "table", pend = null, bg = null, onTable, onCell, onNode, onItem, onDrop, wcolor = null, fine = false, marks = null }) {
   const [ref, w] = useWidth();
   const cell = w / GRID_W;
   const z = zone || zone1(plan);
@@ -234,6 +237,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
         // v186: время за столом — полоской по контуру; официант — рамкой своего цвета (только на доске смены)
         const sit = edit || mainN ? null : sitProgress(r, now);
         const mark = !edit && wcolor && isBusy(r) && r.waiter_id ? wcolor(r.waiter_id) : null;
+        const called = !edit && marks ? marks[t.id] : null, bs = Math.max(14, Math.min(22, cell * 0.38));
         return (
           <button key={t.id} type="button" data-table={t.id} data-status={r.status} data-hi={on ? "1" : "0"} tabIndex={dim ? -1 : undefined} className={canDrag ? "sa-drag" : undefined}
             onClick={() => { if (skipClick.current) { skipClick.current = false; return; } if (!dim && onTable) onTable(t); }}
@@ -241,7 +245,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
             aria-label={"Стол " + t.n + ", " + t.seats + " " + pl(t.seats, "место", "места", "мест") + ": " + (mainN ? "приставлен к столу " + mainN + ", " + STATUS[r.status].toLowerCase()
               : STATUS[r.status].toLowerCase() + (isBusy(r) ? ", гостей " + (r.cnt || 0) : r.status === "res" && r.rtime ? ", на " + r.rtime : "")
               + (sit ? ", сидят " + sinceLabel(sit.min) : "") + (isBusy(r) && r.waiter_name ? ", официант " + shortName(r.waiter_name) : "")
-              + (grouped ? ", вместе со " + (joinedOf(r).length === 1 ? "столом " : "столами ") + joinedOf(r).map(byN).join(", ") : ""))}
+              + (grouped ? ", вместе со " + (joinedOf(r).length === 1 ? "столом " : "столами ") + joinedOf(r).map(byN).join(", ") : "")) + (called ? ", " + called.label : "")}
             style={{ position: "absolute", left: (t.x + offOf(t)[0]) * cell + pad, top: (t.y + offOf(t)[1]) * cell + pad, width: W, height: H, boxSizing: "border-box", border: 0, background: "transparent",
               borderRadius: t.shape === "rd" ? "50%" : Math.max(4, cell * 0.2), color: s.fg, cursor: dim ? "default" : canDrag ? "grab" : "pointer", padding: 0, fontFamily: "Georgia, serif", lineHeight: 1.05,
               opacity: dim ? 0.45 : ghost && ghost.t.id === t.id ? 0.5 : 1, pointerEvents: dim ? "none" : "auto" }}>
@@ -257,6 +261,10 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
               ) : <span style={{ fontSize: fs, opacity: 0.9, whiteSpace: "nowrap" }}>{sub}</span>}
               {r.status === "seat" && r.waiter_name && cell >= 56 ? <span data-table-waiter="" style={{ fontSize: cell * 0.15, opacity: 0.85, whiteSpace: "nowrap" }}>{initials(r.waiter_name)}</span> : null}
             </span>
+            {called ? <span data-table-mark="" aria-hidden="true" style={{ position: "absolute", right: -2, top: -2, width: bs, height: bs, borderRadius: "50%", background: c.gold,
+              color: a11y ? "#FBF7EE" : "#1A1008", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px " + c.casing, pointerEvents: "none" }}>
+              <svg width={Math.round(bs * 0.64)} height={Math.round(bs * 0.64)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg></span> : null}
           </button>);
       })}
       {links.length ? (
@@ -281,7 +289,7 @@ export function Floor({ a11y, c = C(a11y), plan, zone, map, now, hi = [], sel, s
 
 // ── Карточка стола ──────────────────────────────────────────────────────────────
 export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, shiftMap = {}, load = {}, party = 0, now, onSave, onClose, wcolor = null,
-  seat2 = false, group = [], joinWith = null, fromWait = null, cnt0 = 0, onMove, onJoin, onUnjoin }) {
+  seat2 = false, group = [], joinWith = null, fromWait = null, cnt0 = 0, onMove, onJoin, onUnjoin, onCall = null }) {
   const [st, setSt] = React.useState(NEXT[row.status] || "seat");
   // v187: сколько гостей — из листа ожидания или под объединённые столы (не урезаем до мест одного стола)
   const [cnt, setCnt] = React.useState(() => (cnt0 > 0 ? Math.min(40, cnt0) : defaultCnt(t, row, party)));
@@ -364,6 +372,9 @@ export function TableSheet({ a11y, c = C(a11y), t, zoneName = "", row, staff, sh
         <button type="button" data-sheet-save="" onClick={() => save(st)} disabled={busy} data-lens-btn="main" style={{ ...btn(c, true), width: "100%", opacity: busy ? 0.6 : 1 }}>
           {busy ? "Сохраняю…" : st === "seat" ? (isBusy(row) ? "Сохранить" : "Посадить") : st === "bill" ? "Попросили счёт" : st === "res" ? (row.status === "res" ? "Сохранить бронь" : "Забронировать") : st === "clean" ? "На уборку" : "Освободить стол"}</button>
         {seat2 && (isBusy(row) || row.status === "res") && onMove ? <SheetMore c={c} a11y={a11y} row={row} group={group} onMove={onMove} onJoin={onJoin} onUnjoin={onUnjoin} /> : null}
+        {/* v212 (Доп. 538): позвать к этому столу (официанта, менеджера) — лист «Позвать» со столом уже выбранным */}
+        {onCall ? <button type="button" data-sheet-call="" onClick={() => { vibrate("light"); onCall(t); }} data-lens-btn="soft" data-lens-ink=""
+          style={{ ...btn(c), width: "100%", marginTop: 10, boxSizing: "border-box" }}>Позвать к столу {t.n}</button> : null}
       </div>
     </div>
   );
@@ -766,7 +777,8 @@ export function suggestLine(hi, tn, zoneOf, z, zName) {
 }
 
 // ── Экран ───────────────────────────────────────────────────────────────────────
-export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
+// v212 (Доп. 538): onCall(init) — «Позвать» (лист поверх, App.jsx): из шапки — без стола, из карточки стола — с ним
+export function SeatingScreen({ T, a11y, profile, onBack, onMissing, onCall = null }) {
   const c = C(a11y);
   const [st, setSt] = React.useState({ status: "loading" });
   const [sel, setSel] = React.useState(null);
@@ -787,7 +799,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
   const openEditor = (file) => { vibrate("light"); setMsg(""); setPhoto0(file || null); setEdit(true); };
   const load = React.useCallback(() => rpc("seat_board", { p_token: saToken() }).then((r) => {
     if (rpcMissing(r)) { setSt({ status: "missing" }); rememberSeatPlan(restaurant, null, undefined, true); if (onMissing) onMissing(); }
-    else if (r && r.ok) { setSt({ status: "ok", ...r, at: Date.now() }); rememberSeatPlan(restaurant, r); }   // v149: есть ли схема — для советов в уроках
+    else if (r && r.ok) { setSt({ status: "ok", ...r, at: Date.now() }); keepBoard(restaurant, r); rememberSeatPlan(restaurant, r); }   // v149: есть ли схема — для советов в уроках; v212: схема для «Позвать» — в копию
     else setSt((s) => (s.status === "ok" ? s : { status: r && r.error === "no_restaurant" ? "norest" : "error" }));
   }).catch(() => setSt((s) => (s.status === "ok" ? { ...s, offline: true } : { status: "offline" }))), []);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
@@ -934,6 +946,10 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
       <div style={T.lessHead}>
         <button className="sa-hit" style={T.backBtn2} data-lens="back" aria-label="Вернуться" onClick={() => { if (edit) { if (!guard.current || guard.current()) setEdit(false); } else onBack(); }}>‹</button>
         <div style={T.lessHeadTitle}>{edit ? "Схема зала" : "Рассадка"}</div>
+        {onCall && !edit && ok ? <button type="button" data-seat-call="" onClick={() => { vibrate("light"); onCall(null); }}
+          data-lens-btn="soft" data-lens-ink="" style={{ ...chip(c, false, a11y), marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={c.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>Позвать</button> : null}
       </div>
       <div style={{ padding: "4px 16px 110px" }}>
         {st.status === "loading" ? <div style={{ fontSize: 13, color: c.sub, padding: "6px 2px" }}>Загружаю зал…</div> : null}
@@ -1030,7 +1046,7 @@ export function SeatingScreen({ T, a11y, profile, onBack, onMissing }) {
         seat2={seat2} group={groupOf(map, selT.id).slice(1).map(tById).filter((q) => q.id)} joinWith={pend && pend.main === selT.id && pend.with ? pend.with.map(tById).filter((q) => q.id) : null}
         fromWait={pend && pend.wait ? pend.wait : null} cnt0={pend ? pend.cnt || 0 : 0} onUnjoin={doUnjoin}
         onMove={() => { setSel(null); setPick({ kind: "move", tid: selT.id }); }} onJoin={() => { setSel(null); setPick({ kind: "join", tid: selT.id }); }}
-        now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} /> : null}
+        now={now} onSave={saveTable} onClose={() => setSel(null)} wcolor={wcolor} onCall={onCall ? (q) => { setSel(null); onCall({ tid: q.id, table: String(q.n) }); } : null} /> : null}
     </div>
   );
 }

@@ -1867,8 +1867,25 @@ export function makeServer(opts) {
       c.pin = b.p_msg ? Number(b.p_msg) : null; return { ok: true, pin: c.pin ? J(msgOf(c.pin)) : null };
     }
     if (fn === "chat_call") {
-      const c = chatOf(b.p_chat); if (!visible(c, p) || c.kind !== "team") return { ok: false, error: "not_found" };
-      const k = { who: b.p_who || "waiter", why: b.p_why || "help", table: cut(b.p_table, 8), text: cut(b.p_text, 80), emp: b.p_emp || null, going: [] };
+      // v212 (Доп. 538): как этап 68. Чат — «Вся команда» заведения (приложение p_chat не шлёт, как и этапу 38).
+      // Тот же вызов (кого, зачем, стол, свой текст) за 30 секунд — already с прошлым; больше 15 за 5 минут — too_many.
+      // opts.noStage68 — сервер без этапа 68: после любого вызова 30 секунд too_fast
+      const c = b.p_chat ? chatOf(b.p_chat) : S.chats.find((x) => x.kind === "team" && x.rest === p.restaurant);
+      if (!visible(c, p) || c.kind !== "team") return { ok: false, error: "not_found" };
+      const to = b.p_who === "person" ? who(String(b.p_emp || "")) : null;
+      if (b.p_who === "person" && (!to || to.id === p.id || to.restaurant !== p.restaurant)) return { ok: false, error: "bad_request" };
+      const why = b.p_why || "help";
+      const k = { who: b.p_who || "waiter", why, table: why === "table" ? cut(b.p_table, 8) : "", text: why === "own" ? cut(b.p_text, 80) : "", emp: to ? to.id : null,
+        to_name: to ? full(to) : "", going: [] };
+      const mine = S.msgs.filter((m) => m.emp === p.id && m.kind === "call"), age = (m) => clock() - Date.parse(m.at);
+      if (opts.noStage68) { if (mine.some((m) => age(m) < 30000)) return { ok: false, error: "too_fast" }; }
+      else {
+        const same = [...mine].reverse().find((m) => !m.del && age(m) < 30000 && m.call.who === k.who && String(m.call.emp || "") === String(k.emp || "") && m.call.why === k.why
+          && String(m.call.table || "") === k.table && String(m.call.text || "") === k.text);
+        if (same) return { ok: false, error: "already", msg: J(same) };
+        const five = mine.filter((m) => age(m) < 300000);
+        if (five.length >= 15) return { ok: false, error: "too_many", wait: Math.max(1, Math.ceil((300000 - age(five[0])) / 1000)) };
+      }
       return { ok: true, msg: J(put(c, p, "", { kind: "call", call: k })) };
     }
     if (fn === "chat_go") {

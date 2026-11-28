@@ -157,7 +157,7 @@ describe("v116: разметка «Смены»", () => {
   it("рассадка: чипсы — выбранный плашка, остальные стекло с подписью золотом; «Сохранить» — плашка; столы схемы — прежние", () => {
     const S = rd("ui/seating.jsx");
     const chips = S.split("\n").filter((l) => /chip\(c, /.test(l) && /style=/.test(l));
-    expect(chips.length).toBe(16);
+    expect(chips.length).toBe(17);   // v212: + «Позвать» в шапке рассадки
     for (const l of chips) expect(l).toMatch(/data-lens-btn=(\{[^}]* \? "tab" : "soft"\}|"soft") data-lens-ink=""/);
     expect(S).toContain('data-sheet-save="" onClick={() => save(st)} disabled={busy} data-lens-btn="main"');
     expect(S).toContain('data-floor-save="" onClick={save} disabled={busy} data-lens-btn="main"');

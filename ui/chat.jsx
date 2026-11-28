@@ -30,8 +30,8 @@ import { vibrate, onActivate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { LABEL_CSS } from "./tokens";
 import { MicButton } from "./mic";
-import { CHAT_MAX, CALL_WHO, CALL_WHY, CALL_OWN_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
-  isCallForMe, callState, callProblem, cleanBody, readBy, readLine, badge, peopleWord, quoteText, replyOf, canEdit, canPin, canDelOthers, pinnable, reactGroups, myReact,
+import { CHAT_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
+  isCallForMe, callState, cleanBody, readBy, readLine, badge, peopleWord, quoteText, replyOf, canEdit, canPin, canDelOthers, pinnable, reactGroups, myReact,
   withReact, reactName, photoBox, restShort, canClear, clearedChanged, canGroup, canManage, groupTitle, GROUP_TITLE_MAX } from "../lib/chat";
 import { compressPhoto } from "../lib/chat-photo";
 import { IC, ric, posName, stop } from "./chat-kit";   // v93: значки и помощники — общие с умными карточками
@@ -39,7 +39,7 @@ import { CARDS_CSS, CardMsg, AiMsg, AiTyping, ActSheet, Suggest, ShiftSheet, Swa
 import { askAi, aiQuestion, intents, withVote, AI_NAME, personShiftLine, mentorContext } from "../lib/chat-smart";
 import { makeChatApp } from "../lib/chat-app";   // v93: уроки, меню, коктейли, справочник — для карточек
 // v189 (Доп. 514): «К столу» — стол выбирают на схеме зала (схема из «Рассадки» грузится, только когда нужна)
-const CallTables = React.lazy(() => import("./call-table").then((m) => ({ default: m.CallTables })));
+import { CallSheet } from "./call-sheet";   // v212 (Доп. 538): «Позвать» подряд; схема зала — там же (ui/call-table.jsx)
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone
 import { mentionNames, mentionQuery, mentionSuggest, mentionInsert, mentionParts, mentionsMe, isLeadPos } from "../lib/chat-mention";   // v99 (Доп. 412): «@Имя»
 import { draftGet, draftSet, draftClear, draftLine } from "../lib/chat-draft";   // v99: черновик не пропадает
@@ -291,6 +291,23 @@ button.ch-mava:active{opacity:.75}
 .ch-main:disabled{opacity:.55}
 /* v108 (Доп. 421): второе действие в карточке коллеги — «Сказать спасибо»: стекло с золотой надписью (в «Линзе» — как остальные) */
 .ch-main.ghost{background:var(--opt);border:1px solid var(--opt-edge);color:var(--gold-ink);font-weight:600;box-shadow:none;margin-top:8px}
+/* v212 (Доп. 538): «Позвать» (ui/call-sheet.jsx): схема и люди листаются, кнопка «Позвать…» внизу всегда на виду; над
+   ней строка, что ушло последним; пока чего-то не хватает, кнопка бледнее и подписана, чего именно */
+.ch-sheet.ch-cs{display:flex;flex-direction:column;overflow:hidden}
+.ch-cs-body{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:0 -16px;padding:0 16px 6px}
+.ch-cs-foot{flex:0 0 auto;padding-top:8px;border-top:1px solid var(--edge)}
+.ch-cs-foot .ch-err{margin:0 0 4px;padding:0}
+.ch-cs-foot .ch-main{margin-top:8px}
+.ch-main.wait{opacity:.62;box-shadow:none}
+.ch-cs-last{display:flex;align-items:center;gap:7px;font-size:14px;line-height:1.35;color:var(--ok-ink)}
+.ch-cs-last svg{width:16px;height:16px;flex:0 0 auto}
+.ch-cs-last.again{color:var(--sub)}
+.ch-cs-n{font-size:12.5px;color:var(--ok-ink);white-space:nowrap}
+.ch-cs-wait{font-size:13px;color:var(--sub);padding:8px 2px}
+.ch-cs-or{margin:9px 0 6px;font-size:12.5px;color:var(--sub)}
+.ch-chips.sub .ch-chip{padding:6px 11px;font-size:13.5px}
+.ch-cs-list{margin-top:8px;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-radius:14px;border:1px solid var(--edge);padding-bottom:6px}
+.ch-cs-list .ch-search{width:calc(100% - 16px);margin:8px auto 4px}
 .ch-act{display:flex;align-items:center;gap:12px;width:100%;padding:13px 6px;border:0;border-bottom:1px solid var(--edge);background:none;color:var(--text);font-size:16px;cursor:pointer;text-align:left}
 .ch-act:last-child{border-bottom:0}
 .ch-act svg{color:var(--gold-ink);flex:0 0 auto}
@@ -569,7 +586,7 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
         : picker ? <People a11y={a11y} me={me} api={api} title="Написать" hint="Личная переписка: видите только вы двое." onBack={() => setPicker(false)} onPick={openDm} top={newRow} />
         : <List chats={chats} me={me} err={err} note={note} onBack={onBack} onOpen={(c) => { vibrate("light"); setNote(""); setCurId(c.id); }} onWrite={() => { vibrate("light"); setNote(""); setPicker(true); }}
             onCall={team ? () => { vibrate("light"); setCallOpen(true); } : null} back={!callOpen} onSearch={api.search ? () => { vibrate("light"); setNote(""); searchQ.current = ""; setSearch(true); } : null} />}
-      {callOpen && !cur && team ? <CallSheet a11y={a11y} me={me} api={api} chat={team} onClose={() => setCallOpen(false)} onDone={() => { setCallOpen(false); setCurId(team.id); }} /> : null}
+      {callOpen && !cur && team ? <CallSheet a11y={a11y} me={me} api={api} chat={team} onClose={(n) => { setCallOpen(false); if (n) setCurId(team.id); }} /> : null}
       {shareItem && !cur ? <ShareTo api={api} me={me} chats={chats} item={shareItem} onClose={() => setShareItem(null)}
         onSent={(chat) => { setShareItem(null); setInit(null); setCurId(chat.id); load(); }} /> : null}
     </div>
@@ -1580,7 +1597,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} data-chat-file="" tabIndex={-1} aria-hidden="true" />
       </div>
     </div>
-    {sheet === "call" ? <CallSheet a11y={a11y} me={me} api={api} chat={chat} onClose={() => setSheet(null)} onDone={(msg) => { setSheet(null); if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
+    {sheet === "call" ? <CallSheet a11y={a11y} me={me} api={api} chat={chat} onClose={() => setSheet(null)} onSent={(msg) => { if (msg) { stick.current = true; addMsgs([msg], { quiet: true }); heat(); } }} /> : null}
     {sheet === "info" ? <GroupInfo chat={chat} me={me} api={api} members={members} onClose={() => setSheet(null)} onAdd={() => setSheet("add")} onGone={(why) => { setSheet(null); if (onGone) onGone(why); }}
       onChanged={() => { if (onSent) onSent(); if (pullRef.current) pullRef.current(false); }} /> : null}
     {sheet === "clear" ? <ClearSheet chat={chat} busy={clearBusy} err={clearErr} onClear={clearChat} onClose={() => { if (!clearBusy) setSheet(null); }} /> : null}
@@ -1612,75 +1629,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
   </>);
 }
 
-// ── «Позвать» ──
-function CallSheet({ a11y = false, me, api, chat, onClose, onDone }) {
-  const [who, setWho] = React.useState("");
-  const [person, setPerson] = React.useState(null);
-  const [why, setWhy] = React.useState("");
-  const [table, setTable] = React.useState("");
-  const [own, setOwn] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-  const [err, setErr] = React.useState("");
-  // v189: схема зала и столы на сегодня (seat_board) — чтобы стол выбрать, а не вписывать; нет рассадки — поле, как раньше
-  const [board, setBoard] = React.useState(null);
-  const [tid, setTid] = React.useState(null);
-  const [manual, setManual] = React.useState(false);
-  const [viaTable, setViaTable] = React.useState(false);   // официанта стола выбрали со схемы — список людей не раскрываем
-  const pickRef = React.useRef(null);
-  React.useEffect(() => {
-    let on = true;
-    if (api && api.board) Promise.resolve(api.board()).then((r) => { if (on && r && r.ok && r.plan && Array.isArray(r.plan.tables) && r.plan.tables.length) setBoard(r); }).catch(() => {});
-    return () => { on = false; };
-  }, [api]);
-  const call = { who, emp: person && person.id, toName: person && person.name, why, table, text: own };
-  const problem = callProblem(call);
-  const preview = !problem ? callLine({ name: (me && me.name) || "Ты", emp: me && me.id, call }, null).replace(/^\S+ зовёт /, "Позовёшь ") : "";
-  const submit = () => {
-    if (problem || busy) { if (problem) setErr(problem); return; }
-    setBusy(true); setErr(""); vibrate("medium");
-    Promise.resolve(api.call({ chat: chat.id, who, emp: person ? person.id : null, why, table: why === "table" ? String(table).trim() : "", text: why === "own" ? own.trim() : "" })).then((r) => {
-      setBusy(false);
-      if (r && r.ok) onDone(r.msg || null);
-      else setErr(r && r.error === "too_fast" ? "Ты уже звал(а) только что: подожди минуту." : "Не отправилось. Проверь связь и попробуй ещё раз.");
-    }).catch(() => { setBusy(false); setErr("Нет связи. Попробуй ещё раз."); });
-  };
-  return (
-    <div className="ch-veil" data-kbm="" onClick={onClose}>
-      <div className="ch-sheet" role="dialog" aria-modal="true" aria-label="Позвать" data-chat-callsheet="" onClick={stop}>
-        <div className="ch-grip" aria-hidden="true" />
-        <div className="ch-sheet-h"><span className="ch-sheet-t">Позвать</span><button type="button" className="ch-x" data-sa-back="" aria-label="Закрыть" onClick={onClose}>{IC.x}</button></div>
-        <div style={{ fontSize: 13.5, color: "var(--sub)", lineHeight: 1.45 }}>Вызов увидит вся команда, а тот, кого зовёшь, получит его сразу и ответит «Иду».</div>
-        <div className="ch-lbl">Кого</div>
-        <div className="ch-chips" role="radiogroup" aria-label="Кого позвать">
-          {CALL_WHO.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={who === id} className="ch-chip" data-chat-who={id} onClick={() => { vibrate("light"); setWho(id); setPerson(null); setErr(""); }}>{label}</button>)}
-          <button type="button" role="radio" aria-checked={who === "person"} className="ch-chip" data-chat-who="person" onClick={() => { vibrate("light"); setWho("person"); setViaTable(false); setErr(""); }}>{person ? person.name.split(" ")[0] : "Человека"}</button>
-        </div>
-        {who === "person" && !viaTable ? <div style={{ marginTop: 8, maxHeight: 220, overflowY: "auto", borderRadius: 14, border: "1px solid var(--edge)" }} className="sa-dlgscroll">
-          <People me={me} api={api} inline picked={person && person.id} onPick={(p) => { setPerson(p); setErr(""); }} />
-        </div> : null}
-        <div className="ch-lbl">Зачем</div>
-        <div className="ch-chips" role="radiogroup" aria-label="Зачем">
-          {CALL_WHY.map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={why === id} className="ch-chip" data-chat-why={id} onClick={() => {
-            vibrate("light"); setWhy(id); setErr("");
-            if (id === "table" && board && !manual) setTimeout(() => { try { pickRef.current && pickRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) { /* */ } }, 120);
-          }}>{label}</button>)}
-        </div>
-        {why === "table" && board && !manual ? <div ref={pickRef} style={{ marginTop: 8 }}>
-          <React.Suspense fallback={<div style={{ fontSize: 13, color: "var(--sub)", padding: "8px 2px" }}>Открываю схему зала…</div>}>
-            <CallTables a11y={a11y} board={board} tid={tid} who={who}
-              onPick={(t) => { setTid(t.id); setTable(String(t.n)); setErr(""); }}
-              onWaiter={(p) => { setWho("person"); setPerson({ id: p.id, name: p.name }); setViaTable(true); setErr(""); }}
-              onManual={() => { setManual(true); setTid(null); setTable(""); }} />
-          </React.Suspense>
-        </div> : null}
-        {why === "table" && !(board && !manual) ? <input className="ch-field num sa-field" inputMode="numeric" value={table} maxLength={6} placeholder="Номер стола" aria-label="Номер стола" data-chat-table="" onChange={(e) => { setTable(e.target.value); setErr(""); }} /> : null}
-        {why === "own" ? <input className="ch-field sa-field" value={own} maxLength={CALL_OWN_MAX} placeholder="Например: принеси детский стульчик" aria-label="Зачем зовёшь" data-chat-own="" onChange={(e) => { setOwn(e.target.value); setErr(""); }} /> : null}
-        {preview ? <div className="ch-preview" data-chat-preview="">{preview}</div> : null}
-        {err ? <div className="ch-err" role="alert" style={{ marginTop: 10, padding: 0 }}>{err}</div> : null}
-        <button type="button" className="ch-main" data-chat-call-send="" disabled={busy} onClick={submit}>{busy ? "Зову…" : "Позвать"}</button>
-      </div>
-    </div>);
-}
+// ── «Позвать» — ui/call-sheet.jsx (v212, Доп. 538: подряд к нескольким столам, схема сразу) ──
 
 // ── сообщение: реакции, ответить, изменить, закрепить, кто прочитал, скопировать, удалить ──
 function MsgSheet({ me, msg, chat, members, reads, pinned, onClose, onDelete, onReply, onEdit, onPin, onReact }) {
@@ -1847,5 +1796,18 @@ export function CallBanner({ a11y, me, call, onGo, onClose, onOpen, busy = false
         <button type="button" className="ch-go" data-chat-banner-go="" disabled={busy} onClick={onGo}>Иду</button>
         <button type="button" className="ch-x" aria-label="Позже" onClick={onClose}>{IC.x}</button>
       </div>
+    </div>);
+}
+
+// v212 (Доп. 538): «Позвать» поверх любого экрана — с главной хостес, из «Смены» и «Рассадки» (App.jsx). Тот же лист,
+// что в чате (ui/call-sheet.jsx): цвета и стили — от слоя .sa-dlg.ch, под затемнением виден экран, с которого позвали.
+// init — стол, уже выбранный в «Рассадке»: { tid, table }. Порталом в body: «Назад» Telegram закрывает сначала лист.
+export function CallLayer({ a11y, me, api, init = null, onClose }) {
+  ensureChatCss();
+  const rootRef = React.useRef(null);
+  const kb = useKeyboardLift(rootRef, { cls: "kb" });
+  return portal(
+    <div ref={rootRef} className={"sa-dlg ch" + (a11y ? " lt" : "") + (kb.up ? " kb" : "")} data-call-layer="" style={{ background: "none" }}>
+      <CallSheet a11y={a11y} me={me} api={api} init={init} onClose={onClose} />
     </div>);
 }

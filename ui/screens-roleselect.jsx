@@ -144,7 +144,7 @@ export function greetName(name) {
   return cut > 0 ? [s.slice(0, cut + 1), s.slice(cut + 1)] : ["", s];
 }
 
-export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onBarCard = null, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, look = "now", nowRows = null, nowFoot = null }) {
+export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, wideColW = 0, short = false, hintsReady = true, onSelect, T, a11y, scores = [], onCocktails, onSchedule, onLeaderboard, onProfile, onStats, onDaily, onGlossary, role, profile, completedRoles = new Set(), onChecklist, onOnboarding, onAnalytics, onReference, onContentEditor, onCertificates, onMenuTrainer, onBarCard = null, onMentor, onGuestBook, onSOS, onAssistant, onCandidate, completed = {}, quizDone = {}, examResults = {}, mistakeBank = [], onContinueLesson, onMistakes, dayMode, customByRole = {}, dayStrip = null, dayNote = null, warmupCard = null, weekCard = null, masteryCard = null, qdayCard = null, stepLine = null, nowCard = null, nowOn = null, firstDay = false, roleAuto = false, tracksOpen = false, lateRow = null, callRow = null, look = "now", nowRows = null, nowFoot = null }) {
   const isAdmin = !!profile?.is_admin;
   // v101 (Доп. 414): вид главной (lib/home-look.js): «Линза» или «как сейчас» — классы на корне и стили
   // ui/home-look.jsx; раскладка та же.
@@ -485,7 +485,11 @@ export function RoleSelect({ learnOnly = false, wide = false, wideCols = false, 
                stepData ? { key: "step", label: "Шаг дня:", title: String(stepData.text).replace(/^Попробуй:\s*/, "").replace(/^./, (x) => x.toUpperCase()),
                  onClick: () => { if (step.props.onStep) step.props.onStep(stepData); } } : null].filter(Boolean);
           // v99 (Доп. 412): за 3 часа до смены и 2 часа после начала — «Опаздываю» первой строкой (App: lateRow)
-          const rows = lateRow && !firstDay ? [lateRow, ...rows0].slice(0, 3) : rows0;
+          // v212 (Доп. 538): хостес — «Позвать: официанта к столу» (App: callRow): это дело смены, а не учёба, поэтому и в
+          // самый первый день; после смены строки нет
+          const callOk = callRow && !(ctx && (ctx.mode === "after" || ctx.mode === "reply"));
+          const pre = [lateRow && !firstDay ? lateRow : null, callOk ? callRow : null].filter(Boolean);
+          const rows = pre.length ? [...pre, ...rows0].slice(0, 3) : rows0;
           const foot = !ctx && warm && warm.props ? warm.props.children || null : ctx && ctx.mode === "during" && nowFoot ? nowFoot : null;
           return (
             <div style={{ padding:"0 14px " + F.cardPb + "px" }}>

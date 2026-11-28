@@ -181,6 +181,7 @@ describe("v173 · все строки поиска приложения", () => 
       ["ui/together.jsx", 'placeholder="Найти коллегу"'],
       ["ui/menu-trainer.jsx", 'placeholder="Найти блюдо в редакторе…"'],
       ["ui/dish-moments.jsx", 'placeholder="Название или что в составе"'],   // v193 (Доп. 518): «О каком блюде спросили?»
+      ["ui/call-sheet.jsx", 'data-chat-search=""'],   // v212 (Доп. 538): «Позвать» → «Другой…»
     ];
     for (const [f, mark] of want) {
       const hit = TAGS.filter((t) => t.f === f && t.tag.includes(mark));

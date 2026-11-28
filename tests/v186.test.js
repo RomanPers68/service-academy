@@ -191,7 +191,7 @@ describe("v186 · доска смены", () => {
     expect(s).toContain("Полоска по краю стола: сколько сидят гости, через час она");
     expect(s).toContain("Рамка вокруг стола цветом официанта.");
     expect(s).toContain('"Столы официанта подсвечены. Нажми на имя ещё раз, чтобы снять." : "Нажми на имя: подсветятся столы официанта."');
-    expect(s).toContain("onClose={() => setSel(null)} wcolor={wcolor} />");
+    expect(s).toContain("onClose={() => setSel(null)} wcolor={wcolor} onCall={");   // v212: и «Позвать к столу» из карточки
     expect(s).toContain("{wcolor && wcolor(e.id) ? <span data-waiter-dot=\"\"");
   });
   it("карточка стола: кружок цвета у официанта, у кого цвет есть", async () => {

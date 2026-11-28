@@ -291,7 +291,7 @@ describe("v87: «Смена» под роль", () => {
   });
   it("в «Смене»: под сменой дня, по той же доске, что спрашивается раз в минуту; брифинг «известен» после ответа сервера", () => {
     const app = rd("App.jsx");
-    expect(app).toContain('<ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} />');
+    expect(app).toContain('<ShiftRoleCard a11y={a11y} card={shiftRole} onSeat={() => navigate("seat")} onBrief={() => navigate("brief")} onCall={callHost ? () => openCall(null) : null} />');   // v212: хостес — «Позвать к столу»
     expect(app.indexOf("<ShiftRoleCard")).toBeGreaterThan(app.indexOf('hero={<><ShiftHero'));
     expect(app).toContain("if (r && r.ok) setSeatBoard(r);");
     expect(app).toContain("setTeamBrief(b); setBriefKnown(true);");

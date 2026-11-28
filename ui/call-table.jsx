@@ -6,11 +6,15 @@
 //     только Анну С.»: вызов уйдёт ей лично, а не всем официантам;
 //   • стола нет на схеме — «Вписать номер» (как раньше). Схемы нет совсем (рассадку не настроили, нет этапа 35) — сразу
 //     поле номера.
-// Экран «Позвать» — ui/chat.jsx (CallSheet); схема — Floor из ui/seating.jsx (грузится, только когда нужна).
+// Экран «Позвать» — ui/call-sheet.jsx (CallSheet, v212; был в ui/chat.jsx); схема — Floor из ui/seating.jsx (грузится,
+// только когда нужна).
+// v212 (Доп. 538): marks — к каким столам уже звали с этого телефона за 10 минут (lib/call-series.js): у стола на
+// схеме колокольчик, под схемой у выбранного стола — «позвали Анну 2 мин назад».
 import React from "react";
 import { Floor } from "./seating";
 import { boardMap, stateOf, zonesOf, zoneOfX, STATUS, isBusy, shortName, guestsWord, minutesSince, sinceLabel } from "../lib/seating";
 import { accName } from "../lib/chat";
+import { markLine } from "../lib/call-series";
 import { vibrate } from "../lib/utils";
 
 const pl = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
@@ -32,12 +36,13 @@ export function ownWaiter(r) {
   return { id: String(r.waiter_id), name: String(r.waiter_name).trim(), label: "Позвать только " + accName(first) + (rest.length ? " " + rest[0][0] + "." : "") };
 }
 
-export function CallTables({ a11y, board, tid, who, onPick, onWaiter, onManual }) {
+export function CallTables({ a11y, board, tid, who, marks = null, onPick, onWaiter, onManual }) {
   const plan = board.plan, map = React.useMemo(() => boardMap(board.tables || []), [board]);
   const now = board.now ? Date.parse(board.now) || Date.now() : Date.now();
   const zones = zonesOf(plan), t = tid ? (plan.tables || []).find((q) => q.id === tid) : null;
   const [zone, setZone] = React.useState(() => (t ? zoneOfX(plan, t) : (zones[0] || {}).id));
   const r = t ? stateOf(map, t.id) : null, own = who === "waiter" && r ? ownWaiter(r) : null;
+  const mk = t && marks ? marks[t.id] : null;
   return (
     <div data-call-tables="">
       <div className="ch-lbl" style={{ marginTop: 4 }}>Какой стол</div>
@@ -47,11 +52,11 @@ export function CallTables({ a11y, board, tid, who, onPick, onWaiter, onManual }
             onClick={() => { vibrate("light"); setZone(z.id); }}>{z.name}</button>)}
         </div>) : null}
       <div data-call-floor="" style={{ borderRadius: 16, padding: 6, border: "1px solid var(--opt-edge)", background: "var(--opt)" }}>
-        <Floor a11y={a11y} plan={plan} zone={zone} map={map} now={now} sel={tid} hi={tid ? [tid] : []} onTable={(q) => { vibrate("light"); onPick(q); }} />
+        <Floor a11y={a11y} plan={plan} zone={zone} map={map} now={now} sel={tid} hi={tid ? [tid] : []} marks={marks} onTable={(q) => { vibrate("light"); onPick(q); }} />
       </div>
       {/* что выбрано — диктор прочтёт сам, когда выберут стол */}
       <div data-call-status="" role="status" aria-live="polite" style={{ marginTop: 8, lineHeight: 1.45 }}>
-        {t ? <span data-call-picked="" style={{ fontSize: 13.5, color: "var(--text)" }}>{pickedLine(t, r, now)}</span>
+        {t ? <span data-call-picked="" style={{ fontSize: 13.5, color: "var(--text)" }}>{pickedLine(t, r, now)}{mk ? <span data-call-picked-mark="" style={{ color: "var(--gold-ink)" }}>{" · " + markLine(mk)}</span> : null}</span>
           : <span style={{ fontSize: 13, color: "var(--sub)" }}>Нажми на стол на схеме.</span>}
       </div>
       {own ? <div className="ch-chips" style={{ marginTop: 8 }}>

@@ -236,7 +236,7 @@ describe("v180 · экран", () => {
     expect(s).toContain('const kd = kindOf(kind, tall), p = addTable(plan, x, y, z, kd);');
     // «Длинный» горит и у вертикального; чипсов в файле столько же (правило линзы v116)
     expect(s).toContain('data-lens-btn={t.shape === k || (k === "long" && t.shape === "tall") ? "tab" : "soft"} data-lens-ink=""');
-    expect(s.split("\n").filter((l) => /chip\(c, /.test(l) && /style=/.test(l)).length).toBe(16);
+    expect(s.split("\n").filter((l) => /chip\(c, /.test(l) && /style=/.test(l)).length).toBe(17);   // v212: + «Позвать» в шапке рассадки
   });
   it("тексты: без тире между словами, без восклицаний и эмодзи", () => {
     for (const f of ["ui/floor-tools.jsx", "ui/seating.jsx", "lib/floor-scan.js", "lib/seating.js", "lib/floor-art.js", "ui/table-art.jsx"]) {

@@ -115,23 +115,25 @@ describe("v189 · лист «Позвать» в чате", () => {
     await api.call({ who: "person", emp: "e-anna", why: "table", table: "5", text: "" });
     expect(calls).toEqual([["seat_board", {}], ["chat_call", { p_who: "person", p_emp: "e-anna", p_why: "table", p_table: "5", p_text: null }]]);
   });
-  it("«К столу»: есть схема — она, нет — поле номера; «Позвать только…» не раскрывает список людей", () => {
-    const s = rd("ui/chat.jsx");   // без code(): в файле есть accept="image/*", а это похоже на начало комментария
+  it("«К столу»: есть схема — она, нет — поле номера; «Позвать только…» выбирает официанта стола", () => {
+    // v212 (Доп. 538): лист переехал в ui/call-sheet.jsx и открывается сразу на «К столу»; схема — из копии на телефоне
+    // и свежая следом (lib/call-series.js: freshBoard — только со столами); пока схема не пришла — «Загружаю схему зала…»
+    const s = rd("ui/call-sheet.jsx");
     expect(s).toContain('const CallTables = React.lazy(() => import("./call-table").then((m) => ({ default: m.CallTables })));');
-    expect(s).toContain("if (api && api.board) Promise.resolve(api.board()).then((r) => { if (on && r && r.ok && r.plan && Array.isArray(r.plan.tables) && r.plan.tables.length) setBoard(r); }).catch(() => {});");
-    expect(s).toContain('{why === "table" && board && !manual ? <div ref={pickRef}');
-    expect(s).toContain('{why === "table" && !(board && !manual) ? <input className="ch-field num sa-field"');
-    expect(s).toContain("onPick={(t) => { setTid(t.id); setTable(String(t.n)); setErr(\"\"); }}");
-    expect(s).toContain('onWaiter={(p) => { setWho("person"); setPerson({ id: p.id, name: p.name }); setViaTable(true); setErr(""); }}');
+    expect(s).toContain("freshBoard(api, rest).then((b) => { if (!on) return; if (b !== null) setBoard(b || null); setBoardDone(true); });");
+    expect(s).toContain('{why === "table" && plan ? <div>');
+    expect(s).toContain('{why === "table" && !plan && boardDone ? <input className="ch-field num sa-field"');
+    expect(s).toContain("onPick={(t) => { setTid(t.id); setTable(String(t.n)); touch(); }}");
+    expect(s).toContain("onWaiter={pickPerson}");
     expect(s).toContain('onManual={() => { setManual(true); setTid(null); setTable(""); }}');
-    expect(s).toContain('{who === "person" && !viaTable ? <div');
-    expect((s.match(/<CallSheet a11y=\{a11y\} me=\{me\}/g) || []).length).toBe(2);   // из списка чатов и из переписки
+    const c = rd("ui/chat.jsx");
+    expect((c.match(/<CallSheet a11y=\{a11y\} me=\{me\}/g) || []).length).toBe(3);   // из списка чатов, из переписки и слоем поверх экрана (v212)
   });
 });
 
 describe("v189 · тексты", () => {
   it("без тире между словами, без восклицаний и эмодзи", () => {
-    for (const f of ["ui/call-table.jsx", "ui/chat.jsx"]) {
+    for (const f of ["ui/call-table.jsx", "ui/chat.jsx", "ui/call-sheet.jsx"]) {
       const src = code(rd(f));
       expect([f, src.match(/[А-Яа-яЁё»)"]\s—\s[А-Яа-яЁё«]/g) || []]).toEqual([f, []]);
       expect([f, /[А-Яа-яЁё]!["'`<\s]/.test(src)]).toEqual([f, false]);

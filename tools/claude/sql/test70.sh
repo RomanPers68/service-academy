@@ -32,8 +32,8 @@ chk() { local name="$1" got="$2" want="$3"; if printf '%s' "$got" | grep -qE -- 
 
 chk "этап 70 раньше этапа 40 — понятная ошибка" "$NO40" 'Сначала этап 40 \(supabase-stage40-morning.sql\): утренняя сводка'
 chk "этапы 26–40 и 70 (дважды) — без ошибок" "$RC" '^0$'
-chk "итог этапа" "$(echo "$OUT70" | grep -o 'Закрытые дни в утренней сводке: _sa_mo_lvl знает closedDows и days\[d\].closed · заведений с выходными днями: [0-9]*' | tail -1)" \
-  'заведений с выходными днями: 0$'
+chk "итог этапа" "$(echo "$OUT70" | grep -o 'Закрытые и особые дни в утренней сводке: .*' | tail -1 | sed 's/[[:space:]]*$//')" \
+  'dates · заведений с выходными днями: 0 · с особыми днями: 0$'
 
 # декабрь 2026: 7-е и 14-е — понедельники, 8-е — вторник, 11-е — пятница
 C0='{"rules": {"peakDows": [4, 5], "highDows": [3, 6], "holidayPeak": true, "closedDows": [0]}, "need": {"1": {"waiter": 2}, "2": {"waiter": 2}, "3": {"waiter": 3}}}'
@@ -57,7 +57,18 @@ chk "закрытый понедельник с кейтерингом — ды�
   '^\[\] \| \[\{"pos": "waiter", "miss": 1\}\]$'
 PP "update schedule_months set payload = jsonb_set(payload, '{plan,1,9}', '\"К\"') where restaurant = 'Тест70'" >/dev/null
 chk "среда, закрытая датой, — тоже без дыр" "$(H 2026-12-09)" '^\[\]$'
-chk "права: _sa_mo_lvl закрыта от anon" "$(PP "select has_function_privilege('anon', '_sa_mo_lvl(jsonb, jsonb, date)', 'execute')")" '^f$'
+# «Особые дни» (v216): дата главнее пометки месяца и недели; свои люди на дату
+CD='{"rules": {"peakDows": [4, 5], "closedDows": [0], "holidayPeak": true}, "need": {"1": {"waiter": 2}, "2": {"waiter": 2}, "3": {"waiter": 3}},
+  "dates": {"2026-12-31": {"closed": true}, "2027-01-02": {"hours": [16, 24]}, "2026-12-14": {"closed": false, "lvl": 3}, "2026-12-08": {"need": {"waiter": 4}}},
+  "shifts": [{"k": "Д", "name": "День", "from": 12, "to": 20}, {"k": "К", "name": "Кейтеринг", "from": 10, "to": 22, "extra": 1}],
+  "staff": [{"id": 1, "name": "Анна", "pos": "waiter"}]}'
+LD() { PP "select _sa_mo_lvl(\$j\$$CD\$j\$::jsonb, '$1'::jsonb, '$2'::date)"; }
+chk "особые дни: 31 декабря закрыто, 2 января (свои часы) — праздник, пик; понедельник 14-го открыт пиком, хотя месяц его закрыл" \
+  "$(LD '{}' 2026-12-31) $(LD '{}' 2027-01-02) $(LD '{"14": {"closed": true}}' 2026-12-14) $(LD '{}' 2026-12-07)" '^0 3 3 0$'
+PP "update schedule_months set payload = jsonb_set(payload, '{plan,1,8}', '\"Д\"') where restaurant = 'Тест70'" >/dev/null
+HD() { PP "select _sa_mo_holes('Тест70', \$j\$$CD\$j\$::jsonb, '$1'::date)"; }
+chk "особые дни: 8-го нужно 4 официанта (своё число) — не хватает трёх" "$(HD 2026-12-08)" '^\[\{"pos": "waiter", "miss": 3\}\]$'
+chk "права: _sa_mo_lvl и _sa_mo_holes закрыты от anon" "$(PP "select has_function_privilege('anon', '_sa_mo_lvl(jsonb, jsonb, date)', 'execute') || ' ' || has_function_privilege('anon', '_sa_mo_holes(text, jsonb, date)', 'execute')")" '^false false$'
 
 echo; echo "Итого: ✓ $pass  ✗ $fail"
 $P0 -d postgres -c "drop database if exists $DB" >/dev/null 2>&1

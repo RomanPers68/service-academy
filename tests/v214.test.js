@@ -126,16 +126,16 @@ describe("v214 · этап 70: утренняя сводка", () => {
   it("без этапа 40 — понятная ошибка; закрыто датой и по неделе — уровень 0; права; итог", () => {
     expect(sql).toContain("raise exception 'Сначала этап 40 (supabase-stage40-morning.sql): утренняя сводка';");
     const f = fnBody(sql, "_sa_mo_lvl");
-    expect(f).toContain("if jsonb_typeof(o) = 'object' and jsonb_typeof(o->'closed') = 'boolean' then");
+    expect(f).toContain("elsif jsonb_typeof(o) = 'object' and jsonb_typeof(o->'closed') = 'boolean' then");   // v216: «Особые дни» (dd) — ещё раньше
     expect(f).toContain("if (o->>'closed')::boolean then return 0; end if;");
     expect(f).toContain("elsif jsonb_typeof(r->'closedDows') = 'array' and (r->'closedDows') @> to_jsonb(w) then");
-    // остальное — как в этапе 40, слово в слово
+    // остальное — как в этапе 40, слово в слово (кроме пометки уровня: v216 — сначала «Особые дни»)
     const f40 = fnBody(rd("supabase/supabase-stage40-morning.sql"), "_sa_mo_lvl");
-    const tail = (x) => x.slice(x.indexOf("  if r->>'levels' in ('2', '3')"));
+    const tail = (x) => x.slice(x.indexOf("  if ol in (1, 2, 3) then return"));
     expect(tail(f)).toBe(tail(f40));
-    expect(sql).toContain("revoke all on function _sa_mo_lvl(jsonb, jsonb, date) from public, anon, authenticated;");
+    expect(sql).toContain("revoke all on function _sa_mo_lvl(jsonb, jsonb, date), _sa_mo_holes(text, jsonb, date) from public, anon, authenticated;");
     expect(sql).toContain("notify pgrst, 'reload schema';");
-    expect(sql).toContain("select 'Закрытые дни в утренней сводке:");
+    expect(sql).toContain("select 'Закрытые и особые дни в утренней сводке:");
   });
   it("README этапов и инструментов знают этап 70", () => {
     expect(rd("supabase/README.md")).toContain("supabase-stage70-closed-days.sql");

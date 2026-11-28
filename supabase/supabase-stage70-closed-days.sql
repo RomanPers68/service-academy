@@ -73,7 +73,7 @@ begin
   need := p_cfg->'need'->(_sa_mo_lvl(p_cfg, pl->'days', p_day)::text);
   if jsonb_typeof(need) is distinct from 'object' then return out; end if;
   dd := case when jsonb_typeof(p_cfg->'dates') = 'object' then p_cfg->'dates'->to_char(p_day, 'YYYY-MM-DD') end;
-  if jsonb_typeof(dd) = 'object' and jsonb_typeof(dd->'need') = 'object' then need := need || dd->'need'; end if;
+  if jsonb_typeof(dd) = 'object' and jsonb_typeof(dd->'need') = 'object' then need := need || (dd->'need'); end if;
   foreach p in array _sa_mo_pos() loop
     n := _sa_num(need->>p)::int;
     if n <= 0 then continue; end if;

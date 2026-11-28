@@ -147,9 +147,10 @@ describe("v214 · этап 70: утренняя сводка", () => {
 describe("v214 · экран графика", () => {
   const S = rd("ui/schedule.jsx");
   it("правило по умолчанию и уровень дня из lib/schedule-days.js", () => {
-    expect(S).toContain('import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule } from "../lib/schedule-days";');
-    expect(S).toContain("rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], maxRow:5,");
-    expect(S).toContain("const dayCtx = { rules: cfg?.rules || DEFAULT_CONFIG.rules, days, dow, holName, levels };");
+    // v216: тот же импорт и «Особые дни» (dateOf, dayHours, hoursOn, dayNeed, needDowFrom, datesList)
+    expect(S).toContain('import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule, dateOf, dayHours, hoursOn, dayNeed, needDowFrom, datesList } from "../lib/schedule-days";');
+    expect(S).toContain('rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], needMode:"levels", maxRow:5,');   // v216: + needMode
+    expect(S).toContain("const dayCtx = { rules: cfg?.rules || DEFAULT_CONFIG.rules, days, dates: cfg?.dates || {}, iso: isoD, dow, holName, levels };");
     expect(S).toContain("const lvlOf = d => dayLevel(dayCtx, d);");
     expect(S).toContain("const closedOf = d => isClosed(dayCtx, d);");
   });
@@ -173,7 +174,9 @@ describe("v214 · экран графика", () => {
     expect(S).toContain('<div data-day-type="" role="radiogroup" aria-label="Тип дня"');
     expect(S).toContain('{[...LVLS, [0, "закрыто"]].map(([l, nm]) => (');
     expect(S).toContain('onClick={() => setDayType(d, l === 0 ? "closed" : l)}');
-    expect(S).toContain("const o = markDayType({ ...dayCtx, days: dd }, d, t), nx = { ...dd }; if (o) nx[d] = o; else delete nx[d];");
+    // v216: пометка — в «Особые дни» настроек (cfg.dates), старая пометка месяца снимается
+    expect(S).toContain("const k = isoD(d), o = markDayType(dayCtx, d, t);");
+    expect(S).toContain("patch(c => { const ds = { ...(c.dates || {}) }; if (o) ds[k] = o; else delete ds[k]; c.dates = ds; });");
     expect(S).toContain("как в правилах</span>");
     expect(S).toContain("Гостей не принимаем: генератор никого не ставит, «Проверка» не ищет здесь дыр.");
     expect(S).toContain("Снять смены этого дня</button>");

@@ -13,7 +13,8 @@ const between = (a, b) => { const i = src.indexOf(a); expect(i).toBeGreaterThan(
 describe("v49: лист смены подсказывает до выбора", () => {
   const pick = between("    {pick && (() => {", "    {/* v46: дыра в смене — кто из позиции может выйти");
   it("правила — тем же генератором, что «Заполнить черновик»: whyNot по плану, где клетка как будто пустая", () => {
-    expect(pick).toContain("const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot;");
+    // v216: и потребность дня, и свои часы «Особых дней»
+    expect(pick).toContain("const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot;");
     expect(pick).toContain('const pmFree = { ...plan, [who.id]: { ...(plan[who.id] || {}), [d]: "" } };');
     expect(pick).toContain("const w = !sh2.extra && why ? why(pmFree, who, d, sh2.k) : null;");
   });

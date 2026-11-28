@@ -191,6 +191,21 @@ PP "update sa_queue set day = day - 9 where day < (now() at time zone _sa_tz('Д
 Q "select queue_get('$ANNA')" >/dev/null
 chk "старше недели — стирается" "$(PP "select count(*) from sa_queue where restaurant = 'Два моря, Океан'")" '^1$'
 
+# ── Этап 71 (v216, Доп. 542): официант для очереди — по графику месяца, без графика — по должности ────────────
+cp "$SRC/supabase-stage71-queue-by-schedule.sql" "$D/"; chmod a+r "$D/supabase-stage71-queue-by-schedule.sql"
+RC=0; run supabase-stage71-queue-by-schedule.sql; run supabase-stage71-queue-by-schedule.sql
+chk "этап 71 дважды — без ошибок; итог" "$RC|$(echo "$OUT" | grep -o 'Очередь по графику: .*' | head -1 | sed 's/ ·.*//')" '^0\|Очередь по графику: официант — по роли в графике месяца, без графика — по должности$'
+# в графике месяца: Анна — раннер, Ольга (хостес по должности) — официант, Вера — официант; Глеб в графике без роли
+PP "update schedule_venues set config = jsonb_set(config, '{staff}', (select jsonb_agg(case when x->>'name' = 'Анна Смирнова' then x || '{\"pos\": \"runner\"}'::jsonb
+    when x->>'name' in ('Ольга Ли', 'Вера Соколова') then x || '{\"pos\": \"waiter\"}'::jsonb else x end) from jsonb_array_elements(config->'staff') x)) where restaurant = 'Два моря, Океан'" >/dev/null
+PP "update sa_queue set ord = jsonb_build_array(jsonb_build_object('id', '$AEMP', 'away', false, 'out', false), jsonb_build_object('id', '$VEMP', 'away', false, 'out', false))
+  where restaurant = 'Два моря, Океан' and day = (now() at time zone _sa_tz('Два моря, Океан'))::date" >/dev/null
+chk "Анна по графику раннер — ушла из очереди; others: Вера уже в очереди, Ольга (хостес, но в графике официант) — да, Глеб (бармен, графика нет) — нет" \
+  "$(QL $OLGA)|$(Q "select string_agg((x->>'name') || ':' || coalesce(x->>'from', '-'), ', ' order by o) from jsonb_array_elements(queue_get('$OLGA')->'others') with ordinality t(x, o)")" \
+  '^Вера Соколова\|Ольга Ли:12$'
+Q "select queue_set('$OLGA', jsonb_build_array(jsonb_build_object('id', '$AEMP'), jsonb_build_object('id', '$OEMP'), jsonb_build_object('id', '$VEMP')))" >/dev/null
+chk "queue_set: раннера (Анну) не берёт, Ольгу — берёт" "$(QL $OLGA)" '^Ольга Ли, Вера Соколова$'
+
 echo; echo "Итого: ✓ $pass  ✗ $fail"
 $P0 -d postgres -c "drop database if exists $DB" >/dev/null 2>&1
 [ "$fail" -eq 0 ]

@@ -12,6 +12,7 @@ import { cardSummary, shiftLogLine } from "../../../lib/chat-smart.js";
 import { mentionNames } from "../../../lib/chat-mention.js";
 import { lateMinText } from "../../../lib/late.js";
 import { morningText, morningKb } from "../../../lib/morning.js";   // v106: «Утро руководителя» — текст, как у сервера
+import { dayNeed as sdNeed } from "../../../lib/schedule-days.js";   // v216: сколько людей в день, как этапы 70 и 72
 import { focusFromPayload, memoOf, NB_KEEP_DAYS, NB_STEP_IDS, NB_BUDDY_STEPS } from "../../../lib/newbie.js";   // v107: новичок, как этап 41
 import { cheersDue, joinedOf, cheerDm, thxPing, cutText, THX_MAX, THX_DAY_MAX, BOT_NAME } from "../../../lib/team-warm.js";   // v108: как этап 42
 import { pointsOf } from "../../../lib/activity.js";   // v109: очки дня — как _sa_day_points этапа 24
@@ -273,9 +274,11 @@ export function makeServer(opts) {
   const calls = (p) => S.msgs.filter((m) => callFor(m, p) && !(m.call.going || []).length && !m.call.passed && !m.call.done && clock() - Date.parse(m.at) < 600000).map(J);   // v213: без переданных дальше; v215: и без «На месте»
   // v213 (Доп. 539): очередь официантов на сегодня (этап 69): [{ id, away, out }] по ресторану; opts.noStage69 — этапа нет
   // v215 (Доп. 541): очередь составляет хостес по приходу — сама утром не собирается
+  // этап 71: официант для очереди — по роли в графике (sstaff.pos), а кого в графике нет — по должности
+  const qWaiter = (e) => { const st = staffOf(e.id), sp = st && st.pos; return sp ? sp === "waiter" : e.position === "waiter"; };
   const qOrd = (rest) => {
     S.queue = S.queue || {};
-    const ws = PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired");
+    const ws = PEOPLE.filter((e) => e.restaurant === rest && qWaiter(e) && e.status !== "fired");
     S.queue[rest] = (S.queue[rest] || []).filter((x, i, a) => ws.some((e) => e.id === x.id) && a.findIndex((y) => y.id === x.id) === i);
     return S.queue[rest];
   };
@@ -284,11 +287,11 @@ export function makeServer(opts) {
   const qJson = (p, rest) => {
     const ord = qOrd(rest);
     return { ok: true, day: TODAY, edit: qCan(p), list: ord.map((x) => ({ id: x.id, name: full(who(x.id)), away: !!x.away, out: !!x.out })),
-      others: PEOPLE.filter((e) => e.restaurant === rest && e.position === "waiter" && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e), from: qFrom(e) }))
+      others: PEOPLE.filter((e) => e.restaurant === rest && qWaiter(e) && e.status !== "fired" && !ord.some((x) => x.id === e.id)).map((e) => ({ id: e.id, name: full(e), from: qFrom(e) }))
         .sort((a, b) => (a.from == null) - (b.from == null) || (a.from || 0) - (b.from || 0) || a.name.localeCompare(b.name, "ru")) };
   };
   const qMove = (rest, id, firstPlace) => {
-    const e = who(id); if (!e || e.restaurant !== rest || e.position !== "waiter") return;
+    const e = who(id); if (!e || e.restaurant !== rest || !qWaiter(e)) return;
     if (!qOrd(rest).some((x) => x.id === id)) return;   // v215: кого нет в очереди — не дописываем
     const ord = qOrd(rest).filter((x) => x.id !== id), it = { id, away: false, out: false };
     S.queue[rest] = firstPlace ? [it, ...ord] : [...ord, it];
@@ -1941,7 +1944,7 @@ export function makeServer(opts) {
       if (!qCan(p)) return { ok: false, error: "forbidden" };
       if (!Array.isArray(b.p_ord)) return { ok: false, error: "bad_request" };
       const old = qOrd(p.restaurant), seen = new Set(), nq = [];
-      for (const x of b.p_ord) { const e = x && who(String(x.id)); if (e && e.restaurant === p.restaurant && e.position === "waiter" && !seen.has(e.id)) { seen.add(e.id); nq.push({ id: e.id, away: x.away === true, out: x.out === true }); } }
+      for (const x of b.p_ord) { const e = x && who(String(x.id)); if (e && e.restaurant === p.restaurant && qWaiter(e) && !seen.has(e.id)) { seen.add(e.id); nq.push({ id: e.id, away: x.away === true, out: x.out === true }); } }
       S.queue[p.restaurant] = [...nq, ...old.filter((x) => !seen.has(x.id))];
       return qJson(p, p.restaurant);
     }
@@ -2267,22 +2270,18 @@ export function makeServer(opts) {
   const MO_NEED = { 1: { manager: 1, host: 1, call: 1, bar: 1, barback: 1, waiter: 6, runner: 1 }, 2: { manager: 1, host: 1, call: 1, bar: 1, barback: 1, waiter: 6, runner: 2 },
     3: { manager: 1, host: 1, call: 1, bar: 2, barback: 1, waiter: 6, runner: 2 } };
   const moCfg = () => ({ ...CFG, rules: { peakDows: [4, 5], highDows: [3, 6], holidayPeak: true, ...((CFG && CFG.rules) || {}) }, need: { ...MO_NEED, ...((CFG && CFG.need) || {}) } });
-  function moLvl(cfg, iso) {
-    const r = cfg.rules, n = (l, ps) => Number((cfg.need[l] || {})[ps]) || 0;
-    const lv = r.levels === 2 || r.levels === 3 ? r.levels : MO_POS.some((ps) => n(2, ps) !== n(1, ps) && n(2, ps) !== n(3, ps)) ? 3 : 2;
-    const o = (monOf(iso).days || {})[dayN(iso)];
-    if (o && [1, 2, 3].includes(Number(o.lvl))) return Number(o.lvl) === 2 && lv === 2 ? 3 : Number(o.lvl);
-    if (MO_HOL.includes(iso.slice(5)) && r.holidayPeak) return 3;
-    const w = (dowOf(iso) + 6) % 7;
-    if ((r.peakDows || []).includes(w)) return 3;
-    if (lv === 3 && (r.highDows || []).includes(w)) return 2;
-    return 1;
-  }
+  // v216: тип дня и сколько людей — формулой приложения (lib/schedule-days.js), как этапы 70 и 72 на сервере:
+  // закрытые дни, «Особые дни» (config.dates) и люди по дням недели (rules.needMode, config.needDow)
+  const moLv = (cfg) => { const r = cfg.rules, n = (l, ps) => Number((cfg.need[l] || {})[ps]) || 0;
+    return r.levels === 2 || r.levels === 3 ? r.levels : MO_POS.some((ps) => n(2, ps) !== n(1, ps) && n(2, ps) !== n(3, ps)) ? 3 : 2; };
+  const moCtx = (cfg, iso) => { const at = (d) => iso.slice(0, 8) + String(d).padStart(2, "0");
+    return { rules: cfg.rules, days: monOf(iso).days || {}, dates: cfg.dates || {}, levels: moLv(cfg), iso: at,
+      dow: (d) => (dowOf(at(d)) + 6) % 7, holName: (d) => (MO_HOL.includes(at(d).slice(5)) ? "праздник" : null) }; };
   const moStaff = (mk) => SSTAFF.filter((s) => (!s.till || mk <= s.till) && (!s.since || mk >= s.since));
   function moHoles(cfg, iso) {
     const mo = monOf(iso), dn = dayN(iso);
     if (!Object.values(mo.plan || {}).some((row) => row && row[dn])) return [];   // день ещё не расписан
-    const need = cfg.need[moLvl(cfg, iso)] || {};
+    const need = sdNeed(moCtx(cfg, iso), cfg, Number(dayN(iso)));
     const out = [];
     for (const ps of MO_POS) {
       const n = Number(need[ps]) || 0; if (n <= 0) continue;

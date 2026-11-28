@@ -14,7 +14,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../lib/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
-import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule } from "../lib/schedule-days";   // v214 (Доп. 540): закрытые дни и тип дня на дату
+import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule, dateOf, dayHours, hoursOn, dayNeed, needDowFrom, datesList } from "../lib/schedule-days";   // v214 (Доп. 540): закрытые дни и тип дня на дату
 import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
 import { NO_AUTOCORRECT } from "../lib/search-field";   // v173 (Доп. 498): строка «Найти…» без автозамены
@@ -66,6 +66,7 @@ const vacRanges = (s, mk) => {
 
 const mergeCfg = (saved) => {
   const out = { ...DEFAULT_CONFIG, ...(saved || {}) };
+  if (!out.dates || typeof out.dates !== "object" || Array.isArray(out.dates)) out.dates = {};   // v216
   ["rules", "need", "split", "posRules"].forEach(k => {
     const d = DEFAULT_CONFIG[k];
     if (d && typeof d === "object" && !Array.isArray(d)) {
@@ -159,7 +160,10 @@ export const DEFAULT_CONFIG = {
   // Числа здесь — часть общей потребности, а не надбавка сверх неё.
   split: { waiter: { "Д":5, "В":1 } },
   // closedDows — дни недели, когда заведение закрыто (v214): генератор их пропускает, «Проверка» не ищет там дыр
-  rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
+  // dates — «Особые дни» (v216): { "ГГГГ-ММ-ДД": { closed, hours: [с, до], lvl, need } }; needDow — сколько людей по
+  // дням недели (rules.needMode = "dows"): { должность: [пн … вс] }
+  dates: {}, needDow: null,
+  rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], needMode:"levels", maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
     // floor — норма это обязательная выработка, сверх неё можно;
     // cap — норму превышать нельзя.
     normMode:"floor" },
@@ -223,7 +227,7 @@ function Field({ label, P, children }) {
 }
 // Числовое поле держит своё значение, пока его правят: иначе стирание
 // последней цифры мгновенно превращалось бы в ноль.
-function Num({ v, min, max, set, inp }) {
+function Num({ v, min, max, set, inp, w = 60 }) {   // v216: w — узкое поле; "100%" — во всю колонку дня недели
   // Неуправляемое поле: значение живёт в DOM, поэтому перерисовка экрана
   // не может его сбросить и увести фокус вместе с клавиатурой.
   const ref = React.useRef(null);
@@ -232,7 +236,7 @@ function Num({ v, min, max, set, inp }) {
   }, [v]);
   return (
     <input ref={ref} type="number" inputMode="numeric" data-lens-field="" defaultValue={String(v)} min={min} max={max}
-      style={{ ...inp, width:60, textAlign:"center" }}
+      style={{ ...inp, width:w, textAlign:"center", ...(typeof w !== "number" || w < 50 ? { padding:"7px 0", fontSize:15 } : null) }}
       onFocus={focusScroll}
       onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
       onChange={e => { if (e.target.value === "") return;
@@ -460,6 +464,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   const [dbg, setDbg] = React.useState("");     // сырой ответ сервера для разбора
   const [tab, setTab] = React.useState("plan"); // plan · setup
   const [openSec, setOpenSec] = React.useState(1);
+  const [dateEdit, setDateEdit] = React.useState(null);   // v216 (Доп. 542): форма «Особого дня» в «Часах работы»
   const wizTried = React.useRef(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const [more, setMore] = React.useState(false);        // Доп. 150: редкие действия — за «Ещё»
@@ -727,11 +732,25 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   // Ручная пометка дня «высоким» при двух уровнях читается как пик: иначе день попал бы на уровень, которого на экране
   // больше нет. v214 (Доп. 540): уровень 0 — заведение закрыто (каждую неделю или этой датой), потребности нет вовсе.
   // Раньше закрытого дня не было: понедельник без гостей требовал тех же людей, и «Проверка» сыпала недоборами.
-  const dayCtx = { rules: cfg?.rules || DEFAULT_CONFIG.rules, days, dow, holName, levels };
+  const isoD = d => `${Y}-${String(M + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const dayCtx = { rules: cfg?.rules || DEFAULT_CONFIG.rules, days, dates: cfg?.dates || {}, iso: isoD, dow, holName, levels };
   const lvlOf = d => dayLevel(dayCtx, d);
   const closedOf = d => isClosed(dayCtx, d);
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
-  const needOf = d => (cfg?.need || {})[lvlOf(d)] || {};
+  // v216 (Доп. 542): сколько людей — по уровню дня или по дням недели, и своё число в «Особые дни» (lib/schedule-days.js)
+  const needOf = d => dayNeed(dayCtx, cfg, d);
+  const dateHoursOf = d => dayHours(dayCtx, d);
+  // «Особые дни» на любую дату года, не только этого месяца: день недели, праздник и потребность — по самой дате
+  const isoDow = iso => (new Date(iso + "T12:00:00").getDay() + 6) % 7;
+  const isoCtx = (iso, x) => ({ rules: cfg?.rules || DEFAULT_CONFIG.rules, days: {}, dates: { [iso]: x }, iso: () => iso,
+    dow: () => isoDow(iso), holName: () => HOLIDAYS[iso.slice(5)], levels });
+  const needDefault = (iso, lvl) => dayNeed(isoCtx(iso, { closed: false, ...(lvl ? { lvl } : null) }), cfg, 1);
+  const openDate = (iso) => {
+    const x = (iso && cfg?.dates?.[iso]) || {}, wh = (iso && cfg?.hours?.[isoDow(iso)]) || [12, 24], own = Array.isArray(x.hours);
+    setDateEdit({ orig: x && iso && cfg?.dates?.[iso] ? iso : "", iso: iso || "", closed: x.closed === true, own,
+      o: own ? x.hours[0] : wh[0], c: own ? x.hours[1] : wh[1], lvl: x.lvl || 0,
+      needOn: !!(x.need && typeof x.need === "object"), need: { ...(x.need || {}) }, note: x.note || "" });
+  };
   const onVac = (s, d) => vacRanges(s, mkey).some(r => d >= r[0] && d <= r[1]);
   const vacsOf = (s) => vacRanges(s, mkey);
   // Заморозка живого месяца: прошедшие дни (и сегодня — смена уже идёт)
@@ -1191,7 +1210,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
     const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
-    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
     if (!res.plan) return;
     // прошлое уходящего возвращается в план (генератор его не знает — он
     // исключён из штата на прогон)
@@ -1221,7 +1240,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     Object.entries(locks).forEach(([id, ds]) => {
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey,
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: vLocks, POS, mkey,
       wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), prevTail, freezeBefore: fb });
     if (!res.plan) return;
     setPlan(res.plan);
@@ -1318,7 +1337,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     });
     const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
     const before = cells(plan);
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed, onlyIds });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed, onlyIds });
     if (!res.plan) return;
     const added = cells(res.plan) - before;
     snapUndo();
@@ -1358,7 +1377,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     if (!cfg) return [];
     const R = cfg.rules, out = [];
     let why = null;
-    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d);
       POS.forEach(({ id: pos }) => {
@@ -1601,9 +1620,16 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   };
 
   // v214: тип дня на дату из листа дня. t — 1 | 2 | 3 | "closed" | null (как в правилах); пометка живёт в месяце
+  // v216: пишем в «Особые дни» настроек (сохраняются сами), а не в месяц: дату видно в «Часах работы» на год вперёд
   const setDayType = (d, t) => {
-    setDays(dd => { const o = markDayType({ ...dayCtx, days: dd }, d, t), nx = { ...dd }; if (o) nx[d] = o; else delete nx[d]; return nx; });
-    setDirty(true); vibrate("light");
+    const k = isoD(d), o = markDayType(dayCtx, d, t);
+    patch(c => { const ds = { ...(c.dates || {}) }; if (o) ds[k] = o; else delete ds[k]; c.dates = ds; });
+    // старая пометка месяца (v214) — убираем, чтобы «как в правилах» вернуло правила, а не её
+    if (days[d] && (typeof days[d].closed === "boolean" || days[d].lvl)) {
+      setDays(dd => { const x = { ...(dd[d] || {}) }; delete x.closed; delete x.lvl; const nx = { ...dd }; if (Object.keys(x).length) nx[d] = x; else delete nx[d]; return nx; });
+      setDirty(true);
+    }
+    vibrate("light");
   };
 
   // Доп. 258/262: перенос прошлого месяца — теперь общий, вызывается из «Ещё»
@@ -2379,11 +2405,53 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     // v214 (Доп. 540): выходные дни заведения — в «Часах работы»; их часы в сводку не идут
     const closedW = (cfg.rules.closedDows || []).filter(w => w >= 0 && w <= 6).sort((a, b) => a - b);
     const openHrs = cfg.hours.filter((h, i) => !closedW.includes(i));
+    // v216 (Доп. 542): «Особые дни» с начала этого месяца: прошедшие месяцы планировать уже незачем
+    const fromIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const dList = datesList(cfg.dates, fromIso);
     const sum1 = (openHrs.length ? `с ${Math.min(...openHrs.map(h => h[0]))}:00 до ${Math.max(...openHrs.map(h => h[1]))}:00` : "закрыто всю неделю")
-      + (closedW.length ? ` · выходной: ${closedW.map(w => DOWL[w]).join(", ")}` : "");
+      + (closedW.length ? ` · выходной: ${closedW.map(w => DOWL[w]).join(", ")}` : "")
+      + (dList.length ? ` · особых дней: ${dList.length}` : "");
+    const hh = h => `${h > 24 ? h - 24 : h}:00`;
+    const isoLabel = iso => { const [y, m, dd] = iso.split("-").map(Number);
+      return `${dd} ${MONTHS_R[m - 1]}${y !== now.getFullYear() ? " " + y : ""}, ${DOWL[isoDow(iso)]}`; };
+    const lvlName = l => { const v = l === 2 && levels === 2 ? 3 : l; return ({ 1: "обычный", 2: "высокий", 3: "пик" })[v] || ""; };
+    const dateText = x => {
+      if (x.closed === true) return ["закрыто", x.note].filter(Boolean).join(" · ");
+      const n = x.need && typeof x.need === "object" ? Object.values(x.need).reduce((a, v) => a + (Number(v) || 0), 0) : null;
+      return [x.closed === false ? "открыты" : "", Array.isArray(x.hours) ? `с ${hh(x.hours[0])} до ${hh(x.hours[1])}` : "",
+        x.lvl ? lvlName(x.lvl) : "", n !== null ? `${n} чел.` : "", x.note].filter(Boolean).join(" · ") || "как обычно";
+    };
+    const de = dateEdit, setDE = o => setDateEdit(v => ({ ...v, ...o }));
+    const dePos = de ? POS.filter(({ id }) => staff.some(x => x.pos === id) || (Number(de.need?.[id]) || 0) > 0) : [];
+    const deOk = !!(de && /^\d{4}-\d{2}-\d{2}$/.test(de.iso) && (de.closed || !de.own || de.o !== de.c));
+    const saveDate = () => {
+      if (!deOk) return;
+      const o = {};
+      if (de.closed) o.closed = true;
+      else {
+        if (closedByRule(cfg.rules, isoDow(de.iso))) o.closed = false;      // выходной по неделе, а в эту дату работаем
+        if (de.own) o.hours = [de.o, de.c];
+        if (de.lvl) o.lvl = de.lvl;
+        // своё число — по должностям, что видны в форме (есть люди или нужен кто-то); остальным и так никого не нужно
+        if (de.needOn) o.need = Object.fromEntries(dePos.map(({ id }) => [id, Math.max(0, Math.min(20, Number(de.need?.[id]) || 0))]));
+      }
+      const note = String(de.note || "").trim().slice(0, 40); if (note) o.note = note;
+      if (!Object.keys(o).length && !de.orig) { setDateEdit(null); setMsg("В эту дату и так работаем как обычно: сохранять нечего"); setTimeout(() => setMsg(""), 4000); return; }
+      patch(c => { const ds = { ...(c.dates || {}) }; if (de.orig && de.orig !== de.iso) delete ds[de.orig];
+        if (Object.keys(o).length) ds[de.iso] = o; else delete ds[de.iso]; c.dates = ds; });
+      setDateEdit(null); vibrate("success");
+    };
+    const delDate = iso => {
+      patch(c => { const ds = { ...(c.dates || {}) }; delete ds[iso]; c.dates = ds; });
+      if (dateEdit && dateEdit.orig === iso) setDateEdit(null);
+      vibrate("light"); setMsg(`Убрали ${isoLabel(iso)} из «Особых дней»`); setTimeout(() => setMsg(""), 4000);
+    };
+
     const leftClosed = closedLeft();
     const sum2 = `${cfg.shifts.map(x => x.k).join(" ")} · авто: ${cfg.shifts.filter(x => !x.extra).length}`;
-    const sum3 = LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
+    const byDow = cfg.rules.needMode === "dows" && cfg.needDow && typeof cfg.needDow === "object";   // v216
+    const sum3 = byDow ? "по дням недели: " + DOWL.map((dl, wi) => Object.values(cfg.needDow).reduce((a, arr) => a + (Number((arr || [])[wi]) || 0), 0)).join(" ") + " чел."
+      : LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
     const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
     const nVac = staff.filter(vacOn).length;
     const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
@@ -2453,7 +2521,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       {/* Доп. 260: хватит ли людей — заранее, а не после «Заполнить» */}
       {(() => {
         const rows = POS.map(({ id: pos, t }) => {
-          let need = 0; for (let d = 1; d <= DAYS; d++) need += (cfg.need?.[lvlOf(d)] || {})[pos] || 0;
+          let need = 0; for (let d = 1; d <= DAYS; d++) need += needOf(d)[pos] || 0;
           if (!need) return null;
           const list = staff.filter(x => x.pos === pos);
           let cap = 0;
@@ -2529,7 +2597,86 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 setMsg(n ? `Сняли ${n} ${plural(n, "смену", "смены", "смен")} в закрытые дни. Не забудь «Сохранить»` : "Снимать нечего"); setTimeout(() => setMsg(""), 5000); }}>Снять</button>
           </div>
         ) : null}
-        <div style={hintStyle}>Работу после полуночи пишем как 25 или 26: это час и два ночи. В выходной заведения генератор никого не ставит, а «Проверка» не ищет там дыр. Закрыть одну дату (санитарный день, 1 января) или открыть выходной под банкет можно в таблице: тап по числу.</div>
+        {/* v216 (Доп. 542): «Особые дни». Владелец: «ресторан не работает только 31 декабря и 1-го января. А 2-го не
+            с 11, а с 16 ти работает». На любую дату года: закрыто, свои часы, свой тип дня и своё число людей. */}
+        <div style={{ ...labelStyle(11.5), color:P.sub, margin:"14px 0 6px" }}>Особые дни</div>
+        <div data-dates-list="">
+          {dList.length ? dList.map(x => (
+            <div key={x.iso} data-date-row={x.iso} style={rowStyle}>
+              <span role="button" tabIndex={0} style={{ flex:1, minWidth:0, fontSize:12.5, lineHeight:1.4, color: x.closed === true ? P.sub : P.text, cursor:"pointer" }}
+                onClick={() => openDate(x.iso)} {...onActivate(() => openDate(x.iso))}>
+                <b style={{ color:P.text }}>{isoLabel(x.iso)}</b> · <span data-date-text="">{dateText(x)}</span>
+              </span>
+              <button className="sa-btn" title="Убрать дату" data-date-del={x.iso} onClick={() => delDate(x.iso)}
+                style={{ flex:"0 0 30px", width:30, height:30, minWidth:30, boxSizing:"border-box", background:"transparent",
+                  border:`1px solid ${P.danger}55`, color:P.danger, borderRadius:9, fontSize:12, cursor:"pointer", padding:0,
+                  display:"grid", placeItems:"center" }}>✕</button>
+            </div>
+          )) : <div style={{ fontSize:12, color:P.sub, fontStyle:"italic", padding:"2px 0 4px" }}>Пока ни одной даты</div>}
+        </div>
+        {de ? (
+          <div data-date-form="" style={{ marginTop:8, padding:"10px 11px", borderRadius:12,
+            border:`1px solid ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}` }}>
+            <Field label="Дата" P={P}>
+              <input type="date" data-date-iso="" data-lens-field="" value={de.iso} min={fromIso} onChange={e => {
+                const iso = e.target.value, wh = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? (cfg.hours[isoDow(iso)] || [12, 24]) : null;
+                setDE({ iso, ...(wh && !de.own ? { o: wh[0], c: wh[1] } : null) }); }}
+                style={{ ...inp, width:"100%" }} />
+            </Field>
+            <div role="radiogroup" aria-label="Работаем ли" style={{ display:"flex", gap:4, marginTop:10 }}>
+              <Pill a11y={a11y} P={P} on={de.closed} attrs={{ "data-date-closed": "1", role:"radio", "aria-checked": de.closed }}
+                style={{ flex:1, padding:"7px 0", fontSize:12 }} onClick={() => setDE({ closed: true })}>Закрыто</Pill>
+              <Pill a11y={a11y} P={P} on={!de.closed} attrs={{ "data-date-closed": "0", role:"radio", "aria-checked": !de.closed }}
+                style={{ flex:1, padding:"7px 0", fontSize:12 }} onClick={() => setDE({ closed: false })}>Работаем</Pill>
+            </div>
+            {!de.closed ? <>
+              <div style={{ ...rowStyle, marginTop:8 }}>
+                <Pill a11y={a11y} P={P} on={de.own} attrs={{ "data-date-own": "", "aria-pressed": !!de.own }} style={{ padding:"6px 10px", fontSize:12, whiteSpace:"nowrap", flexShrink:0 }}
+                  onClick={() => setDE({ own: !de.own })}>Свои часы</Pill>
+                {de.own ? <>
+                  <Num inp={inp} w={48} v={de.o} min={0} max={23} set={v => setDE({ o: v })} />
+                  <span style={{ color:P.sub }}>до</span>
+                  <Num inp={inp} w={48} v={de.c} min={1} max={30} set={v => setDE({ c: v })} />
+                </> : <span style={{ fontSize:11.5, color:P.sub }}>{/^\d{4}-\d{2}-\d{2}$/.test(de.iso)
+                  ? `как обычно: с ${hh(de.o)} до ${hh(de.c)}` : "как обычно по дню недели"}</span>}
+              </div>
+              <div style={{ ...labelStyle(11), color:P.sub, margin:"8px 0 4px" }}>Тип дня</div>
+              <div role="radiogroup" aria-label="Тип дня" style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                {[[0, "как обычно"], ...LVLS].map(([l, nm]) => (
+                  <Pill key={l} a11y={a11y} P={P} on={(de.lvl || 0) === l} attrs={{ "data-date-lvl": l, role:"radio", "aria-checked": (de.lvl || 0) === l }}
+                    style={{ flex:"1 0 auto", padding:"6px 8px", fontSize:11.5, whiteSpace:"nowrap" }} onClick={() => setDE({ lvl: l })}>{upFirst(nm)}</Pill>
+                ))}
+              </div>
+              <div style={{ ...rowStyle, marginTop:8 }}>
+                <Pill a11y={a11y} P={P} on={de.needOn} attrs={{ "data-date-need-on": "", "aria-pressed": !!de.needOn }} style={{ padding:"6px 10px", fontSize:12 }}
+                  onClick={() => setDE(de.needOn ? { needOn: false } : { needOn: true,
+                    need: /^\d{4}-\d{2}-\d{2}$/.test(de.iso) ? { ...needDefault(de.iso, de.lvl), ...(de.need || {}) } : { ...(de.need || {}) } })}>Своё число людей</Pill>
+                {!de.needOn ? <span style={{ fontSize:11.5, color:P.sub }}>как в разделе 3</span> : null}
+              </div>
+              {de.needOn ? dePos.map(({ id, t }) => (
+                <div key={id} data-date-need={id} style={rowStyle}>
+                  <span style={{ flex:1, fontSize:12.5, color:P.sub }}>{t}</span>
+                  <Num inp={inp} w={52} v={Number(de.need?.[id]) || 0} min={0} max={20} set={v => setDE({ need: { ...(de.need || {}), [id]: v } })} />
+                </div>
+              )) : null}
+            </> : null}
+            <div style={{ marginTop:8 }}>
+              <Text inp={inp} v={de.note} maxLength={40} placeholder="подпись: банкет" style={{ width:"100%" }}
+                set={v => setDE({ note: v })} />
+            </div>
+            <div style={{ display:"flex", gap:8, marginTop:10 }}>
+              <button className="sa-btn" data-date-save="" disabled={!deOk} style={{ ...btn, flex:"2 1 0", padding:"10px 12px", fontSize:13, opacity: deOk ? 1 : .5 }}
+                onClick={saveDate}>{de.orig ? "Сохранить дату" : "Добавить дату"}</button>
+              <button className="sa-btn" data-date-cancel="" data-lens-btn="soft" style={{ ...ghost, flex:"1 1 0", padding:"10px 12px", fontSize:13 }}
+                onClick={() => setDateEdit(null)}>Отмена</button>
+            </div>
+            {de.own && de.o === de.c ? <div style={{ fontSize:11.5, color:P.warn, marginTop:6 }}>Часы открытия и закрытия совпали</div> : null}
+          </div>
+        ) : (
+          <button className="sa-btn" data-date-add="" data-lens-btn="soft" style={{ ...ghost, marginTop:8, padding:"8px 12px", fontSize:12.5 }}
+            onClick={() => openDate("")}>+ добавить дату</button>
+        )}
+        <div style={hintStyle}>Работу после полуночи пишем как 25 или 26: это час и два ночи. В выходной заведения генератор никого не ставит, а «Проверка» не ищет там дыр. В «Особые дни» ставят даты на год вперёд: санитарный день, 31 декабря, банкет в выходной, работу с 16. В свои часы генератор ставит только смены, что начинаются не раньше чем за час до открытия. Тип дня на дату меняется и в таблице: тап по числу.</div>
       </Sec>
 
       <Sec no={2} title="Смены" hint={openSec===2 ? "Во сколько люди приходят и уходят" : sum2} P={P} open={openSec===2} onToggle={() => setOpenSec(openSec===2?0:2)}>
@@ -2559,7 +2706,35 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         <div style={hintStyle}>Порядок важен: первого человека на позицию ставим в первую смену. Режим «вручную» — смена, которую автозаполнение не расставляет: так помечают кейтеринг.</div>
       </Sec>
 
-      <Sec no={3} title="Сколько людей нужно" hint={openSec===3 ? "Разное количество в будни, выходные и праздники" : sum3} P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
+      <Sec no={3} title="Сколько людей нужно" hint={openSec===3 ? (byDow ? "Своё число на каждый день недели" : "Разное количество в будни, выходные и праздники") : sum3} P={P} open={openSec===3} onToggle={() => setOpenSec(openSec===3?0:3)}>
+        {/* v216 (Доп. 542): по типу дня (обычный, высокий, пиковый) или по дням недели — пятница и суббота разные */}
+        <div data-need-mode="" role="radiogroup" aria-label="Как считать людей" style={{ display:"flex", gap:4, marginBottom:10 }}>
+          {[["levels", "По типу дня"], ["dows", "По дням недели"]].map(([k, t]) => (
+            <Pill key={k} a11y={a11y} P={P} on={(cfg.rules.needMode || "levels") === k} attrs={{ "data-need-mode-pick": k, role:"radio", "aria-checked": (cfg.rules.needMode || "levels") === k }}
+              style={{ flex:1, padding:"7px 0", fontSize:12 }} onClick={() => patch(c => {
+                c.rules.needMode = k;
+                if (k === "dows" && !(c.needDow && typeof c.needDow === "object")) c.needDow = needDowFrom(dayCtx, c, POS.map(x => x.id));
+              })}>{t}</Pill>))}
+        </div>
+        {byDow ? (<>
+          <div style={{ fontSize:11, color:P.sub, lineHeight:1.55, padding:"0 0 8px" }}>
+            Сколько человек нужно в смене в каждый день недели. Тип дня (пик) по-прежнему решает, кому достаются пятницы и как
+            делить вечера. Своё число на дату (банкет, праздник) ставится в «Особых днях», раздел 1.
+          </div>
+          {POS.filter(({ id }) => staff.some(x => x.pos === id) || (cfg.needDow?.[id] || []).some(n => n > 0)).map(({ id, t }) => (
+            <div key={id} data-need-dow={id} style={{ ...rowStyle, flexDirection:"column", alignItems:"stretch", gap:4 }}>
+              <span style={{ fontSize:12.5, color:P.sub }}>{t}</span>
+              <div style={{ display:"flex", gap:3 }}>
+                {DOWL.map((dl, wi) => (
+                  <div key={wi} style={{ flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column", alignItems:"center", gap:2, opacity: (cfg.rules.closedDows || []).includes(wi) ? .4 : 1 }}>
+                    <span style={{ fontSize:10.5, color: wi >= 5 ? P.acc : P.sub }}>{dl}</span>
+                    <Num w="100%" inp={inp} v={Number((cfg.needDow?.[id] || [])[wi]) || 0} min={0} max={20}
+                      set={v => patch(c => { const arr = [...((c.needDow && c.needDow[id]) || [0, 0, 0, 0, 0, 0, 0])]; arr[wi] = v; c.needDow = { ...(c.needDow || {}), [id]: arr }; })} />
+                  </div>))}
+              </div>
+            </div>
+          ))}
+        </>) : <>
         <div style={{ display:"flex", gap:8, ...labelStyle(11.5),
           color:P.sub, paddingBottom:4 }}>
           <span style={{ flex:1 }}>Позиция</span>
@@ -2606,6 +2781,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
             ))}
           </div>
         ))}
+        </>}
       </Sec>
 
       <Sec no={4} title="Правила смен" hint={openSec===4 ? "Загрузка по дням недели, выходные и отдых" : sum4} P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
@@ -4349,7 +4525,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       if (d < 1 || d > DAYS) return null;
       const endOf = (q) => (q.to > q.from ? q.to : q.to + 24);
       const on = staff.filter(x => shiftOf(plan[x.id]?.[d]));
-      const hrs = (cfg.hours || [])[dow(d)] || [12, 24];
+      const hrs = hoursOn(dayCtx, d, cfg.hours), ownH = dateHoursOf(d);   // v216: свои часы особого дня
       const openH = hrs[0], closeH = hrs[1] < hrs[0] ? hrs[1] + 24 : hrs[1];
       const H0 = Math.min(openH, ...on.map(x => shiftOf(plan[x.id][d]).from));
       const H1 = Math.max(closeH, ...on.map(x => endOf(shiftOf(plan[x.id][d]))));
@@ -4364,7 +4540,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const onMain = on.filter(x => !shiftOf(plan[x.id][d]).extra).length;
       const missPos = POS.filter(({ id }) => (needAll[id] || 0) > staff.filter(x => { const q = x.pos === id && shiftOf(plan[x.id]?.[d]); return q && !q.extra; }).length);
       // v214 (Доп. 540): закрытый день и тип дня на дату — здесь же, пилюлями под шапкой
-      const cl = closedOf(d), marked = dayMarked(days, d), why = dayTypeWhy(dayCtx, d);
+      const cl = closedOf(d), marked = dayMarked(days, d, dayCtx), why = [dayTypeWhy(dayCtx, d), ownH && !cl ? `свои часы: с ${ownH[0]}:00 до ${ownH[1] > 24 ? ownH[1] - 24 : ownH[1]}:00` : ""].filter(Boolean).join(" · ");
       const lv = lvlOf(d), lvT = holName(d) && !marked && !cl ? "Праздник" : lv === 3 ? "Пиковый день" : lv === 2 ? "Загруженный день" : "Обычный день";
       const note = days[d]?.note || "";
       const lead = leadOn(d);
@@ -4400,6 +4576,14 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                   style={{ color:P.acc, cursor:"pointer", textDecoration:"underline" }}>как в правилах</span></> : null}
               </div>
             ) : null}
+            {/* v216 (Доп. 542): свои часы и своё число людей на дату — в «Особых днях» настроек, туда и ведём */}
+            {isAdmin ? (() => { const go = () => { setBossDay(0); setTab("setup"); setOpenSec(1); openDate(isoD(d)); vibrate("light");
+                setTimeout(() => { try { const el = document.querySelector("[data-date-form]"); if (el) el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 380); };
+              return (
+                <div style={{ fontSize:11.5, marginTop:4 }}>
+                  <span data-day-special="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
+                    style={{ color:P.acc, cursor:"pointer", textDecoration:"underline" }}>{cfg.dates?.[isoD(d)] ? "изменить в «Особых днях»" : "свои часы или люди на эту дату"}</span>
+                </div>); })() : null}
             {cl && !on.length ? (
               <div data-day-closed="" style={{ marginTop:12, padding:"12px 13px", borderRadius:12, fontSize:12.5, lineHeight:1.5, color:P.sub,
                 border:`1px dashed ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}` }}>
@@ -4599,7 +4783,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       // смены «подходит · станет N из M ч» или почему нет; сверху — нужен ли человек в этот день и его пожелания.
       // Решение за руководителем: поставить можно и с ⚠ — тогда это будет в «Проверке».
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const pmFree = { ...plan, [who.id]: { ...(plan[who.id] || {}), [d]: "" } };   // клетка как будто пустая
       const hNow = hoursOf(who), enW = effNorm(who), curSh = shiftOf(cur), curH = curSh ? dayHoursOf(who, d) : 0;
       const nNeed = needOf(d)[who.pos] || 0;
@@ -4723,7 +4907,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const z = holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf });
       if (!z) return null;
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const free = [], busy = [];
       staff.filter(x => x.pos === pos && !shiftOf(plan[x.id]?.[d])).forEach(x => {
         const r = onVac(x, d) ? "в отпуске" : hardOf(x.id, d) ? "отметил(а) «не смогу выйти»" : isDayOff(x, d) ? "постоянный выходной"
@@ -4777,7 +4961,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const who = staff.find(x => String(x.id) === String(replAsk.id)); const d = replAsk.d;
       const k = plan[replAsk.id]?.[d]; const sh = shiftOf(k); if (!who || !sh) return null;
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const others = staff.filter(x => x.pos === who.pos && String(x.id) !== String(who.id));
       const free = [], busy = [];
       others.forEach(x => {

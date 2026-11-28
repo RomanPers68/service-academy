@@ -270,7 +270,7 @@ await run("PREFS", async () => {
   const a = await open({ who: MARIA, srv });
   await toMorning(a.page);
   await a.page.locator('[data-mo-hour="10"]').click(); await sleep(900);
-  ok("PREFS: час 10:00 — на сервере и в подписи", (srv.S.morning["u-maria"] || {}).hour === 10 && /Каждое утро в 10:00/.test(await txt(a.page.locator('[data-mo-sec="tg"]'))), JSON.stringify(srv.S.morning));
+  ok("PREFS: час 10:00 — на сервере и в подписи", (srv.S.morning["u-maria"] || {}).hour === 10 && /в 10:00 по часам заведения/.test(await txt(a.page.locator('[data-mo-sec="tg"]'))), JSON.stringify(srv.S.morning));
   await a.page.locator("[data-mo-on]").click(); await sleep(900);
   ok("PREFS: выключила — на сервере выключено, часы спрятаны", (srv.S.morning["u-maria"] || {}).on === false && (await a.page.locator("[data-mo-hour]").count()) === 0
     && /Выключено/.test(await txt(a.page.locator('[data-mo-sec="tg"]'))));

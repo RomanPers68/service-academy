@@ -147,14 +147,14 @@ describe("v106: демо-сервер — та же сводка", () => {
     expect(r.stop).toEqual({ n: 1, names: ["Борщ"] });
     expect(r.thanks).toEqual({ n: 1, people: [{ id: "e-a", n: "Анна С.", k: 1 }], quote: "Очень внимательная официантка", by: "Анна С." });
     expect(r.idle).toEqual({ list: [{ id: "e-a", n: "Анна С.", days: 8, tg: true }], more: 0 });
-    expect(r.prefs).toEqual({ on: true, hour: 9, linked: true, bot: true });
+    expect(r.prefs).toEqual({ on: true, hour: 9, linked: true, bot: true, shift: true, today: "shift" });   // v221: менеджеру только в дни смен, сегодня смена
     expect(s.rpc("morning_brief", { p_token: "ta" }).error).toBe("forbidden");
   });
   it("настройки, «Прислать сейчас» (бот пишет руководителю), «Напомнить» (раз в день)", () => {
     const pings = [];
     const s = makeServer({ today: "2026-10-29", rest: "R", people: PEOPLE, tok: { tm: "u-m", ta: "e-a" }, sstaff: [], cfg: { shifts: [], staff: [] }, plan: {}, menu: [], tgLinked: ["u-m", "e-a"],
       ping: (...a) => pings.push(a) });
-    expect(s.rpc("morning_set", { p_token: "tm", p_on: false, p_hour: 8 }).prefs).toEqual({ on: false, hour: 8, linked: true, bot: true });
+    expect(s.rpc("morning_set", { p_token: "tm", p_on: false, p_hour: 8 }).prefs).toEqual({ on: false, hour: 8, linked: true, bot: true, shift: true, today: "" });   // v221: в графике её нет
     expect(s.rpc("morning_set", { p_token: "tm", p_hour: 13 }).error).toBe("hour");
     expect(s.rpc("morning_send_now", { p_token: "tm" }).ok).toBe(true);
     expect(s.rpc("morning_send_now", { p_token: "tm" }).error).toBe("too_fast");

@@ -1653,7 +1653,15 @@ export function makeServer(opts) {
       if (!isLead(p)) return { ok: false, error: "forbidden" };
       if (b.p_hour != null && !(Number(b.p_hour) >= 6 && Number(b.p_hour) <= 12)) return { ok: false, error: "hour" };
       const cur = S.morning[p.id] || { on: true, hour: 9 };
-      S.morning[p.id] = { on: b.p_on == null ? cur.on : !!b.p_on, hour: b.p_hour == null ? cur.hour : Math.round(Number(b.p_hour)) };
+      S.morning[p.id] = { ...cur, on: b.p_on == null ? cur.on : !!b.p_on, hour: b.p_hour == null ? cur.hour : Math.round(Number(b.p_hour)) };
+      return { ok: true, prefs: morningPrefs(p) };
+    }
+    if (fn === "morning_shift_set") {
+      if (opts.noStage75) return { code: "PGRST202", message: "Could not find the function public.morning_shift_set" };
+      if (!p) return { ok: false, error: "auth" };
+      if (!isLead(p)) return { ok: false, error: "forbidden" };
+      const cur = S.morning[p.id] || { on: true, hour: 9 };
+      S.morning[p.id] = { ...cur, shift: typeof b.p_shift === "boolean" ? b.p_shift : null };
       return { ok: true, prefs: morningPrefs(p) };
     }
     if (fn === "morning_send_now") {
@@ -2342,7 +2350,15 @@ export function makeServer(opts) {
       brief: today ? { done: true, at: hhmm((Date.parse(today.at) - Date.parse(TODAY + "T00:00:00")) / 60000) } : { done: false },
       late: lateOf.map((l) => ({ id: l.emp, n: nm(l.name), min: l.min, eta: l.eta })) };
   }
-  const morningPrefs = (p) => { const m = S.morning[p.id] || { on: true, hour: 9 }; return { on: m.on, hour: m.hour, linked: S.tgLinked.includes(p.id), bot: true }; };
+  // этап 75 (v221): shift — только в дни смен (свой выбор, а нет — менеджеру да), today — что сегодня в графике
+  const moDay = (p) => { const st = staffOf(p.id); if (!st) return "";
+    if (def(code(String(st.id), TODAY))) return "shift";
+    const dn = Number(TODAY.slice(8)), vac = ((st.vacs || {})[TODAY.slice(0, 7)] || []).some((r) => Array.isArray(r) && dn >= r[0] && dn <= (r[1] || r[0]));
+    if (vac) return "vac";
+    return Object.values(monOf(TODAY).plan[String(st.id)] || {}).some((k) => def(k)) ? "off" : ""; };
+  const moShift = (p) => { const m = S.morning[p.id] || {}; return typeof m.shift === "boolean" ? m.shift : p.position === "manager" && !p.is_admin; };
+  const morningPrefs = (p) => { const m = S.morning[p.id] || { on: true, hour: 9 };
+    return { on: m.on !== false, hour: m.hour || 9, linked: S.tgLinked.includes(p.id), bot: true, ...(opts.noStage75 ? {} : { shift: moShift(p), today: moDay(p) }) }; };
 
   // ── v109 (этап 43): «Что дало обучение» — как _sa_gain_at на сервере ──
   // журнал человека: свои записи и дни занятий «Утра руководителя» (learn) — записью «урок»

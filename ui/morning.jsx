@@ -5,6 +5,8 @@
 // (checklist_get за вчера), «Напомнить» тем, кто давно не занимался (morning_nudge), и настройки: присылать ли сводку
 // в Telegram и во сколько (morning_set), «Прислать сейчас» (morning_send_now).
 // v111 (Доп. 424): в виде «Линза» карточки, кружки строк и кнопки — линзой (метки data-lens-*, правила — ui/home-look.jsx).
+// v221 (Доп. 547): в какие дни присылать — «Каждый день» или «Только в мои смены» по графику (morning_shift_set, этап 75;
+// у менеджера по умолчанию только в смены) и что будет сегодня: выходной, отпуск или «тебя нет в графике».
 import React from "react";
 import { rpc, saToken, rpcMissing } from "../lib/supabase";
 import { vibrate } from "../lib/utils";
@@ -12,7 +14,7 @@ import { lateMinText } from "../lib/late";
 import { GOLD, labelStyle } from "./tokens";
 import { GlyphMark } from "./glyphs";   // v110 (Доп. 423): значки строк по смыслу
 import { DEFAULT_CHECKLISTS, CL_KINDS, clLeft, clLeftLine } from "../lib/checklists";   // v141: прямо из lib — экран чек-листов сюда больше не тянется; v142 — что не отмечено
-import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel } from "../lib/morning";
+import { morningModel, dLong, hh, holesText, weekHoleDays, posAcc, thanksPeople, daysText, plural, upFirst, isoAdd, MORNING_HOURS, hourLabel, MORNING_DAYS, morningHasDays, morningPrefsLine, morningShiftNote } from "../lib/morning";
 import { goNormalize, goSoldLine } from "../lib/golist-day";   // v141 (Доп. 458): вчерашний гоу-лист и его итог
 import { eqpChecks, EQP_LESSON } from "../lib/equip-checks";   // v143 (Доп. 463): по понедельникам — проверки оборудования бара
 
@@ -72,6 +74,17 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
     rpc("morning_set", { p_token: saToken(), p_on: on, p_hour: hour }).then((r) => {
       setBusy("");
       if (r && r.ok && r.prefs) setPrefs(r.prefs); else { setPrefs(was); setNote("Не сохранилось. Попробуй ещё раз."); }
+    }).catch(() => { setBusy(""); setPrefs(was); setNote("Нет связи. Попробуй ещё раз."); });
+  };
+  // v221 (этап 75): «Каждый день» или «Только в мои смены» по графику
+  const saveShift = (v) => {
+    if (busy) return;
+    const was = prefs;
+    vibrate("light"); setBusy("prefs"); setNote("");
+    setPrefs((p) => ({ ...(p || {}), shift: v }));
+    rpc("morning_shift_set", { p_token: saToken(), p_shift: v }).then((r) => {
+      setBusy("");
+      if (r && r.ok && r.prefs) setPrefs(r.prefs); else { setPrefs(was); setNote(rpcMissing(r) ? "Выбор дней появится вместе с этапом 75 на сервере." : "Не сохранилось. Попробуй ещё раз."); }
     }).catch(() => { setBusy(""); setPrefs(was); setNote("Нет связи. Попробуй ещё раз."); });
   };
   const sendNow = () => {
@@ -221,7 +234,7 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                 style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 0", border: 0, background: "none", cursor: "pointer", color: text }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontFamily: "Georgia, serif", fontSize: 14.5 }}>Присылать эту сводку</span>
-                  <span style={{ display: "block", fontSize: 12.5, lineHeight: 1.4, color: sub }}>{prefs.on ? "Каждое утро в " + hourLabel(prefs.hour) + " по часам заведения" : "Выключено: сводка только здесь"}</span>
+                  <span style={{ display: "block", fontSize: 12.5, lineHeight: 1.4, color: sub }}>{morningPrefsLine(prefs)}</span>
                 </span>
                 <span aria-hidden="true" style={{ flex: "0 0 auto", position: "relative", width: 40, height: 24, borderRadius: 12, border: "1px solid " + (prefs.on ? c.gold : c.line), background: prefs.on ? c.soft : "transparent" }}>
                   <span style={{ position: "absolute", top: 2, left: 2, width: 18, height: 18, borderRadius: "50%", background: prefs.on ? (a11y ? "#8B6A30" : "#E4C88C") : sub, transform: prefs.on ? "translateX(16px)" : "none", transition: "transform .2s" }} />
@@ -234,6 +247,14 @@ export function MorningScreen({ T, a11y, profile, onBack, onGo = () => {}, onRem
                       style={{ padding: "5px 10px", borderRadius: 999, border: "1px solid " + (sel ? c.gold : c.line), background: sel ? c.soft : "transparent", color: sel ? text : sub,
                         fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{hourLabel(x)}</button>; })}
                 </div>) : null}
+              {prefs.on && morningHasDays(prefs) ? (
+                <div role="group" aria-label="В какие дни присылать" data-mo-days={prefs.shift ? "shift" : "all"} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, padding: "0 0 10px" }}>
+                  {MORNING_DAYS.map(([v, t]) => { const sel = prefs.shift === v;
+                    return <button key={t} type="button" aria-pressed={sel} data-mo-day={v ? "shift" : "all"} disabled={busy === "prefs"} onClick={() => { if (!sel) saveShift(v); }}
+                      style={{ padding: "5px 10px", borderRadius: 999, border: "1px solid " + (sel ? c.gold : c.line), background: sel ? c.soft : "transparent", color: sel ? text : sub,
+                        fontFamily: "Georgia, serif", fontSize: 12.5, cursor: "pointer" }}>{t}</button>; })}
+                </div>) : null}
+              {morningShiftNote(prefs) ? <div data-mo-today={prefs.today || "none"} style={{ fontSize: 12.5, lineHeight: 1.45, color: sub, padding: "0 0 10px" }}>{morningShiftNote(prefs)}</div> : null}
               {!prefs.bot ? row("nobot", "warn", "Бот на сервере не подключён", { icon: "plane", sub: "Пока сводка только здесь. Подключает владелец: «Команда» → «Сервер»." })
                 : !prefs.linked ? row("nolink", "warn", "Telegram не подключён", { icon: "plane", sub: "Включи «Напоминания» в Telegram или на телефоне, и сводка начнёт приходить каждое утро.",
                     act: onRemind ? <button type="button" style={ghost} data-lens-btn="soft" data-mo-link="" onClick={(e) => { e.stopPropagation(); vibrate("light"); onRemind(); }}>Подключить</button> : null })

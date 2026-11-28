@@ -1,0 +1,51 @@
+// Пакет app.serviceacademy.twa, открывает https://service-academy-16te.vercel.app/ во весь экран (Trusted Web Activity).
+// Номер и название версии, ключ подписи — из окружения сборки (android-apk.yml): APK_VERSION_CODE, APK_VERSION_NAME,
+// APK_KEYSTORE (путь к ключу), APK_KEY_PASSWORD (секрет GitHub).
+plugins {
+    id "com.android.application"
+}
+
+def env = { String k, String d -> System.getenv(k) ?: d }
+
+android {
+    namespace "app.serviceacademy.twa"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "app.serviceacademy.twa"
+        minSdk 24
+        targetSdk 35
+        versionCode Integer.parseInt(env("APK_VERSION_CODE", "1"))
+        versionName env("APK_VERSION_NAME", "1.0.0")
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(env("APK_KEYSTORE", "missing.jks"))
+            storePassword System.getenv("APK_KEY_PASSWORD")
+            keyAlias "sa"
+            keyPassword System.getenv("APK_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.7.4"
+}

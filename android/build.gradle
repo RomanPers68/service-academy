@@ -1,0 +1,4 @@
+// Версии — как у самой библиотеки android-browser-helper (AGP 8.9.1, compileSdk 36).
+plugins {
+    id "com.android.application" version "8.9.1" apply false
+}

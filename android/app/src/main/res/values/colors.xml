@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- theme_color и background_color из public/manifest.webmanifest -->
+    <color name="colorPrimary">#171208</color>
+    <color name="navigationColor">#171208</color>
+    <color name="backgroundColor">#171208</color>
+    <color name="iconBackground">#171208</color>
+</resources>

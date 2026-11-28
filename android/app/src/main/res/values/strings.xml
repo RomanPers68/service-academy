@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- имя в «Настройки → Приложения» и под значком (как name и short_name в public/manifest.webmanifest) -->
+    <string name="appName" translatable="false">Service Academy</string>
+    <string name="launcherName" translatable="false">SA</string>
+    <!-- какому сайту приложение доверяет; сайт подтверждает в public/.well-known/assetlinks.json -->
+    <string name="assetStatements" translatable="false">[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://service-academy-16te.vercel.app\" } }]</string>
+</resources>

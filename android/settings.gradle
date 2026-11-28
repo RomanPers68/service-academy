@@ -1,0 +1,18 @@
+// APK-пробник Service Academy для Android (v222, Доп. 548): оболочка TWA над сайтом, собирается на GitHub
+// (.github/workflows/android-apk.yml). Своего кода нет — экраны и всё остальное грузятся с сайта.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "service-academy-twa"
+include ":app"

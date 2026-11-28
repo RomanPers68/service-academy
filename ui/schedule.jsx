@@ -15,7 +15,8 @@ import { hintsFor } from "../data/hints";
 import { rpc, saToken } from "../lib/supabase";
 import { generateSchedule } from "../lib/schedule-gen";
 import { isClosed, dayLevel, ruleLevel, markDayType, dayMarked, dayTypeWhy, closedByRule, dateOf, dayHours, hoursOn, dayNeed, needDowFrom, datesList } from "../lib/schedule-days";   // v214 (Доп. 540): закрытые дни и тип дня на дату
-import { mergeCells, mergedDays } from "../lib/schedule-merge";   // v93: смены из чата и «Сохранить»
+import { mergeCells, mergedDays } from "../lib/schedule-merge";
+import { hourPlan, hourHave, hourHolesIn, hoursLabel } from "../lib/schedule-hours";   // v219 (Доп. 545): «Часы пик»   // v93: смены из чата и «Сохранить»
 import { vibrate, onActivate } from "../lib/utils";
 import { NO_AUTOCORRECT } from "../lib/search-field";   // v173 (Доп. 498): строка «Найти…» без автозамены
 import { GOLD, GOLD_SOFT, CREAM, SAND, MUTED_2, INK_DEEP, RADIUS, labelStyle } from "./tokens";
@@ -67,6 +68,7 @@ const vacRanges = (s, mk) => {
 const mergeCfg = (saved) => {
   const out = { ...DEFAULT_CONFIG, ...(saved || {}) };
   if (!out.dates || typeof out.dates !== "object" || Array.isArray(out.dates)) out.dates = {};   // v216
+  if (!out.hourNeed || typeof out.hourNeed !== "object" || Array.isArray(out.hourNeed)) out.hourNeed = {};   // v219
   ["rules", "need", "split", "posRules"].forEach(k => {
     const d = DEFAULT_CONFIG[k];
     if (d && typeof d === "object" && !Array.isArray(d)) {
@@ -163,6 +165,8 @@ export const DEFAULT_CONFIG = {
   // dates — «Особые дни» (v216): { "ГГГГ-ММ-ДД": { closed, hours: [с, до], lvl, need } }; needDow — сколько людей по
   // дням недели (rules.needMode = "dows"): { должность: [пн … вс] }
   dates: {}, needDow: null,
+  // hourNeed — «Часы пик» (v219): { должность: [{ from, to, n, dows }] } — сколько людей нужно в эти часы
+  hourNeed: {},
   rules: { peakDows:[4,5], highDows:[3,6], closedDows:[], needMode:"levels", maxRow:5, minOff:2, minRest:11, holidayPeak:true, wishDeadline:0, autoFill:false,
     // floor — норма это обязательная выработка, сверх неё можно;
     // cap — норму превышать нельзя.
@@ -738,7 +742,9 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
   const closedOf = d => isClosed(dayCtx, d);
   const holOf = d => { const o = days[d]; return o && o.hol !== undefined ? o.hol : !!holName(d); };
   // v216 (Доп. 542): сколько людей — по уровню дня или по дням недели, и своё число в «Особые дни» (lib/schedule-days.js)
-  const needOf = d => dayNeed(dayCtx, cfg, d);
+  // v219 (Доп. 545): «Часы пик» — сколько людей должности и в какие смены, чтобы в эти часы хватало (lib/schedule-hours.js)
+  const hourPlanOfD = d => (cfg ? hourPlan(dayCtx, cfg, d) : {});
+  const needOf = d => { const n = dayNeed(dayCtx, cfg, d), hp = hourPlanOfD(d); Object.keys(hp).forEach(pos => { n[pos] = hp[pos].total; }); return n; };
   const dateHoursOf = d => dayHours(dayCtx, d);
   // «Особые дни» на любую дату года, не только этого месяца: день недели, праздник и потребность — по самой дате
   const isoDow = iso => (new Date(iso + "T12:00:00").getDay() + 6) % 7;
@@ -1210,7 +1216,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
     const cfg2 = { ...cfg, staff: staff.filter(x => String(x.id) !== String(staffId)) };
-    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
+    const res = generateSchedule({ cfg: cfg2, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan: planWo, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb });
     if (!res.plan) return;
     // прошлое уходящего возвращается в план (генератор его не знает — он
     // исключён из штата на прогон)
@@ -1240,7 +1246,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     Object.entries(locks).forEach(([id, ds]) => {
       Object.keys(ds || {}).forEach(d => { if (ds[d]) (vLocks[id] = vLocks[id] || {})[d] = true; });
     });
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: vLocks, POS, mkey,
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: vLocks, POS, mkey,
       wishes: wishes || {}, hardOff, onlyIds: new Set([String(staffId)]), prevTail, freezeBefore: fb });
     if (!res.plan) return;
     setPlan(res.plan);
@@ -1337,7 +1343,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     });
     const cells = (pm) => Object.values(pm || {}).reduce((a, ds) => a + Object.values(ds || {}).filter(Boolean).length, 0);
     const before = cells(plan);
-    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed, onlyIds });
+    const res = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: vLocks, POS, mkey, wishes: wishes || {}, hardOff, prevTail, freezeBefore: fb, seed: genSeed, onlyIds });
     if (!res.plan) return;
     const added = cells(res.plan) - before;
     snapUndo();
@@ -1377,7 +1383,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     if (!cfg) return [];
     const R = cfg.rules, out = [];
     let why = null;
-    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+    try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
     for (let d = 1; d <= DAYS; d++) {
       const need = needOf(d);
       POS.forEach(({ id: pos }) => {
@@ -2450,8 +2456,9 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
     const leftClosed = closedLeft();
     const sum2 = `${cfg.shifts.map(x => x.k).join(" ")} · авто: ${cfg.shifts.filter(x => !x.extra).length}`;
     const byDow = cfg.rules.needMode === "dows" && cfg.needDow && typeof cfg.needDow === "object";   // v216
-    const sum3 = byDow ? "по дням недели: " + DOWL.map((dl, wi) => Object.values(cfg.needDow).reduce((a, arr) => a + (Number((arr || [])[wi]) || 0), 0)).join(" ") + " чел."
-      : LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.";
+    const nHour = Object.values(cfg.hourNeed || {}).reduce((a, arr) => a + (Array.isArray(arr) ? arr.length : 0), 0);   // v219
+    const sum3 = (byDow ? "по дням недели: " + DOWL.map((dl, wi) => Object.values(cfg.needDow).reduce((a, arr) => a + (Number((arr || [])[wi]) || 0), 0)).join(" ") + " чел."
+      : LVLS.map(([l]) => Object.values(cfg.need[l] || {}).reduce((a, v) => a + (v || 0), 0)).join(" / ") + " чел.") + (nHour ? ` · часы пик: ${nHour}` : "");
     const sum4 = `пик: ${cfg.rules.peakDows.map(w => DOWL[w]).join(",") || "—"} · до ${cfg.rules.maxRow} подряд · отдых ${cfg.rules.minRest} ч`;
     const nVac = staff.filter(vacOn).length;
     const sum5 = `${staff.length} чел.` + (nVac ? ` · в отпуске: ${nVac}` : "");
@@ -2782,6 +2789,62 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
           </div>
         ))}
         </>}
+        {/* v219 (Доп. 545): «Часы пик» — сколько людей должности нужно в часы, когда зал полный. Какие смены ставить,
+            приложение считает само (lib/schedule-hours.js), и людей добавит, если иначе в эти часы не хватит. */}
+        <div style={{ ...labelStyle(11.5), color:P.sub, margin:"16px 0 4px" }}>Часы пик</div>
+        <div style={{ fontSize:11, color:P.sub, lineHeight:1.5, paddingBottom:6 }}>
+          Сколько людей нужно в часы, когда зал полный: обед, вечер. Приложение само решит, кого поставить в какую смену,
+          и добавит людей, если иначе в эти часы не хватит.
+        </div>
+        <div data-hour-list="">
+          {POS.map(({ id: pos, t }) => (cfg.hourNeed?.[pos] || []).map((r, i) => {
+            const firstD = (() => { const ws = Array.isArray(r.dows) && r.dows.length ? r.dows : [0, 1, 2, 3, 4, 5, 6];
+              for (let d = 1; d <= DAYS; d++) if (ws.includes(dow(d)) && lvlOf(d)) return d; return 0; })();
+            const hp = firstD ? hourPlanOfD(firstD)[pos] : null;
+            const put = (fn) => patch(c => { const arr = [...(c.hourNeed?.[pos] || [])]; arr[i] = fn({ ...arr[i] }); c.hourNeed = { ...(c.hourNeed || {}), [pos]: arr }; });
+            return (
+              <div key={pos + ":" + i} data-hour-row={pos + ":" + i} style={{ ...rowStyle, flexWrap:"wrap", gap:6 }}>
+                <select value={pos} style={{ ...inp, flex:"1 1 0", minWidth:0, fontSize:14 }} onFocus={focusScroll} data-hour-pos=""
+                  onChange={e => { const to = e.target.value; patch(c => {
+                    const from = [...(c.hourNeed?.[pos] || [])], [row] = from.splice(i, 1);
+                    const hn = { ...(c.hourNeed || {}), [pos]: from, [to]: [...(c.hourNeed?.[to] || []), row] };
+                    if (!from.length) delete hn[pos];
+                    c.hourNeed = hn; }); }}>
+                  {POS.filter(x => x.id === pos || staff.some(q => q.pos === x.id)).map(x => <option key={x.id} value={x.id}>{x.t}</option>)}
+                </select>
+                <button className="sa-btn" title="Убрать час пик" data-hour-del={pos + ":" + i}
+                  onClick={() => patch(c => { const arr = [...(c.hourNeed?.[pos] || [])]; arr.splice(i, 1);
+                    const hn = { ...(c.hourNeed || {}), [pos]: arr }; if (!arr.length) delete hn[pos]; c.hourNeed = hn; })}
+                  style={{ flex:"0 0 30px", width:30, height:30, minWidth:30, boxSizing:"border-box", background:"transparent",
+                    border:`1px solid ${P.danger}55`, color:P.danger, borderRadius:9, fontSize:12, cursor:"pointer", padding:0,
+                    display:"grid", placeItems:"center" }}>✕</button>
+                <div style={{ flex:"1 1 100%", display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:12, color:P.sub }}>с</span>
+                  <Num inp={inp} w={46} v={r.from} min={0} max={29} set={v => put(o => ({ ...o, from: v }))} />
+                  <span style={{ fontSize:12, color:P.sub }}>до</span>
+                  <Num inp={inp} w={46} v={r.to} min={1} max={30} set={v => put(o => ({ ...o, to: v }))} />
+                  <span style={{ fontSize:12, color:P.sub }}>нужно</span>
+                  <Num inp={inp} w={46} v={r.n} min={1} max={30} set={v => put(o => ({ ...o, n: v }))} />
+                </div>
+                <div style={{ flex:"1 1 100%", display:"flex", gap:3 }}>
+                  {DOWL.map((dl, wi) => { const on = !Array.isArray(r.dows) || !r.dows.length || r.dows.includes(wi);
+                    return (<Pill key={wi} a11y={a11y} P={P} on={on} attrs={{ "data-hour-dow": wi }} style={{ flex:1, padding:"5px 0", fontSize:11 }}
+                      onClick={() => put(o => { const cur = !Array.isArray(o.dows) || !o.dows.length ? [0, 1, 2, 3, 4, 5, 6] : o.dows;
+                        const nx = cur.includes(wi) ? cur.filter(x => x !== wi) : [...cur, wi].sort((a, b) => a - b);
+                        return { ...o, dows: nx.length === 7 ? [] : nx.length ? nx : cur }; })}>{dl}</Pill>); })}
+                </div>
+                {hp ? <div data-hour-preview="" style={{ flex:"1 1 100%", fontSize:11, color: hp.ok ? P.sub : P.warn, lineHeight:1.45 }}>
+                  {DOWL[dow(firstD)]}, {firstD} {MONTHS_R[M]}: {t.toLowerCase()} {Object.entries(hp.by).map(([k, n]) => `${(shiftOf(k) || {}).name || k} ${n}`).join(", ")}
+                  {" "}· всего {hp.total} {plural(hp.total, "человек", "человека", "человек")}
+                  {hp.ok ? "" : ". Часть часов пик не попадает ни в одну смену"}</div> : null}
+              </div>
+            );
+          }))}
+        </div>
+        <button className="sa-btn" data-hour-add="" data-lens-btn="soft" style={{ ...ghost, marginTop:8, padding:"8px 12px", fontSize:12.5 }}
+          onClick={() => patch(c => { const pos = staff.some(q => q.pos === "waiter") ? "waiter" : ((POS.find(x => staff.some(q => q.pos === x.id)) || POS[0]).id);
+            const n0 = Number((c.need?.[3] || c.need?.[1] || {})[pos]) || 2;
+            c.hourNeed = { ...(c.hourNeed || {}), [pos]: [...(c.hourNeed?.[pos] || []), { from: 19, to: 22, n: n0, dows: [] }] }; })}>+ час пик</button>
       </Sec>
 
       <Sec no={4} title="Правила смен" hint={openSec===4 ? "Загрузка по дням недели, выходные и отдых" : sum4} P={P} open={openSec===4} onToggle={() => setOpenSec(openSec===4?0:4)}>
@@ -4412,6 +4475,9 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const win = attnDays({ Y, M, DAYS, now });
       const ctx = { staff, plan, POS, needOf, shiftOf, hardOff };
       const holes = holesIn(win, ctx), confl = conflictsIn(win, ctx);
+      // v219 (Доп. 545): людей хватает, но не в те часы — «Часы пик не закрыты»; дни, где людей не хватает вовсе, уже выше
+      const hourHoles = hourHolesIn(win, { staff, plan, shiftOf, POS, planOf: hourPlanOfD, openOf: d => hoursOn(dayCtx, d, cfg.hours) })
+        .map(h => ({ ...h, days: h.days.filter(x => !holes.some(z => z.pos === h.pos && z.days.some(y => y.d === x.d))) })).filter(h => h.days.length);
       const waiting = swaps.filter(w => w.status === "taken");
       const needs = board ? boardNeeds(board, mkey).filter(r => win.includes(r.day)) : [];   // v97: ищем в чате
       if (!win.length && !waiting.length) return null;      // прошлый месяц: поправлять нечего
@@ -4426,7 +4492,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const toAudit = () => { setAnOpen("audit"); vibrate("light");
         setTimeout(() => { try { const el = document.querySelector("[data-sec-audit]"); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }, 80); };
       const tk103 = needNextPlan({ Y, M, now, admin: isAdmin, next: nextPlan });   // v141: ТК РФ, ст. 103
-      const calm = !confl.length && !holes.length && !waiting.length && !tk103;
+      const calm = !confl.length && !holes.length && !hourHoles.length && !waiting.length && !tk103;
       return (
         <div data-attn="" data-lens-edge="" style={{ ...card, flexShrink:0 }}>
           <div style={{ ...eyebrow, marginBottom:2 }}><span>Требует внимания</span>
@@ -4455,6 +4521,21 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 </div>
               </div>
               <button className="sa-btn" data-lens-btn="soft" style={chipBtn} onClick={() => { setFillAsk({ d: h.days[0].d, pos: h.pos }); vibrate("light"); }}>Кто может?</button>
+            </div>
+          ))}
+          {hourHoles.map(h => (
+            <div key={"hh" + h.pos} data-attn-row="hour" data-attn-pos={h.pos} style={{ ...row(true), alignItems:"flex-start" }}>
+              <span style={{ paddingTop:2 }}><IcoClock size={16} color={P.warn} /></span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13.5, color:P.text }}>Часы пик не закрыты: {h.title.toLowerCase()}</div>
+                <div style={{ marginTop:1 }}>
+                  {h.days.slice(0, 8).map(x => (
+                    <span key={x.d} data-attn-hday={x.d} style={dayChip} onClick={() => { setBossDay(x.d); vibrate("light"); }}
+                      {...onActivate(() => setBossDay(x.d))}>{DOWL[dow(x.d)]} {x.d} · {hoursLabel(x.from, x.to)}{x.miss > 1 ? " ×" + x.miss : ""}</span>
+                  ))}
+                  {h.days.length > 8 ? <span style={{ fontSize:11.5, color:P.sub }}>и ещё {h.days.length - 8}</span> : null}
+                </div>
+              </div>
             </div>
           ))}
           {waiting.map(w => (
@@ -4584,6 +4665,16 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                   <span data-day-special="" role="button" tabIndex={0} onClick={go} {...onActivate(go)}
                     style={{ color:P.acc, cursor:"pointer", textDecoration:"underline" }}>{cfg.dates?.[isoD(d)] ? "изменить в «Особых днях»" : "свои часы или люди на эту дату"}</span>
                 </div>); })() : null}
+            {/* v219 (Доп. 545): «Часы пик» дня — сколько стоит людей в эти часы против нужного */}
+            {!cl ? (() => { const hp = hourPlanOfD(d), items = Object.entries(hp); if (!items.length) return null;
+              return (
+                <div data-day-hours="" style={{ marginTop:8, display:"flex", flexDirection:"column", gap:2 }}>
+                  {items.map(([pos, v]) => v.rows.map((r, j) => { const have = hourHave({ staff, plan, shiftOf }, d, pos, r, hrs);
+                    if (have === null) return null;
+                    return (<div key={pos + j} data-day-hour={pos} data-day-hour-short={have < r.n ? "1" : "0"}
+                      style={{ fontSize:11.5, color: have < r.n ? P.warn : okC }}>
+                      Час пик {hoursLabel(r.from, r.to)} · {posName(pos).toLowerCase()}: {have} из {r.n}{have < r.n ? "" : " ✓"}</div>); }))}
+                </div>); })() : null}
             {cl && !on.length ? (
               <div data-day-closed="" style={{ marginTop:12, padding:"12px 13px", borderRadius:12, fontSize:12.5, lineHeight:1.5, color:P.sub,
                 border:`1px dashed ${a11y ? "rgba(150,112,40,0.35)" : "rgba(145,108,40,0.4)"}` }}>
@@ -4630,7 +4721,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
                 const list = on.filter(x => x.pos === pos).sort((a, b) => shiftOf(plan[a.id][d]).from - shiftOf(plan[b.id][d]).from);
                 if (!n && !list.length) return null;
                 const have = list.filter(x => !shiftOf(plan[x.id][d]).extra).length, miss = Math.max(0, n - have);
-                const z = miss ? holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf }) : null;
+                const z = miss ? holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf, hourBy: (hourPlanOfD(d)[pos] || {}).by }) : null;
                 return (
                   <div key={pos} data-day-pos={pos} style={{ marginTop:6 }}>
                     <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
@@ -4783,7 +4874,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       // смены «подходит · станет N из M ч» или почему нет; сверху — нужен ли человек в этот день и его пожелания.
       // Решение за руководителем: поставить можно и с ⚠ — тогда это будет в «Проверке».
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const pmFree = { ...plan, [who.id]: { ...(plan[who.id] || {}), [d]: "" } };   // клетка как будто пустая
       const hNow = hoursOf(who), enW = effNorm(who), curSh = shiftOf(cur), curH = curSh ? dayHoursOf(who, d) : 0;
       const nNeed = needOf(d)[who.pos] || 0;
@@ -4904,10 +4995,10 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
         Тап по человеку ставит его в смену и закрепляет клетку, как ручная правка. */}
     {fillAsk && (() => {
       const d = fillAsk.d, pos = fillAsk.pos;
-      const z = holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf });
+      const z = holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf, hourBy: (hourPlanOfD(d)[pos] || {}).by });
       if (!z) return null;
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const free = [], busy = [];
       staff.filter(x => x.pos === pos && !shiftOf(plan[x.id]?.[d])).forEach(x => {
         const r = onVac(x, d) ? "в отпуске" : hardOf(x.id, d) ? "отметил(а) «не смогу выйти»" : isDayOff(x, d) ? "постоянный выходной"
@@ -4961,7 +5052,7 @@ export function ScheduleScreen({ T = {}, a11y, profile: profile0, onBack, dueCou
       const who = staff.find(x => String(x.id) === String(replAsk.id)); const d = replAsk.d;
       const k = plan[replAsk.id]?.[d]; const sh = shiftOf(k); if (!who || !sh) return null;
       let why = null;
-      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
+      try { const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot; } catch (e) {}
       const others = staff.filter(x => x.pos === who.pos && String(x.id) !== String(who.id));
       const free = [], busy = [];
       others.forEach(x => {

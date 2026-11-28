@@ -14,7 +14,7 @@ describe("v49: лист смены подсказывает до выбора", 
   const pick = between("    {pick && (() => {", "    {/* v46: дыра в смене — кто из позиции может выйти");
   it("правила — тем же генератором, что «Заполнить черновик»: whyNot по плану, где клетка как будто пустая", () => {
     // v216: и потребность дня, и свои часы «Особых дней»
-    expect(pick).toContain("const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot;");
+    expect(pick).toContain("const probe = generateSchedule({ cfg, DAYS, dow, lvlOf, needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan, locks: {}, POS, mkey, wishes: {}, hardOff, prevTail, freezeBefore: 0, restarts: 1, repairSweeps: 0 }); why = probe && probe.whyNot;");   // v219: и «Часы пик»
     expect(pick).toContain('const pmFree = { ...plan, [who.id]: { ...(plan[who.id] || {}), [d]: "" } };');
     expect(pick).toContain("const w = !sh2.extra && why ? why(pmFree, who, d, sh2.k) : null;");
   });
@@ -71,7 +71,7 @@ describe("v49: день по часам", () => {
   it("полосы по позициям: тап по человеку — его смена; дыра — «Кто может выйти?»; заметка — прежним окошком; картинка дня", () => {
     expect(day).toContain('data-day-person={x.id} onClick={() => { setPick({ id: x.id, d }); vibrate("light"); }}');
     expect(day).toContain('data-day-hole={pos} onClick={() => { setFillAsk({ d, pos }); vibrate("light"); }}');
-    expect(day).toContain("const z = miss ? holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf }) : null;");
+    expect(day).toContain("const z = miss ? holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf, hourBy: (hourPlanOfD(d)[pos] || {}).by }) : null;");   // v219
     expect(day).toContain('data-day-note="" onClick={() => { setDayEdit(d); vibrate("light"); }}');
     expect(day).toContain("const toShot = () => { setBossDay(0); exportToday(shotMode, d);");
     expect(src).toContain('<div data-shot-card="" data-lens-edge="" style={{ ...card }}>');   // v113: метка линзы

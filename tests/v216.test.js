@@ -167,9 +167,10 @@ describe("v216 · экран графика (ui/schedule.jsx)", () => {
     expect(S).toContain('if (!out.dates || typeof out.dates !== "object" || Array.isArray(out.dates)) out.dates = {};   // v216');
   });
   it("потребность и часы дня — из lib/schedule-days.js; генератору — во всех семи вызовах", () => {
-    expect(S).toContain("const needOf = d => dayNeed(dayCtx, cfg, d);");
+    // v219: и «Часы пик» поверх
+    expect(S).toContain("const needOf = d => { const n = dayNeed(dayCtx, cfg, d), hp = hourPlanOfD(d);");
     expect(S).toContain("const dateHoursOf = d => dayHours(dayCtx, d);");
-    expect(S.split("needOf, openHoursOf: dateHoursOf, plan").length - 1).toBe(7);
+    expect(S.split("needOf, openHoursOf: dateHoursOf, hourPlanOf: hourPlanOfD, plan").length - 1).toBe(7);   // v219: hourPlanOf
     expect(S).toContain("const hrs = hoursOn(dayCtx, d, cfg.hours), ownH = dateHoursOf(d);");
     expect(S).toContain("const ctx = { staff, plan, POS, needOf, shiftOf, hardOff };");
   });
@@ -179,7 +180,7 @@ describe("v216 · экран графика (ui/schedule.jsx)", () => {
     expect(S).toContain("<div key={id} data-need-dow={id}");
     expect(S).toContain('<Num w="100%" inp={inp} v={Number((cfg.needDow?.[id] || [])[wi]) || 0} min={0} max={20}');
     expect(S).toContain('<div key={wi} style={{ flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column"');   // 320 px: семь колонок в экране
-    expect(S).toContain('const sum3 = byDow ? "по дням недели: "');
+    expect(S).toContain('const sum3 = (byDow ? "по дням недели: "');   // v219: и «часы пик: N»
     expect(S).toContain("function Num({ v, min, max, set, inp, w = 60 })");
   });
   it("«Часы работы» → «Особые дни»: список, форма, сохранение в config.dates", () => {

@@ -268,7 +268,7 @@ describe("v46: в графике (исходник)", () => {
     expect(src).toContain("const holes = holesIn(win, ctx), confl = conflictsIn(win, ctx);");
     expect(src).toContain("setReplAsk({ id: c.id, d: c.d })");
     expect(src).toContain('data-fill-sheet=""');
-    expect(src).toContain("const z = holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf });");
+    expect(src).toContain("const z = holeShiftOf({ d, pos, cfg, lvlOf, staff, plan, shiftOf, hourBy: (hourPlanOfD(d)[pos] || {}).by });");   // v219: смены «Часов пик»
     expect(src).toContain("resolveSwap(w, true)");
     expect(src).not.toContain("Обмены ждут решения</span>");
     expect(src).not.toContain('{dirty ? "Сохранить" : "Сохранено"}');

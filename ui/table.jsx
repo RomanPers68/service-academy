@@ -28,7 +28,7 @@ import { Sign, SIGN_KEYS } from "./signs";   // v75 (Доп. 388): значки 
 import { Flame, Wine } from "./day-emblems";
 import { MicButton } from "./mic";
 import { voiceSupported } from "../lib/voice";
-import { SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, fnUrl } from "../lib/supabase";   // v225: адрес функции — fnUrl
 import { peekFor } from "../lib/peek";
 import { checkSaid } from "../lib/say-check";
 import { iconForSituation } from "../lib/situation-icons";
@@ -161,7 +161,7 @@ function SayAloud({ phrase, onVoice, a11y }) {
           <p className="tb-heard">Услышал: «{heard}»</p>
           <div className={"res" + (chk.ok ? "" : " again")}>{chk.ok ? "Звучит уверенно: все главные слова на месте." : "Почти. Подчёркнутые слова не прозвучали. Попробуй ещё раз."}</div>
           <div className="mic-row" style={{ marginTop: 10 }}>
-            <MicButton a11y={false} size={40} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+            <MicButton a11y={false} size={40} sttUrl={fnUrl("stt")} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
               onText={(t) => { setErr(""); setHeard(String(t || "")); }} onError={(m) => setErr(String(m || "Не расслышал"))} />
             <span>Нажми и скажи ещё раз</span>
           </div>
@@ -170,7 +170,7 @@ function SayAloud({ phrase, onVoice, a11y }) {
         <>
           {canMic ? (
             <div className="mic-row">
-              <MicButton a11y={false} size={44} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+              <MicButton a11y={false} size={44} sttUrl={fnUrl("stt")} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
                 onText={(t) => { setErr(""); setHeard(String(t || "")); }} onError={(m) => setErr(String(m || "Не расслышал"))} />
               <span>Нажми и скажи фразу, как живому гостю. Сверю главные слова.</span>
             </div>

@@ -44,7 +44,7 @@ import { titleParts } from "../lib/bar-view";   // v128: «Русское / Orig
 import { GOLD, labelStyle } from "./tokens";
 import { onActivate, vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn } from "../lib/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn, fnFetch } from "../lib/supabase";
 import { rememberSharedMenu, dishesOf } from "../lib/reference-context";
 import { useTeamMenu, winesWord, BottleGlyph, WineThumb, useInnerTop } from "./wine-list";
 import { WINE_COLORS, COLOR_GROUP, sweetsOf, GLASS_TYPES, TEMP_HINT, AI_FIELDS, FIELD_RU, wineRecords, withWine, withWines, withoutWine, normWine, mergeAi,
@@ -117,7 +117,7 @@ function smallJpeg(file) {
 const photoWhy = (status, j) => status === 404 || (j && /not found/i.test(String(j.message || j.msg || ""))) ? "функция photo-upload не развёрнута в Supabase"
   : j && j.error === "auth" ? "сессия устарела, войди заново" : j && j.error === "forbidden" ? "загружать фото может менеджер, старший или владелец"
   : j && j.error === "storage" ? "хранилище: " + (j.detail || "ошибка") : j && j.error === "too_large" ? "фото больше 2 МБ" : "HTTP " + status;
-const uploadPhoto = (restaurant, id, data) => fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST",
+const uploadPhoto = (restaurant, id, data) => fnFetch("photo-upload", { method: "POST",
   headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
   body: JSON.stringify({ token: saToken(), restaurant, dishId: id, image: data }) })
   .catch(() => { throw new Error("нет связи с сервером"); })

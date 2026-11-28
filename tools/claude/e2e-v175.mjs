@@ -491,7 +491,8 @@ await run(["SECTION"], async () => {
   ok("SECTION: кадр видео загрузился, без подложки-ожидания, одним слоем", !!m && /(^|\/)video\/intro-seasonal\.jpg$/.test(m.src) && m.nw === 720 && m.wait === 0 && m.layers === 1, m);
   const v = INTRO_VIDEOS["s0-1"];
   const eyes = m ? (() => { const hs = m.w * 16 / 9, p = parseFloat(m.pos.split(" ")[1]) / 100; return v.face.eyes * hs - p * (hs - m.h); })() : -1;
-  ok("SECTION: глаза — над заголовком раздела (40–62 px от верха обложки)", eyes >= 40 && eyes <= 62, { eyes, m });
+  // v225 (Доп. 551): обложка с кадром ролика выше (250 px), глаза — на 102 px; было 178 px и 40–62 px
+  ok("SECTION: глаза — над заголовком раздела (90–114 px от верха обложки высотой 250)", eyes >= 90 && eyes <= 114 && Math.round(m.h) === 250, { eyes, m });
   if (m && m.cur) {
     const top = await page.evaluate(() => { const c = document.querySelector(".tbp-cur .tbm-cover"); const r = c.getBoundingClientRect(); return r.top; });
     await page.addStyleTag({ content: "#demo-strip,#demo-tgchat,#demo-push{display:none!important}" });

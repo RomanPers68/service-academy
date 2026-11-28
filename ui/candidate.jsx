@@ -17,7 +17,7 @@ import { GOLD, GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { shuffleArray, vibrate, onActivate, cleanQuizQ } from "../lib/utils";   // v195: cleanQuizQ
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v65 (Доп. 378): ответ голосом
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, fnFetch, fnUrl } from "../lib/supabase";   // v225: функции — через fnFetch
 import { MOD_SVG, UI_SVG, ROLE_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): значки вместо ⭐ и ☁
 import { LiquidSegment, useHintOnce, HintBubble } from "./widgets";
@@ -595,7 +595,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
     return ai.map(m => ({ topic: m.topic, followup: !!m.followup }));
   };
   const callHr = React.useCallback((mode, msgs, extra = {}) =>
-    fetch(`${SUPABASE_URL}/functions/v1/ai-hr`, {
+    fnFetch("ai-hr", {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({
@@ -1188,7 +1188,7 @@ export function CandidateScreen({ T, a11y, onBack, customLessons, profile }) {
                   lineHeight: 1.45, resize: "none", maxHeight: 110, overflowY: "auto" }}
               />
               <div style={{ display: "flex", flexShrink: 0, marginBottom: 3 }}>
-              <MicButton a11y={a11y} size={46} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+              <MicButton a11y={a11y} size={46} sttUrl={fnUrl("stt")}
                 headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
                 onText={t => setAiInput(v => (v ? v.trimEnd() + " " : "") + t)} onBusy={setMicBusy}
                 onError={m => { try { window.Telegram?.WebApp?.showAlert?.(m); } catch (e) { alert(m); } }} />

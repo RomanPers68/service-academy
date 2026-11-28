@@ -190,7 +190,7 @@ describe("v206 · приложение: сначала Supabase, запасно�
 
   it("редактор меню шлёт импорт через makeMenuPost, сам в /api не ходит; демо отвечает на оба адреса", () => {
     const ui = rd("ui/menu-trainer.jsx");
-    expect(ui).toContain("const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token });");
+    expect(ui).toContain("const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token, fetchFn: ");   // v225: функция — через общий вход, до 2 мин
     expect(ui).not.toContain('fetch("/api/menu-import"');
     expect(rd("tools/claude/demo-app/boot.js")).toContain("/\\/functions\\/v1\\/menu-import|\\/api\\/menu-import/");
     const sbr = rd("supabase/README.md");

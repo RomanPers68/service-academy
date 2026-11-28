@@ -17,7 +17,7 @@
 import React from "react";
 import { onActivate, vibrate } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../lib/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing, fnFetch, fnUrl } from "../lib/supabase";   // v225: функции — через fnFetch
 import { WINE, SPIRIT } from "../lib/drinks";
 import { dishesOf, rememberSharedMenu } from "../lib/reference-context";
 import { drinkShareItem, cocktailShareItem } from "../lib/share-items";
@@ -53,7 +53,7 @@ const REFINE_LABEL = Object.fromEntries(SOM_REFINE);
  *  messages — короткий список для сервера постарше (он режим не знает и отвечает как Наставник). */
 async function askMentor(prompt, som) {
   try {
-    const r = await fetch(SUPABASE_URL + "/functions/v1/ai-chat", { method: "POST", headers: { "Content-Type": "application/json", ...H() },
+    const r = await fnFetch("ai-chat", { method: "POST", headers: { "Content-Type": "application/json", ...H() },
       body: JSON.stringify({ token: saToken(), mode: "sommelier", messages: [{ role: "user", content: prompt }], som }) });
     const j = await r.json();
     if (j && j.ok && j.reply) return { reply: String(j.reply), remaining: typeof j.remaining === "number" ? j.remaining : -1, som: j.som === 1 };
@@ -376,7 +376,7 @@ export function BarSommelier({ T, a11y, restaurant, cocktails, wines, spirits, s
           <textarea ref={taRef} data-som-text="" rows={2} value={text} maxLength={300} aria-label="Что хочет гость" placeholder={"Например: к рибаю, сухое красное, до 5 000"}
             onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); run("new"); } }}
             style={{ flex: 1, minWidth: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: ink, fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.45, padding: "4px 0", minHeight: 46 }} />
-          <MicButton a11y={a11y} size={38} sttUrl={SUPABASE_URL + "/functions/v1/stt"} headers={H()} onText={(x) => { const a = String(textRef.current || "").trim(), b = String(x || "").trim(); setText((a && b ? a + " " + b : a || b).slice(0, 300)); }} onError={(m) => setMsg(m)} />
+          <MicButton a11y={a11y} size={38} sttUrl={fnUrl("stt")} headers={H()} onText={(x) => { const a = String(textRef.current || "").trim(), b = String(x || "").trim(); setText((a && b ? a + " " + b : a || b).slice(0, 300)); }} onError={(m) => setMsg(m)} />
         </div>
         <div role="group" aria-label="Быстрые просьбы" data-som-chips="" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
           {quick.map(([k, lab, sel, act]) => <button key={k} type="button" className="sa-btn" data-som-chip={k} aria-pressed={!!sel} aria-expanded={k === "dish" || k === "table" || k === "budget" || k === "like" ? sub2 === k : undefined}

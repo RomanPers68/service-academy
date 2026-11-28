@@ -92,6 +92,14 @@ html.sa-light .tbm-cover img{filter:none;opacity:.96}
 html.sa-light .tbm-cover::after{background:linear-gradient(180deg,rgba(248,241,226,0) 0%,rgba(248,241,226,.30) 40%,rgba(248,241,226,.86) 78%,rgba(248,241,226,.9) 100%)}
 .tbm-menu.covered .tbm-head{position:relative;padding-top:84px}
 .tbm-menu.covered.sealed .tbm-head{padding-top:66px}
+/* v225 (Доп. 551): кадр видео-знакомства — обложка выше, 250 px: голова видна целиком, а не лоб с глазами (владелец
+   выбрал из трёх вариантов средний). Глаза — на 102 px (lib/intro-video.js, SECTION_BOX), шапка раздела — с 226 px,
+   затемнение начинается ниже лица. Своё фото раздела и фото урока — как раньше, 178 px. */
+.tbm-menu.covered[data-mod-cover="video"] .tbm-cover{height:250px}
+.tbm-menu.covered[data-mod-cover="video"] .tbm-cover::after{background:linear-gradient(180deg,rgba(22,17,9,0) 0%,rgba(22,17,9,.05) 60%,rgba(22,17,9,.75) 90%,rgba(22,17,9,.9) 100%)}
+html.sa-light .tbm-menu.covered[data-mod-cover="video"] .tbm-cover::after{background:linear-gradient(180deg,rgba(248,241,226,0) 0%,rgba(248,241,226,.05) 60%,rgba(248,241,226,.75) 90%,rgba(248,241,226,.9) 100%)}
+.tbm-menu.covered[data-mod-cover="video"] .tbm-head{padding-top:226px}
+.tbm-menu.covered.sealed[data-mod-cover="video"] .tbm-head{padding-top:208px}
 .tbm-menu.covered .tbm-list{position:relative}
 .tbm-orn{display:flex;align-items:center;gap:10px;max-width:180px;margin:9px auto 5px;color:var(--gold-ink);font-size:10.5px;line-height:1}
 .tbm-orn i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--edge-gold))}

@@ -57,6 +57,7 @@
 -- команда» (без повторов брифинга). Кнопки прямо в сообщениях бота: «Иду» на вызов, «Забрать» и «Выйду» на смену, голос
 -- в опросе руководителя, «Открыть урок» в задании; ответ на сообщение бота уходит в чат (sa_tg_update — тот же вебхук
 -- tg-bot, что у «Вопроса дня», этап 31) — 35 функций.
+-- v225 (этап 76): фото в карточках — полный адрес https или путь хранилища «/storage/v1/object/public/…».
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -1386,7 +1387,7 @@ returns jsonb language sql immutable as $$
     jsonb_strip_nulls(jsonb_build_object('kind', p->>'kind', 'id', p->>'id', 'title', _sa_chat_cut(p->>'title', 120),
       'sub', nullif(_sa_chat_cut(p->>'sub', 140), ''),
       'mins', case when p->>'mins' ~ '^[0-9]{1,3}$' then (p->>'mins')::int end,
-      'img', case when p->>'img' ~ '^https://[^\s"<>]+$' and char_length(p->>'img') <= 600 then p->>'img' end,
+      'img', case when p->>'img' ~ '^(https://[^\s"<>]+|/storage/v1/object/public/[^\s"<>]+)$' and char_length(p->>'img') <= 600 then p->>'img' end,
       'lessons', case when p->>'kind' = 'module' and jsonb_typeof(p->'lessons') = 'array' then
         (select jsonb_agg(v) from (select v from jsonb_array_elements_text(p->'lessons') v where v ~ '^[A-Za-z0-9_.:-]{1,80}$' limit 80) s) end,
       'quizzes', case when p->>'kind' = 'module' and jsonb_typeof(p->'quizzes') = 'array' then
@@ -1864,7 +1865,7 @@ begin
        where restaurant = ch.restaurant;
     end if;
     card := jsonb_build_object('t', 'stop', 'st', 'on', 'dish', jsonb_strip_nulls(jsonb_build_object('id', dish->>'id', 'name', _sa_chat_cut(dish->>'name', 120),
-      'img', case when dish->>'img' ~ '^https://[^\s"<>]+$' and char_length(dish->>'img') <= 600 then dish->>'img' end)));
+      'img', case when dish->>'img' ~ '^(https://[^\s"<>]+|/storage/v1/object/public/[^\s"<>]+)$' and char_length(dish->>'img') <= 600 then dish->>'img' end)));
     insert into sa_chat_msgs (chat_id, emp_id, emp_name, emp_rest, body, kind, card)
       values (ch.id, c->>'id', who, coalesce(c->>'restaurant', ''), _sa_chat_card_sum(card), 'card', card) returning * into m;
     perform _sa_chat_after_write(ch, c->>'id', m.id);
@@ -2065,7 +2066,7 @@ begin
     if m.id is not null then return jsonb_build_object('ok', true, 'again', true, 'msg', _sa_chat_smart1(c, ch, m)); end if;
     if _sa_chat_fast(c) then return jsonb_build_object('ok', false, 'error', 'too_fast'); end if;
     cd := jsonb_build_object('t', 'stop', 'st', 'on', 'from', 'menu', 'dish', jsonb_strip_nulls(jsonb_build_object('id', dish->>'id', 'name', _sa_chat_cut(dish->>'name', 120),
-      'img', case when dish->>'img' ~ '^https://[^\s"<>]+$' and char_length(dish->>'img') <= 600 then dish->>'img' end)));
+      'img', case when dish->>'img' ~ '^(https://[^\s"<>]+|/storage/v1/object/public/[^\s"<>]+)$' and char_length(dish->>'img') <= 600 then dish->>'img' end)));
     insert into sa_chat_msgs (chat_id, emp_id, emp_name, emp_rest, body, kind, card)
       values (ch.id, c->>'id', who, coalesce(c->>'restaurant', ''), _sa_chat_card_sum(cd), 'card', cd) returning * into m;
     perform _sa_chat_after_write(ch, c->>'id', m.id);

@@ -41,7 +41,7 @@ describe("v205 · в api/ только сервер", () => {
 
   it("спящей заготовки наставника нет; Наставник — через ai-chat; _auth.js называет тех, кто его зовёт", () => {
     expect(existsSync("api/assistant.js")).toBe(false);
-    expect(rd("ui/assistant.jsx")).toContain("/functions/v1/ai-chat");
+    expect(rd("ui/assistant.jsx")).toContain('fnFetch("ai-chat", {');   // v225: функции — через общий вход
     const users = readdirSync("api").filter((f) => !f.startsWith("_") && rd("api/" + f).includes("./_auth.js"));
     expect(users.length).toBe(4);
     const head = rd("api/_auth.js").split("\n").slice(0, 3).join(" ");

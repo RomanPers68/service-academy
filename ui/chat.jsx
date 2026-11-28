@@ -30,7 +30,7 @@ import { vibrate, onActivate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { LABEL_CSS } from "./tokens";
 import { MicButton } from "./mic";
-import { CHAT_MAX, POLL_OPEN_MS, POLL_HOT_MS, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
+import { CHAT_MAX, POLL_OPEN_MS, POLL_HOT_MS, pollGap, listGap, REACTS, chatInitials, bubbleName, hhmm, listTime, feedRows, previewText, callLine,
   isCallForMe, callState, cleanBody, readBy, readLine, badge, peopleWord, quoteText, replyOf, canEdit, canPin, canDelOthers, pinnable, reactGroups, myReact,
   withReact, reactName, photoBox, restShort, canClear, clearedChanged, canGroup, canManage, groupTitle, GROUP_TITLE_MAX } from "../lib/chat";
 import { compressPhoto } from "../lib/chat-photo";
@@ -566,9 +566,11 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
     if (it.kind === "dm" && it.emp) { openDm({ id: it.emp }); return; }   // eslint-disable-line no-use-before-define
     if (it.kind === "give" || it.kind === "swap" || it.kind === "late" || it.kind === "team" || it.kind === "thx") wantRef.current = it;   // v99: «Опаздываю» из «Смены» и с главной; v107: «Вся команда» (карточка новичка); v108: «Спасибо коллеге»
   }, [intent]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const listSig = React.useRef(""), listChanged = React.useRef(Date.now());   // v225: список без перемен — реже
   const load = React.useCallback(() => Promise.resolve(api.list()).then((r) => {
     if (r && r.ok) {
       const list = r.chats || [];
+      try { const sig = JSON.stringify(list); if (sig !== listSig.current) { listSig.current = sig; listChanged.current = Date.now(); } } catch (e) { /* */ }
       // v108: открытую переписку берём по curIdRef и из прежнего списка: личная, которую только что создали, есть в нём
       // раньше, чем экран её отрисовал (иначе список, пришедший в этот миг, закрывал её и показывал список чатов)
       setChats((prev) => {
@@ -582,7 +584,8 @@ export function ChatScreen({ a11y, me: me0, api, onBack, stt = null, openId = nu
   }).catch(() => setErr("Нет связи. Список обновится сам.")), [api]);   // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     load();
-    const t = setInterval(() => { if (!hidden()) load(); }, 10000);
+    let last = Date.now();
+    const t = setInterval(() => { if (hidden()) return; const now = Date.now(); if (now - last >= listGap(now, listChanged.current)) { last = now; load(); } }, 2500);
     return () => clearInterval(t);
   }, [load]);
   // v108 (Доп. 421): дни рождения и годовщины — карточки дня; обычно их ставит расписание сервера, а приложение
@@ -1221,6 +1224,7 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     if (Array.isArray(r.members)) { const s = JSON.stringify(r.members); if (s !== membersKey.current) { membersKey.current = s; setMembers(r.members); } }
     if ("pin" in r) { const s = JSON.stringify(r.pin || null); if (s !== pinKey.current) { pinKey.current = s; setPin(r.pin || null); } }
     if (first) setMore(!!r.more);
+    if (!first && Array.isArray(r.msgs) && r.msgs.length) lastLive.current = Date.now();   // v225: пришло новое — снова часто
     addMsgs(r.msgs, { poll: true, quiet: first });
     setLoaded(true);
   }).catch(() => { if (first) setErr("Нет связи. Переписка откроется, когда связь появится."); }), [api, chat.id, meId]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -1231,13 +1235,13 @@ function Thread({ a11y, me, api, app = null, chat, stt, onBack, onSent, onGone, 
     pinKey.current = "null"; setPin(null); setReply(null); setEdit(null); setSheet(null); setView(null);
   }
   // опрос: раз в 4 секунды; 20 секунд после своего сообщения, вызова или «Иду» — чаще (ответ коллеги виден сразу)
-  const hotUntil = React.useRef(0), lastPoll = React.useRef(0);
-  const heat = () => { hotUntil.current = Date.now() + 20000; };
+  const hotUntil = React.useRef(0), lastPoll = React.useRef(0), lastLive = React.useRef(Date.now());
+  const heat = () => { hotUntil.current = Date.now() + 20000; lastLive.current = Date.now(); };
   React.useEffect(() => {
     pull(true); lastPoll.current = Date.now();
     const t = setInterval(() => {
       if (hidden()) return;
-      const gap = Date.now() < hotUntil.current ? POLL_HOT_MS : POLL_OPEN_MS;
+      const gap = pollGap(Date.now(), hotUntil.current, lastLive.current);   // v225: минуту тихо — раз в 10 секунд
       if (Date.now() - lastPoll.current >= gap) { lastPoll.current = Date.now(); pull(false); }
     }, 500);
     const m = setInterval(() => setTick((x) => x + 1), 30000);   // «ждёт 2 мин» у вызовов

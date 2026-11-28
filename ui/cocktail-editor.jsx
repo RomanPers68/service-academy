@@ -3,7 +3,7 @@ import { useHintOnce, HintBubble } from "./widgets";
 import React from "react";
 import { onActivate, vibrate, readPhoto } from "../lib/utils";
 import { GOLD, labelStyle } from "./tokens";
-import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn } from "../lib/supabase";
+import { rpc, saToken, SUPABASE_URL, SUPABASE_KEY, sbIn, fnFetch } from "../lib/supabase";
 import { cocktailRecords, withCocktail, withoutCocktail, recToCocktail, cachedShared } from "../lib/deck-extras";
 import { buildScenario, GLASS_RU, GARNISH_RU } from "../lib/bar-lab";
 import { COCKTAILS } from "../data/cocktails";
@@ -70,7 +70,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
     const file = e.target.files && e.target.files[0]; e.target.value = ""; if (!file) return;
     readPhoto(file, (data) => {
       setForm(f => ({ ...f, img: data })); setPhotoState("uploading");
-      fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("ck-" + Date.now()), image: data }) })
+      fnFetch("photo-upload", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify({ token: saToken(), restaurant, dishId: form.id || ("ck-" + Date.now()), image: data }) })
         .then(r => r.json()).then(j => { if (j && j.ok && j.url) { setForm(f => ({ ...f, img: sbIn(j.url) })); setPhotoState("cloud"); } else setPhotoState("local"); }).catch(() => setPhotoState("local"));
     });
   };
@@ -80,7 +80,7 @@ export function CocktailEditor({ T, a11y, profile, onBack, onOpenCard, startEdit
     setAiBusy(true); setAiErr(""); setAiVariants(null);
     const ing = form.ing.filter(i => String(i[0]).trim()).map(i => `${i[0]}${i[1] ? " " + i[1] + " " + (i[2] || "мл") : ""}`).join(", ");
     const ask = `Напиши три разных короткие истории авторского коктейля «${form.name}» бара ресторана «${restaurant}» — каждая два-три предложения, живым языком бармена, без штампов и восклицаний. Состав: ${ing || "не указан"}. Метод: ${form.method}, бокал: ${GLASS_RU[form.glass]}. Первая — про вкус и характер, вторая — про происхождение или идею названия (если не знаешь — придумай правдоподобно и честно скажи «у нас так рассказывают»), третья — игривая, как сказать гостю у стойки. Пронумеруй 1., 2., 3. и ничего больше не добавляй.`;
-    fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: ask }] }) })
+    fnFetch("ai-chat", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }, body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: ask }] }) })
       .then(r => r.json()).then(j => {
         setAiBusy(false);
         if (j && j.ok && j.reply) {

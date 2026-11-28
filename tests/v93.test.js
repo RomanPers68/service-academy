@@ -232,7 +232,7 @@ describe("v93: экран и приложение", () => {
     expect(app).toContain('if (k === "lesson" || k === "quiz") { chatLessonMark.current = { mark, at: Date.now() }; assistantNavigate({ lesson: id }); return; }');   // v190: «назад» — в чат
     expect(app).toContain('if (k === "ref") { setRefStart(id); navigate("reference"); mark(); return; }');   // v190: «назад» — в чат
     expect(rd("ui/chat.jsx")).toContain("const app = React.useMemo(() => app0 || (appCtx ? makeChatApp(appCtx) : null), [app0, appCtx]);");
-    expect(rd("lib/chat-ai.js")).toContain('fetch(SUPABASE_URL + "/functions/v1/ai-chat"');
+    expect(rd("lib/chat-ai.js")).toContain('fnFetch("ai-chat", {');   // v225: функции — через общий вход
     expect(rd("tools/claude/chat-demo/build.mjs")).toContain('b.onResolve({ filter: /\\/chat-app$/ }, () => ({ path: join(HERE, "chat-app-stub.js") }));');
   });
   it("ошибки словами (с причиной от сервера), «Напомнить» — сколько и кому; справка про умный чат", async () => {

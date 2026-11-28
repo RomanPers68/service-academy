@@ -554,8 +554,9 @@ if (want("LOOK")) {
   // 320 px: раздел трека и «Справочник»
   { const { ctx, page, errs } = await roman({ width: 320, height: 640, wait: 2600 });
     await nav(page, "home", 1500);
-    const g = await page.evaluate(() => { const m = document.querySelector(".tbp-cur .tbm-menu"), c = m && m.querySelector(".tbm-cover"), i = c && c.querySelector("img"); if (!i) return null; const a = c.getBoundingClientRect(), b = i.getBoundingClientRect(), mm = m.getBoundingClientRect(); return { cw: a.width, iw: b.width, mw: mm.width, h: a.height, nw: i.naturalWidth }; });
-    ok("LOOK 320: фото раздела во всю ширину карточки, 178 px высотой", !!g && Math.abs(g.cw - g.iw) < 1 && Math.abs(g.h - 178) < 1 && g.cw <= g.mw + 0.5 && g.nw > 0, g);
+    const g = await page.evaluate(() => { const m = document.querySelector(".tbp-cur .tbm-menu"), c = m && m.querySelector(".tbm-cover"), i = c && c.querySelector("img"); if (!i) return null; const a = c.getBoundingClientRect(), b = i.getBoundingClientRect(), mm = m.getBoundingClientRect(); return { cw: a.width, iw: b.width, mw: mm.width, h: a.height, nw: i.naturalWidth, kind: m.getAttribute("data-mod-cover") }; });
+    // v225 (Доп. 551): кадр видео-знакомства — обложка 250 px, фото раздела и урока — 178 px
+    ok("LOOK 320: фото раздела во всю ширину карточки, 178 px высотой (кадр ролика — 250)", !!g && Math.abs(g.cw - g.iw) < 1 && Math.abs(g.h - (g.kind === "video" ? 250 : 178)) < 1 && g.cw <= g.mw + 0.5 && g.nw > 0, g);
     await nav(page, "reference", 1500);
     const r = await page.evaluate(() => [...document.querySelectorAll("[data-ref-card]")].map((c) => { const a = c.getBoundingClientRect(), i = c.querySelector("img[data-ref-photo]"), b = i ? i.getBoundingClientRect() : null; return { id: c.getAttribute("data-ref-card"), w: a.width, iw: b ? b.width : 0, ih: b ? b.height : 0, h: a.height }; }));
     ok("LOOK 320: в «Справочнике» фото на всю карточку, вбок ничего не вылезло", r.filter((x) => x.iw).length >= 3 && r.filter((x) => x.iw).every((x) => Math.abs(x.iw - x.w) < 2.5 && Math.abs(x.ih - x.h) < 2.5) && (await overflowX(page)) <= 0, r);

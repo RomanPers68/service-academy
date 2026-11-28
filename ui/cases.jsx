@@ -14,11 +14,11 @@ import React from "react";
 import { LineArt } from "./line-art";   // v87: рисунок золотой линией
 import { vibrate } from "../lib/utils";
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY, fnFetch, fnUrl } from "../lib/supabase";   // v225: функции — через fnFetch
 import { CASE_OUTCOMES, CASE_LIMITS, outcomeLabel, caseDraft, draftProblem, draftToSit, casesToSits, readPlayed, caseAiPrompt, parseCaseAi } from "../lib/cases";
 import { MicButton } from "./mic";
 
-const STT = { url: () => SUPABASE_URL + "/functions/v1/stt", headers: () => ({ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }) };
+const STT = { url: () => fnUrl("stt"), headers: () => ({ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }) };
 // сказанное голосом — в конец поля, через пробел, не длиннее предела поля
 export const appendSpoken = (prev, add, max) => { const a = String(prev || "").trim(), b = String(add || "").trim(); return (a && b ? a + " " + b : a || b).slice(0, max || 2000); };
 
@@ -95,7 +95,7 @@ function Review({ c, a11y, item, onDone, onCancel }) {
   const askAi = () => {
     if (aiBusy) return;
     vibrate("light"); setAiBusy(true); setErr(""); setAiMsg("");
-    fetch(SUPABASE_URL + "/functions/v1/ai-chat", { method: "POST", headers: { "Content-Type": "application/json", ...STT.headers() },
+    fnFetch("ai-chat", { method: "POST", headers: { "Content-Type": "application/json", ...STT.headers() },
       body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: caseAiPrompt(item) }] }) })
       .then((r) => r.json()).then((j) => {
         setAiBusy(false);

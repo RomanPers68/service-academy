@@ -94,7 +94,7 @@ describe("v80: запись голоса и плеер", () => {
     expect(vn).toMatch(/if \(keepAsIs\(type\)\) return \{ blob, mime: "audio\/mp4" \};\s*const wav = await blobToWav16k\(blob\);\s*return \{ blob: wav, mime: "audio\/wav" \};/);
   });
   it("загрузка — voice-upload; файлы не удаляются сразу, уборка — после публикации", () => {
-    expect(vn).toContain("`${SUPABASE_URL}/functions/v1/voice-upload`");
+    expect(vn).toContain('fnFetch("voice-upload", {');   // v225: функции — через общий вход
     expect(vn).toContain("export function sweepVoices(restaurant)");
     expect(vn).toContain("call({ restaurant, sweep: true })");
     expect(vn).not.toContain("remove:");

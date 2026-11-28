@@ -7,7 +7,7 @@
 // concept_pitch, lib/concept-pitch.js). Помощник не ответил — разбор по словам образца здесь же. Образец открывается
 // после попытки, чтобы не пересказывать его с экрана.
 import React from "react";
-import { SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, fnUrl } from "../lib/supabase";   // v225: адрес функции — fnUrl
 import { vibrate } from "../lib/utils";
 import { GOLD, GREEN } from "./tokens";
 import { UI_SVG } from "./icons";
@@ -20,7 +20,7 @@ const SERIF = "Georgia, 'Times New Roman', serif";
 const TITLE = "'Piazzolla', Georgia, serif";
 const plural = (n, a, b, c) => (n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
 const SCORE = ["", "Попробуй ещё раз", "Есть над чем поработать", "Неплохо", "Почти готово для гостя", "Готово для гостя"];
-const STT = { url: SUPABASE_URL + "/functions/v1/stt", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } };
+const STT = { url: fnUrl("stt"), headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } };
 
 function Ring({ left, total, over, c, T }) {
   const R = 46, L = 2 * Math.PI * R, k = Math.max(0, Math.min(1, left / total));

@@ -8,6 +8,7 @@
 --   • _sa_chat_card_sum — в списке чатов, в цитате и у бота «Вино: Шабли 2022», «Крепкое: Glenfiddich 12 лет».
 -- Обе функции — из этапа 38 (supabase-stage38-chat.sql), всё прочее в них прежнее; по новой _sa_chat_bar_kinds экран
 -- «Сервер» у владельца видит, что этап на месте. Таблицы не меняются. Нужен этап 38.
+-- v225 (этап 76): фото в карточке — полный адрес https или путь хранилища «/storage/v1/object/public/…».
 -- Можно запускать повторно.
 -- Supabase → SQL Editor → New query → вставить файл целиком → Run.
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -58,7 +59,7 @@ returns jsonb language sql immutable as $$
     jsonb_strip_nulls(jsonb_build_object('kind', p->>'kind', 'id', p->>'id', 'title', _sa_chat_cut(p->>'title', 120),
       'sub', nullif(_sa_chat_cut(p->>'sub', 140), ''),
       'mins', case when p->>'mins' ~ '^[0-9]{1,3}$' then (p->>'mins')::int end,
-      'img', case when p->>'img' ~ '^https://[^\s"<>]+$' and char_length(p->>'img') <= 600 then p->>'img' end,
+      'img', case when p->>'img' ~ '^(https://[^\s"<>]+|/storage/v1/object/public/[^\s"<>]+)$' and char_length(p->>'img') <= 600 then p->>'img' end,
       'lessons', case when p->>'kind' = 'module' and jsonb_typeof(p->'lessons') = 'array' then
         (select jsonb_agg(v) from (select v from jsonb_array_elements_text(p->'lessons') v where v ~ '^[A-Za-z0-9_.:-]{1,80}$' limit 80) s) end,
       'quizzes', case when p->>'kind' = 'module' and jsonb_typeof(p->'quizzes') = 'array' then

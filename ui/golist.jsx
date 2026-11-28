@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { vibrate } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
 import { labelStyle } from "./tokens";
-import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { rpc, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY, fnFetch } from "../lib/supabase";   // v225: функции — через fnFetch
 import { GO_MAX, GO_KINDS, GO_KIND_WORD, GO_LIMITS, goCandidates, goSearch, goItem, goNormalize, goRows, goAiPrompt, goParseAi, goSoldNormalize, goSoldLine, dayBefore } from "../lib/golist";
 
 const portal = (el) => (typeof document !== "undefined" && document.body && document.body.nodeType === 1 ? createPortal(el, document.body) : el);
@@ -120,7 +120,7 @@ export function GoEditor({ a11y, c, menu, go, setGo, isOn, onToggle, prev, block
     if (ai[g.id] === "busy") return;
     setAi((s) => ({ ...s, [g.id]: "busy" }));
     const cand = cands.find((x) => x.id === g.id) || null;
-    fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    fnFetch("ai-chat", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: goAiPrompt(g, cand, restaurant) }] }) })
       .then((r) => r.json()).then((j) => {
         const p = j && j.ok ? goParseAi(j.reply) : null;

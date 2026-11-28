@@ -137,7 +137,7 @@ describe("v90: сеть чата (lib/chat-api.js) и сжатие фото (lib
     const src = rd("lib/chat-api.js");
     expect(src).toContain('.then((r) => (rpcMissing(r) ? { ok: false, error: "missing" }');
     expect(src).toContain("rpc(fn, { p_token: saToken(), ...args })");
-    expect(src).toContain('export const chatStt = () => ({ url: SUPABASE_URL + "/functions/v1/stt"');
+    expect(src).toContain('export const chatStt = () => ({ url: fnUrl("stt")');   // v225: адрес функции — fnUrl
   });
   it("сжатие: 1280 точек, превью 360, пределы 300 и 48 КБ; не картинка — ошибка type", async () => {
     const P = await import("../lib/chat-photo.js");

@@ -11,7 +11,7 @@
 import React from "react";
 import { HR_EVAL, HR_EVAL_V, EXP_LABEL, evalMessages } from "../data/hr-eval";
 import { evalItem, evalSummary, REF_SHARE, REAL_N, REAL_SHARE } from "../lib/hr-quality";
-import { saToken, SUPABASE_URL, SUPABASE_KEY } from "../lib/supabase";
+import { saToken, SUPABASE_URL, SUPABASE_KEY, fnFetch } from "../lib/supabase";   // v225: функции — через fnFetch
 import { GREEN, RED, GOLD_SOFT, RADIUS, labelStyle } from "./tokens";
 import { UI_SVG } from "./icons";
 import { vibrate } from "../lib/utils";
@@ -27,7 +27,7 @@ const shortModel = (m) => String(m || "").split("/").pop();
 async function assessOne(c, briefs, signal) {
   const { messages, plan } = evalMessages(c);
   try {
-    const r = await fetch(`${SUPABASE_URL}/functions/v1/ai-hr`, {
+    const r = await fnFetch("ai-hr", {
       method: "POST", signal,
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({

@@ -19,7 +19,7 @@ import { Ic } from "./table-bits";
 import { MicButton } from "./mic";
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в разговоре
 import { voiceSupported } from "../lib/voice";
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing } from "../lib/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, rpcMissing, fnFetch, fnUrl } from "../lib/supabase";   // v225: функции — через fnFetch
 import { pickGuest, parseGuestReply, parseReceipt, mistakesForLessons, saveGuestRun, readGuestRuns, guestErrorText, CRITERIA, POS_WORD, previousRun, streamText, normPersona, placeUi, receiptKind, placeOf, NEW_IN_V42 } from "../lib/live-guest";
 import { tablePool } from "../lib/table-pick";
 import { pickWarmup } from "../lib/warmup";
@@ -402,7 +402,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
   // v31: реплика гостя — потоком (onPart получает текст по мере готовности). Старый сервер
   // отвечает целиком (JSON) — читаем как раньше.
   const call = async (list, finish, onPart) => {
-    const r = await fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+    const r = await fnFetch("ai-chat", {
       method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       // v42: track — трек сотрудника: сервер берёт уроки на повтор из него (роль — по месту гостя)
       body: JSON.stringify({ token: saToken(), mode: "guest", guest: payload(), track: role || "", finish: !!finish, stream: !finish && !!onPart, messages: history(list) }),
@@ -702,7 +702,7 @@ export function LiveGuestScreen({ a11y, profile, role, uk, color, track = [], mo
             <div className="lg-row">
               <textarea className="lg-in" rows={1} value={input} placeholder="Что скажешь гостю?" aria-label="Твоя реплика гостю"
                 onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} disabled={busy} />
-              {canVoice ? <MicButton a11y={a11y} size={46} sttUrl={`${SUPABASE_URL}/functions/v1/stt`} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
+              {canVoice ? <MicButton a11y={a11y} size={46} sttUrl={fnUrl("stt")} headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
                 onText={(t) => setInput((v) => (v ? v + " " : "") + t)} onBusy={setMicBusy} onError={() => {}} /> : null}
               {/* v34 (Доп. 343): поле пустое — на месте «Сказать» кнопка-волна «Разговор голосом» */}
               {!input.trim() && talkOk ? <TalkButton size={46} disabled={busy || micBusy} onClick={openTalk} label="Разговор голосом с гостем" />

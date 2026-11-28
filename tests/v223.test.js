@@ -27,9 +27,11 @@ describe("v223 · версия и журнал", () => {
 describe("v223 · правило на сайте (vercel.json)", () => {
   it("/sb/… → тот же путь в Supabase; заголовки сайта на месте", () => {
     const v = JSON.parse(rd("vercel.json"));
-    expect(v.rewrites).toEqual([{ source: "/sb/:path*", destination: SB + "/:path*" }]);
+    expect(v.rewrites[0]).toEqual({ source: "/sb/:path*", destination: SB + "/:path*" });
+    // v225 (Доп. 551): и пути хранилища — сайт сам отдаёт фото по пути из базы (/storage/v1/object/public/…)
+    expect(v.rewrites).toEqual([{ source: "/sb/:path*", destination: SB + "/:path*" }, { source: "/storage/v1/object/public/:path*", destination: SB + "/storage/v1/object/public/:path*" }]);
     expect(v.headers.map((h) => h.source)).toEqual(["/.well-known/assetlinks.json", "/(.*)", "/sb/((?!storage/v1/object/public/).*)",
-      "/sb/storage/v1/object/public/(.*)", "/assets/(.*)", "/menu/(.*)", "/reference/(.*)", "/video/(.*)", "/icons/(.*)"]);
+      "/sb/storage/v1/object/public/(.*)", "/storage/v1/object/public/(.*)", "/assets/(.*)", "/menu/(.*)", "/reference/(.*)", "/video/(.*)", "/icons/(.*)"]);
   });
   it("ответы базы на сайте не кэшируются; фото из хранилища — на сутки, как /menu", () => {
     const v = JSON.parse(rd("vercel.json"));
@@ -100,10 +102,12 @@ describe("v223 · куда ходит приложение (lib/supabase.js)", (
     expect(sbIn(A, SITE + "/sb", SB)).toBe(S);
     expect(sbIn([A, 1, true], SB, SB)).toEqual([A, 1, true]);            // запасной путь напрямую — ссылки не трогаем
     expect(sbIn(SB + "/rest/v1/x", SITE + "/sb", SB)).toBe(SB + "/rest/v1/x");   // только хранилище
-    expect(sbOut(JSON.stringify({ img: S, other: A }), SITE + "/sb", SB)).toBe(JSON.stringify({ img: A, other: A }));
-    expect(sbOut('{"img":"' + S + '"}', SB, SB)).toBe('{"img":"' + S + '"}');
+    // v225 (Доп. 551): в базу — путь к файлу, из любого полного адреса хранилища
+    const R = P + "menu-photos/r/d-1.jpg";
+    expect(sbOut(JSON.stringify({ img: S, other: A }), SITE + "/sb", SB)).toBe(JSON.stringify({ img: R, other: R }));
+    expect(sbOut('{"img":"' + S + '"}', SB, SB)).toBe('{"img":"' + S + '"}');   // чужой сайт без режима «через сайт» — как есть
     expect(sbIn({ img: A })).toEqual({ img: A });   // в проверках адреса страницы нет — без изменений
-    expect(sbOut('{"img":"' + A + '"}')).toBe('{"img":"' + A + '"}');
+    expect(sbOut('{"img":"' + A + '"}')).toBe('{"img":"' + R + '"}');   // v225: и напрямую — путём
   });
   it("ссылки хранилища меняются в одном месте: чтение и запись базы, ответы загрузки фото и голоса", () => {
     const s = rd("lib/supabase.js");

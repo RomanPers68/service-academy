@@ -173,7 +173,7 @@ describe("v122: «Редактор вин» — фото в форме и «Фо
   const E = rd("ui/wine-editor.jsx");
   it("фото: ужимается до 700 px, уходит в photo-upload под id вина (у нового — заранее, _nid); в записи — ссылка", () => {
     expect(E).toContain("700 / Math.max(img.width, img.height)");
-    expect(E).toContain("fetch(`${SUPABASE_URL}/functions/v1/photo-upload`");
+    expect(E).toContain('fnFetch("photo-upload", {');   // v225 (Доп. 551): функции — через общий вход lib/supabase.js
     expect(E).toContain("body: JSON.stringify({ token: saToken(), restaurant, dishId: id, image: data }) })");
     expect(E).toContain('const blankWine = () => ({ id: "", _nid: newId(), name: "",');   // v127: у крепкого — свой бланк
     expect(E).toContain('const blank = () => (K.kind === "spirit" ? blankSpirit(K) : blankWine());');

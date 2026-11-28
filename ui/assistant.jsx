@@ -15,7 +15,7 @@ import { vibrate, onActivate } from "../lib/utils";
 import { MicButton } from "./mic";
 import { useKeyboardLift, usePinBottom } from "./keyboard";   // v94: клавиатура вместе с Telegram на iPhone (общая с чатом)
 import { TalkButton, TalkBar, TalkDots, TalkSpeaking, canTalk } from "./talk";   // v34–v35 (Доп. 343–344): разговор голосом прямо в чате
-import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc } from "../lib/supabase";
+import { SUPABASE_URL, SUPABASE_KEY, saToken, rpc, fnFetch, fnUrl } from "../lib/supabase";   // v225: функции — через fnFetch
 import { withRefContext, rememberSharedMenu, dishesOf, barDrinksOf, webAsked, webMore, webCheckable, drinkAssistantContext } from "../lib/reference-context";   // v130: и вина с крепким; v152: интернет
 import { siteOf, oneSite, webErrText, webPost, slimHistory } from "../lib/ai-web";   // v152 (Доп. 476): ссылки «Нашёл в интернете»; v154: причина ошибки поиска
 import { WINE, SPIRIT } from "../lib/drinks";
@@ -293,7 +293,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     const sid = active.id;   // v34 (ревью): ответ — в этот чат
     updMsgs(next);
     setSending(true);
-    const chat = (miss = "") => fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+    const chat = (miss = "") => fnFetch("ai-chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -375,7 +375,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
     if (li >= 0 && sent[li].role === "user") sent[li] = { ...sent[li], content: sent[li].content + VOICE_HINT };
     // v36 (Доп. 347): voice — сервер (ai-chat v36) отвечает коротко, как в разговоре; старая версия
     // функции флаг просто не заметит (тогда длинный ответ вслух обрежет TalkBar: maxSpeak)
-    return fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+    return fnFetch("ai-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify({ token: saToken(), messages: sent, voice: true }),
@@ -849,7 +849,7 @@ export function AssistantScreen({ T, a11y, onBack, profile, onNavigate, learner,
               background: "transparent", border: "none", outline: "none",
               color: a11y ? "#3A2E1C" : "#F0E8D8" }}
           />
-          <MicButton a11y={a11y} sttUrl={`${SUPABASE_URL}/functions/v1/stt`}
+          <MicButton a11y={a11y} sttUrl={fnUrl("stt")}
             headers={{ apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }}
             onText={t => setInput(v => (v ? v.trimEnd() + " " : "") + t)}
             onBusy={setMicBusy}

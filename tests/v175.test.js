@@ -293,9 +293,9 @@ describe("v175 · обложка: лицо в кадре", () => {
     expect(coverPos(null)).toBe("50% 6%");
     expect(coverPos({ face: { top: 0.5, eyes: 0.2, chin: 0.1 } })).toBe("50% 6%");   // нелепые данные — прежний кадр
   });
-  it("обложка раздела: глаза — на 50 px от верха, над заголовком раздела (он ниже 84 px)", () => {
+  it("обложка раздела: глаза — на SECTION_BOX.eyes от верха, над заголовком раздела", () => {
     const { w, h: hh, eyes } = SECTION_BOX;
-    expect(eyes).toBe(50);
+    expect(eyes).toBe(102);   // v225 (Доп. 551): обложка с кадром ролика выше (250 px) — глаза на 102 px; было 50 при 178 px
     for (const id of IDS) expect(Math.abs(yOf(INTRO_VIDEOS[id].face.eyes, w, hh, sectionPos(INTRO_VIDEOS[id]))), id).toBeLessThan(eyes + 4);
     for (const id of IDS) expect(yOf(INTRO_VIDEOS[id].face.eyes, w, hh, sectionPos(INTRO_VIDEOS[id])), id).toBeGreaterThan(eyes - 4);
     expect(sectionPos(null)).toBe("50% 20%");

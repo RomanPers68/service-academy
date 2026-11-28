@@ -107,8 +107,9 @@ describe("v65: ответ голосом в AI-собеседовании", () =
   });
   it("сервер не меняли: stt и radio-tts — те же функции, что у Наставника", () => {
     const t = rd("ui/talk.jsx");
-    expect(t).toContain("const STT_URL = () => `${SUPABASE_URL}/functions/v1/stt`;");
-    expect(t).toContain("const TTS_URL = () => `${SUPABASE_URL}/functions/v1/radio-tts`;");
+    // v225 (Доп. 551): адреса функций — fnUrl (через сайт или напрямую), запрос — общий вход с запасным путём
+    expect(t).toContain('const STT_URL = () => fnUrl("stt");');
+    expect(t).toContain('const TTS_URL = () => fnUrl("radio-tts");');
   });
 });
 

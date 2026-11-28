@@ -27,7 +27,7 @@ import { menuVenues } from "../lib/org-model";
 import { SkelCards } from "./skeleton";   // v55 (Доп. 368): силуэты вместо «Загрузка…»
 import { onActivate, shuffleArray, vibrate, readPhoto } from "../lib/utils";
 import { SEARCH_ATTRS } from "../lib/search-field";   // v173 (Доп. 498): строка поиска без автозамены, клавиша «Найти»
-import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY, sbIn } from "../lib/supabase";   // v223: sbIn — ссылки фото через сайт
+import { rpc, rpcSync, saToken, rpcMissing, SUPABASE_URL, SUPABASE_KEY, sbIn, fnFetch, fnFetchUrl } from "../lib/supabase";   // v223: sbIn — ссылки фото через сайт
 import { GAME_SVG, UI_SVG, BUILD_SVG } from "./icons";
 import { Sign } from "./signs";   // v75 (Доп. 388): свои значки вместо эмодзи
 import { TimerBar, LiquidSegment } from "./widgets";
@@ -305,7 +305,7 @@ export function MenuTrainerScreen({ T, a11y, profile, onBack, startDishId, start
       <div style={{ padding: "8px 18px 0", color: T.modSub.color, fontSize: 12.5, lineHeight: 1.5 }}>
         {/* v224 (Доп. 550): служебная строка (сколько блюд, откуда, номер сборки, пищевая ценность) — только тем, кто правит
             меню. Официанту она ни о чём не говорит: владелец увидел её на снимке экрана сотрудника. */}
-        {canEdit ? <span data-menu-service="">Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null} · ты можешь редактировать меню <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v224</span></span> : null}
+        {canEdit ? <span data-menu-service="">Блюд в базе: <b style={{ color: gold }}>{dishes.length}</b>{shared.length > 0 ? <> · с сервера команды: <b style={{ color: greenInk }}>{shared.length}</b></> : null} · ты можешь редактировать меню <span style={{ opacity: 0.55, fontSize: 11 }}>· сборка v225</span></span> : null}
         {/* Доп. 274: видно, у каких блюд ИМЕННО ВАШЕГО меню нет пищевой ценности */}
         {canEdit && dishes.length > 0 && (() => {
           const miss = dishes.filter(d => !dishNutrition(d));
@@ -973,7 +973,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     setImportErr(""); setImporting(true); setImportStep(null); setImportShort(0); setImportKind(kind);
     const token = saToken();
     // v206 (Доп. 532): в функцию Supabase menu-import, как Наставник; её нет (404) — в /api/menu-import (там у владельца было 403)
-    const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token });
+    const post = makeMenuPost({ supabaseUrl: SUPABASE_URL, supabaseKey: SUPABASE_KEY, token, fetchFn: (u, o) => (/\/functions\/v1\//.test(String(u)) ? fnFetchUrl(u, o, { wait: 125000 }) : fetch(u, o)) });   // v225: импорт меню — до 2 мин
     const done = ({ dishes, short }) => { setImporting(false); setImportStep(null); setImportShort(short.length); setPreview(dishes); };
     const fail = (err) => { setImporting(false); setImportStep(null); setImportErr(String((err && err.message) || err || "Не получилось разобрать файл")); };
     if (kind !== "pdf") {
@@ -1092,7 +1092,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     };
     for (const d of localPhotos) {
       try {
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        const r = await fnFetch("photo-upload", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
           body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: d.img }) });
         let j = null; try { j = await r.json(); } catch (e) {}
         if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: sbIn(j.url) } : x); ok++; }
@@ -1117,7 +1117,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     let ok = 0, fail = 0, why = "", cur = custom[restaurant] || [];
     for (const { d, srv } of recoverable) {
       try {
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        const r = await fnFetch("photo-upload", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
           body: JSON.stringify({ token: saToken(), restaurant, dishId: d.id, image: srv.img }) });
         let j = null; try { j = await r.json(); } catch (e) {}
         if (j && j.ok && j.url) { cur = cur.map(x => x.id === d.id ? { ...x, img: sbIn(j.url), imgLostLocal: false } : x); ok++; }
@@ -1184,7 +1184,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
     };
     const plain = (miss) => {
       setAiBusy("ai");
-      fetch(`${SUPABASE_URL}/functions/v1/ai-chat`, {
+      fnFetch("ai-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
         body: JSON.stringify({ token: saToken(), messages: [{ role: "user", content: descPrompt({ restaurant, dish, seen, round }) }] }),
@@ -1215,7 +1215,7 @@ function MenuEditor({ startEditId, T, gold, red, green, textColor, a11y, Head, r
       readPhoto(file, (data) => {
         setForm(f => (mine(f) ? { ...f, img: data } : f));
         setPhotoState("uploading");
-        fetch(`${SUPABASE_URL}/functions/v1/photo-upload`, {
+        fnFetch("photo-upload", {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
           body: JSON.stringify({ token: saToken(), restaurant, dishId: myId, image: data }),

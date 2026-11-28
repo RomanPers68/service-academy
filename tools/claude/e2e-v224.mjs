@@ -81,7 +81,8 @@ if (want("MENU")) {
   const m = await open({ who: "maria" });
   await nav(m.page, "menuTrainer");
   const mLine = await m.page.evaluate(() => { const e = document.querySelector("[data-menu-service]"); return e ? e.textContent : ""; });
-  ok("MENU: менеджер — строка есть, со сборкой v224", /Блюд в базе: \d+/.test(mLine) && /сборка v224/.test(mLine), mLine);
+  // v225: сборка — не ниже v224 (номер растёт с каждой версией)
+  ok("MENU: менеджер — строка есть, со сборкой (v224 и новее)", /Блюд в базе: \d+/.test(mLine) && Number((/сборка v(\d+)/.exec(mLine) || [])[1]) >= 224, mLine);
   await shot(m.page, "menu-maria");
   await m.ctx.close();
 }

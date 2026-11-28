@@ -75,5 +75,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/sb/:path*",
+      "destination": "https://gvxhgdynjuaisswplroh.supabase.co/:path*"
+    }
   ]
 }
